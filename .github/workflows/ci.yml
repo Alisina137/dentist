@@ -35,6 +35,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
+      - name: Verify Expo SDK dependencies
+        run: pnpm --filter @dandanlink/mobile exec expo install --check
       - run: pnpm build
       - name: Bundle Expo patient app for Android
         run: pnpm --filter @dandanlink/mobile exec expo export --platform android --output-dir .expo-export
