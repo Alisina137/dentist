@@ -230,6 +230,7 @@ function navigation(space:Space,t:(key:string)=>string){
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
  const {t}=useLang();const nav=navigation(space,t);
+ const pageHasOwnHeading=["patients","services","resources","hours"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
     <div className="pill">{t(space.role)}</div>
@@ -239,9 +240,10 @@ export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,activ
     <div className="staff-side-locale"><LocaleControls/></div>
   </aside>
   <section className="work-content staff-content">
-    <header className="work-heading">
-      <div><div className="pill">DandanLink · Staff</div>
-       <h1 className="staff-page-heading">{t(active)||t("ready")}</h1><p className="muted">{ctx.name}</p></div>
+    <header className={"work-heading"+(pageHasOwnHeading?" phase04-shell-topbar":"")}>
+      <div><div className="pill">DandanLink · {pageHasOwnHeading?t("workspace"):t("staff")}</div>
+       {!pageHasOwnHeading&&<h1 className="staff-page-heading">{t(active)||t("ready")}</h1>}
+       <p className="muted">{ctx.name}</p></div>
       <button className="btn btn-secondary" onClick={async()=>{await authClient.signOut();location.assign("/clinic/login");}}>
         {t("account")} · ↪</button>
     </header>
