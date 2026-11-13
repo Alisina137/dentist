@@ -16,7 +16,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
-  search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
+  patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
   organization:"Organization",choosePlan:"Choose plan",review:"Review & submit",legalName:"Registered clinic name",
@@ -58,7 +58,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"Next action",privacyGate:"No patient or dental records are available at this stage."
  },
  "fa-AF":{
-  search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
+  patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
   subscription:"اشتراک",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",overview:"نمای کلی",verification:"تأیید",
   newClinic:"ثبت کلینیک جدید",continue:"ادامه",save:"ذخیره پیش‌نویس",back:"بازگشت",submit:"ارسال برای بررسی",
   organization:"معلومات کلینیک",choosePlan:"انتخاب پلن",review:"بررسی و ارسال",legalName:"نام رسمی کلینیک",
@@ -99,7 +99,7 @@ const words:Record<string,Record<string,string>>={
   privacyGate:"در این مرحله سوابق مریضان و دندان وجود ندارد."
  },
  "ps-AF":{
-  search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
+  patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
   subscription:"ګډون",subscriptions:"ګډونونه",plans:"پلانونه",overview:"لنډیز",verification:"تایید",
   newClinic:"نوی کلینیک ثبت کړئ",continue:"دوام",save:"مسوده وساتئ",back:"شاته",submit:"د کتنې لپاره واستوئ",
   organization:"د کلینیک معلومات",choosePlan:"پلان غوره کړئ",review:"بیاکتنه او استول",
@@ -175,7 +175,7 @@ function DataError({message,retry}:{message:string,retry:()=>void}){
 function Frame({audience,view,children,name}:{audience:Audience,view:View,children:ReactNode,name:string}){
   const l=useText();
   const nav=audience==="clinic"?[
-    ["dashboard","/clinic"],["onboarding","/clinic/onboarding"],["staff","/clinic/staff"],
+    ["dashboard","/clinic"],["onboarding","/clinic/onboarding"],["staff","/clinic/staff"],["patients","/clinic/patients"],
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
   ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
