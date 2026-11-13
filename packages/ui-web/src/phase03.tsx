@@ -222,7 +222,7 @@ function navigation(space:Space,t:(key:string)=>string){
  const profile=link("myProfile","/clinic/staff/"+space.membershipId,"◎","settings");
  const options=[home];
  if(space.role==="owner"||space.role==="manager"){
-  options.push(appointments,patients,...(space.clinicianEnabled?[clinical]:[]),staff,resources,services,hours,security);
+  options.push(appointments,patients,clinical,staff,resources,services,hours,security);
  }else if(space.role==="dentist"||space.role==="receptionist"){
   options.push(appointments,patients,...(space.role==="dentist"?[clinical]:[]),resources,services,hours,profile,security);
  }else if(space.role==="assistant"){
