@@ -16,7 +16,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
-  patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
+  operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
   organization:"Organization",choosePlan:"Choose plan",review:"Review & submit",legalName:"Registered clinic name",
@@ -45,7 +45,7 @@ const words:Record<string,Record<string,string>>={
   noRecords:"Nothing to display",next:"Next",previous:"Previous",refresh:"Refresh",
   unsaved:"Save the updated clinic information to continue.",editing:"Changes to an approved clinic require renewed review.",
   noPayment:"No payment has been confirmed. Do not treat a request as paid.",returnHome:"Back to dashboard",
-  operational:"Dentists, chairs and services will be configured in the next development phases.",
+  operational:"Configure real services, chairs, clinic hours and dentist shifts in Operations.",
   verifiedNote:"Clinic approval does not publish a dentist listing or verify a dentist.",
   awaitingReview:"Your submission is awaiting human review. You can see the status here.",
   privacy:"Verification documents remain private and are accessed only by authorized reviewers.",
@@ -55,10 +55,10 @@ const words:Record<string,Record<string,string>>={
   preview:"Review the current plan price and billing period before requesting payment.",
   signout:"Sign out",failed:"Request failed",success:"Changes saved",loading:"Loading...",
   errorAuth:"Please sign in to access this workspace.",pendingOps:"Further office setup is not available until the next phase.",
-  nextAction:"Next action",privacyGate:"No patient or dental records are available at this stage."
+  nextAction:"Next action",privacyGate:"Patient records are private clinic data; live scheduling and clinical encounters are not released yet."
  },
  "fa-AF":{
-  patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
+  operations:"عملیات",management:"مدیریت",workspace:"بخش اصلی",staffWorkspace:"کارمندان و منابع",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
   subscription:"اشتراک",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",overview:"نمای کلی",verification:"تأیید",
   newClinic:"ثبت کلینیک جدید",continue:"ادامه",save:"ذخیره پیش‌نویس",back:"بازگشت",submit:"ارسال برای بررسی",
   organization:"معلومات کلینیک",choosePlan:"انتخاب پلن",review:"بررسی و ارسال",legalName:"نام رسمی کلینیک",
@@ -87,7 +87,7 @@ const words:Record<string,Record<string,string>>={
   noRecords:"موردی موجود نیست",next:"بعدی",previous:"قبلی",refresh:"تازه‌سازی",
   unsaved:"معلومات تغییر یافته را ذخیره کنید.",editing:"تغییر معلومات تأییدشده نیاز به بررسی مجدد دارد.",
   noPayment:"هیچ پرداختی هنوز تأیید نشده است.",returnHome:"بازگشت به داشبورد",
-  operational:"داکتران، چوکی‌ها و خدمات در مراحل بعدی تنظیم می‌شوند.",
+  operational:"خدمات، چوکی‌ها، ساعات و شیفت داکتر را از بخش عملیات تنظیم کنید.",
   verifiedNote:"تأیید کلینیک به‌معنی نشر عمومی یا تأیید داکتر نیست.",
   awaitingReview:"ثبت شما در انتظار بررسی انسانی است.",privacy:"اسناد تنها برای بررسی‌کنندگان مجاز قابل دسترسی است.",
   titlePlans:"مدیریت پلن‌های نسخه‌دار",titleSubs:"بررسی اشتراک‌ها و پرداخت‌ها",
@@ -96,10 +96,10 @@ const words:Record<string,Record<string,string>>={
   preview:"پیش از درخواست، مبلغ و دوره پرداخت را بررسی کنید.",signout:"خروج",failed:"درخواست ناموفق",
   success:"ذخیره شد",loading:"در حال بارگیری...",errorAuth:"برای دسترسی وارد شوید.",
   pendingOps:"تنظیمات بیشتر کلینیک در مراحل بعدی فعال می‌شود.",nextAction:"قدم بعدی",
-  privacyGate:"در این مرحله سوابق مریضان و دندان وجود ندارد."
+  privacyGate:"معلومات مریضان خصوصی است؛ نوبت‌دهی و معاینات طبی در مراحل بعدی فعال می‌شوند."
  },
  "ps-AF":{
-  patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
+  operations:"عملیات",management:"مدیریت",workspace:"اصلي برخه",staffWorkspace:"کارکوونکي او سرچینې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
   subscription:"ګډون",subscriptions:"ګډونونه",plans:"پلانونه",overview:"لنډیز",verification:"تایید",
   newClinic:"نوی کلینیک ثبت کړئ",continue:"دوام",save:"مسوده وساتئ",back:"شاته",submit:"د کتنې لپاره واستوئ",
   organization:"د کلینیک معلومات",choosePlan:"پلان غوره کړئ",review:"بیاکتنه او استول",
@@ -131,7 +131,7 @@ const words:Record<string,Record<string,string>>={
   next:"بل",previous:"مخکېنی",refresh:"تازه کول",unsaved:"نوي معلومات خوندي کړئ.",
   editing:"د تایید شوي کلینیک بدلون بیا کتنې ته اړتیا لري.",
   noPayment:"هیڅ تادیه لا نه ده تایید شوې.",returnHome:"ډشبورډ ته ستنېدل",
-  operational:"ډاکټران، چوکۍ او خدمتونه په راتلونکو پړاوونو کې جوړېږي.",
+  operational:"خدمتونه، څوکۍ، د کلینیک وختونه او د ډاکټر شیفټونه د عملیاتو له لارې تنظیم کړئ.",
   verifiedNote:"د کلینیک تایید د ډاکټر تایید یا عامه خپرونه نه ده.",
   awaitingReview:"ستاسو غوښتنه د انساني کتنې په تمه ده.",
   privacy:"سندونه یوازې مجاز کتونکو ته ښکاري.",titlePlans:"د پلانونو مدیریت",
@@ -140,7 +140,7 @@ const words:Record<string,Record<string,string>>={
   reviewer:"کتونکی",noSetup:"خپل کلینیک ثبت کړئ.",preview:"مخکې له تادیې بیه او موده وګورئ.",
   signout:"وتل",failed:"غوښتنه ناکامه شوه",success:"خوندي شو",loading:"بارېږي...",
   errorAuth:"لومړی خپل حساب ته ننوځئ.",pendingOps:"د کلینیک نور کارونه وروسته فعالېږي.",
-  nextAction:"راتلونکی ګام",privacyGate:"د ناروغانو ریکارډونه لا نشته."
+  nextAction:"راتلونکی ګام",privacyGate:"د ناروغانو معلومات شخصي دي؛ رزرو او طبي لیدنې په راتلونکو پړاوونو کې فعالېږي."
  }
 };
 type View="dashboard"|"onboarding"|"settings"|"subscription"|"clinics"|"review"|"plans"|"subscriptions";
@@ -175,7 +175,9 @@ function DataError({message,retry}:{message:string,retry:()=>void}){
 function Frame({audience,view,children,name}:{audience:Audience,view:View,children:ReactNode,name:string}){
   const l=useText();
   const nav=audience==="clinic"?[
-    ["dashboard","/clinic"],["onboarding","/clinic/onboarding"],["staff","/clinic/staff"],["patients","/clinic/patients"],
+    ["dashboard","/clinic"],["patients","/clinic/patients"],["staffWorkspace","/clinic/staff"],
+    ["resources","/clinic/resources"],["services","/clinic/services"],["hours","/clinic/settings/hours"],
+    ["onboarding","/clinic/onboarding"],
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
   ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
@@ -184,13 +186,22 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
     <aside className="card side-panel">
       <div className="pill">{audience==="clinic"?l("clinic"):l("verification")}</div>
       <nav className="side-nav" style={{marginBlockStart:18}} aria-label={l("dashboard")}>
-        {nav.map(([key,link])=><a key={key} href={link} aria-current={active===key?"page":undefined}>{l(key)}</a>)}
+        {nav.map(([key,link],index)=><React.Fragment key={key}>
+        {audience==="clinic"&&(index===0||index===2||index===6)&&
+          <span className="phase04-side-group">{l(index===0?"workspace":index===2?"operations":"management")}</span>}
+        <a href={link} className="phase04-side-link" aria-current={active===key?"page":undefined}>
+         <span className="phase04-side-icon" aria-hidden="true">
+          {({dashboard:"⌂",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
+            onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",
+            clinics:"▤",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
+         <span>{l(key)}</span></a>
+       </React.Fragment>)}
       </nav>
       <div className="phase-sidebar-bottom"><LocaleControls/></div>
     </aside>
     <section className="work-content">
       <header className="work-heading phase-work-heading">
-        <div><span className="pill">DandanLink · Phase 02</span><p className="muted phase-user">{name}</p></div>
+        <div><span className="pill">DandanLink · {audience==="clinic"?l("clinic"):l("dashboard")}</span><p className="muted phase-user">{name}</p></div>
         <button className="btn btn-secondary" onClick={async()=>{
           await authClient.signOut();window.location.href=audience==="clinic"?"/clinic/login":"/admin/login";
         }}>{l("signout")}</button>
@@ -252,6 +263,37 @@ function Dashboard({audience}:{audience:Audience}){
       <InlineAlert>{l("privacyGate")}</InlineAlert></section>
   </div>;
 }
+function OperationsSetup({clinicId}:{clinicId:string}){
+ const l=useText();
+ const {data,error,refresh}=useResource("/operations/clinics/"+clinicId+"/summary");
+ const options=[
+  {key:"service",name:"stepService",url:"/clinic/services?clinic="+clinicId},
+  {key:"chair",name:"stepChair",url:"/clinic/resources?clinic="+clinicId},
+  {key:"clinicHours",name:"stepHours",url:"/clinic/settings/hours?clinic="+clinicId+"&tab=weekly"},
+  {key:"dentistHours",name:"stepDoctor",url:"/clinic/settings/hours?clinic="+clinicId+"&tab=providers"}
+ ];
+ return <section className="phase04-setup-card card">
+  <div className="phase04-between"><div><span className="phase04-eyebrow">{l("operations")}</span>
+   <h3>{l("opsReady")}</h3><p className="muted">{l("opsHint")}</p></div>
+   <button className="btn btn-secondary" type="button" onClick={refresh}>{l("refresh")||"↻"}</button>
+  </div>
+  {error?<InlineAlert kind="error">{error}</InlineAlert>:!data?
+   <InlineAlert>{l("loading")}</InlineAlert>:
+   <div className="phase04-setup-grid">{options.map(x=>{
+    const done=Boolean(data.checklist?.find((item:any)=>item.key===x.key)?.done);
+    return <a href={x.url} key={x.key} className={"phase04-setup-step "+(done?"done":"")}>
+     <span aria-hidden="true" className="phase04-setup-mark">{done?"✓":"+"}</span>
+     <span><strong>{l(x.name)}</strong><small>{l(done?"setupComplete":"setupMissing")}</small></span>
+     <span aria-hidden="true">↗</span>
+    </a>;
+   })}</div>}
+  <div className="phase04-setup-shortcuts">
+   <a className="btn btn-secondary" href={"/clinic/services?clinic="+clinicId}>{l("services")} ↗</a>
+   <a className="btn btn-secondary" href={"/clinic/resources?clinic="+clinicId}>{l("resources")} ↗</a>
+   <a className="btn btn-primary" href={"/clinic/settings/hours?clinic="+clinicId+"&tab=preview"}>{l("hours")} ↗</a>
+  </div>
+ </section>;
+}
 function ClinicDashboardCard({clinic:c}:{clinic:any}){
   const l=useText();const {data}=useResource("/clinics/"+c.id);
   return <article className="card panel">
@@ -265,6 +307,7 @@ function ClinicDashboardCard({clinic:c}:{clinic:any}){
     </div>
     <div className="phase-actions"><a className="btn btn-primary" href={"/clinic/onboarding?clinic="+c.id}>{l("onboarding")}</a>
       <a className="btn btn-secondary" href={"/clinic/settings/subscription?clinic="+c.id}>{l("subscription")}</a></div>
+    <OperationsSetup clinicId={c.id}/>
   </article>;
 }
 const emptyClinic={
@@ -331,7 +374,7 @@ function Onboarding(){
       const payload={...form,selectedPlanId:plan};
       const result=selected?await send("/clinics/"+selected,"PATCH",{...payload,revision:detail.clinic.revision}):
         await send("/clinics","POST",payload);
-      const id=result.clinic.id;setSelected(id);await reload(id);setGood(l("success"));setStage(2);
+      const id=result.clinic.id;setSelected(id);await reload(id);setGood(l("success"));setStage(3);
       window.history.replaceState(null,"","/clinic/onboarding?clinic="+id);
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
@@ -365,11 +408,18 @@ function Onboarding(){
     {detail&&<div className="phase-status-strip"><Status value={detail.clinic.status} l={l}/>
       <span>{detail.plan?.label||""} · {l("subscription")}: {l(detail.effectiveStatus)}</span></div>}
     <div className="phase-stepper" role="tablist" aria-label={l("onboarding")}>
-      {["organization","choosePlan","review"].map((key,i)=><button key={key} type="button"
+      {["organization","choosePlan","review","operations"].map((key,i)=><button key={key} type="button"
         className={stage===i?"current":""} aria-selected={stage===i}
         role="tab" onClick={()=>setStage(i)}>{i+1}. {l(key)}</button>)}
     </div>
     {!canEdit&&<InlineAlert kind="info">{l("awaitingReview")}</InlineAlert>}
+    {stage===3&&<section className="phase04-setup-step-panel">
+      {selected?<OperationsSetup clinicId={selected}/>:
+        <InlineAlert kind="warning">{l("noSetup")}</InlineAlert>}
+      <div className="phase-actions">
+       <button className="btn btn-secondary" onClick={()=>setStage(2)}>{l("back")}</button>
+      </div>
+    </section>}
     {stage===0&&<section className="card panel">
       <h2>{l("organization")}</h2><form onSubmit={e=>{e.preventDefault();setStage(1);}}>
         <OrganizationFields form={form} setForm={setForm}/>

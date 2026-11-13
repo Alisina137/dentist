@@ -1,4 +1,4 @@
-import { boolean, date, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 /** Better Auth-owned tables. Do not accept roles from client signup payloads. */
 export const user = pgTable("auth_users", {
@@ -316,3 +316,98 @@ export const clinicPatientImportRow = pgTable("clinic_patient_import_rows", {
   code: text("code").notNull(),
   patientId: text("patient_id").references(()=>clinicPatient.id)
 },t=>[uniqueIndex("patient_import_row_unique").on(t.jobId,t.rowNumber)]);
+
+
+/** PH04 tenant-private configurable services, operatory resources and schedule policies. */
+export const clinicService = pgTable("clinic_services", {
+  id:text("id").primaryKey(),
+  clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+  name:text("name").notNull(), category:text("category").notNull(),
+  description:text("description"),durationMinutes:integer("duration_minutes").notNull(),
+  preparationMinutes:integer("preparation_minutes").notNull().default(0),
+  basePriceAfn:integer("base_price_afn").notNull(),
+  requiresChair:boolean("requires_chair").notNull().default(true),
+  publicBooking:boolean("public_booking").notNull().default(false),
+  active:boolean("active").notNull().default(true),
+  version:integer("version").notNull().default(1),
+  createdBy:text("created_by").notNull().references(()=>user.id),
+  updatedBy:text("updated_by").notNull().references(()=>user.id),
+  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+  uniqueIndex("clinic_services_clinic_name_key").on(t.clinicId,t.name),
+  index("clinic_services_active_idx").on(t.clinicId,t.active,t.category,t.name)
+]);
+
+export const clinicServiceVersion = pgTable("clinic_service_versions", {
+  serviceId:text("service_id").notNull().references(()=>clinicService.id),
+  clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+  version:integer("version").notNull(),
+  name:text("name").notNull(), category:text("category").notNull(),
+  description:text("description"),
+  durationMinutes:integer("duration_minutes").notNull(),
+  preparationMinutes:integer("preparation_minutes").notNull(),
+  basePriceAfn:integer("base_price_afn").notNull(),
+  requiresChair:boolean("requires_chair").notNull(),
+  publicBooking:boolean("public_booking").notNull(),
+  active:boolean("active").notNull(),
+  changedBy:text("changed_by").notNull().references(()=>user.id),
+  changedAt:timestamp("changed_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+  uniqueIndex("service_history_unique").on(t.serviceId,t.version),
+  index("clinic_service_versions_scope_idx").on(t.clinicId,t.serviceId)
+]);
+
+export const clinicResource = pgTable("clinic_resources", {
+  id:text("id").primaryKey(),
+  clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+  code:text("code").notNull(),label:text("label").notNull(),
+  kind:text("kind").notNull().default("chair"),equipment:text("equipment"),
+  active:boolean("active").notNull().default(true),
+  revision:integer("revision").notNull().default(1),
+  createdBy:text("created_by").notNull().references(()=>user.id),
+  updatedBy:text("updated_by").notNull().references(()=>user.id),
+  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+  uniqueIndex("clinic_resources_clinic_code_key").on(t.clinicId,t.code),
+  index("clinic_resources_active_idx").on(t.clinicId,t.active)
+]);
+
+const clinicShiftColumns={
+  clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+  weekday:integer("weekday").notNull(),isOpen:boolean("is_open").notNull().default(false),
+  startMinute:integer("start_minute").notNull().default(540),
+  endMinute:integer("end_minute").notNull().default(1020),
+  breaks:jsonb("breaks").$type<{start:number,end:number}[]>().notNull().default([]),
+  revision:integer("revision").notNull().default(1),
+  updatedBy:text("updated_by").references(()=>user.id),
+  updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+};
+export const clinicWeeklyHour=pgTable("clinic_weekly_hours",clinicShiftColumns,t=>[
+  uniqueIndex("clinic_weekly_hours_unique").on(t.clinicId,t.weekday)
+]);
+export const clinicProviderHour=pgTable("clinic_provider_hours",{
+  ...clinicShiftColumns,
+  membershipId:text("membership_id").notNull().references(()=>clinicMembership.id)
+},t=>[
+  uniqueIndex("clinic_provider_hours_unique").on(t.clinicId,t.membershipId,t.weekday),
+  index("clinic_provider_hours_clinic_idx").on(t.clinicId,t.weekday)
+]);
+export const clinicResourceHour=pgTable("clinic_resource_hours",{
+  ...clinicShiftColumns,
+  resourceId:text("resource_id").notNull().references(()=>clinicResource.id)
+},t=>[
+  uniqueIndex("clinic_resource_hours_unique").on(t.clinicId,t.resourceId,t.weekday)
+]);
+export const clinicScheduleException=pgTable("clinic_schedule_exceptions",{
+  id:text("id").primaryKey(),
+  clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+  startDate:date("start_date",{mode:"string"}).notNull(),
+  endDate:date("end_date",{mode:"string"}).notNull(),
+  kind:text("kind").notNull(),
+  startMinute:integer("start_minute"),endMinute:integer("end_minute"),
+  reason:text("reason").notNull(),revision:integer("revision").notNull().default(1),
+  createdBy:text("created_by").notNull().references(()=>user.id),
+  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_exception_date_idx").on(t.clinicId,t.startDate,t.endDate)]);

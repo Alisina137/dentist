@@ -193,7 +193,51 @@ dentist or receptionist account. Owners/managers can also import approved CSV.
 Patient overview is private to the clinic; medical intake requires qualified
 staff. No appointments, dental chart, visits or patient billing in this release.
 Run pnpm install --frozen-lockfile, pnpm db:migrate, then pnpm dev.
-The database migration is 0005_patient_registry.sql. PH04 is a separate
-unreleased phase and is not a prerequisite for this private registry.
+The database migrations include 0004 for operational configuration and 0005 for patients.
+PH04 and PH05 are independent foundations, and both are now implemented.
 Do not enter real patient records while development email verification is disabled.
 Details and limitations: docs/PH05-ACCEPTANCE.md.
+
+## PH04 — Services, chairs, hours and safe slot previews
+
+Owner and manager can set up clinic operations in the web dashboard:
+
+- `http://localhost:3001/clinic/services` — service catalog, AFN prices,
+  treatment duration/buffer, active state, immutable price version history.
+- `http://localhost:3001/clinic/resources` — chairs and rooms, unique
+  internal codes, equipment, safe updates and scheduling links.
+- `http://localhost:3001/clinic/settings/hours` — five functional tabs:
+  Clinic hours, Dentist shifts, Chair schedules, Holidays, Preview.
+- `http://localhost:3001/clinic` — real configuration checklist with
+  working links; clinic onboarding also includes the operations step.
+
+All routes use the clinic-specific `?clinic=<clinic-id>` query when navigating
+inside multiple clinics. Current tenant membership and operational write
+access are verified on the API, not by the browser.
+
+To try the Saturday scenario, add a 30-minute active consultation, create
+Treatment Chair A, save Saturday 09:00–12:00 clinic hours, save the same
+Saturday dentist shift and optionally the chair shift, then open Hours →
+Availability preview and select a Saturday. Times are computed in Asia/Kabul;
+preview entries are **not bookings or patient appointments**. Appointments
+and conflict-proof reservations first become real in PH06, while public booking
+remains deferred until PH15. Do not enter actual clinical or patient records
+in insecure development mode.
+
+### Updating your local checkout
+
+```powershell
+cd C:\projects\dentist
+git pull --ff-only origin main
+pnpm install --frozen-lockfile
+pnpm db:migrate
+pnpm dev
+```
+
+The new additive migration is `0004_services_resources_hours.sql`; it is
+safe to apply after the previously merged PH05 migration `0005` because
+the migration runner skips already-applied filenames. No new environment
+variables are required. Admin remains on 3000, clinic on 3001, API on 4000,
+and the patient's Expo Go app still starts with `pnpm dev:mobile`.
+
+See `docs/PH04-ACCEPTANCE.md` for the exact permissions, validation and CI tests.

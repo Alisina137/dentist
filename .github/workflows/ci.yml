@@ -61,5 +61,6 @@ jobs:
           PH01_API_LOG=/tmp/dandanlink-api.log node tests/auth-integration.mjs
           node tests/phase02-integration.mjs
           node tests/phase03-integration.mjs
+          node tests/phase04-integration.mjs
           node tests/phase05-integration.mjs
           node tests/dev-no-email-integration.mjs
