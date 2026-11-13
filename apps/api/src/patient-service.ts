@@ -26,7 +26,7 @@ export async function patientAccess(req:StaffRequest,cid:string,mode:Mode){
   }
   return ctx;
 }
-export async function getPatient(cid:string,id:string){
+export async function getPatient(cid:string,id:string):Promise<typeof schema.clinicPatient.$inferSelect>{
   const p=await db.query.clinicPatient.findFirst({where:and(
     eq(schema.clinicPatient.id,id),eq(schema.clinicPatient.clinicId,cid))});
   if(!p)fail(404,"PATIENT_NOT_FOUND");
@@ -58,7 +58,7 @@ export async function lockClinic(tx:any,cid:string){
     .where(eq(schema.clinic.id,cid)).for("update");
 }
 type PatientInput=ReturnType<typeof demographicInput>;
-export async function duplicates(tx:any,cid:string,input:PatientInput,limit=5){
+export async function duplicates(tx:any,cid:string,input:PatientInput,limit=5):Promise<(typeof schema.clinicPatient.$inferSelect)[]>{
   const conditions=[];
   if(input.phone)conditions.push(and(
     eq(schema.clinicPatient.phone,input.phone),eq(schema.clinicPatient.normalizedName,input.normalizedName)));
