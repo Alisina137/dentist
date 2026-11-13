@@ -768,3 +768,168 @@ function MonthGrid({space,date,byDate,onSelect}:{space:Space;date:string;
   </div>
  </div>;
 }
+
+
+type StatusAction="arrived"|"in_treatment"|"completed"|"cancelled"|"no_show";
+function actionsFor(space:Space,a:Appointment):StatusAction[]{
+ if(a.status==="confirmed")return canArrive(space)?["arrived",...(a.startAt<=new Date().toISOString()?["no_show" as const]:[]),"cancelled"]:[];
+ if(a.status==="arrived")return [...(canTreat(space,a)?["in_treatment" as const]:[]),
+  ...(canArrive(space)?["cancelled" as const]:[])];
+ if(a.status==="in_treatment")return canTreat(space,a)?["completed"]:[];
+ return [];
+}
+function actionName(t:(key:string)=>string,action:StatusAction){
+ return t(action==="arrived"?"checkIn":action==="in_treatment"?"startCare":
+   action==="completed"?"finishCare":action==="no_show"?"markNoShow":"cancelBooking");
+}
+function ActionDialog({space,appointment,action,done,close}:{space:Space;
+ appointment:Appointment;action:StatusAction;done:()=>void;close:()=>void}){
+ const {t,time}=useWords();
+ const [reason,setReason]=useState("");
+ const [key]=useState(()=>crypto.randomUUID());
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const needsReason=action==="cancelled"||action==="no_show";
+ useEffect(()=>{
+  const escape=(e:KeyboardEvent)=>{if(e.key==="Escape"&&!busy)close();};
+  document.addEventListener("keydown",escape);return()=>document.removeEventListener("keydown",escape);
+ },[busy,close]);
+ async function submit(event:FormEvent){
+  event.preventDefault();setBusy(true);setError("");
+  try{
+   await call("/clinics/"+space.clinicId+"/appointments/"+appointment.id+"/status","POST",{
+    status:action,reason:needsReason?reason.trim():undefined,
+    revision:appointment.revision,idempotencyKey:key
+   });
+   done();
+  }catch(e:any){setError(e.message);}finally{setBusy(false);}
+ }
+ return <div className="phase06-modal-backdrop" onMouseDown={e=>{
+   if(e.target===e.currentTarget&&!busy)close();}}>
+  <section className="card phase06-modal" role="alertdialog" aria-modal="true"
+   aria-labelledby="phase06-action-title">
+   <div className="phase06-modal-header">
+    <div><span className="phase06-eyebrow">{t("appointmentDetail")}</span>
+     <h2 id="phase06-action-title">{actionName(t,action)}</h2></div>
+    <button className="phase06-icon-btn" type="button" onClick={close}
+     aria-label={t("close")} disabled={busy}>×</button>
+   </div>
+   <div className="phase06-action-patient">
+    <strong>{patientDisplay(appointment)}</strong><span>{appointment.serviceName}</span>
+    <span><bdi dir="ltr">{time(appointment.startAt)}</bdi> · {appointment.providerName}</span>
+   </div>
+   <form onSubmit={submit} className="phase06-form">
+    {needsReason&&<label className="phase06-field"><span>{t(action==="cancelled"?"cancelReason":"noShowReason")} *</span>
+     <textarea value={reason} maxLength={300} minLength={10} rows={3} required autoFocus
+      onChange={e=>setReason(e.target.value)} placeholder={t("actionReason")}/></label>}
+    {action==="cancelled"&&<Notice kind="warning">{t("cancelBookingHelp")}</Notice>}
+    {action==="in_treatment"&&<Notice>{t("clinicalNext")}</Notice>}
+    {error&&<Problem error={error}/>}
+    <div className="phase06-form-footer">
+     <button className="btn btn-secondary" type="button" onClick={close} disabled={busy}>{t("back")}</button>
+     <button className={action==="cancelled"||action==="no_show"?"btn phase06-danger":"btn btn-primary"}
+       disabled={busy||needsReason&&reason.trim().length<10}>
+      {busy?t("saving"):t("confirmAction")}</button>
+    </div>
+   </form>
+  </section>
+ </div>;
+}
+function QueueCard({space,a,changed}:{space:Space;a:Appointment;changed:()=>void}){
+ const {t,time}=useWords();
+ const [action,setAction]=useState<StatusAction|null>(null);
+ const available=actionsFor(space,a);
+ return <article className={"phase06-queue-card phase06-queue-"+a.status}>
+  <div className="phase06-queue-card-head">
+   <time dateTime={a.startAt}><bdi dir="ltr">{localClock(a.startAt)}</bdi></time>
+   <Badge status={a.status}/>
+  </div>
+  <div className="phase06-queue-patient">
+   <strong>{patientDisplay(a,true)}</strong>
+   <span><bdi dir="ltr">{a.patient?.patientNumber||"—"}</bdi></span>
+  </div>
+  <div className="phase06-queue-info">
+   <span>{a.serviceName}</span><span>{a.providerName}</span>
+   {a.resourceName&&<span>{a.resourceName}</span>}
+  </div>
+  {a.arrivedAt&&<p className="phase06-arrival-label">{t("arrivalTime")}: {time(a.arrivedAt)}</p>}
+  <div className="phase06-queue-card-actions">
+   {available.filter(s=>s==="arrived"||s==="in_treatment"||s==="completed").map(s=>
+    <button key={s} className="btn btn-primary" onClick={()=>setAction(s)}>
+     {actionName(t,s)} →</button>)}
+   <a className="btn btn-secondary" href={appHref(space.clinicId,a.id)}>{t("viewDetails")}</a>
+   {available.includes("no_show")&&<button className="phase06-text-action"
+     onClick={()=>setAction("no_show")}>{t("markNoShow")}</button>}
+  </div>
+  {action&&<ActionDialog space={space} appointment={a} action={action}
+   close={()=>setAction(null)} done={()=>{setAction(null);changed();}}/>}
+ </article>;
+}
+function QueuePanel({space}:{space:Space}){
+ const {t,fmt,lang}=useWords();
+ const [day,setDay]=useState(dayKabul()),[provider,setProvider]=useState("");
+ useEffect(()=>{
+  const q=new URLSearchParams(location.search);
+  const requested=q.get("date");
+  if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDay(requested);
+ },[]);
+ const base="/clinics/"+space.clinicId;
+ const {data,error,refresh}=useData(base+"/queue?date="+day);
+ const {data:catalog}=useData(base+"/catalog");
+ const filtered:Appointment[]=(data?.queue||[]).filter((a:Appointment)=>
+  !provider||a.providerMembershipId===provider);
+ const columns=[
+  {status:"confirmed",key:"queueExpected",icon:"◷"},
+  {status:"arrived",key:"queueArrived",icon:"◎"},
+  {status:"in_treatment",key:"queueTreatment",icon:"✚"},
+  {status:"completed",key:"queueComplete",icon:"✓"}
+ ] as const;
+ const counts=columns.map(c=>filtered.filter(a=>a.status===c.status).length);
+ return <div className="phase06-queue-page">
+  <section className="phase06-queue-intro card">
+   <div><span className="phase06-eyebrow">{t("queueToday")}</span>
+    <h2>{dateTitle(day,lang)}</h2><p>{t("queueDateHint")}</p></div>
+   <div className="phase06-queue-controls">
+    <button className="btn btn-secondary" onClick={()=>setDay(dayKabul())}>{t("today")}</button>
+    <label className="phase06-field"><span>{t("queuePast")}</span>
+     <input type="date" value={day} onChange={e=>{if(e.target.value)setDay(e.target.value);}}/></label>
+    <Select label={t("filterDentist")} value={provider} onChange={setProvider}
+     options={[{value:"",label:t("allDentists")},
+      ...(catalog?.providers||[]).map((p:Provider)=>({value:p.membershipId,label:p.name}))]}/>
+    <button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
+   </div>
+  </section>
+  <div className="phase06-queue-kpis">
+   {columns.map((c,i)=><div className="card phase06-queue-kpi" key={c.key}>
+    <span className={"phase06-queue-kpi-icon phase06-queue-kpi-"+c.status}>{c.icon}</span>
+    <div><span>{t(c.key)}</span><strong>{data?counts[i]:"—"}</strong></div>
+   </div>)}
+  </div>
+  {error?<Problem error={error} retry={refresh}/>:!data?<Busy/>:
+   <section className="phase06-queue-board" aria-label={t("queueToday")}>
+    {columns.map(column=>{
+     const patients=filtered.filter(a=>a.status===column.status);
+     return <div className="phase06-queue-column" key={column.status}>
+      <header className={"phase06-queue-column-head phase06-column-"+column.status}>
+       <span>{column.icon} {t(column.key)}</span><strong>{patients.length}</strong>
+      </header>
+      <div className="phase06-queue-column-content">
+       {patients.length?patients.map(a=><QueueCard space={space} a={a} key={a.id} changed={refresh}/>):
+        <div className="phase06-queue-empty"><span>◇</span>
+         <p>{t("queueEmpty")}</p></div>}
+      </div>
+     </div>;
+    })}
+   </section>}
+  {filtered.some(a=>a.status==="no_show")&&
+   <section className="phase06-no-show card">
+    <h3>{t("noShowToday")} · {filtered.filter(a=>a.status==="no_show").length}</h3>
+    <div>{filtered.filter(a=>a.status==="no_show").map(a=>
+     <a href={appHref(space.clinicId,a.id)} key={a.id}>
+      {localClock(a.startAt)} · {patientDisplay(a,true)} · {a.serviceName} ↗</a>)}</div>
+   </section>}
+  <div className="phase06-queue-foot">
+   <Notice>{t("clinicalNext")} {t("deliveryNotice")}</Notice>
+   <a href={appHref(space.clinicId)} className="btn btn-secondary">{t("viewCalendar")} ↗</a>
+  </div>
+ </div>;
+}
