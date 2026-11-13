@@ -4,6 +4,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { Request, Response, NextFunction } from "express";
 import { db, schema } from "@dandanlink/db";
 import { auth } from "./auth.js";
+import { permitsUnverifiedEmail } from "./email-policy.js";
 
 export type Role = "owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 export type Actor = { id:string; name:string; email:string; mfa:boolean };
@@ -38,7 +39,7 @@ export function mayAssign(actorRole:Role,role:string,currentRole?:string){
 export async function authStaff(req:StaffRequest,res:Response,next:NextFunction){
   try{
     const session=await auth.api.getSession({headers:fromNodeHeaders(req.headers)});
-    if(!session?.user?.emailVerified)fail(401,"AUTH_REQUIRED");
+    if(!session?.user||!permitsUnverifiedEmail(session.user.emailVerified))fail(401,"AUTH_REQUIRED");
     const admin=await db.query.platformAdmin.findFirst({where:eq(schema.platformAdmin.userId,session.user.id)});
     if(admin&&!admin.revokedAt)fail(403,"PLATFORM_WORKSPACE_ONLY");
     const factor=await db.query.twoFactor.findFirst({where:eq(schema.twoFactor.userId,session.user.id)});
