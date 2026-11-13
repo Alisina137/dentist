@@ -34,7 +34,7 @@ const labels:Record<Language,Record<string,string>>={
  noPatients:"No visits for this patient yet.",noFiles:"No private files available for this patient.",
  noToday:"No assigned appointments for this date. Try another date.",
  noPending:"No unfinished notes assigned to you.",noCases:"No signed encounters in your case history yet.",
- start:"Open encounter",record:"Patient record",appointment:"Appointment",status:"Status",
+ start:"Open encounter",awaitArrival:"Check-in required before clinical encounter",record:"Patient record",appointment:"Appointment",status:"Status",
  patient:"Patient",visitDetail:"Visit detail",patientFiles:"Private files",
  signedHint:"The signed baseline cannot be edited. Amendments create a dated, append-only version.",
  draftHint:"Drafts are clinic-private and are not visible to patients.",
@@ -73,7 +73,7 @@ const labels:Record<Language,Record<string,string>>={
  noPatients:"هنوز معاینه‌ای ثبت نشده است.",noFiles:"فایل خصوصی قابل مشاهده نیست.",
  noToday:"برای این تاریخ وقت ملاقات ندارید. تاریخ دیگری انتخاب کنید.",
  noPending:"یادداشت ناتمام ندارید.",noCases:"هنوز معاینه امضاشده در سوابق شما نیست.",
- start:"باز کردن معاینه",record:"شماره مریض",appointment:"وقت ملاقات",status:"وضعیت",
+ start:"باز کردن معاینه",awaitArrival:"برای شروع معاینه، ابتدا مریض باید پذیرش شود.",record:"شماره مریض",appointment:"وقت ملاقات",status:"وضعیت",
  patient:"مریض",visitDetail:"جزئیات معاینه",patientFiles:"فایل‌های خصوصی",
  signedHint:"یادداشت امضاشده قابل تغییر نیست. اصلاحیه، نسخه جداگانه و تاریخ‌دار ایجاد می‌کند.",
  draftHint:"پیش‌نویس فقط برای کلینیک است و مریض آن را نمی‌بیند.",
@@ -112,7 +112,7 @@ const labels:Record<Language,Record<string,string>>={
  noPatients:"تراوسه معاینه نشته.",noFiles:"شخصي فایل نشته.",
  noToday:"په دې نېټه ټاکلې لیدنه نشته؛ بله نېټه وټاکئ.",
  noPending:"نیمګړي یادښتونه نشته.",noCases:"ستاسو لاسلیک شوې معاینه نشته.",
- start:"معاینه پرانیستل",record:"د ناروغ شمېره",appointment:"لیدنه",status:"حالت",
+ start:"معاینه پرانیستل",awaitArrival:"د معاینې لپاره لومړی د ناروغ راتګ ثبت کړئ.",record:"د ناروغ شمېره",appointment:"لیدنه",status:"حالت",
  patient:"ناروغ",visitDetail:"د معاینې جزئیات",patientFiles:"شخصي فایلونه",
  signedHint:"لاسلیک شوی اصل نه بدلېږي. سمون نوې نېټه لرونکې بڼه جوړوي.",
  draftHint:"مسودې یوازې په کلینیک کې لیدل کېږي.",signConfirm:"د مسوول ډاکټر په توګه لاسلیک کوئ؟ اصلي متن نه بدلېږي.",
@@ -262,10 +262,12 @@ function Worklist({space}:{space:Space}){
       <div className="phase07-row-main"><h3>{patientName(a)}</h3><div className="phase07-meta">
        <bdi dir="ltr">{a.patient_number}</bdi> · {a.service_name} · <span className="phase07-state">{a.status}</span>
        </div></div>
-      <a className="btn btn-primary" href={a.encounter_id?
-       link(space.clinicId,a.patient_id,"visits",a.encounter_id):
-       link(space.clinicId,a.patient_id,"visits")+"&appointmentId="+encodeURIComponent(a.appointment_id)}>
-       {t("start")} →</a></article>)}</div>}
+      {a.status==="confirmed"?<span className="phase07-await" aria-label={t("awaitArrival")}>
+       {t("awaitArrival")}</span>:
+       <a className="btn btn-primary" href={a.encounter_id?
+        link(space.clinicId,a.patient_id,"visits",a.encounter_id):
+        link(space.clinicId,a.patient_id,"visits")+"&appointmentId="+encodeURIComponent(a.appointment_id)}>
+        {t("start")} →</a>}</article>)}</div>}
    </section>:
    <section className="card phase07-panel">
     <div className="phase07-section"><h2>{t(tab)}</h2></div>
