@@ -307,7 +307,7 @@ export function phase02Router() {
         .where(and(eq(schema.clinicEvidence.clinicId,c.id),eq(schema.clinicEvidence.kind,"clinic_license")));
       if(!docs.length)fail(422,"CLINIC_LICENSE_REQUIRED");
     }
-    const status=action==="approve"?"approved":action==="reopen"?"pending":action;
+    const status=action==="approve"?"approved":action==="reopen"?"pending":action==="suspend"?"suspended":action==="reject"?"rejected":action;
     await db.transaction(async tx=>{
       const changed=await tx.update(schema.clinic).set({status,reviewedAt:new Date(),
         updatedAt:new Date(),revision:c.revision+1})
