@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
@@ -15,6 +16,11 @@ async function req(path,method="GET",body,cookie=""){
  return {status:result.status,data,headers:result.headers};
 }
 function expect(x,codes,label){
+ if(x.status>=500){
+   const trace=readFileSync("/tmp/dandanlink-api.log","utf8").split("\n")
+     .filter(line=>line.includes("PH04 operations failure")).slice(-4);
+   console.error("PH04 safe DB diagnostics",trace);
+ }
  assert.ok(codes.includes(x.status),label+": expected "+codes+" got "+x.status+" "+JSON.stringify(x.data).slice(0,260));
  return x.data;
 }
