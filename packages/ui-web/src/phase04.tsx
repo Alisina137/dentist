@@ -575,3 +575,129 @@ function ServicesPanel({space,onChange}:{space:Space;onChange:()=>void}){
    close={()=>setEditing(undefined)} done={refresh}/>}
  </section>;
 }
+
+
+const emptyResource={code:"",label:"",kind:"chair" as "chair"|"room",
+ equipment:"",active:true};
+function ResourceEditor({space,resource,done,close}:{space:Space;resource:Resource|null;
+ done:()=>void;close:()=>void}){
+ const {t}=useWords();
+ const [form,setForm]=useState({...emptyResource,...(resource||{})});
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const set=(key:string,value:unknown)=>setForm(x=>({...x,[key]:value}));
+ async function submit(event:FormEvent){
+  event.preventDefault();setBusy(true);setError("");
+  try{
+   const path=cPath(space.clinicId)+"/resources";
+   const data={...form,code:form.code.trim().toUpperCase(),label:form.label.trim(),
+    equipment:form.equipment||null};
+   if(resource)await OpsApi(path+"/"+resource.id,"PATCH",{...data,revision:resource.revision});
+   else await OpsApi(path,"POST",data);
+   done();close();
+  }catch(e:any){setError(e.message);}finally{setBusy(false);}
+ }
+ return <div className="phase04-drawer-backdrop" onMouseDown={e=>{
+  if(e.currentTarget===e.target)close();}}>
+  <aside role="dialog" aria-modal="true" aria-labelledby="phase04-resource-heading" className="phase04-drawer">
+   <div className="phase04-drawer-head"><div>
+    <span className="phase04-eyebrow">{t("resources")} / {t("settings")}</span>
+    <h2 id="phase04-resource-heading">{t(resource?"editResource":"addResource")}</h2></div>
+    <button className="phase04-icon-button" onClick={close} aria-label={t("close")}>×</button></div>
+   <form className="phase04-editor-form" onSubmit={submit}>
+    {resource&&<div className="phase04-version-banner"><span>{t("version")} {resource.revision}</span>
+     <Pill active={resource.active}>{activeLabel(t,resource.active)}</Pill></div>}
+    <Select label={t("kind")} value={form.kind} onChange={v=>set("kind",v)}
+      options={[{value:"chair",label:t("chair")},{value:"room",label:t("room")}]}/>
+    <div className="phase04-form-grid">
+     <FormField label={t("resourceName")} value={form.label} onChange={v=>set("label",v)} required/>
+     <FormField label={t("code")} value={form.code} onChange={v=>set("code",v)} required/>
+    </div>
+    <p className="phase04-help">{t("resourceCodeHelp")}</p>
+    <label className="phase04-field"><span>{t("equipment")}</span>
+      <textarea rows={3} maxLength={200} value={form.equipment||""}
+       onChange={e=>set("equipment",e.target.value)}/></label>
+    <div className="phase04-switch-box">
+     <Switch label={t("active")} checked={form.active} onChange={v=>set("active",v)}/>
+    </div>
+    <Alert kind="warning">{t("noDeletes")} {t("resourceUsed")}</Alert>
+    {error&&<Alert kind="error">{error==="RESOURCE_USED_BY_SCHEDULE"?t("resourceUsed"):
+      error==="DUPLICATE_SERVICE_OR_RESOURCE"?t("codeTaken"):
+      error==="STALE_RESOURCE_REVISION"?t("stale"):error}</Alert>}
+    <div className="phase04-drawer-footer">
+     <button className="btn btn-secondary" onClick={close} type="button">{t("cancel")}</button>
+     <button className="btn btn-primary" disabled={busy}>{busy?t("saving"):t(resource?"save":"create")}</button>
+    </div>
+   </form>
+  </aside>
+ </div>;
+}
+function ResourcesPanel({space,onChange}:{space:Space;onChange:()=>void}){
+ const {t,date}=useWords();
+ const base=cPath(space.clinicId);
+ const {data,error,reload}=useResource(base+"/resources");
+ const {data:hours}=useResource(base+"/hours");
+ const [editing,setEditing]=useState<Resource|null|undefined>(undefined);
+ const [kind,setKind]=useState("all"),[status,setStatus]=useState("active");
+ const items:Resource[]=data?.resources||[];
+ const visible=items.filter(x=>(kind==="all"||x.kind===kind)&&
+  (status==="all"||x.active===(status==="active")));
+ const active=items.filter(x=>x.active).length;
+ function update(){reload();onChange();}
+ return <section className="phase04-panel card">
+  <div className="phase04-panel-head"><div><span className="phase04-eyebrow">02 · {t("resourcesTab")}</span>
+   <h2>{t("resources")}</h2><p>{t("resourcesIntro")}</p></div>
+   {canManage(space)&&<button className="btn btn-primary" onClick={()=>setEditing(null)}>
+    + {t("addResource")}</button>}
+  </div>
+  <div className="phase04-inner-tabs">
+   <a className="selected" href={href(space.clinicId,"resources")}>
+    ▦ {t("resourcesTab")} <span className="phase04-count">{items.length}</span></a>
+   <a href={href(space.clinicId,"hours","chairs")}>◷ {t("scheduleResource")} ↗</a>
+  </div>
+  <div className="phase04-toolbar phase04-resource-toolbar">
+   <Select label={t("kind")} value={kind} onChange={setKind}
+    options={[{value:"all",label:t("all")},{value:"chair",label:t("chair")},
+     {value:"room",label:t("room")}]}/>
+   <Select label={t("status")} value={status} onChange={setStatus}
+    options={[{value:"all",label:t("allStatuses")},{value:"active",label:t("active")},
+     {value:"inactive",label:t("inactive")}]}/>
+  </div>
+  <div className="phase04-list-meta"><span>{active} / {items.length} {t("active")}</span>
+   <span>{t("noDeletes")}</span></div>
+  {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
+   !visible.length?<div className="phase04-empty">
+    <div className="phase04-empty-icon">▦</div>
+    <h3>{items.length?t("searchEmpty"):t("noneResources")}</h3>
+    <p>{items.length?t("clearFilters"):t("noneResourcesHelp")}</p>
+    {items.length?<button className="btn btn-secondary" onClick={()=>{setKind("all");setStatus("all");}}>
+     {t("clearFilters")}</button>:canManage(space)&&
+     <button className="btn btn-primary" onClick={()=>setEditing(null)}>+ {t("addResource")}</button>}
+   </div>:<div className="phase04-resource-grid">
+    {visible.map(item=>{
+     const assigned=(hours?.resources||[]).some((h:any)=>h.resourceId===item.id&&h.isOpen);
+     return <article className="phase04-resource-card" key={item.id}>
+      <div className="phase04-resource-card-head">
+       <div className="phase04-resource-symbol" aria-hidden="true">{item.kind==="chair"?"✛":"▣"}</div>
+       <Pill active={item.active}>{activeLabel(t,item.active)}</Pill>
+      </div>
+      <div className="phase04-resource-card-body">
+       <span className="phase04-code"><bdi dir="ltr">{item.code}</bdi></span>
+       <h3>{item.label}</h3><p className="muted">{t(item.kind)} · {item.equipment||"—"}</p>
+       <div className="phase04-resource-meta">
+        <span>{t("lastUpdated")}</span><strong>{date(item.updatedAt)}</strong>
+       </div>
+       {assigned&&<p className="phase04-assigned">◷ {t("linked")}</p>}
+      </div>
+      <div className="phase04-resource-card-foot">
+       {canManage(space)?<button className="phase04-inline-action" onClick={()=>setEditing(item)}>
+         {t("edit")} ↗</button>:<span>{t("readOnly")}</span>}
+       <a className="phase04-inline-action" href={href(space.clinicId,"hours","chairs")}>
+         {t("scheduleResource")} ↗</a>
+      </div>
+     </article>;
+    })}
+   </div>}
+  {editing!==undefined&&<ResourceEditor space={space} resource={editing}
+   close={()=>setEditing(undefined)} done={update}/>}
+ </section>;
+}
