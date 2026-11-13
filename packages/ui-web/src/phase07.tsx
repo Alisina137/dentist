@@ -397,7 +397,7 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       onClick={()=>action("save")}>{busy?t("busy"):t("saveDraft")}</button>}
      {data.canSign&&<button type="button" className="btn btn-primary" disabled={busy||
       !note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
-      onClick={()=>action("sign")}}>{busy?t("busy"):t("sign")}</button>}
+      onClick={()=>action("sign")}>{busy?t("busy"):t("sign")}</button>}
      {data.canAmend&&<button type="button" className="btn btn-primary" disabled={busy||
       reason.trim().length<10||!note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
       onClick={()=>action("amend")}>{busy?t("busy"):t("amend")}</button>}
