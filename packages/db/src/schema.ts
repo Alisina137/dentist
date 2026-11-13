@@ -528,3 +528,32 @@ export const clinicClinicalFile=pgTable("clinic_clinical_files",{
  index("clinic_clinical_files_patient_idx").on(t.clinicId,t.patientId,t.createdAt),
  index("clinic_clinical_files_encounter_idx").on(t.clinicId,t.encounterId,t.createdAt)
 ]);
+
+
+/** PH08 FDI chart. Clinical observations are immutable; the only permitted update
+ * is a qualified clinician stamping a draft as validated (SQL trigger enforced).
+ * "Current" is derived from the most recent VALIDATED date per tooth. */
+export const clinicToothObservation=pgTable("clinic_tooth_observations",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ encounterId:text("encounter_id").notNull().references(()=>clinicEncounter.id),
+ providerMembershipId:text("provider_membership_id").notNull().references(()=>clinicMembership.id),
+ toothCode:text("tooth_code").notNull(),
+ dentition:text("dentition").notNull(),
+ condition:text("condition").notNull(),
+ surfaces:jsonb("surfaces").$type<string[]>().notNull().default([]),
+ notes:text("notes"),
+ observationDate:date("observation_date",{mode:"string"}).notNull(),
+ status:text("status").notNull().default("draft"),
+ recordedBy:text("recorded_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ validatedBy:text("validated_by").references(()=>user.id),
+ validatedAt:timestamp("validated_at",{withTimezone:true}),
+ actionKey:text("action_key").notNull(),requestDigest:text("request_digest").notNull()
+},t=>[
+ uniqueIndex("tooth_observation_unique_action").on(t.clinicId,t.recordedBy,t.actionKey),
+ index("tooth_observation_current_idx").on(t.clinicId,t.patientId,t.dentition,t.toothCode,t.observationDate,t.validatedAt),
+ index("tooth_observation_visit_idx").on(t.clinicId,t.patientId,t.encounterId,t.createdAt),
+ index("tooth_observation_history_idx").on(t.clinicId,t.patientId,t.toothCode,t.observationDate,t.createdAt,t.id)
+]);

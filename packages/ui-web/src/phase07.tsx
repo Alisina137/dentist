@@ -190,6 +190,7 @@ function Tabs({space,patientId,current}:{space:Space;patientId:string;current:Vi
  <a href={link(space.clinicId,patientId)}>{t("overview")}</a>
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
+ <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
  <a aria-current={current==="files"?"page":undefined}
   href={link(space.clinicId,patientId,"files")}>{t("files")}</a>
  </nav>;
@@ -453,6 +454,10 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
      <p>{data.history?.[key+"_notes"]||"—"}</p></div>)}
    </section>
    <section className="card phase07-panel">
+    <h2>{t("chart")}</h2>
+    <a className="btn btn-secondary" href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)+
+     "&encounterId="+encodeURIComponent(encounterId)}>{t("chart")} →</a>
+    <hr className="phase07-divider"/>
     <h2>{t("attachment")}</h2>
     <p className="muted">{t("storage")}</p>
     <a className="btn btn-secondary" href={link(space.clinicId,patientId,"files")+

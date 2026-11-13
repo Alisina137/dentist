@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH07 clinician worklist, encounters, and guarded clinical files
+## Current phase: PH08 interactive FDI dental chart and historical observations
 
-Status: **PH01–PH06 implemented with automated CI. PH07 is implemented on its feature branch and awaits full CI HTTP/DB checks; clinical, privacy, accessibility and legal acceptance remain separate gates**.
+Status: **PH01–PH08 implemented; automated CI, typechecks, builds, and PostgreSQL-backed PH08 acceptance passed. Manual clinical review, accessibility, privacy/security and legal acceptance remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -152,3 +152,17 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Integration/quality evidence in `tests/phase07-validation.test.mjs` and `tests/phase07-integration.mjs` plus GitHub Actions.
 - **Not production approved:** no malware scanner, no verified at-rest encryption/retention signoff, no real patient-data go-live until medical/legal/security review and PH19 gates. See `docs/PH07-ACCEPTANCE.md`.
 - Next planned phase: PH08 permanent/primary FDI odontogram. 
+
+
+## PH08 — Interactive FDI dental chart (C12 / AC08)
+
+- Route `/clinic/patients/:patientId/chart` is now a patient-contextual screen linked from Overview and Visits, with authorized clinician/assistant role safeguards.
+- Complete permanent FDI map (11–48) and primary map (51–85), anatomically oriented independent of RTL, SVG illustrations, selectable teeth and keyboard arrow control. Mobile horizontal scroll/zoom and numbered selector.
+- Distinct Current / Selected Visit / Historical chart modes. Current/latest and as-of date use latest **validated** dated finding per tooth; earlier findings remain in patient history.
+- Tooth inspector shows condition, optional surfaces/notes and authoritative date/clinician/encounter provenance. All records append-only; correction is a new dated observation rather than mutating old evidence.
+- Authorized clinician writes validated findings linked to their encounter; an assistant may submit only an authorized own encounter's draft, which must be validated by assigned clinician before current-status release.
+- Tenant/case scoping enforced server-side. Receptionist/cashier/platform admin and cross-tenant access denied. Signed chart content never appears on public or patient API.
+- New migration `0008_fdi_dental_chart.sql` with FDI/condition/dentition constraints, scoped encounter FK, idempotent write keys, immutable history trigger and indexed validated projection.
+- Tests: `tests/phase08-validation.test.mjs`, `tests/phase08-integration.mjs`, `tests/phase08-immutability.ts`; CI includes HTTP/PostgreSQL and prior phase regressions.
+- **Not production ready:** clinically reviewed anatomy, accessibility/RTL inspection, legal/medical retention, security/data backup checks still required; chart shapes are schematic, no diagnosis/billing.
+- Next phase: PH09 treatment plans and consent. See `docs/PH08-ACCEPTANCE.md`.

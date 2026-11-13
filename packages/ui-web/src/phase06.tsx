@@ -98,7 +98,7 @@ const words:Record<Lang,Record<string,string>>={
   noPersonalAccount:"A DandanLink patient account is not required for walk-in or phone bookings.",
   candidateOnly:"Available times are rechecked when confirming. This is not a public booking.",noPublic:"Private clinic appointment only. Patient-facing booking is not enabled yet.",
   deliveryNotice:"External reminders and booking requests are not enabled at this stage.",
-  clinicalNext:"Clinical encounters and dental charts are delivered in later phases.",
+  clinicalNext:"Clinical encounters and dental charts are delivered in later phases.",openVisit:"Open patient visit",dentalChart:"Dental chart",
   financialNext:"The price shown is an estimate; no patient invoice has been created.",
   clinicScope:"Current clinic",loadingAccount:"Checking clinic membership…",
   signin:"Sign in to the clinic",noClinic:"Choose an active clinic membership.",
@@ -205,7 +205,7 @@ const words:Record<Lang,Record<string,string>>={
   noPersonalAccount:"مریض حضوری یا تلفنی به حساب عمومی DandanLink نیاز ندارد.",
   candidateOnly:"وقت‌های موجود هنگام تأیید دوباره بررسی می‌شوند؛ این رزرو عمومی نیست.",noPublic:"فقط وقت خصوصی کلینیک؛ رزرو عمومی هنوز فعال نیست.",
   deliveryNotice:"یادآوری خودکار و درخواست رزرو عمومی هنوز فعال نیست.",
-  clinicalNext:"معاینات طبی و چارت دندان در مراحل بعدی فعال می‌شود.",
+  clinicalNext:"معاینات طبی و چارت دندان در مراحل بعدی فعال می‌شود.",openVisit:"باز کردن معاینه مریض",dentalChart:"چارت دندان",
   financialNext:"این قیمت تخمینی است؛ بل مریض ساخته نشده است.",
   clinicScope:"کلینیک فعلی",loadingAccount:"بررسی عضویت کلینیک…",
   signin:"ورود به کلینیک",noClinic:"کلینیک فعال خود را انتخاب کنید.",
@@ -310,7 +310,7 @@ const words:Record<Lang,Record<string,string>>={
   noPersonalAccount:"د حضوري او ټیلیفوني لیدنو لپاره عام حساب اړین نه دی.",
   candidateOnly:"شته وختونه د تایید پر وخت بیا کتل کېږي؛ دا عامه بکینګ نه دی.",noPublic:"دا یوازې د کلینیک لیدنه ده؛ عامه بکینګ لا نه دی فعال.",
   deliveryNotice:"اتومات یادونې او عامه غوښتنې لا نشته.",
-  clinicalNext:"طبي لیدنې او د غاښونو چارتونه په راتلونکو پړاوونو کې فعالیږي.",
+  clinicalNext:"طبي لیدنې او د غاښونو چارتونه په راتلونکو پړاوونو کې فعالیږي.",openVisit:"د ناروغ معاینه پرانیزئ",dentalChart:"د غاښونو چارټ",
   financialNext:"دا اټکلي بیه ده؛ بیل نه دی جوړ شوی.",
   clinicScope:"اوسنی کلینیک",loadingAccount:"د کلینیک غړیتوب کتل کېږي…",
   signin:"کلینیک ته ننوځئ",noClinic:"فعال کلینیک غوره کړئ.",
@@ -1402,11 +1402,19 @@ function AppointmentDetail({space}:{space:Space}){
     <div className="phase06-form-footer">
      {a.patient&&<a className="btn btn-secondary" href={patientHref(space.clinicId,a.patient.id)}>
       {t("patientDetails")} ↗</a>}
+     {a.patient&&canTreat(space,a)&&a.providerMembershipId===space.membershipId&&<>
+      {["arrived","in_treatment","completed"].includes(a.status)&&
+       <a className="btn btn-primary" href={"/clinic/patients/"+a.patient.id+"/visits?clinic="+
+        encodeURIComponent(space.clinicId)+"&appointmentId="+encodeURIComponent(a.id)}>
+        {t("openVisit")} ↗</a>}
+      <a className="btn btn-secondary" href={"/clinic/patients/"+a.patient.id+"/chart?clinic="+
+       encodeURIComponent(space.clinicId)}>{t("dentalChart")} ↗</a>
+     </>}
     </div>
     {a.administrativeNote&&<div className="phase06-admin-note">
      <strong>{t("adminOnly")}</strong><p>{a.administrativeNote}</p>
     </div>}
-    <Notice kind="warning">{t("financialNext")} {t("clinicalNext")}</Notice>
+    <Notice kind="warning">{t("financialNext")}</Notice>
    </section>
    <section className="card phase06-detail-section">
     <div className="phase06-section-heading"><span className="phase06-eyebrow">{t("history")}</span>
