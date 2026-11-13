@@ -127,6 +127,7 @@ export function phase02Router() {
     const id=randomUUID();
     await db.transaction(async tx=>{
       await tx.insert(schema.clinic).values({id,ownerUserId:req.actor!.id,...values,selectedPlanId:plan.id,status:"draft"});
+      await tx.insert(schema.clinicMembership).values({id:randomUUID(),clinicId:id,userId:req.actor!.id,role:"owner",status:"active"});
       await audit(tx,req.actor!.id,id,"clinic.created",id);
     });
     res.status(201).json({clinic:await ownerClinic(req,id)});
