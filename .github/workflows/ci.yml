@@ -43,6 +43,8 @@ jobs:
       - name: HTTP auth integration against PostgreSQL
         env:
           NODE_ENV: test
+          # Test and production environments MUST ignore this flag.
+          DEV_SKIP_EMAIL_VERIFICATION: "true"
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/dandan_test
           BETTER_AUTH_SECRET: ci_test_secret_only_not_for_public_use_0123456789
           API_BASE_URL: http://localhost:4000
@@ -59,3 +61,4 @@ jobs:
           PH01_API_LOG=/tmp/dandanlink-api.log node tests/auth-integration.mjs
           node tests/phase02-integration.mjs
           node tests/phase03-integration.mjs
+          node tests/dev-no-email-integration.mjs
