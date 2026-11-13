@@ -7,6 +7,7 @@ import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import { db, sqlClient, schema } from "@dandanlink/db";
 import { hasAdminAccess, normalizePreference } from "@dandanlink/domain";
 import { auth } from "./auth.js";
+import { phase02Router } from "./phase02.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -35,7 +36,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH01", marketplaceAvailable: false
+  product: "DandanLink", release: "PH02", marketplaceAvailable: false
 }));
 
 type Identity = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled?: boolean };
@@ -106,8 +107,8 @@ app.get("/v1/clinic/home", loadIdentity, (req: AuthenticatedRequest, res) => {
   }
   res.json({
     greetingName: req.identityContext!.identity.name,
-    phase: "foundation", nextAction: "clinic_setup_in_phase_02",
-    enabledModules: ["account", "preferences"]
+    phase: "clinic_onboarding", nextAction: "create_or_review_clinic",
+    enabledModules: ["account", "preferences", "clinic_onboarding", "subscription"]
   });
 });
 
@@ -125,9 +126,10 @@ app.get("/v1/admin/home", loadIdentity, async (req: AuthenticatedRequest, res, n
       id: randomUUID(), actorId: ctx.identity.id, action: "admin.home.view",
       subjectType: "platform", outcome: "success"
     });
-    res.json({ name: ctx.identity.name, release: "PH01", modules: ["account", "security"] });
+    res.json({ name: ctx.identity.name, release: "PH02", modules: ["account", "security", "verification", "plans", "subscriptions"] });
   } catch (error) { next(error); }
 });
+app.use("/v1", phase02Router());
 app.use("/v1", (_req, res) => res.status(404).json({ code: "NOT_FOUND", messageKey: "errors.notFound" }));
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   // Never return stack traces, tokens, medical information, or user identifiers.

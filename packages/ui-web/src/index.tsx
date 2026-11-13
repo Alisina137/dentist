@@ -113,6 +113,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
       <div className="header-nav">
         <nav aria-label={t("home")}>
           <a className="nav-link" href={home}>{audience === "clinic" ? t("clinicPortal") : audience === "admin" ? t("adminPortal") : t("home")}</a>
+          {audience === "clinic" && <a className="nav-link" href="/pricing">{t("pricing")}</a>}
           {audience !== "patient" && <a className="nav-link" href="/privacy">{t("privacy")}</a>}
         </nav>
         <LocaleControls />

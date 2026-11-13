@@ -95,3 +95,63 @@ h3{font-size:20px}
 @media(max-width:900px){.layout-two{grid-template-columns:1fr;min-height:auto;gap:25px}.hero-copy{margin:auto;text-align:start}.work-layout{grid-template-columns:1fr}.side-panel{position:static}.side-nav{display:flex;flex-wrap:wrap}.site-header{flex-wrap:wrap}.header-nav{width:100%;justify-content:space-between}.site-main{padding:22px 16px}.auth-card{margin-block:0}.footer{padding:20px 16px}}
 @media(max-width:530px){h1{font-size:33px}.data-grid{grid-template-columns:1fr}.select-group{font-size:11px}.select-group select{max-width:112px}.panel{padding:18px}.auth-card{padding:23px}.site-header{padding:12px 16px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+
+
+/* Phase 02: actual registration, billing and verification workspaces. */
+.phase-layout{align-items:start}
+.phase-sidebar-bottom{border-top:1px solid var(--line);padding-top:16px;margin-top:20px}
+.phase-sidebar-bottom .preferences{display:grid;gap:12px}
+.phase-work-heading{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.phase-user{font-size:14px;margin:10px 0 0}
+.phase-title{font-size:clamp(24px,3vw,32px);margin:6px 0 24px;line-height:1.3}
+.phase-row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.phase-row h2{margin-bottom:6px}
+.phase-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px}
+.phase-stepper,.phase-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 23px}
+.phase-stepper button,.phase-tabs button{padding:11px 16px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:10px;background:white;min-height:44px}
+.phase-stepper button.current,.phase-tabs button.current{color:var(--brand-hover);background:var(--brand-pale);border-color:var(--brand)}
+.phase-form-grid,.phase-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.phase-form{display:grid;gap:19px;margin-top:24px}
+.phase-form .field select,.phase-form-grid .field select,.field select{height:48px;border:1px solid #b9cbd6;border-radius:10px;background:#fff;padding:11px 14px;min-width:0;width:100%;color:var(--ink)}
+.phase-form .field textarea{border:1px solid #b9cbd6;border-radius:10px;min-width:0;width:100%;padding:12px}
+.phase-status-strip{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:12px 0 20px}
+.state-badge{display:inline-block;border-radius:25px;padding:6px 11px;font-size:12px;font-weight:800;background:#edf4f7;color:#37566a;white-space:nowrap}
+.state-approved,.state-active,.state-paid{color:#166534;background:#eefbf1}
+.state-pending,.state-needs_info,.state-trialing,.state-awaiting,.state-grace{background:#fef3c7;color:#92400e}
+.state-rejected,.state-suspended,.state-void,.state-expired{background:#fff1f2;color:#991b1b}
+.phase-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:16px 0 22px}
+.phase-stats .value-box{display:grid;gap:8px}
+.phase-number{font-size:32px;font-weight:800;line-height:1}
+.phase-plan-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-block:18px}
+.phase-plan-card{display:grid;gap:12px;padding:21px;border:2px solid var(--line);cursor:pointer;align-content:start}
+.phase-plan-card input{width:20px;height:20px;accent-color:var(--brand);margin:0}
+.phase-plan-card.phase-selected{border-color:var(--brand);background:#f2fcfe}
+.phase-plan-card strong{font-size:18px}
+.phase-plan-card small{color:var(--muted);line-height:1.7}
+.phase-price{font-size:22px;color:var(--brand-hover);font-weight:800}
+.phase-upload{border-top:1px solid var(--line);padding-top:22px;margin-top:24px;display:grid;gap:14px}
+.phase-upload input[type=file]{max-width:100%;min-height:44px}
+.phase-upload .btn{justify-self:start}
+.phase-check{display:flex;align-items:start;gap:10px;line-height:1.7}
+.phase-check input{min-width:19px;min-height:19px;margin-top:4px;accent-color:var(--brand)}
+.phase-list{display:grid;gap:0}
+.phase-list-item{padding:16px 8px;border-bottom:1px solid var(--line);line-height:1.5}
+a.phase-list-item:hover{background:#f5fbfe}
+.phase-list-item:last-child{border:0}
+.phase-list-item p{margin:6px 0 0;font-size:13px}
+.phase-arrow{font-size:22px;color:var(--brand)}
+.phase-empty{padding:26px 12px;color:var(--muted);line-height:1.7}
+.phase-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px}
+.phase-payment-item{border:1px solid var(--line);border-radius:10px;margin-bottom:14px;padding:18px}
+.phase-pricing{max-width:1200px}
+@media(max-width:740px){
+  .phase-form-grid,.phase-detail-grid,.phase-stats{grid-template-columns:1fr}
+  .phase-plan-cards{grid-template-columns:1fr}
+  .phase-sidebar-bottom .preferences{display:flex}
+  .phase-stepper button,.phase-tabs button{font-size:13px;padding:9px 11px}
+  .phase-work-heading{align-items:start}
+}
+
+.phase-search{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:19px}
+.phase-search .field{flex:1 1 240px}
+.phase-search input[type=search]{width:100%;min-height:46px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}

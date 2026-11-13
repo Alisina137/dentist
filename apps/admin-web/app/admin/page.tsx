@@ -1,2 +1,2 @@
-import { AccountStatus } from "@dandanlink/ui";
-export default function Dashboard(){ return <AccountStatus audience="admin" />; }
+import { Phase02Portal } from "@dandanlink/ui/phase02";
+export default function AdminDashboard(){return <Phase02Portal audience="admin" view="dashboard"/>;}
