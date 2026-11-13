@@ -149,3 +149,40 @@ The app's informational screens run even without an API URL configured.
 The mobile SDK will be revisited when patient login, public verified listings,
 and real bookings are implemented, and a production mobile development build
 is required before release.
+
+## Local development without email confirmation
+
+DandanLink can skip email ownership confirmation **only** when both
+`NODE_ENV=development` and `DEV_SKIP_EMAIL_VERIFICATION=true` are set.
+Production and automated-test environments always enforce email verification.
+
+From the local Windows project folder, run:
+
+```powershell
+cd C:\projects\dentist
+pnpm dev:auth:no-email
+pnpm dev
+```
+
+The command modifies only `DEV_SKIP_EMAIL_VERIFICATION` in the existing root
+`.env` file and refuses non-development environments. Restart the API after
+changing the flag. **No database migration is needed.**
+
+Use fake development email addresses; the application does not pretend they
+were verified. Disabling the flag immediately restores normal email
+verification checks. Never enable this for real patients or a public server.
+
+### Create a development administrator
+
+1. Create a name, test email and private password at http://localhost:3001/clinic/signup.
+   No verification email is sent in this development mode.
+2. In your **local** `.env`, temporarily set `ALLOW_ADMIN_BOOTSTRAP=true` and
+   `ADMIN_BOOTSTRAP_EMAIL=<exact email registered>`.
+3. Run `pnpm admin:grant <exact email registered>`.
+4. Set `ALLOW_ADMIN_BOOTSTRAP=false` again in `.env`.
+5. Sign in at http://localhost:3000/admin/login and configure a TOTP
+   authenticator. **Admin MFA remains mandatory even in development.**
+
+Email-based password-reset and staff invitations still require SMTP or the
+restricted localhost development email-link logger. Skipping email verification
+does not remove those separate requirements.
