@@ -347,7 +347,8 @@ ok(await request(base+"/appointments/"+first.id+"/status","POST",{
 },reception.session),[409],"completed appointment cannot cancel");
 const finalQueue=ok(await request(base+"/queue","GET",undefined,owner.session),[200],"queue updated");
 assert.ok(finalQueue.queue.some(a=>a.id===first.id&&a.status==="completed"));
-fixture(clinic.id,winner.id,60);
+// Use 00:00 Kabul: 01:00 can still be in the future just after midnight.
+fixture(clinic.id,winner.id,0);
 const currentWinner=ok(await request(base+"/appointments/"+winner.id,"GET",undefined,reception.session),
  [200],"fixture winner").appointment;
 const absent=ok(await request(base+"/appointments/"+winner.id+"/status","POST",{
