@@ -1,0 +1,368 @@
+"use client";
+import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls } from "./index";
+import { Phase02Portal } from "./phase02";
+type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
+type Space={clinicId:string;clinicName:string;clinicStatus:string;
+  membershipId:string;role:Role;capabilities:string[]};
+type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
+const base=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
+const labels:Record<string,Record<string,string>>={
+ en:{
+  staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
+  security:"Security & Access",myProfile:"My membership",home:"Overview",account:"Account",
+  clinics:"Clinic",role:"Role",status:"Status",email:"Email",name:"Name",
+  invitedBy:"Invited by",joined:"Joined",joinedOn:"Joined at",activity:"Activity history",
+  active:"Active",suspended:"Suspended",revoked:"Revoked",pending:"Pending",accepted:"Accepted",
+  expired:"Expired",invite:"Invite staff",inviteHint:"Invite by verified email. Access starts only when they accept.",
+  send:"Send invitation",reason:"Reason (at least 5 characters)",roleChange:"Change role",
+  change:"Save role",suspend:"Suspend",reactivate:"Reactivate",revoke:"Revoke access",
+  removeInvite:"Revoke invitation",resend:"Resend",expiry:"Expires",
+  sent:"Sent",cancel:"Cancel",manager:"Clinic manager",dentist:"Dentist",
+  receptionist:"Receptionist",assistant:"Dental assistant",cashier:"Cashier",owner:"Clinic owner",
+  assign:"Assign role",grants:"Permissions",mfa:"Authenticator enabled",
+  on:"Yes",off:"No",sessions:"Sessions & devices",signoutAll:"Sign out of all devices",
+  forceLogout:"Force sign-out",password:"Password reset",lastActivity:"Recent security activity",
+  clinicChoice:"Active clinic",chooseClinic:"Choose a clinic",profile:"Professional identity draft",
+  displayName:"Professional display name",specialty:"Specialty (unverified)",
+  qualifications:"Qualifications (unverified)",license:"Professional license (unverified)",
+  experience:"Years of experience (unverified)",bio:"Professional biography",
+  saveProfile:"Save draft",version:"Draft version",notPublic:"Draft only. Not verified or public.",
+  schedulingLater:"Schedules, clinical work, patient records and billing open in their assigned phases.",
+  noStaff:"No staff yet. Invite the first colleague.",noDentists:"No dentists yet. Invite a dentist.",
+  noInvites:"No invitations yet.",noHistory:"No security activity recorded.",
+  noClinics:"You do not currently have an active clinic membership.",
+  missingClinic:"Clinic not found in your memberships. Choose an active clinic.",
+  inviteIntro:"You've been invited to join a dental clinic.",
+  accept:"Accept invitation",inviteEmail:"The invitation requires a verified account using this exact email.",
+  signup:"Create an account",login:"Sign in",invalid:"Invitation is invalid or has expired.",
+  acceptedMessage:"Membership accepted. Open your clinic workspace.",
+  rejected:"Invitation cannot be accepted.",notAllowed:"You do not have permission to open this page.",
+  updateSuccess:"Changes saved.",sentSuccess:"The invitation was sent.",loading:"Loading…",
+  retry:"Retry",error:"Something went wrong",continue:"Continue",back:"Back",
+  activateMfa:"Enable an authenticator to manage staff or permissions.",
+  noCapacity:"Your current subscription staff limit may prevent a new invitation.",
+  suspendedInfo:"Suspended staff cannot access this clinic. Revocation ends membership; another invitation is required.",
+  sessionImpact:"Suspension and role changes revoke the staff member's account sessions on all devices.",
+  noFake:"Clinic profiles and dentist qualifications are not publicly verified in this release.",
+  confirm:"Confirm this action?",filter:"Filter",all:"All",next:"Next",previous:"Previous",
+  receipt:"Invitations are emailed. No password or active membership is created automatically.",
+  ready:"Your clinic access",overview:"Team overview",lastChanged:"Last changed",
+  currentStatus:"Verification status",localOnly:"Your role controls access to active modules; unavailable clinical tabs are hidden.",
+  enroll:"Enroll MFA",unavailable:"No active workspace. If you own a clinic, create it to get started.",
+  createClinic:"Register a clinic",changeClinic:"Switch clinic",save:"Save",roleReason:"Reason for role change",
+  linked:"Clinic affiliation",securityNote:"Security actions are audited. Medical records are not accessible here.",
+  people:"Staff members",verification:"Verification",pendingReview:"Unverified draft",
+  inviteFailed:"Invitation failed",chooseTab:"View",currentRole:"Current role",
+  stale:"Refresh and retry; another administrator may have updated this record.",
+  ownerSafe:"Owner privileges cannot be removed from staff management.",
+  unpaid:"Subscription plan capacity is enforced before staff invitations."
+ },
+ "fa-AF":{
+  staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
+  security:"امنیت و دسترسی",myProfile:"عضویت من",home:"نمای کلی",account:"حساب",
+  clinics:"کلینیک",role:"نقش",status:"وضعیت",email:"ایمیل",name:"نام",
+  invitedBy:"دعوت‌شده توسط",joined:"پیوست",joinedOn:"تاریخ عضویت",activity:"تاریخچه فعالیت",
+  active:"فعال",suspended:"تعلیق",revoked:"لغوشده",pending:"در انتظار",accepted:"پذیرفته‌شده",
+  expired:"منقضی",invite:"دعوت کارمند",inviteHint:"با ایمیل تأییدشده دعوت کنید؛ دسترسی پس از پذیرش فعال می‌شود.",
+  send:"ارسال دعوت",reason:"دلیل (حداقل ۵ حرف)",roleChange:"تغییر نقش",change:"ذخیره نقش",
+  suspend:"تعلیق",reactivate:"فعال‌سازی دوباره",revoke:"لغو دسترسی",
+  removeInvite:"لغو دعوت",resend:"ارسال مجدد",expiry:"انقضا",
+  sent:"ارسال‌شده",cancel:"انصراف",manager:"مدیر کلینیک",dentist:"داکتر دندان",
+  receptionist:"پذیرش",assistant:"دستیار دندان",cashier:"حسابدار/صندوق‌دار",owner:"مالک کلینیک",
+  assign:"تعیین نقش",grants:"مجوزها",mfa:"تأیید دومرحله‌ای فعال",
+  on:"بله",off:"نخیر",sessions:"نشست‌ها و دستگاه‌ها",signoutAll:"خروج از تمام دستگاه‌ها",
+  forceLogout:"خروج اجباری",password:"بازیابی رمز",lastActivity:"فعالیت امنیتی اخیر",
+  clinicChoice:"کلینیک فعال",chooseClinic:"کلینیک انتخاب کنید",profile:"پیش‌نویس هویت مسلکی",
+  displayName:"نام مسلکی",specialty:"تخصص (تأییدنشده)",
+  qualifications:"تحصیلات و مدارک (تأییدنشده)",license:"شماره جواز مسلکی (تأییدنشده)",
+  experience:"سال‌های تجربه (تأییدنشده)",bio:"معرفی مسلکی",
+  saveProfile:"ذخیره پیش‌نویس",version:"نسخه پیش‌نویس",notPublic:"فقط پیش‌نویس؛ نه تأیید شده و نه عمومی.",
+  schedulingLater:"تقویم، سوابق مریضان و امور مالی در مراحل مربوط فعال می‌شوند.",
+  noStaff:"هنوز کارمندی نیست. اولین همکار را دعوت کنید.",noDentists:"داکتر دندان ثبت نشده.",
+  noInvites:"هنوز دعوتی نیست.",noHistory:"هنوز فعالیت امنیتی ثبت نشده.",
+  noClinics:"عضویت فعال کلینیک ندارید.",missingClinic:"کلینیک در عضویت‌های شما نیست.",
+  inviteIntro:"شما برای پیوستن به یک کلینیک دندان دعوت شده‌اید.",
+  accept:"پذیرفتن دعوت",inviteEmail:"برای پذیرش، حساب تأییدشده با همین ایمیل لازم است.",
+  signup:"ایجاد حساب",login:"ورود",invalid:"دعوت نامعتبر یا منقضی شده است.",
+  acceptedMessage:"عضویت پذیرفته شد. پنل کلینیک را باز کنید.",
+  rejected:"این دعوت پذیرفته نمی‌شود.",notAllowed:"اجازه دسترسی به این صفحه را ندارید.",
+  updateSuccess:"تغییرات ذخیره شد.",sentSuccess:"دعوت ارسال شد.",loading:"در حال بارگیری…",
+  retry:"تلاش دوباره",error:"مشکلی رخ داد",continue:"ادامه",back:"بازگشت",
+  activateMfa:"برای مدیریت کارمندان، تأیید دومرحله‌ای را فعال کنید.",
+  noCapacity:"محدودیت کارمندان پلن ممکن است مانع دعوت شود.",
+  suspendedInfo:"کارمند تعلیق‌شده به کلینیک دسترسی ندارد؛ لغو عضویت به دعوت تازه نیاز دارد.",
+  sessionImpact:"تعلیق و تغییر نقش، نشست‌های حساب را در تمام دستگاه‌ها پایان می‌دهد.",
+  noFake:"هویت مسلکی و پروفایل داکتران هنوز عمومی یا تأییدشده نیست.",
+  confirm:"آیا این اقدام را تأیید می‌کنید؟",filter:"فیلتر",all:"همه",next:"بعدی",previous:"قبلی",
+  receipt:"دعوت از طریق ایمیل ارسال می‌شود؛ عضویت خودکار ایجاد نمی‌شود.",
+  ready:"دسترسی کلینیک",overview:"نمای کلی تیم",lastChanged:"آخرین تغییر",
+  currentStatus:"حالت تأیید",localOnly:"نقش شما دسترسی به بخش‌های فعال را تعیین می‌کند.",
+  enroll:"فعال‌سازی تأیید",unavailable:"محیط فعال ندارید؛ برای شروع کلینیک ثبت کنید.",
+  createClinic:"ثبت کلینیک",changeClinic:"تغییر کلینیک",save:"ذخیره",roleReason:"دلیل تغییر نقش",
+  linked:"عضویت در کلینیک",securityNote:"اقدامات امنیتی ثبت می‌شوند؛ سوابق مریضان در اینجا قابل مشاهده نیست.",
+  people:"کارمندان",verification:"تأیید",pendingReview:"پیش‌نویس تأییدنشده",
+  inviteFailed:"ارسال دعوت ناموفق",chooseTab:"بخش",currentRole:"نقش فعلی",
+  stale:"صفحه را تازه کنید؛ تغییر دیگری ممکن است ثبت شده باشد.",
+  ownerSafe:"دسترسی مالک از مدیریت کارمندان لغو نمی‌شود.",unpaid:"ظرفیت پلن قبل از دعوت بررسی می‌شود."
+ },
+ "ps-AF":{
+  staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
+  security:"امنیت او لاسرسی",myProfile:"زما غړیتوب",home:"لنډیز",account:"حساب",
+  clinics:"کلینیک",role:"دنده",status:"حالت",email:"برېښنالیک",name:"نوم",
+  invitedBy:"بلنه ورکوونکی",joined:"ګډ شوی",joinedOn:"د غړیتوب نېټه",activity:"د کړنو تاریخ",
+  active:"فعال",suspended:"ځنډول شوی",revoked:"لغوه شوی",pending:"منتظر",accepted:"منل شوی",
+  expired:"پای ته رسېدلی",invite:"کارکوونکی راوبلئ",inviteHint:"په تایید شوي برېښنالیک بلنه واستوئ؛ لاسرسی له منلو وروسته فعالېږي.",
+  send:"بلنه واستوئ",reason:"دلیل (لږترلږه ۵ توري)",roleChange:"دنده بدله کړئ",
+  change:"دنده خوندي کړئ",suspend:"ځنډول",reactivate:"بیا فعالول",revoke:"لاسرسی لغوه کول",
+  removeInvite:"بلنه لغوه کول",resend:"بیا لېږل",expiry:"پای نېټه",
+  sent:"لېږل شوی",cancel:"لغوه",manager:"د کلینیک مدیر",dentist:"د غاښونو ډاکټر",
+  receptionist:"پذیرش",assistant:"د غاښونو مرستیال",cashier:"حسابدار",owner:"د کلینیک خاوند",
+  assign:"دنده ټاکل",grants:"اجازې",mfa:"دوه پړاوه تایید فعال",
+  on:"هو",off:"نه",sessions:"ناستې او وسایل",signoutAll:"له ټولو وسایلو وتل",
+  forceLogout:"اجباري وتل",password:"پټنوم بیا ټاکل",lastActivity:"وروستۍ امنیتي کړنې",
+  clinicChoice:"فعال کلینیک",chooseClinic:"کلینیک غوره کړئ",profile:"د مسلکي پېژندنې مسوده",
+  displayName:"مسلکي نوم",specialty:"تخصص (نه دی تایید شوی)",
+  qualifications:"اسناد (نه دي تایید شوي)",license:"د جواز شمېره (نه ده تایید شوې)",
+  experience:"د تجربې کلونه (نه دي تایید شوي)",bio:"مسلکي پېژندنه",
+  saveProfile:"مسوده خوندي کړئ",version:"د مسودې نسخه",notPublic:"یوازې مسوده؛ نه تایید شوې او نه عامه.",
+  schedulingLater:"وختونه، ناروغان او مالي چارې په راتلونکو پړاوونو کې فعالیږي.",
+  noStaff:"تر اوسه کارکوونکي نشته. یو همکار راوبلئ.",noDentists:"ډاکټر نشته.",
+  noInvites:"بلنې نشته.",noHistory:"امنیتي کړنې نشته.",
+  noClinics:"فعال کلینیکي غړیتوب نه لرئ.",missingClinic:"کلینیک ستاسو په غړیتوب کې نشته.",
+  inviteIntro:"تاسو د غاښونو کلینیک ته بلل شوي یاست.",
+  accept:"بلنه ومنئ",inviteEmail:"دا بلنه په همدې تایید شوي برېښنالیک منل کېدای شي.",
+  signup:"حساب جوړول",login:"ننوتل",invalid:"بلنه ناسمه یا پای ته رسېدلې ده.",
+  acceptedMessage:"غړیتوب ومنل شو. خپل کلینیک ته لاړ شئ.",
+  rejected:"دا بلنه نه منل کېږي.",notAllowed:"دې پاڼې ته اجازه نه لرئ.",
+  updateSuccess:"بدلونونه خوندي شول.",sentSuccess:"بلنه ولېږل شوه.",loading:"بارېږي…",
+  retry:"بیا هڅه",error:"ستونزه رامنځته شوه",continue:"دوام",back:"شاته",
+  activateMfa:"د کارکوونکو د مدیریت لپاره دوه پړاوه تایید فعال کړئ.",
+  noCapacity:"د پلان د کارکوونکو حد ښايي د بلنې مخه ونیسي.",
+  suspendedInfo:"ځنډول شوی کس کلینیک ته لاسرسی نه لري؛ د لغوه شوي غړیتوب لپاره نوې بلنه پکار ده.",
+  sessionImpact:"دنده بدلول او ځنډول له ټولو وسایلو ناستې بندوي.",
+  noFake:"د ډاکټر هویت لا په عامه ډول تایید نه دی.",
+  confirm:"ایا دا کار تاییدوئ؟",filter:"چاڼ",all:"ټول",next:"بل",previous:"مخکېنی",
+  receipt:"بلنه په برېښنالیک ځي؛ غړیتوب په خپله نه جوړېږي.",
+  ready:"د کلینیک لاسرسی",overview:"د ټیم لنډیز",lastChanged:"وروستی بدلون",
+  currentStatus:"د تایید حالت",localOnly:"ستاسې دنده فعالې برخې ټاکي.",
+  enroll:"تایید فعال کړئ",unavailable:"فعال کلینیک نشته؛ نوی کلینیک ثبت کړئ.",
+  createClinic:"کلینیک ثبت کړئ",changeClinic:"کلینیک بدل کړئ",save:"خوندي کول",
+  roleReason:"د دندې د بدلون دلیل",linked:"په کلینیک کې غړیتوب",
+  securityNote:"امنیتي کړنې ثبتېږي؛ د ناروغانو معلومات دلته نشته.",
+  people:"کارکوونکي",verification:"تایید",pendingReview:"ناتایید شوې مسوده",
+  inviteFailed:"بلنه ونه لېږل شوه",chooseTab:"برخه",currentRole:"اوسنۍ دنده",
+  stale:"پاڼه تازه کړئ؛ بل بدلون شوی وي.",ownerSafe:"د مالک لاسرسی نه لغوه کېږي.",
+  unpaid:"د پلان ظرفیت د بلنې تر مخه کتل کېږي."
+ }
+};
+function useLang(){
+ const {locale,calendar}=usePreferences();
+ const t=(key:string)=>labels[locale]?.[key]||labels.en[key]||key;
+ const date=(v:unknown)=>v?new Intl.DateTimeFormat(locale,{calendar:calendar==="solar_hijri"?"persian":"gregory",
+   timeZone:"Asia/Kabul",year:"numeric",month:"short",day:"numeric"}).format(new Date(String(v))):"—";
+ return {t,date,locale};
+}
+async function api(path:string,method="GET",body?:unknown):Promise<any>{
+ const result=await fetch(base+"/v1/team"+path,{method,credentials:"include",
+  cache:"no-store",headers:body===undefined?{}:{"content-type":"application/json"},
+  body:body===undefined?undefined:JSON.stringify(body)});
+ const data=await result.json().catch(()=>({}));
+ if(!result.ok)throw Object.assign(new Error(data.code||"NETWORK"),{status:result.status});
+ return data;
+}
+function useData(path:string|null){
+ const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ const [number,setNumber]=useState(0);
+ const reload=()=>{setData(null);setNumber(v=>v+1);};
+ useEffect(()=>{
+  if(!path){setData(null);return;}
+  let alive=true;setData(null);setError("");
+  api(path).then(d=>{if(alive)setData(d);}).catch(e=>{if(alive)setError(e.message);});
+  return()=>{alive=false;};
+ },[path,number]);
+ return {data,error,reload};
+}
+function Banner({children,kind="info"}:{children:ReactNode,kind?:"info"|"warning"|"error"|"success"}){
+ return <InlineAlert kind={kind}>{children}</InlineAlert>;
+}
+function Busy(){const {t}=useLang();return <div className="card panel"><Banner>{t("loading")}</Banner></div>;}
+function ErrorBox({error,retry}:{error:string,retry:()=>void}){
+ const {t}=useLang();return <div className="card panel"><Banner kind="error">{t("error")}: {error}</Banner>
+   <button type="button" className="btn btn-secondary" onClick={retry}>{t("retry")}</button></div>;
+}
+function Empty({text}:{text:string}){return <div className="team-empty">{text}</div>;}
+function Badge({value}:{value:string}){const {t}=useLang();return <span className={"state-badge state-"+value}>{t(value)}</span>;}
+function Field({label,value,onChange,type="text",required=false,maxLength}:{label:string,value:string|number|null|undefined,
+  onChange:(s:string)=>void,type?:string,required?:boolean,maxLength?:number}){
+ return <label className="field"><span>{label}{required?" *":""}</span>
+   <input type={type} value={value??""} required={required} maxLength={maxLength}
+   onChange={e=>onChange(e.currentTarget.value)} /></label>;
+}
+function Select({label,value,onChange,options}:{label:string,value:string,onChange:(s:string)=>void,
+ options:{value:string;label:string}[]}){
+ return <label className="field"><span>{label}</span><select value={value} onChange={e=>onChange(e.target.value)}>
+   {options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;
+}
+function Permission(){const {t}=useLang();return <Banner>{t("localOnly")}</Banner>;}
+function navigation(space:Space,t:(key:string)=>string){
+ const link=(key:string,href:string)=>({title:t(key),href,key});
+ const home=link("home","/clinic?clinic="+space.clinicId);
+ const profile=link("myProfile","/clinic/staff/"+space.membershipId+"?clinic="+space.clinicId);
+ const staff=link("staff","/clinic/staff?clinic="+space.clinicId);
+ const security=link("security","/clinic/settings/security?clinic="+space.clinicId);
+ const options=[home];
+ if(space.role==="owner"||space.role==="manager")options.push(staff,security);
+ else options.push(profile,security);
+ return options;
+}
+function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
+ const {t}=useLang();const nav=navigation(space,t);
+ return <div className="work-layout phase-layout staff-shell">
+  <aside className="card side-panel staff-side">
+    <div className="pill">{t(space.role)}</div>
+    <div className="staff-tenant-title">{space.clinicName}</div>
+    <div className="staff-desktop-menu"><NavLinks nav={nav} active={active}/></div>
+    <details className="staff-phone-menu"><summary>{t("chooseTab")}</summary><NavLinks nav={nav} active={active}/></details>
+    <div className="staff-side-locale"><LocaleControls/></div>
+  </aside>
+  <section className="work-content staff-content">
+    <header className="work-heading">
+      <div><div className="pill">DandanLink · Staff</div>
+       <h1 className="staff-page-heading">{t(active)||t("ready")}</h1><p className="muted">{ctx.name}</p></div>
+      <button className="btn btn-secondary" onClick={async()=>{await authClient.signOut();location.assign("/clinic/login");}}>
+        {t("account")} · ↪</button>
+    </header>
+    {ctx.clinics.length>1&&<div className="staff-switch"><Select label={t("changeClinic")} value={space.clinicId}
+      options={ctx.clinics.map(c=>({value:c.clinicId,label:c.clinicName+" — "+t(c.role)}))}
+      onChange={id=>{sessionStorage.removeItem("dandan.current.clinic");location.assign("/clinic?clinic="+encodeURIComponent(id));}}/></div>}
+    {children}
+  </section>
+ </div>;
+}
+function NavLinks({nav,active}:{nav:{title:string;href:string;key:string}[],active:string}){
+ return <nav aria-label="Clinic navigation" className="side-nav">
+  {nav.map(x=><a href={x.href} key={x.href} aria-current={active===x.key?"page":undefined}>{x.title}</a>)}
+ </nav>;
+}
+function useContextAndSpace(){
+ const {data,error,reload}=useData("/context");
+ const [requested,setRequested]=useState<string|null>(null);
+ useEffect(()=>{setRequested(new URLSearchParams(location.search).get("clinic"));},[]);
+ const spaces=(data as Context|undefined)?.clinics||[];
+ const selected=requested?spaces.find(x=>x.clinicId===requested):spaces[0];
+ return {ctx:data as Context|null,space:selected as Space|undefined,error,reload,requested};
+}
+function Guard({children}:{children:(ctx:Context,space:Space)=>ReactNode}){
+ const {t}=useLang();const {ctx,space,error,reload,requested}=useContextAndSpace();
+ if(error==="AUTH_REQUIRED")return <div className="page-narrow"><Banner kind="warning">{t("login")}</Banner>
+  <p><a className="btn btn-primary" href="/clinic/login">{t("login")}</a></p></div>;
+ if(error)return <ErrorBox error={error} retry={reload}/>;
+ if(!ctx)return <Busy/>;
+ if(!space){
+  return <div className="page-narrow card panel">
+    <Banner kind="warning">{requested?t("missingClinic"):t("noClinics")}</Banner>
+    <div className="phase-actions"><a href="/clinic/onboarding" className="btn btn-primary">{t("createClinic")}</a>
+    <a href="/clinic" className="btn btn-secondary">{t("home")}</a></div>
+  </div>;
+ }
+ return <>{children(ctx,space)}</>;
+}
+export function ClinicWorkspace(){
+ const {t}=useLang();
+ const {ctx,space,error,reload,requested}=useContextAndSpace();
+ if(error==="AUTH_REQUIRED")return <div className="page-narrow"><Banner kind="warning">{t("login")}</Banner>
+    <a className="btn btn-primary" href="/clinic/login">{t("login")}</a></div>;
+ if(error)return <ErrorBox error={error} retry={reload}/>;
+ if(!ctx)return <Busy/>;
+ // Owners keep the already functional PH02 onboarding/subscription workspace.
+ if(!requested && !space)return <Phase02Portal audience="clinic" view="dashboard"/>;
+ if(requested && !space)return <div className="page-narrow card panel"><Banner kind="error">{t("missingClinic")}</Banner>
+    <a className="btn btn-secondary" href="/clinic">{t("home")}</a></div>;
+ if(!space)return <Phase02Portal audience="clinic" view="dashboard"/>;
+ if(space.role==="owner")return <Phase02Portal audience="clinic" view="dashboard"/>;
+ return <Shell ctx={ctx} space={space} active="home">
+  <section className="card panel"><h2>{t("ready")}</h2>
+    <div className="staff-role-summary">
+      <div><small className="muted">{t("clinics")}</small><strong>{space.clinicName}</strong></div>
+      <div><small className="muted">{t("role")}</small><strong>{t(space.role)}</strong></div>
+      <div><small className="muted">{t("status")}</small><Badge value="active"/></div>
+    </div>
+    <p className="muted">{t("schedulingLater")}</p><Permission/>
+    <div className="phase-actions">
+      {(space.role==="manager")?<a href={"/clinic/staff?clinic="+space.clinicId}
+        className="btn btn-primary">{t("staff")}</a>:<a href={"/clinic/staff/"+space.membershipId+"?clinic="+space.clinicId}
+        className="btn btn-primary">{t("myProfile")}</a>}
+      <a className="btn btn-secondary" href={"/clinic/settings/security?clinic="+space.clinicId}>{t("security")}</a>
+    </div>
+  </section>
+ </Shell>;
+}
+export function StaffPortal({view}:{view:"staff"|"security"|"detail"}){
+ return <Guard>{(ctx,space)=><StaffRoute ctx={ctx} space={space} view={view}/>}</Guard>;
+}
+function StaffRoute({ctx,space,view}:{ctx:Context,space:Space,view:"staff"|"security"|"detail"}){
+ const {t}=useLang();
+ if(view==="staff"&&!space.capabilities.includes("staff.read")){
+  return <Shell ctx={ctx} space={space} active="staff"><div className="card panel"><Banner kind="error">{t("notAllowed")}</Banner>
+   <a className="btn btn-secondary" href={"/clinic/staff/"+space.membershipId+"?clinic="+space.clinicId}>{t("myProfile")}</a></div></Shell>;
+ }
+ return <Shell ctx={ctx} space={space} active={view==="detail"?"myProfile":view==="staff"?"staff":"security"}>
+   {view==="staff"?<TeamHub ctx={ctx} space={space}/>:view==="security"?<SecurityPanel ctx={ctx} space={space}/>:
+     <StaffDetail ctx={ctx} space={space}/>}
+ </Shell>;
+}
+function TeamHub({ctx,space}:{ctx:Context,space:Space}){
+ const {t}=useLang();
+ const [tab,setTab]=useState("team");
+ useEffect(()=>{const requested=new URLSearchParams(location.search).get("tab");
+  if(["team","dentists","invitations"].includes(requested||""))setTab(requested!);},[]);
+ const url=(kind:string)=>"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab="+kind;
+ return <div><h2>{t("staff")}</h2>
+  <div className="phase-tabs" role="tablist" aria-label={t("staff")}>
+    {["team","dentists","invitations"].map(key=><a href={url(key)} className={"team-tab "+(tab===key?"current":"")}
+       key={key} role="tab" aria-selected={tab===key}>{t(key)}</a>)}
+  </div>
+  {tab==="team"?<TeamList space={space}/>:tab==="dentists"?<DentistList space={space}/>:
+    <Invitations space={space} ctx={ctx}/>}
+ </div>;
+}
+function TeamList({space}:{space:Space}){
+ const {t,date}=useLang();const {data,error,reload}=useData("/clinics/"+space.clinicId+"/team");
+ const [filter,setFilter]=useState("all");
+ if(error)return <ErrorBox error={error} retry={reload}/>;
+ if(!data)return <Busy/>;
+ const people=data.members.filter((m:any)=>filter==="all"||m.status===filter);
+ return <section className="card panel"><div className="staff-panel-heading">
+  <h2>{t("team")}</h2><Select label={t("filter")} value={filter} onChange={setFilter}
+  options={["all","active","suspended","revoked"].map(value=>({value,label:t(value)}))}/></div>
+  {!people.length?<Empty text={t("noStaff")}/>:<div className="staff-scroll">
+   <table className="staff-table"><thead><tr><th>{t("name")}</th><th>{t("role")}</th>
+    <th>{t("status")}</th><th>{t("joinedOn")}</th><th>{t("verification")}</th></tr></thead>
+    <tbody>{people.map((m:any)=><tr key={m.id}><td>
+      <a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{m.name}</a>
+      <div className="muted staff-small" dir="ltr">{m.email}</div></td>
+      <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
+      <td>{date(m.joinedAt)}</td><td>{m.mfaEnabled?t("on"):t("off")}</td></tr>)}</tbody>
+   </table></div>}
+  <div className="phase-actions"><a className="btn btn-primary" href={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}>
+    {t("invite")}</a></div>
+ </section>;
+}
+function DentistList({space}:{space:Space}){
+ const {t}=useLang();const {data,error,reload}=useData("/clinics/"+space.clinicId+"/dentists");
+ if(error)return <ErrorBox error={error} retry={reload}/>;
+ if(!data)return <Busy/>;
+ return <section className="card panel"><h2>{t("dentists")}</h2>
+  {!data.dentists.length?<Empty text={t("noDentists")}/>:<div className="staff-dentist-grid">
+    {data.dentists.map((m:any)=><article key={m.id} className="staff-dentist-card">
+      <div className="staff-dentist-avatar">{m.name?.slice(0,1)}</div>
+      <div className="staff-dentist-info"><h3>{m.draft?.displayName||m.name}</h3>
+      <p>{m.draft?.specialty||t("pendingReview")}</p>
+      <Badge value={m.status}/><p className="muted staff-small">{t("notPublic")}</p>
+      <a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{t("myProfile")} ›</a></div>
+    </article>)}</div>}
+  <div className="phase-actions"><a className="btn btn-secondary" href={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}>
+    {t("invite")}</a></div>
+ </section>;
+}
