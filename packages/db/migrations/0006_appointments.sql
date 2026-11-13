@@ -1,5 +1,10 @@
 -- Phase 06: private clinic appointments. PostgreSQL is the concurrency authority.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
+-- Composite keys enforce same-clinic references even if IDs are guessed.
+CREATE UNIQUE INDEX IF NOT EXISTS clinic_memberships_tenant_id_uq ON clinic_memberships(clinic_id,id);
+CREATE UNIQUE INDEX IF NOT EXISTS clinic_patients_tenant_id_uq ON clinic_patients(clinic_id,id);
+CREATE UNIQUE INDEX IF NOT EXISTS clinic_services_tenant_id_uq ON clinic_services(clinic_id,id);
+CREATE UNIQUE INDEX IF NOT EXISTS clinic_resources_tenant_id_uq ON clinic_resources(clinic_id,id);
 CREATE TABLE clinic_appointments (
  id text PRIMARY KEY, clinic_id text NOT NULL REFERENCES clinics(id),
  patient_id text NOT NULL REFERENCES clinic_patients(id),
