@@ -791,3 +791,126 @@ function slotDate(date:string,time:string){
  const m=Number(time.slice(0,2))*60+Number(time.slice(3));
  return Date.parse(date+"T00:00:00Z")+(m-270)*60000;
 }
+
+
+function Details({space}:{space:Space}){
+ const {t,format}=useWords();
+ const [id,setId]=useState<string|null>(null);
+ useEffect(()=>{const parts=location.pathname.split("/").filter(Boolean);
+  const idx=parts.indexOf("appointments");
+  setId(parts[idx+1]||null);
+ },[]);
+ const base=url(space.clinicId);
+ const {data,error,retry}=useData(id?base+"/appointments/"+id:null);
+ const [mode,setMode]=useState<"view"|"move">("view");
+ const [saving,setSaving]=useState(false),[reason,setReason]=useState("");
+ const [action,setAction]=useState(""),[problem,setProblem]=useState(""),[success,setSuccess]=useState("");
+ const {data:hours}=useData(base?null:null);
+ const [doctors,setDoctors]=useState<Doctor[]>([]),[chairs,setChairs]=useState<Resource[]>([]);
+ useEffect(()=>{Promise.all([ops(base+"/hours"),ops(base+"/resources")])
+   .then(([h,c])=>{setDoctors(h.clinicians);setChairs(c.resources);}).catch(()=>{});},[base]);
+ if(error)return <Warning message={error} retry={retry}/>;
+ if(!data)return <Busy/>;
+ const a:Booking={...data.appointment,patient:data.patient};
+ const canClinical=space.role==="dentist"||
+  space.clinicianEnabled&&["owner","manager"].includes(space.role);
+ const frontDesk=space.role!=="dentist";
+ const own=space.role!=="dentist"||space.membershipId===a.providerMembershipId;
+ const allowed=[
+  ...(a.status==="confirmed"&&frontDesk?["arrived","no_show","cancelled"]:[]),
+  ...(a.status==="arrived"&&canClinical&&own?["in_treatment"]:[]),
+  ...(a.status==="arrived"&&frontDesk?["cancelled"]:[]),
+  ...(a.status==="in_treatment"&&canClinical&&own?["completed"]:[])
+ ];
+ async function changeStatus(status:string){
+  if(!allowed.includes(status))return;
+  if(["cancelled","no_show"].includes(status)&&action!==status){
+   setAction(status);setReason("");return;
+  }
+  setSaving(true);setProblem("");setSuccess("");
+  try{
+   await request(base+"/appointments/"+a.id+"/status","PATCH",{
+    status,revision:a.revision,...(["cancelled","no_show"].includes(status)?{reason}: {})
+   });
+   setAction("");setReason("");setSuccess(t("actionSuccess"));retry();
+  }catch(e:any){setProblem(e.message);}
+  finally{setSaving(false);}
+ }
+ if(mode==="move")return <div className="ph06-stack">
+  <div className="ph06-detail-back"><button className="btn btn-secondary" onClick={()=>setMode("view")}>
+   ← {t("back")}</button><span>{t("rescheduleTitle")}</span></div>
+  <BookingEditor space={space} existing={a} close={()=>setMode("view")} afterSave={()=>{setMode("view");retry();}}/>
+ </div>;
+ return <div className="ph06-stack">
+  <div className="ph06-detail-back"><a href={href(space.clinicId,"calendar",localDate(a.startAt))}
+   className="btn btn-secondary">← {t("calendar")}</a>
+   <span>{t("appointmentID")}: <bdi dir="ltr">{a.id.slice(0,8)}</bdi></span></div>
+  <section className="card ph06-detail">
+   <div className="ph06-detail-header"><div><span className="ph06-eyebrow">{t("details")}</span>
+    <h2>{a.patient?.preferredName||"—"} {a.patient?.familyName||""}</h2>
+    <p><bdi dir="ltr">{a.patient?.patientNumber||"—"}</bdi> · {t("service")}: {a.serviceName}</p></div>
+    <Status value={a.status}/>
+   </div>
+   <div className="ph06-detail-highlights">
+    <div><span>◷</span><small>{t("date")} / {t("time")}</small>
+     <strong>{format(a.startAt,{weekday:"long",month:"short",day:"numeric"})}</strong>
+     <bdi dir="ltr">{localTime(a.startAt)} – {localTime(a.endAt)}</bdi></div>
+    <div><span>◎</span><small>{t("dentist")}</small>
+     <strong>{doctors.find(d=>d.membershipId===a.providerMembershipId)?.name||t("dentist")}</strong></div>
+    <div><span>▦</span><small>{t("chair")}</small>
+     <strong>{chairs.find(x=>x.id===a.resourceId)?.label||"—"}</strong></div>
+    <div><span>✦</span><small>{t("price")}</small>
+     <strong><bdi dir="ltr">{a.priceSnapshotAfn.toLocaleString("en-US")}</bdi> AFN</strong></div>
+   </div>
+   <div className="ph06-detail-body">
+    <div className="ph06-detail-info">
+     <h3>{t("overview")||t("details")}</h3>
+     <dl><div><dt>{t("patient")}</dt><dd>
+       <a className="ph06-inline" href={"/clinic/patients/"+a.patientId+"?clinic="+space.clinicId}>
+       {t("viewPatient")} ↗</a></dd></div>
+       <div><dt>{t("source")}</dt><dd>{t(a.source)}</dd></div>
+       <div><dt>{t("duration")}</dt><dd>{a.durationMinutes}+{a.bufferMinutes} {t("minute")}</dd></div>
+       <div><dt>{t("created")}</dt><dd>{format(a.createdAt)}</dd></div>
+       <div><dt>{t("arrival")}</dt><dd>{a.checkedInAt?format(a.checkedInAt,{hour:"2-digit",minute:"2-digit"}):"—"}</dd></div>
+       <div><dt>{t("note")}</dt><dd>{a.adminNote||"—"}</dd></div>
+     </dl>
+     <InlineAlert>{t("privacy")}</InlineAlert>
+    </div>
+    <div className="ph06-detail-actions">
+     <h3>{t("quickActions")}</h3>
+     {a.status==="confirmed"&&<button className="btn btn-secondary" onClick={()=>setMode("move")}>
+      ◷ {t("reschedule")}</button>}
+     {allowed.filter(s=>!["cancelled","no_show"].includes(s)).map(status=><button
+      key={status} className="btn btn-primary" disabled={saving} onClick={()=>changeStatus(status)}>
+      {t(status==="arrived"?"checkIn":status==="in_treatment"?"startCare":"completeAction")}</button>)}
+     {allowed.filter(s=>["cancelled","no_show"].includes(s)).map(status=><button
+      key={status} className="btn btn-secondary" disabled={saving} onClick={()=>changeStatus(status)}>
+       {t(status==="cancelled"?"cancel":"markNoShow")}</button>)}
+     {action&&<div className="ph06-detail-reason">
+      <Input label={t(action==="no_show"?"noShowReason":"cancelledReason")}
+       value={reason} onChange={setReason} placeholder={t("reason")}/>
+      <button className="btn btn-primary" disabled={saving||reason.trim().length<10}
+       onClick={()=>changeStatus(action)}>{t("confirm")}</button>
+      <button className="btn btn-quiet" onClick={()=>setAction("")}>{t("dismiss")}</button>
+     </div>}
+     {problem&&<InlineAlert kind="error">{problem==="STALE_APPOINTMENT_REVISION"?t("stale"):
+      problem==="APPOINTMENT_SLOT_CONFLICT"?t("timeConflict"):problem}</InlineAlert>}
+     {success&&<InlineAlert kind="success">{success}</InlineAlert>}
+    </div>
+   </div>
+  </section>
+  <section className="card ph06-timeline-panel">
+   <h2>{t("timeline")}</h2>
+   <div className="ph06-events">{data.events?.map((ev:any)=><article key={ev.id}>
+    <span className="ph06-event-dot" aria-hidden="true"/>
+    <div><strong>{t(ev.toStatus||ev.action)}</strong>
+     <small>{format(ev.createdAt,{hour:"2-digit",minute:"2-digit"})}</small>
+     {ev.reason&&<p>{ev.reason}</p>}
+     {ev.action==="rescheduled"&&<p>
+      <bdi dir="ltr">{localTime(ev.previousStartAt)}</bdi> →
+      <bdi dir="ltr">{localTime(ev.nextStartAt)}</bdi></p>}
+    </div>
+   </article>)}</div>
+  </section>
+ </div>;
+}
