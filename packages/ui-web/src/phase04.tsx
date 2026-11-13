@@ -719,7 +719,7 @@ function WeekEditor({space,kind,target,existing,updated}:{space:Space;kind:"clin
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[success,setSuccess]=useState("");
  const [dirty,setDirty]=useState(false);
  useEffect(()=>{setDays(suggestedWeek(existing,kind));setDirty(false);setProblem("");},[existing,kind]);
- const hasSaved=existing.some(d=>d.isOpen||d.revision>0);
+ const hasSaved=existing.some(d=>d.isOpen||(d.revision??0)>0);
  const allowed=canManage(space);
  const amend=(weekday:number,change:Partial<Shift>)=>{
   setDays(state=>state.map(d=>d.weekday===weekday?{...d,...change}:d));
