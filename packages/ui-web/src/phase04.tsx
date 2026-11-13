@@ -410,3 +410,168 @@ export function OperationsPortal({view}:{view:Page}){
   </div>
  </Shell>;
 }
+
+
+const emptyService={name:"",category:"Consultation",description:"",
+ durationMinutes:30,preparationMinutes:0,basePriceAfn:0,
+ requiresChair:true,publicBooking:false,active:true};
+function ServiceEditor({space,service,close,done}:{space:Space;service:Service|null;
+ close:()=>void;done:()=>void}){
+ const {t}=useWords();
+ const [form,setForm]=useState({...emptyService,...(service||{})});
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const put=(key:string,value:unknown)=>setForm(o=>({...o,[key]:value}));
+ async function submit(event:FormEvent){
+  event.preventDefault();setError("");setBusy(true);
+  try{
+   const cid=cPath(space.clinicId);
+   const payload={...form,name:form.name.trim(),category:form.category.trim(),
+    description:form.description||null};
+   if(service)await OpsApi(cid+"/services/"+service.id,"PATCH",{...payload,version:service.version});
+   else await OpsApi(cid+"/services","POST",payload);
+   done();close();
+  }catch(e:any){setError(e.message||"NETWORK_ERROR");}
+  finally{setBusy(false);}
+ }
+ return <div className="phase04-drawer-backdrop" onMouseDown={e=>{
+   if(e.target===e.currentTarget)close();}}>
+  <aside role="dialog" aria-modal="true" aria-labelledby="phase04-service-editor"
+   className="phase04-drawer">
+   <div className="phase04-drawer-head"><div>
+    <span className="phase04-eyebrow">{t("servicesTab")} / {t("settings")}</span>
+    <h2 id="phase04-service-editor">{t(service?"editService":"addService")}</h2></div>
+    <button type="button" className="phase04-icon-button" onClick={close} aria-label={t("close")}>×</button>
+   </div>
+   <form className="phase04-editor-form" onSubmit={submit}>
+    {service&&<div className="phase04-version-banner">
+     <span>{t("current")} · {t("version")} {service.version}</span>
+     <Pill active={service.active}>{activeLabel(t,service.active)}</Pill></div>}
+    <div className="phase04-form-grid">
+     <FormField label={t("serviceName")} value={form.name} required
+      onChange={v=>put("name",v)} max={100}/>
+     <FormField label={t("category")} value={form.category} required
+      onChange={v=>put("category",v)}/>
+    </div>
+    <label className="phase04-field"><span>{t("description")}</span>
+     <textarea rows={3} maxLength={700} value={form.description||""}
+      onChange={e=>put("description",e.target.value)}/></label>
+    <div className="phase04-form-grid">
+     <FormField label={t("duration")} type="number" min={5} max={240} step={5}
+      required value={form.durationMinutes} onChange={v=>put("durationMinutes",Number(v))}/>
+     <FormField label={t("buffer")} type="number" min={0} max={120} step={5}
+      required value={form.preparationMinutes} onChange={v=>put("preparationMinutes",Number(v))}/>
+     <FormField label={t("price")} type="number" min={0} max={10000000} step={1}
+      required value={form.basePriceAfn} onChange={v=>put("basePriceAfn",Number(v))}/>
+    </div>
+    <p className="phase04-help">{t("durationHelp")} {t("priceHelp")}</p>
+    <div className="phase04-switch-box">
+     <Switch label={t("requiresChair")} checked={form.requiresChair} onChange={v=>put("requiresChair",v)}/>
+     <Switch label={t("publicBooking")} checked={form.publicBooking} onChange={v=>put("publicBooking",v)}/>
+     <Switch label={t("active")} checked={form.active} onChange={v=>put("active",v)}/>
+    </div>
+    <Alert>{t("neverRetroactive")} {t("publicHelp")}</Alert>
+    {error&&<Alert kind="error">{error.includes("VERSION")?t("stale"):
+      error==="DUPLICATE_SERVICE_OR_RESOURCE"?t("codeTaken"):error}</Alert>}
+    <div className="phase04-drawer-footer">
+     <button type="button" className="btn btn-secondary" onClick={close}>{t("cancel")}</button>
+     <button className="btn btn-primary" disabled={busy}>{busy?t("saving"):t(service?"save":"create")}</button>
+    </div>
+   </form>
+  </aside>
+ </div>;
+}
+function ServicesPanel({space,onChange}:{space:Space;onChange:()=>void}){
+ const {t,date}=useWords();
+ const base=cPath(space.clinicId);
+ const {data,error,reload}=useResource(base+"/services");
+ const [search,setSearch]=useState(""),[status,setStatus]=useState("all");
+ const [category,setCategory]=useState("all");
+ const [editing,setEditing]=useState<Service|null|undefined>(undefined);
+ const [showHistory,setShowHistory]=useState(false),[selectedHistory,setSelectedHistory]=useState<string>("");
+ const {data:versions,error:versionError,reload:reloadVersions}=useResource(showHistory&&selectedHistory?
+  base+"/services/"+selectedHistory+"/versions":null);
+ const items:Service[]=data?.services||[];
+ const categories=Array.from(new Set(items.map(x=>x.category))).sort();
+ const visible=items.filter(x=>(status==="all"||x.active===(status==="active"))&&
+  (category==="all"||x.category===category)&&
+  (x.name+" "+x.category+" "+(x.description||"")).toLocaleLowerCase().includes(search.toLocaleLowerCase().trim()));
+ const active=items.filter(x=>x.active).length;
+ const refresh=()=>{reload();reloadVersions();onChange();};
+ return <section className="phase04-panel card">
+  <div className="phase04-panel-head"><div><span className="phase04-eyebrow">01 · {t("servicesTab")}</span>
+   <h2>{t("services")}</h2><p>{t("servicesIntro")}</p></div>
+   {canManage(space)&&<button className="btn btn-primary" onClick={()=>setEditing(null)}>+ {t("addService")}</button>}
+  </div>
+  <div className="phase04-inner-tabs" role="tablist" aria-label={t("services")}>
+   <button role="tab" aria-selected={!showHistory} className={!showHistory?"selected":""}
+    onClick={()=>setShowHistory(false)}>▤ {t("servicesTab")} <span className="phase04-count">{items.length}</span></button>
+   <button role="tab" aria-selected={showHistory} className={showHistory?"selected":""}
+    onClick={()=>{setShowHistory(true);setSelectedHistory(x=>x||items[0]?.id||"");}}>
+    ◷ {t("versionsTab")}</button>
+  </div>
+  {showHistory?<div className="phase04-history">
+    <div className="phase04-filters">
+     <Select label={t("selectService")} value={selectedHistory}
+      onChange={setSelectedHistory} options={[{value:"",label:t("selectService")},
+       ...items.map(x=>({value:x.id,label:x.name}))]}/>
+     <button className="btn btn-secondary" onClick={reloadVersions}>{t("refresh")}</button>
+    </div>
+    {!selectedHistory?<div className="phase04-empty"><h3>{t("noneServices")}</h3></div>:
+     versionError?<ErrorBox error={versionError} retry={reloadVersions}/>:
+     !versions?<Busy/>:<div className="phase04-timeline">
+      {versions.versions.map((v:any,index:number)=><article className="phase04-history-card" key={v.version}>
+       <span className="phase04-history-marker" aria-hidden="true"/>
+       <div><div className="phase04-between"><strong>{t("version")} {v.version} {index===0?" · "+t("current"):""}</strong>
+        <span>{date(v.changedAt)}</span></div>
+        <p>{v.name} · {v.durationMinutes} {t("minutes")} + {v.preparationMinutes} {t("buffer")}</p>
+        <strong><bdi dir="ltr">{v.basePriceAfn.toLocaleString("en-US")}</bdi> AFN</strong>
+        <Pill active={v.active}>{activeLabel(t,v.active)}</Pill>
+       </div>
+      </article>)}
+     </div>}
+    <Alert>{t("neverRetroactive")}</Alert>
+   </div>:<>
+    <div className="phase04-toolbar">
+     <div className="phase04-search"><span aria-hidden="true">⌕</span><input type="search"
+      value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("search")}
+      aria-label={t("search")}/></div>
+     <Select label={t("category")} value={category} onChange={setCategory}
+      options={[{value:"all",label:t("allCategories")},...categories.map(x=>({value:x,label:x}))]}/>
+     <Select label={t("status")} value={status} onChange={setStatus}
+      options={[{value:"all",label:t("allStatuses")},{value:"active",label:t("active")},
+       {value:"inactive",label:t("inactive")}]}/>
+    </div>
+    <div className="phase04-list-meta"><span>{active} {t("activeServices")} · {visible.length} / {items.length}</span>
+      <span>{t("clickToEdit")}</span></div>
+    {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
+     visible.length===0?<div className="phase04-empty">
+       <div className="phase04-empty-icon">▤</div>
+       <h3>{items.length?t("searchEmpty"):t("noneServices")}</h3>
+       <p>{items.length?t("clearFilters"):t("noneServicesHelp")}</p>
+       {items.length?<button className="btn btn-secondary" onClick={()=>{setSearch("");setCategory("all");setStatus("all");}}>
+        {t("clearFilters")}</button>:canManage(space)&&<button className="btn btn-primary"
+        onClick={()=>setEditing(null)}>+ {t("createFirst")}</button>}
+      </div>:
+      <div className="phase04-table-scroll"><table className="phase04-table">
+       <thead><tr><th>{t("serviceName")}</th><th>{t("duration")}</th>
+        <th>{t("price")}</th><th>{t("requiresChair")}</th><th>{t("status")}</th>
+        <th>{t("action")}</th></tr></thead>
+       <tbody>{visible.map(s=><tr key={s.id}>
+        <td><div className="phase04-title-cell"><span className="phase04-service-icon">✚</span>
+          <div><strong>{s.name}</strong><small>{s.category} · v{s.version}</small></div></div></td>
+        <td><bdi dir="ltr">{s.durationMinutes}</bdi> {t("minutes")}
+          {s.preparationMinutes>0&&<small className="phase04-secondary-line">+ {s.preparationMinutes} {t("buffer")}</small>}</td>
+        <td className="phase04-price"><bdi dir="ltr">{s.basePriceAfn.toLocaleString("en-US")}</bdi> AFN</td>
+        <td>{s.requiresChair?"✓":"—"}</td><td><Pill active={s.active}>{activeLabel(t,s.active)}</Pill></td>
+        <td>{canManage(space)?<button className="phase04-inline-action"
+         onClick={()=>setEditing(s)}>{t("edit")} ↗</button>:
+         <span className="muted">{t("readOnly")}</span>}</td>
+       </tr>)}</tbody></table></div>}
+    <div className="phase04-panel-footer"><span>{t("neverRetroactive")}</span>
+      <a href={href(space.clinicId,"hours","preview")} className="phase04-inline-action">
+       {t("preview")} ↗</a></div>
+   </>}
+  {editing!==undefined&&<ServiceEditor space={space} service={editing}
+   close={()=>setEditing(undefined)} done={refresh}/>}
+ </section>;
+}
