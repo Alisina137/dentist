@@ -10,6 +10,7 @@ import { auth } from "./auth.js";
 import { devEmailVerificationDisabled, permitsUnverifiedEmail } from "./email-policy.js";
 import { phase02Router } from "./phase02.js";
 import { phase03Router } from "./phase03.js";
+import { patientRegistryRouter } from "./patient-registry.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -27,6 +28,9 @@ app.use((_req, res, next) => {
 });
 // Better Auth needs the original raw request, before the JSON parser.
 app.all("/api/auth/*", toNodeHandler(auth));
+// Only guarded registry imports accept CSV-sized JSON bodies.
+// All other endpoints keep the 16 KiB body limit.
+app.use("/v1/registry", express.json({limit:"1.5mb"}), patientRegistryRouter());
 app.use(express.json({ limit: "16kb" }));
 app.get("/health", (_req, res) => res.json({ status: "up" }));
 app.get("/ready", async (_req, res) => {
@@ -38,7 +42,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH03", marketplaceAvailable: false,
+  product: "DandanLink", release: "PH05", marketplaceAvailable: false,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));
 

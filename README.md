@@ -186,3 +186,14 @@ verification checks. Never enable this for real patients or a public server.
 Email-based password-reset and staff invitations still require SMTP or the
 restricted localhost development email-link logger. Skipping email verification
 does not remove those separate requirements.
+
+## PH05 — Clinic patient records
+Open http://localhost:3001/clinic/patients with a clinic owner, manager,
+dentist or receptionist account. Owners/managers can also import approved CSV.
+Patient overview is private to the clinic; medical intake requires qualified
+staff. No appointments, dental chart, visits or patient billing in this release.
+Run pnpm install --frozen-lockfile, pnpm db:migrate, then pnpm dev.
+The database migration is 0005_patient_registry.sql. PH04 is a separate
+unreleased phase and is not a prerequisite for this private registry.
+Do not enter real patient records while development email verification is disabled.
+Details and limitations: docs/PH05-ACCEPTANCE.md.
