@@ -287,11 +287,11 @@ function OrganizationFields({form,setForm}:{form:any,setForm:(x:any)=>void}){
     <Input title={l("license")} value={form.licenseNumber} change={change("licenseNumber")}/>
   </div>;
 }
-function PlanCards({plans,selected,onSelect}:{plans:any[],selected:string,onSelect:(s:string)=>void}){
+function PlanCards({plans,selected,onSelect,readonly=false}:{plans:any[],selected:string,onSelect:(s:string)=>void,readonly?:boolean}){
   const l=useText();
   if(!plans.length)return <InlineAlert kind="warning">{l("noPlans")}</InlineAlert>;
   return <div className="phase-plan-cards">{plans.map((p:any)=><label key={p.id} className={"card phase-plan-card"+(selected===p.id?" phase-selected":"")}>
-    <input type="radio" name="selected-plan" value={p.id} checked={selected===p.id} onChange={()=>onSelect(p.id)}/>
+    {!readonly&&<input type="radio" name="selected-plan" value={p.id} checked={selected===p.id} onChange={()=>onSelect(p.id)}/>}
     <strong>{p.label} · {l(p.billingPeriod)}</strong><span className="phase-price">{currency(p.priceAfn)}</span>
     <span className="muted">{p.staffLimit} {l("staff")} · {p.branchLimit} {l("branches")}</span>
     <span className="muted">{p.trialDays} {l("trial")} · {p.graceDays} {l("grace")}</span>
@@ -707,7 +707,7 @@ export function PublicPlans({mode="pricing"}:{mode?:"pricing"|"for-clinics"}){
  const {data,error,refresh}=useResource("/public/plans");
  return <div className="page-narrow phase-pricing"><h1>{mode==="pricing"?l("plans"):l("clinic")}</h1>
   <p className="lead">{l("features")}</p>
-  {error?<DataError message={error} retry={refresh}/>:data?<PlanCards plans={data.plans||[]} selected="" onSelect={()=>{}}/>:
+  {error?<DataError message={error} retry={refresh}/>:data?<PlanCards readonly plans={data.plans||[]} selected="" onSelect={()=>{}}/>:
     <InlineAlert>{l("loading")}</InlineAlert>}
   <p className="phase-actions"><a href="/clinic/signup" className="btn btn-primary">{l("newClinic")}</a>
    <a href="/clinic/login" className="btn btn-secondary">{l("continue")}</a></p>
