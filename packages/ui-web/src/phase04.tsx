@@ -332,7 +332,7 @@ function Pill({active,children}:{active:boolean,children:ReactNode}){
  return <span className={"phase04-pill "+(active?"phase04-pill-on":"phase04-pill-off")}>
   <span className="phase04-dot"/> {children}</span>;
 }
-function FormField({label,value,onChange,required=false,type="text",min,max,step,placeholder,disabled=false}:{
+function FormField({label,value,onChange,required=false,type="text",min,max,step,maxLength,placeholder,disabled=false}:{
  label:string;value:string|number;onChange:(s:string)=>void;required?:boolean;type?:string;
  min?:number;max?:number;step?:number;maxLength?:number;placeholder?:string;disabled?:boolean}){
  return <label className="phase04-field"><span>{label}{required?" *":""}</span>
