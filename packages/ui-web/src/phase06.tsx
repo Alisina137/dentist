@@ -576,3 +576,219 @@ function Queue({space}:{space:Space}){
     <p>{t("privacy")}</p></div>
  </div>;
 }
+
+
+function BookingEditor({space,existing,close,afterSave}:{
+ space:Space;existing?:Booking;close?:()=>void;afterSave?:()=>void}){
+ const {t,format}=useWords();const base=url(space.clinicId);
+ const [patientQuery,setPatientQuery]=useState(""),[patientId,setPatientId]=useState(existing?.patientId||"");
+ const [patients,setPatients]=useState<{id:string;preferredName:string;familyName:string|null;patientNumber:string}[]>([]);
+ const [service,setService]=useState(existing?.serviceId||""),[provider,setProvider]=useState(existing?.providerMembershipId||"");
+ const [resource,setResource]=useState(existing?.resourceId||""),[date,setDate]=useState(()=>{
+   if(existing)return localDate(existing.startAt);
+   if(typeof window!=="undefined"){
+    const d=new URLSearchParams(window.location.search).get("date");
+    if(d&&/^\d{4}-\d\d-\d\d$/.test(d))return d;
+   }
+   return todayKabul();
+ });
+ const [start,setStart]=useState(existing?localTime(existing.startAt):"");
+ const [source,setSource]=useState(existing?.source||"staff"),[note,setNote]=useState(existing?.adminNote||"");
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState("");
+ const [key,setKey]=useState(()=>crypto.randomUUID());
+ const [catalog,setCatalog]=useState<{services:Service[];doctors:Doctor[];resources:Resource[]}>({
+  services:[],doctors:[],resources:[]});
+ const [loading,setLoading]=useState(true),[catalogError,setCatalogError]=useState("");
+ const [slots,setSlots]=useState<{start:string;end:string;resourceId:string|null}[]>([]);
+ const [previewError,setPreviewError]=useState(""),[waitingSlots,setWaitingSlots]=useState(false);
+ const [booked,setBooked]=useState<Booking[]>([]);
+ const [patientLoading,setPatientLoading]=useState(false);
+ useEffect(()=>{
+  let alive=true;
+  Promise.all([ops(base+"/services"),ops(base+"/resources"),ops(base+"/hours")])
+   .then(([s,r,h])=>{if(alive)setCatalog({
+    services:s.services,resources:r.resources,doctors:h.clinicians});})
+   .catch(e=>{if(alive)setCatalogError(e.message);})
+   .finally(()=>{if(alive)setLoading(false);});
+  return()=>{alive=false;};
+ },[base]);
+ const selected=catalog.services.find(s=>s.id===service);
+ const doctors=space.role==="dentist"?catalog.doctors.filter(d=>d.membershipId===space.membershipId):catalog.doctors;
+ const chairs=catalog.resources.filter(r=>r.kind==="chair"&&r.active);
+ useEffect(()=>{
+  if(!provider&&doctors.length)setProvider(doctors[0].membershipId);
+  if(!service&&catalog.services.some(s=>s.active))
+   setService(catalog.services.find(s=>s.active)!.id);
+ },[catalog,space.role]);
+ useEffect(()=>{
+  if(!patientQuery.trim()||patientQuery.trim().length<2){setPatients([]);return;}
+  let active=true;setPatientLoading(true);
+  const timer=setTimeout(()=>{
+   request(base+"/patients/search?q="+encodeURIComponent(patientQuery.trim()))
+    .then(v=>{if(active)setPatients(v.patients||[]);})
+    .catch(()=>{if(active)setPatients([]);})
+    .finally(()=>{if(active)setPatientLoading(false);});
+  },300);
+  return()=>{active=false;clearTimeout(timer);};
+ },[patientQuery,base]);
+ useEffect(()=>{
+  if(!service||!provider||!date||selected?.requiresChair&&!resource)return;
+  let mounted=true;setWaitingSlots(true);setPreviewError("");
+  const query=new URLSearchParams({date,serviceId:service,providerId:provider,
+   ...(selected?.requiresChair?{resourceId:resource}:{})});
+  Promise.all([
+   ops(base+"/availability/preview?"+query.toString()),
+   request(base+"/calendar?"+new URLSearchParams({from:date,to:date}).toString())
+  ]).then(([available,bookings])=>{
+   if(mounted){setSlots(available.slots||[]);setBooked(bookings.appointments||[]);}
+  }).catch(e=>{if(mounted){setSlots([]);setPreviewError(e.message);}})
+   .finally(()=>{if(mounted)setWaitingSlots(false);});
+  return()=>{mounted=false;};
+ },[base,service,provider,resource,date,selected?.requiresChair]);
+ function resetSlot(){
+  setStart("");setSlots([]);setBooked([]);setKey(crypto.randomUUID());setError("");setDone("");
+ }
+ const validSlots=slots.filter(slot=>
+  !booked.some(a=>a.id!==existing?.id&&live(a.status)&&(
+   a.providerMembershipId===provider||slot.resourceId&&a.resourceId===slot.resourceId
+  )&&(Date.parse(a.startAt)<Date.parse(new Date(
+      Date.parse(slotDate(date,slot.end))).toISOString()) &&
+      Date.parse(a.endAt)>Date.parse(slotDate(date,slot.start)))) );
+ // The client-side status filter is only a convenience. The DB exclusion constraint
+ // and fresh PH04 preview are authoritative, including competing users.
+ async function submit(event:FormEvent){
+  event.preventDefault();setError("");setDone("");
+  if(!patientId){setError("PATIENT_REQUIRED");return;}
+  if(!service||!provider||!start){setError("SLOT_REQUIRED");return;}
+  setBusy(true);
+  try{
+   const payload={patientId,serviceId:service,providerId:provider,
+    resourceId:selected?.requiresChair?resource:null,date,start,source,
+    adminNote:note||null,idempotencyKey:key};
+   if(existing){
+    await request(base+"/appointments/"+existing.id+"/reschedule","PATCH",{
+     revision:existing.revision,serviceId:service,providerId:provider,
+     resourceId:payload.resourceId,date,start
+    });
+    setDone(t("changed"));
+    if(afterSave)afterSave();else window.location.assign("/clinic/appointments/"+existing.id+
+     "?clinic="+encodeURIComponent(space.clinicId));
+   }else{
+    const created=await request(base+"/appointments","POST",payload);
+    setDone(t("saved"));
+    if(afterSave)afterSave();else window.location.assign("/clinic/appointments/"+created.appointment.id+
+     "?clinic="+encodeURIComponent(space.clinicId));
+   }
+  }catch(e:any){
+   setError(e.message);
+   if(["SLOT_NOT_AVAILABLE","APPOINTMENT_SLOT_CONFLICT","STALE_APPOINTMENT_REVISION"].includes(e.message)){
+    setStart("");setKey(crypto.randomUUID());
+    const query=new URLSearchParams({date,serviceId:service,providerId:provider,
+     ...(selected?.requiresChair?{resourceId:resource}:{})});
+    Promise.all([ops(base+"/availability/preview?"+query),request(base+"/calendar?from="+date+"&to="+date)])
+      .then(([available,calendar])=>{setSlots(available.slots);setBooked(calendar.appointments);}).catch(()=>{});
+   }
+  }finally{setBusy(false);}
+ }
+ return <section className="card ph06-editor">
+  <div className="ph06-form-header"><div><span className="ph06-eyebrow">
+   {t(existing?"rescheduleTitle":"newAppointment")}</span>
+   <h2>{t(existing?"rescheduleTitle":"help")}</h2><p>{t("patientHint")}</p></div>
+   {close&&<MiniButton onClick={close}>{t("close")} ×</MiniButton>}
+  </div>
+  {loading?<Busy/>:catalogError?<Warning message={catalogError} retry={()=>location.reload()}/>:
+   <form onSubmit={submit} className="ph06-editor-grid">
+    <div className="ph06-editor-main">
+     <div className="ph06-form-step"><span>01</span><h3>{t("patient")}</h3></div>
+     {existing?<div className="ph06-selected-patient">
+      <strong>{existing.patient?.preferredName||"—"} {existing.patient?.familyName||""}</strong>
+      <span><bdi dir="ltr">{existing.patient?.patientNumber}</bdi></span></div>:
+      <>
+       <Input label={t("patientSearch")} value={patientQuery} onChange={setPatientQuery}
+        placeholder={t("choosePatient")}/>
+       {patientLoading&&<p className="muted">{t("loading")}</p>}
+       {patients.length>0&&<div className="ph06-patient-results" role="listbox">
+        {patients.map(p=><button key={p.id} type="button" role="option"
+         aria-selected={patientId===p.id} onClick={()=>{setPatientId(p.id);setPatientQuery(p.preferredName+
+           " "+(p.familyName||""));setPatients([]);setKey(crypto.randomUUID());}}>
+         <strong>{p.preferredName} {p.familyName||""}</strong><bdi dir="ltr">{p.patientNumber}</bdi>
+        </button>)}
+       </div>}
+       {patientId?<div className="ph06-selected-patient"><span>✓ {t("patient")} {t("selected")}</span>
+        <button type="button" className="ph06-inline" onClick={()=>{setPatientId("");setPatientQuery("");}}>
+         {t("changeDate")}</button></div>:
+        <div className="ph06-patient-hint">{t("patientRequired")} 
+         <a href={"/clinic/patients/new?clinic="+space.clinicId}>{t("newPatient")} ↗</a></div>}
+      </>}
+     <div className="ph06-form-step"><span>02</span><h3>{t("service")} & {t("dentist")}</h3></div>
+     <div className="ph06-two-fields">
+      <Select label={t("chooseService")} value={service} onChange={v=>{setService(v);resetSlot();}}
+       options={[{value:"",label:t("chooseService")},...catalog.services.filter(s=>s.active)
+        .map(s=>({value:s.id,label:s.name+" · "+s.durationMinutes+" "+t("minute")}))]}/>
+      <Select label={t("chooseDentist")} value={provider} onChange={v=>{setProvider(v);resetSlot();}}
+       options={[{value:"",label:t("chooseDentist")},...doctors.map(d=>({
+        value:d.membershipId,label:d.name}))]}/>
+     </div>
+     {selected&&<div className="ph06-service-details"><div><small>{t("duration")}</small>
+      <strong>{selected.durationMinutes+selected.preparationMinutes} {t("minute")}</strong></div>
+      <div><small>{t("price")}</small>
+       <strong><bdi dir="ltr">{selected.basePriceAfn.toLocaleString("en-US")}</bdi> AFN</strong></div>
+      <div><small>{t("chair")}</small><strong>{selected.requiresChair?t("needsChair"):t("notAvailable")}</strong></div></div>}
+     {selected?.requiresChair&&<Select label={t("chooseChair")} value={resource}
+      onChange={v=>{setResource(v);resetSlot();}} options={[{value:"",label:t("chooseChair")},
+       ...chairs.map(x=>({value:x.id,label:x.label+" · "+x.code}))]}/>}
+     <div className="ph06-form-step"><span>03</span><h3>{t("date")} & {t("time")}</h3></div>
+     <Input label={t("date")+" (Gregorian)"} type="date" value={date} required
+      onChange={v=>{setDate(v);resetSlot();}}/>
+     <div className="ph06-slot-box">
+      <div className="ph06-between"><strong>{t("availableSlots")}</strong>
+       <span>{validSlots.length} {t("available")}</span></div>
+      {previewError&&<InlineAlert kind="warning">{previewError==="PREVIEW_DATE_OUT_OF_RANGE"?
+       t("dateFuture"):previewError}</InlineAlert>}
+      {waitingSlots?<Busy/>:validSlots.length?<div className="ph06-slot-options">
+       {validSlots.slice(0,140).map(slot=><button key={slot.start+slot.resourceId} type="button"
+        className={start===slot.start?"selected":""} onClick={()=>{
+         setStart(slot.start);setKey(crypto.randomUUID());}}>
+         <bdi dir="ltr">{slot.start}</bdi>
+         <small><bdi dir="ltr">{slot.end}</bdi></small></button>)}
+      </div>:<div className="ph06-slot-empty">{t("noSlots")} · <a
+       href={"/clinic/settings/hours?clinic="+space.clinicId+"&tab=preview"}>{t("manageHours")} ↗</a></div>}
+     </div>
+     {!existing&&<>
+      <div className="ph06-form-step"><span>04</span><h3>{t("source")} & {t("note")}</h3></div>
+      <div className="ph06-two-fields"><Select label={t("source")} value={source}
+       onChange={v=>{setSource(v);setKey(crypto.randomUUID());}} options={[
+        {value:"staff",label:t("staff")},{value:"walk_in",label:t("walk_in")},
+        {value:"phone",label:t("phone")} ]}/></div>
+      <label className="ph06-field"><span>{t("notes")}</span><textarea maxLength={1000}
+       rows={3} value={note} onChange={e=>{setNote(e.target.value);setKey(crypto.randomUUID());}}/></label>
+     </>}
+    </div>
+    <aside className="ph06-booking-summary">
+     <span className="ph06-eyebrow">{t("details")}</span><h3>{t("bookingSummary")||t("newAppointment")}</h3>
+     <dl><div><dt>{t("patient")}</dt><dd>{patientId?"✓ "+t("selected"):"—"}</dd></div>
+      <div><dt>{t("service")}</dt><dd>{selected?.name||"—"}</dd></div>
+      <div><dt>{t("date")}</dt><dd><bdi dir="ltr">{date}</bdi></dd></div>
+      <div><dt>{t("time")}</dt><dd><bdi dir="ltr">{start||"—"}</bdi></dd></div>
+      <div><dt>{t("dentist")}</dt><dd>{doctors.find(d=>d.membershipId===provider)?.name||"—"}</dd></div>
+      <div><dt>{t("price")}</dt><dd>{selected?.basePriceAfn.toLocaleString("en-US")||"0"} AFN</dd></div>
+     </dl>
+     <InlineAlert>{t("slotPreview")} {t("duplicate")}</InlineAlert>
+     {error&&<InlineAlert kind="error">{error==="APPOINTMENT_SLOT_CONFLICT"||
+      error==="SLOT_NOT_AVAILABLE"?t("conflict"):error==="STALE_APPOINTMENT_REVISION"?
+      t("stale"):error}</InlineAlert>}
+     {done&&<InlineAlert kind="success">{done}</InlineAlert>}
+     <button className="btn btn-primary ph06-confirm" disabled={busy||!patientId||
+       !service||!provider||!start||selected?.requiresChair&&!resource}>
+       {busy?t("loading"):t(existing?"confirmChange":"save")}</button>
+     <a href={href(space.clinicId,"calendar",date)} className="btn btn-secondary">{t("back")}</a>
+    </aside>
+   </form>}
+ </section>;
+}
+// Convert a display slot time to its real UTC timestamp through Kabul's
+// selected Gregorian day. The browser timezone never defines a booking interval.
+function slotDate(date:string,time:string){
+ const m=Number(time.slice(0,2))*60+Number(time.slice(3));
+ return Date.parse(date+"T00:00:00Z")+(m-270)*60000;
+}
