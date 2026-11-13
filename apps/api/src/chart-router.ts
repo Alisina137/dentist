@@ -263,7 +263,7 @@ export function chartRouter(){
   // Log SQLSTATE and schema constraint only; never log SQL text, params or patient content.
   console.error("PH08 dental chart request failed",error instanceof Error?error.name:"unknown",
    "sqlState",code||"none","constraint",String((error as any)?.constraint||"none"),
-   "source",String((error as any)?.stack||"").match(/chart-router\\.ts:\\d+:\\d+/)?.[0]||"unknown");
+   "source",String((error as any)?.stack||"").match(/chart-router\.ts:\d+:\d+/)?.[0]||"unknown");
   res.status(500).json({code:"CHART_UNAVAILABLE"});
  });
  return api;
