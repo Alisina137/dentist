@@ -19,6 +19,7 @@ const safeInvite=(i:typeof schema.clinicInvitation.$inferSelect)=>({
   id:i.id,email:i.email,role:i.role,clinicId:i.clinicId,
   status:i.status==="pending"&&i.expiresAt<=new Date()?"expired":i.status,
   expiresAt:i.expiresAt,sentAt:i.sentAt,createdAt:i.createdAt,resolvedAt:i.resolvedAt,
+  resolutionReason:i.resolutionReason,
   resendCount:i.resendCount
 });
 async function emailInvite(to:string,clinicName:string,raw:string){
@@ -193,10 +194,10 @@ export function clinicInviteRouter(){
     )});
     if(!invite||invite.status!=="pending")fail(409,"INVITATION_UNAVAILABLE");
     if(!mayAssign(scope.role,invite.role))fail(403,"ROLE_CEILING");
-    required(req.body?.reason,5,300,"REASON");
+    const reason=required(req.body?.reason,5,300,"REASON");
     await db.transaction(async tx=>{
       const updated=await tx.update(schema.clinicInvitation).set({
-        status:"revoked",resolvedAt:new Date(),updatedAt:new Date()
+        status:"revoked",resolvedAt:new Date(),resolutionReason:reason,updatedAt:new Date()
       }).where(and(eq(schema.clinicInvitation.id,iid),eq(schema.clinicInvitation.status,"pending")))
         .returning({id:schema.clinicInvitation.id});
       if(!updated.length)fail(409,"INVITATION_UNAVAILABLE");
