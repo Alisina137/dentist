@@ -61,7 +61,7 @@ if(firstSave.status>=500){
  const log=await readFile("/tmp/dandanlink-api.log","utf8").catch(()=>"");
  // Filter safe error metadata only: NEVER print identity, tokens, query values or PHI.
  console.error("PH08_SAFE_DB_DIAGNOSTIC",
-  log.split("\\n").filter(line=>line.includes("PH08 dental chart request failed")).slice(-5).join("\\n"));
+  log.split("\n").filter(line=>line.includes("PH08 dental chart request failed")).slice(-5).join("\n"));
 }
 const old=ok(firstSave,[201],"permanent 11 initial observation").observation;
 assert.equal(old.status,"validated");
