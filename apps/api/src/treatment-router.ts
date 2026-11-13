@@ -286,7 +286,7 @@ export function treatmentRouter(){
    await event(tx,req,next,p.status==="draft"?"draft_edited":"revised",p.status,to,reason);
   });
   noStore(res);res.json({id,version,revision:rev+1,
-   status:version>1?"proposed":"draft",consentState:"none",reconsentRequired:true});
+   status:"revised",consentState:"none",reconsentRequired:true});
  }));
  scoped.post("/plans/:planId/propose",route(async(req,res)=>{
   const {ctx}=await access(req,true),rev=revision(req.body?.revision),id=String(req.params.planId);
