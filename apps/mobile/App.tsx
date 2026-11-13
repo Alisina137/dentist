@@ -6,6 +6,9 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+// Expo statically replaces EXPO_PUBLIC_ env keys in the Metro bundle.
+declare const process: { readonly env: { readonly EXPO_PUBLIC_API_URL?: string } };
+
 type Language="fa-AF"|"ps-AF"|"en";
 type Calendar="solar_hijri"|"gregorian";
 type Tab="home"|"appointments"|"saved"|"account";
