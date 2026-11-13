@@ -175,8 +175,6 @@ export async function createAppointment(ctx:ActorContext,cid:string,actorId:stri
  const input=appointmentInput(raw);
  if(!mayScheduleProvider(ctx,input.providerId))fail(403,"PROVIDER_SCOPE_DENIED");
  const key=uuidLike(raw.idempotencyKey,"IDEMPOTENCY_KEY");
- // Validate patient before locking; every id is required to be inside this exact clinic.
- await requirePatient(cid,input.patientId);
  let created:Appointment|undefined;
  let reused=false;
  try{
@@ -186,6 +184,7 @@ export async function createAppointment(ctx:ActorContext,cid:string,actorId:stri
    if(replay.found){reused=true;return (await tx.query.clinicAppointment.findFirst({
     where:and(eq(schema.clinicAppointment.id,replay.found.appointmentId),
      eq(schema.clinicAppointment.clinicId,cid))}))!;}
+   await requirePatient(cid,input.patientId);
    const view=await availabilityPreview(cid,{date:input.date,serviceId:input.serviceId,
     providerId:input.providerId,resourceId:input.resourceId??undefined});
    const resourceChosen=view.slots.find(x=>x.start===input.start&&
