@@ -157,7 +157,7 @@ export async function addException(cid:string,actorId:string,raw:unknown){
   )).limit(1);
   if(overlapping.length)fail(409,"OVERLAPPING_EXCEPTION");
   const reserved=await futureBookings(tx,cid);
-  const conflicting=reserved.some(a=>{
+  const conflicting=reserved.some((a:{startAt:Date;endAt:Date})=>{
    const local=wallClock(a.startAt);
    if(local.date<values.startDate||local.date>values.endDate)return false;
    if(values.kind==="closed")return true;
