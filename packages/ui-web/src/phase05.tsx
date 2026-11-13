@@ -495,3 +495,131 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
     continueCreate={async()=>{setCandidates([]);await persist(true);}}/>}
  </section>;
 }
+
+
+function PatientDetail({space,edit}:{space:Space,edit:boolean}){
+ const {t,date}=useWords();
+ const [id,setId]=useState<string|null>(null);
+ useEffect(()=>{const bits=location.pathname.split("/").filter(Boolean);
+  const index=bits.indexOf("patients");setId(index>=0?bits[index+1]||"":null);},[]);
+ const base=id?"/clinics/"+space.clinicId+"/patients/"+id:null;
+ const {data,error,retry}=useResource(base);
+ const [status,setStatus]=useState("inactive"),[statusReason,setStatusReason]=useState("");
+ const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[problem,setProblem]=useState("");
+ const {data:intake,error:intakeError,retry:retryIntake}=useResource(data?.clinicalAvailable?base+"/intake":null);
+ const p:Patient|undefined=data?.patient;
+ useEffect(()=>{if(p)setStatus(p.status==="active"?"inactive":"active");},[p]);
+ async function updateStatus(){
+  if(!p||statusReason.trim().length<10||!confirm(t("confirm")))return;
+  setBusy(true);setProblem("");setNotice("");
+  try{
+   await api(base+"/status","PATCH",{status,revision:p.revision,reason:statusReason.trim()});
+   setNotice(t("success"));setStatusReason("");retry();
+  }catch(e:any){setProblem(e.message);}finally{setBusy(false);}
+ }
+ if(error)return <ErrorPanel message={error} retry={retry}/>;
+ if(!p)return <Loading/>;
+ if(edit)return <PatientEditor key={p.id+":"+p.revision} space={space} existing={p}/>;
+ const canEdit=["owner","manager","dentist","receptionist"].includes(space.role);
+ return <div className="phase05-gap">
+  <section className="card panel">
+   <div className="phase05-patient-head">
+    <div><p className="muted">{t("patientNumber")} <bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></p>
+     <h2 className="phase05-name">{p.preferredName} {p.familyName||""}</h2>
+     <p className="muted">{t("lastUpdated")}: {date(p.updatedAt)}</p></div>
+    <div className="phase05-head-actions"><Chip value={p.status}/>
+     {canEdit&&<a className="btn btn-secondary" href={"/clinic/patients/"+p.id+"/edit?clinic="+space.clinicId}>
+       {t("edit")}</a>}</div>
+   </div>
+   <Notice>{t("safeguard")}</Notice>
+   {p.intakeSource==="import"&&!p.noticeAcknowledged&&
+     <Notice kind="warning">{t("importedStatus")}</Notice>}
+  </section>
+  <section className="card panel">
+   <div className="phase05-tabs"><span className="phase05-tab current">{t("overview")}</span></div>
+   <h2>{t("identity")}</h2>
+   <div className="phase05-detail-grid">
+    {([
+      ["patientNumber",p.patientNumber],["preferredName",p.preferredName],
+      ["familyName",p.familyName],["dob",p.dateOfBirth],
+      ["ageEstimate",p.ageEstimate!==undefined?p.ageEstimate:null],
+      ["phone",p.phone],["altContact",p.alternateContact],["province",p.province],
+      ["city",p.city],["address",p.address],["emergency",p.emergencyContact]
+    ] as [string,unknown][]).map(([key,value])=><div key={key} className="phase05-detail-item">
+      <span className="muted">{t(key)}</span><strong><bdi dir={["phone","patientNumber"].includes(key)?"ltr":undefined}>
+       {value===null||value===undefined||value===""?"—":String(value)}</bdi></strong>
+    </div>)}
+   </div>
+  </section>
+  {data.clinicalAvailable&&<section className="card panel"><h2>{t("intake")}</h2>
+    <p className="muted">{t("clinicalPrivacy")}</p>
+    {intakeError?<ErrorPanel message={intakeError} retry={retryIntake}/>:!intake?<Loading/>:
+      <ClinicalIntake value={intake.intake} path={base+"/intake"} reload={retryIntake}/>}
+  </section>}
+  {!data.clinicalAvailable&&<section className="card panel">
+    <h2>{t("intake")}</h2><Notice kind="warning">{t("clinicalUnavailable")}</Notice>
+  </section>}
+  <section className="card panel">
+    <h2>{t("noAppointments")}</h2>
+    <Notice>{t("noFinancial")}</Notice>
+  </section>
+  {["owner","manager"].includes(space.role)&&<section className="card panel">
+    <h2>{t("setStatus")}</h2>
+    <div className="phase05-filters">
+      <Select name={t("recordStatus")} value={status} onChange={setStatus}
+       options={["active","inactive","archived"].filter(s=>s!==p.status)
+        .map(s=>({value:s,label:t(s)}))}/>
+      <Field name={t("statusReason")} value={statusReason} onChange={setStatusReason} maxLength={300}/>
+    </div>
+    <button className="btn btn-secondary" disabled={busy||statusReason.trim().length<10}
+      onClick={updateStatus}>{busy?t("loading"):t("confirm")}</button>
+    {notice&&<Notice kind="success">{notice}</Notice>}
+    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):problem}</Notice>}
+  </section>}
+ </div>;
+}
+function ClinicalIntake({value,path,reload}:{value:any,path:string,reload:()=>void}){
+ const {t,date}=useWords();
+ const [form,setForm]=useState<any>({
+   ...value,sourceKind:value.sourceKind==="not_collected"?"patient_reported":value.sourceKind,
+   sourceDate:value.sourceDate||new Date().toISOString().slice(0,10)
+ });
+ const [busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState("");
+ useEffect(()=>{
+  setForm({...value,sourceKind:value.sourceKind==="not_collected"?"patient_reported":value.sourceKind,
+   sourceDate:value.sourceDate||new Date().toISOString().slice(0,10)});
+ },[value]);
+ async function submit(e:FormEvent){
+  e.preventDefault();setError("");setDone("");setBusy(true);
+  try{await api(path,"PATCH",form);setDone(t("clinicalRecorded"));reload();}
+  catch(e:any){setError(e.message);}finally{setBusy(false);}
+ }
+ return <form className="phase05-form" onSubmit={submit}>
+  <div className="phase05-intake-grid">
+   {(["allergies","medications","conditions"] as const).map(key=><div className="phase05-intake-card" key={key}>
+     <h3>{t(key)}</h3>
+     <Select name={t("status")} value={form[key+"Status"]||"unknown"}
+       onChange={s=>setForm((v:any)=>({...v,[key+"Status"]:s,
+          ...(s!=="reported"?{[key+"Notes"]:""}:{})}))}
+       options={["unknown","none_reported","reported"].map(s=>({value:s,label:t(s)}))}/>
+     {form[key+"Status"]==="reported"&&<label className="field">
+       <span>{t("details")}</span>
+       <textarea rows={3} value={form[key+"Notes"]||""} maxLength={1500}
+        onChange={e=>setForm((v:any)=>({...v,[key+"Notes"]:e.target.value}))}/>
+     </label>}
+   </div>)}
+  </div>
+  <div className="phase05-form-grid">
+   <Select name={t("sourceKind")} value={form.sourceKind} onChange={s=>setForm((v:any)=>({...v,sourceKind:s}))}
+    options={["patient_reported","clinician_observed","transcribed"].map(s=>({value:s,label:t(s)}))}/>
+   <Field name={t("sourceDate")} value={form.sourceDate||""} type="date"
+    onChange={s=>setForm((v:any)=>({...v,sourceDate:s}))}/>
+  </div>
+  <p className="muted">{t("source")}: {value.sourceKind==="not_collected"?t("unknown"):t(value.sourceKind)}
+    {" · "}{t("lastChange")}: {date(value.updatedAt)} {" · "}{t("idLabel")}: {value.recordedBy||"—"}</p>
+  <div className="phase-actions"><button className="btn btn-primary" disabled={busy||!form.sourceDate}>
+    {busy?t("loading"):t("saveIntake")}</button></div>
+  {error&&<Notice kind="error">{error==="STALE_INTAKE_REVISION"?t("stale"):error}</Notice>}
+  {done&&<Notice kind="success">{done}</Notice>}
+ </form>;
+}
