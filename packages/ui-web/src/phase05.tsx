@@ -15,7 +15,8 @@ type Patient={id:string;clinicId?:string;patientNumber:string;preferredName:stri
   address?:string|null;emergencyContact?:string|null;status:string;revision:number;
   noticeAcknowledged?:boolean;intakeSource?:string;updatedAt:string;createdAt:string};
 const text:Record<string,Record<string,string>>={
- en:{
+ en:{visits:"Visits",files:"Files",
+
   appointmentHistory:"Appointment history",newAppointment:"New appointment",noBookedVisits:"No appointments for this clinic patient yet.",confirmed:"Scheduled",arrived:"Arrived",in_treatment:"In treatment",completed:"Completed",cancelled:"Cancelled",no_show:"No-show",patients:"Patients",directory:"Directory",import:"Import",newPatient:"Add patient",identity:"Identification",
   contact:"Contact",intake:"Medical intake",consent:"Consent",overview:"Overview",edit:"Edit demographics",
   preferredName:"Preferred name",familyName:"Family name",phone:"Phone (optional)",altContact:"Alternate contact",
@@ -74,7 +75,8 @@ const text:Record<string,Record<string,string>>={
   noPublic:"Do not enter real patient data until clinic privacy, security and retention policies are approved.",
   idLabel:"Internal clinic identifier",notVerified:"Unverified",staffOnly:"Authorized clinic staff only"
  },
- "fa-AF":{
+ "fa-AF":{visits:"معاینات",files:"فایل‌ها",
+
   appointmentHistory:"تاریخچه ملاقات‌ها",newAppointment:"ثبت وقت جدید",noBookedVisits:"برای این مریض هنوز ملاقات ثبت نشده است.",confirmed:"وقت تعیین‌شده",arrived:"حاضر",in_treatment:"در تداوی",completed:"تکمیل",cancelled:"لغو",no_show:"غیرحاضر",patients:"مریضان",directory:"فهرست",import:"وارد کردن",newPatient:"افزودن مریض",
   identity:"معلومات هویت",contact:"تماس",intake:"معلومات صحی",consent:"رضایت و اطلاع",
   overview:"نمای کلی",edit:"ویرایش مشخصات",preferredName:"نام مورد استفاده",
@@ -134,7 +136,8 @@ const text:Record<string,Record<string,string>>={
   noPublic:"تا تکمیل مقررات حریم خصوصی و امنیت، معلومات واقعی مریضان را وارد نکنید.",
   idLabel:"شناسه داخلی کلینیک",notVerified:"تأیید نشده",staffOnly:"فقط کارمندان مجاز کلینیک"
  },
- "ps-AF":{
+ "ps-AF":{visits:"معاینې",files:"فایلونه",
+
   appointmentHistory:"د لیدنو تاریخچه",newAppointment:"نوی وخت ثبت کړئ",noBookedVisits:"د دې ناروغ لپاره تر اوسه لیدنه نشته.",confirmed:"ټاکل شوی",arrived:"راغلی",in_treatment:"درملنه",completed:"بشپړ",cancelled:"لغوه",no_show:"نه راغلی",patients:"ناروغان",directory:"نوملړ",import:"واردول",newPatient:"ناروغ ثبت کړئ",
   identity:"د پېژندنې معلومات",contact:"اړیکه",intake:"روغتیايي معلومات",consent:"خبرتیا او رضا",
   overview:"لنډیز",edit:"د معلوماتو سمون",preferredName:"د ناروغ نوم",familyName:"تخلص",
@@ -536,7 +539,9 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
      <Notice kind="warning">{t("importedStatus")}</Notice>}
   </section>
   <section className="card panel">
-   <div className="phase05-tabs"><span className="phase05-tab current">{t("overview")}</span></div>
+   <div className="phase05-tabs"><span className="phase05-tab current">{t("overview")}</span>
+    {data.clinicalAvailable&&<><a className="phase05-tab" href={"/clinic/patients/"+p.id+"/visits?clinic="+encodeURIComponent(space.clinicId)}>{t("visits")}</a>
+     <a className="phase05-tab" href={"/clinic/patients/"+p.id+"/files?clinic="+encodeURIComponent(space.clinicId)}>{t("files")}</a></>}</div>
    <h2>{t("identity")}</h2>
    <div className="phase05-detail-grid">
     {([
