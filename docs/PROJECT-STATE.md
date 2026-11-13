@@ -76,3 +76,18 @@ external verification steps. No real clinical data or booked appointments yet.
 - `pnpm dev:auth:no-email` adjusts only the flag in an existing development `.env` file.
 - Platform admin still requires an existing account, an explicit owner-specified admin bootstrap and TOTP MFA before entering protected admin routes.
 - No real patient data or public production launch is authorized while development email verification is disabled.
+
+## PH05 — Patient registry delivered independently of PH04
+Status: PH05 implementation in branch; CI and real-browser checks tracked separately.
+Product specification explicitly permits PH05 after PH03 in parallel with PH04.
+Clinic UI: /clinic/patients (search/status/sort/10-or-20 pagination),
+/clinic/patients/new, /clinic/patients/import, /clinic/patients/:patientId
+and /clinic/patients/:patientId/edit.
+Backend: clinic-local patient numbers, authenticated role-scoped demographic registry,
+medical intake stored separately and readable only by qualified clinician roles,
+duplicate candidate confirmation, and resumable idempotent CSV import.
+Imported records are never falsely marked as having individually accepted
+the privacy notice. Import does not include histories, X-rays, visits or billing.
+PH04 services/chairs/hours are NOT implemented yet, and PH06 scheduling must not
+appear active. Production handling of real clinical information requires PH19 approval.
+See docs/PH05-ACCEPTANCE.md for detailed role matrix and remaining verification.
