@@ -516,7 +516,6 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
  const member=data.member;
  const manager=space.role==="manager";
  const options=["dentist","receptionist","assistant","cashier",...(manager?[]:["manager"])];
- const isSelf=member.userId===ctx.clinics.find(c=>c.clinicId===space.clinicId)?.membershipId; // uses server self policies for every write
  return <div className="staff-gap">
   <a className="text-link" href={space.capabilities.includes("staff.read")?
     "/clinic/staff?clinic="+space.clinicId:"/clinic?clinic="+space.clinicId}>{t("back")} ←</a>
@@ -532,7 +531,7 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
   </section>
   {data.canManage&&<section className="card panel"><h2>{t("roleChange")}</h2>
    {!ctx.mfaEnabled?<div><Banner kind="warning">{t("activateMfa")}</Banner>
-    <AdminMfaSetup home={location.pathname+location.search}/></div>:<>
+    <AdminMfaSetup home={typeof window !== "undefined" ? window.location.pathname+window.location.search : "/clinic/staff"}/></div>:<>
     <div className="staff-roles-controls">
       <Select label={t("assign")} value={role} onChange={setRole}
        options={options.map(value=>({value,label:t(value)}))}/>
