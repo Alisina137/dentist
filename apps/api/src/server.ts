@@ -7,6 +7,7 @@ import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import { db, sqlClient, schema } from "@dandanlink/db";
 import { hasAdminAccess, normalizePreference } from "@dandanlink/domain";
 import { auth } from "./auth.js";
+import { devEmailVerificationDisabled, permitsUnverifiedEmail } from "./email-policy.js";
 import { phase02Router } from "./phase02.js";
 import { phase03Router } from "./phase03.js";
 
@@ -37,7 +38,8 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH02", marketplaceAvailable: false
+  product: "DandanLink", release: "PH03", marketplaceAvailable: false,
+  emailVerificationRequired: !devEmailVerificationDisabled
 }));
 
 type Identity = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled?: boolean };
@@ -47,7 +49,7 @@ type AuthenticatedRequest = Request & { identityContext?: Context };
 async function loadIdentity(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const current = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    if (!current?.user || !current.user.emailVerified) {
+    if (!current?.user || !permitsUnverifiedEmail(current.user.emailVerified)) {
       res.status(401).json({ code: "AUTH_REQUIRED", messageKey: "errors.loginRequired" });
       return;
     }
