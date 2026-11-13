@@ -47,8 +47,7 @@ export const auth = betterAuth({
       "/sign-up/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
       "/request-password-reset": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
       ...(process.env.NODE_ENV === "test" ? {
-        "/two-factor/enable": { window: 60, max: 100 },
-        "/two-factor/verify-totp": { window: 60, max: 100 }
+        "/two-factor/*": { window: 60, max: 100 }
       } : {})
     }
   },
