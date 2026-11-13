@@ -366,3 +366,252 @@ function DentistList({space}:{space:Space}){
     {t("invite")}</a></div>
  </section>;
 }
+
+
+function Invitations({space,ctx}:{space:Space,ctx:Context}){
+ const {t,date}=useLang();
+ const {data,error,reload}=useData("/clinics/"+space.clinicId+"/invitations");
+ const [email,setEmail]=useState(""),[role,setRole]=useState("receptionist");
+ const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[success,setSuccess]=useState("");
+ const [reason,setReason]=useState(""),[page,setPage]=useState(1),[filter,setFilter]=useState("pending");
+ const roles=["dentist","receptionist","assistant","cashier",...(space.role==="owner"?["manager"]:[])];
+ async function submit(e:FormEvent){
+  e.preventDefault();setBusy(true);setFailure("");setSuccess("");
+  try{
+   await api("/clinics/"+space.clinicId+"/invitations","POST",{email,role});
+   setEmail("");setSuccess(t("sentSuccess"));reload();
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ async function action(id:string,operation:"resend"|"revoke"){
+  if(operation==="revoke" && (!reason.trim()||!window.confirm(t("confirm"))))return;
+  setBusy(true);setFailure("");setSuccess("");
+  try{
+   await api("/clinics/"+space.clinicId+"/invitations/"+id+"/"+operation,"POST",
+     operation==="revoke"?{reason}:undefined);
+   reload();setReason("");setSuccess(t("updateSuccess"));
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ const entries=(data?.invitations||[]).filter((i:any)=>filter==="all"||i.status===filter);
+ const pages=Math.max(1,Math.ceil(entries.length/5));
+ if(!ctx.mfaEnabled)return <section className="card panel">
+  <Banner kind="warning">{t("activateMfa")}</Banner>
+  <AdminMfaSetup home={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}/>
+ </section>;
+ return <div className="staff-gap">
+  <section className="card panel"><h2>{t("invite")}</h2><p className="muted">{t("inviteHint")}</p>
+   <form className="staff-invite-form" onSubmit={submit}>
+    <Field label={t("email")} value={email} type="email" required maxLength={160} onChange={setEmail}/>
+    <Select label={t("role")} value={role} onChange={setRole}
+      options={roles.map(value=>({value,label:t(value)}))}/>
+    <button className="btn btn-primary" disabled={busy||!email.trim()}>{busy?t("loading"):t("send")}</button>
+   </form>
+   <p className="muted staff-small">{t("receipt")} {t("unpaid")}</p>
+   {failure&&<Banner kind="error">{t("inviteFailed")}: {failure}</Banner>}
+   {success&&<Banner kind="success">{success}</Banner>}
+  </section>
+  <section className="card panel"><div className="staff-panel-heading"><h2>{t("invitations")}</h2>
+   <Select label={t("filter")} value={filter} onChange={v=>{setFilter(v);setPage(1);}}
+    options={["pending","all","expired","accepted","revoked"].map(value=>({value,label:t(value)}))}/></div>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
+    entries.length? <div className="phase-list">{entries.slice((page-1)*5,page*5).map((i:any)=>
+     <article className="staff-invitation-row" key={i.id}>
+      <div><strong dir="ltr">{i.email}</strong><div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)}</div></div>
+      <div className="staff-invite-actions"><Badge value={i.status}/>
+       {(i.status==="pending"||i.status==="expired")&&
+         <button className="btn btn-secondary" disabled={busy} onClick={()=>action(i.id,"resend")}>{t("resend")}</button>}
+       {i.status==="pending"&&
+         <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+          onClick={()=>action(i.id,"revoke")}>{t("removeInvite")}</button>}
+      </div>
+     </article>)}</div>:<Empty text={t("noInvites")}/>}
+   <div className="phase-pagination">
+    <button className="btn btn-secondary" disabled={page===1} onClick={()=>setPage(v=>v-1)}>{t("previous")}</button>
+    <span>{page} / {pages}</span>
+    <button className="btn btn-secondary" disabled={page>=pages} onClick={()=>setPage(v=>v+1)}>{t("next")}</button>
+   </div>
+   <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
+  </section>
+ </div>;
+}
+function SecurityPanel({space,ctx}:{space:Space,ctx:Context}){
+ const {t,date}=useLang();
+ const canManage=space.capabilities.includes("security.read");
+ const {data,error,reload}=useData(canManage?"/clinics/"+space.clinicId+"/security":null);
+ const {data:sessions,error:sessionError,reload:reloadSessions}=useData("/sessions");
+ const [reason,setReason]=useState("Close unused sessions");
+ const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+ async function allLogout(){
+  if(!window.confirm(t("confirm")))return;
+  setBusy(true);setNotice("");
+  try{
+   await api("/sessions/revoke","POST",{reason});
+   location.assign("/clinic/login");
+  }catch(e){setNotice((e as Error).message);setBusy(false);}
+ }
+ return <div className="staff-gap">
+  <section className="card panel"><h2>{t("security")}</h2>
+   <Banner>{t("securityNote")}</Banner>
+   <div className="phase-actions"><a className="btn btn-secondary" href="/clinic/reset-password">{t("password")}</a></div>
+  </section>
+  {canManage&&<section className="card panel"><h2>{t("people")} · {t("security")}</h2>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
+    <div className="staff-scroll"><table className="staff-table"><thead><tr>
+      <th>{t("name")}</th><th>{t("role")}</th><th>{t("status")}</th>
+      <th>{t("mfa")}</th><th>{t("lastChanged")}</th>
+     </tr></thead><tbody>{data.access.map((m:any)=><tr key={m.id}>
+      <td><a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{m.name}</a>
+       <div className="muted staff-small" dir="ltr">{m.email}</div></td>
+      <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
+      <td>{t(m.mfaEnabled?"on":"off")}</td><td>{date(m.changedAt)}</td>
+     </tr>)}</tbody></table></div>}
+  </section>}
+  <section className="card panel"><h2>{t("sessions")}</h2>
+   {sessionError?<ErrorBox error={sessionError} retry={reloadSessions}/>:!sessions?<Busy/>:
+    !sessions.sessions.length?<Empty text={t("noHistory")}/>:
+    <div className="phase-list">{sessions.sessions.map((s:any)=><div className="phase-row phase-list-item" key={s.id}>
+      <div><strong>{s.userAgent||t("account")}</strong><p className="muted">{date(s.createdAt)} · {date(s.expiresAt)}</p></div>
+      <Badge value="active"/>
+    </div>)}</div>}
+   <div className="phase-form">
+    <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
+    <button className="btn btn-secondary" disabled={busy||reason.trim().length<5} onClick={allLogout}>{t("signoutAll")}</button>
+   </div>
+   {notice&&<Banner kind="error">{notice}</Banner>}
+  </section>
+  {canManage&&<section className="card panel"><h2>{t("lastActivity")}</h2>
+   {!data?<Busy/>:!data.events?.length?<Empty text={t("noHistory")}/>:
+    <div className="phase-list">{data.events.map((e:any)=><div key={e.id} className="phase-row phase-list-item">
+      <div><strong>{e.action}</strong><p className="muted">{date(e.createdAt)} · {e.outcome}</p></div>
+      <span className="muted staff-small">{e.subjectId||"—"}</span>
+    </div>)}</div>}
+  </section>}
+ </div>;
+}
+function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
+ const {t,date}=useLang();
+ const [memberId,setMemberId]=useState("");
+ useEffect(()=>{setMemberId(location.pathname.split("/").filter(Boolean).at(-1)||"");},[]);
+ const {data,error,reload}=useData(memberId?"/clinics/"+space.clinicId+"/staff/"+memberId:null);
+ const [role,setRole]=useState(""),[reason,setReason]=useState("");
+ const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[notice,setNotice]=useState("");
+ const [draft,setDraft]=useState<any>(null);
+ useEffect(()=>{
+  if(data?.member)setRole(data.member.role);
+  if(data?.draft)setDraft(data.draft);
+  else if(data?.member?.role==="dentist")setDraft({
+   displayName:data.member.name,specialty:"",qualifications:"",
+   professionalLicense:"",experienceYears:"",biography:"",draftVersion:0
+  });
+ },[data]);
+ async function action(path:string,body:any,destructive=false){
+  if(destructive&&!window.confirm(t("confirm")))return;
+  setProblem("");setNotice("");setBusy(true);
+  try{
+   await api("/clinics/"+space.clinicId+"/staff/"+memberId+path,"POST",body);
+   reload();setNotice(t("updateSuccess"));setReason("");
+  }catch(e){setProblem((e as Error).message);}finally{setBusy(false);}
+ }
+ if(error)return <ErrorBox error={error} retry={reload}/>;
+ if(!data)return <Busy/>;
+ const member=data.member;
+ const manager=space.role==="manager";
+ const options=["dentist","receptionist","assistant","cashier",...(manager?[]:["manager"])];
+ const isSelf=member.userId===ctx.clinics.find(c=>c.clinicId===space.clinicId)?.membershipId; // uses server self policies for every write
+ return <div className="staff-gap">
+  <a className="text-link" href={space.capabilities.includes("staff.read")?
+    "/clinic/staff?clinic="+space.clinicId:"/clinic?clinic="+space.clinicId}>{t("back")} ←</a>
+  <section className="card panel"><div className="phase-row"><div>
+    <h2>{member.name}</h2><span dir="ltr" className="muted">{member.email}</span></div>
+    <Badge value={member.status}/></div>
+   <div className="staff-role-summary">
+    <div><small className="muted">{t("currentRole")}</small><strong>{t(member.role)}</strong></div>
+    <div><small className="muted">{t("joinedOn")}</small><strong>{date(member.joinedAt)}</strong></div>
+    <div><small className="muted">{t("mfa")}</small><strong>{t(member.mfaEnabled?"on":"off")}</strong></div>
+   </div>
+   <Banner>{t("sessionImpact")}</Banner>
+  </section>
+  {data.canManage&&<section className="card panel"><h2>{t("roleChange")}</h2>
+   {!ctx.mfaEnabled?<div><Banner kind="warning">{t("activateMfa")}</Banner>
+    <AdminMfaSetup home={location.pathname+location.search}/></div>:<>
+    <div className="staff-roles-controls">
+      <Select label={t("assign")} value={role} onChange={setRole}
+       options={options.map(value=>({value,label:t(value)}))}/>
+      <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
+    </div>
+    <div className="phase-actions">
+      <button className="btn btn-primary" disabled={busy||role===member.role||reason.trim().length<5}
+       onClick={()=>action("/role",{role,reason},true)}>{t("change")}</button>
+      {member.status==="active"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+       onClick={()=>action("/status",{action:"suspend",reason},true)}>{t("suspend")}</button>}
+      {member.status==="suspended"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+       onClick={()=>action("/status",{action:"reactivate",reason},true)}>{t("reactivate")}</button>}
+      {member.status!=="revoked"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+       onClick={()=>action("/status",{action:"revoke",reason},true)}>{t("revoke")}</button>}
+      <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+       onClick={()=>action("/force-logout",{reason},true)}>{t("forceLogout")}</button>
+    </div>
+    <p className="muted staff-small">{t("ownerSafe")} {t("suspendedInfo")}</p>
+   </>}
+  </section>}
+  {member.role==="dentist"&&draft&&<section className="card panel">
+   <h2>{t("profile")}</h2><Banner kind="warning">{t("notPublic")}</Banner>
+   <form className="phase-form" onSubmit={e=>{e.preventDefault();
+    action("/dentist",{...draft,draftVersion:draft.draftVersion});}}>
+    <div className="phase-form-grid">
+      {(["displayName","specialty","qualifications","professionalLicense","experienceYears"] as const)
+       .map(key=><Field key={key} label={t(key==="professionalLicense"?"license":key==="experienceYears"?"experience":key)}
+        value={draft[key]} type={key==="experienceYears"?"number":"text"} onChange={v=>setDraft((d:any)=>({...d,[key]:v}))}/>)}
+    </div>
+    <label className="field"><span>{t("bio")}</span>
+      <textarea rows={4} maxLength={1000} value={draft.biography||""}
+       onChange={e=>setDraft((d:any)=>({...d,biography:e.target.value}))}/></label>
+    {data.canEditDentist&&<button className="btn btn-primary" disabled={busy}>{t("saveProfile")}</button>}
+   </form>
+   <p className="muted">{t("version")}: {draft.draftVersion} · {t("pendingReview")}</p>
+  </section>}
+  {data.events?.length>0&&<section className="card panel"><h2>{t("activity")}</h2>
+   {data.events.map((ev:any,i:number)=><p key={i}>{date(ev.createdAt)} · {ev.action} · {ev.outcome}</p>)}
+  </section>}
+  {problem&&<Banner kind="error">{problem}</Banner>}{notice&&<Banner kind="success">{notice}</Banner>}
+ </div>;
+}
+export function InvitationAccept(){
+ const {t,date}=useLang();
+ const [raw,setRaw]=useState("");
+ useEffect(()=>{setRaw(new URLSearchParams(location.search).get("token")||"");},[]);
+ const {data,error,reload}=useData(raw?"/invitations/preview?token="+encodeURIComponent(raw):null);
+ const {data:ctx,error:authError}=useData("/context");
+ const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[accepted,setAccepted]=useState<any>(null);
+ async function accept(){
+  setBusy(true);setProblem("");
+  try{
+   const result=await api("/invitations/accept","POST",{token:raw});setAccepted(result);
+   window.history.replaceState(null,"","/clinic/invite");
+  }catch(e){setProblem((e as Error).message);}finally{setBusy(false);}
+ }
+ if(!raw)return <div className="page-narrow card panel"><Banner kind="error">{t("invalid")}</Banner></div>;
+ if(error)return <div className="page-narrow card panel"><Banner kind="error">{t("invalid")}</Banner>
+   <p className="muted">{error}</p></div>;
+ if(!data)return <Busy/>;
+ const next="/clinic/invite?token="+encodeURIComponent(raw);
+ return <div className="page-narrow"><section className="card panel">
+   <span className="pill">{t("invitations")}</span><h1 className="staff-invite-heading">{t("inviteIntro")}</h1>
+   <div className="staff-role-summary">
+    <div><small className="muted">{t("clinics")}</small><strong>{data.clinicName}</strong></div>
+    <div><small className="muted">{t("role")}</small><strong>{t(data.role)}</strong></div>
+    <div><small className="muted">{t("expiry")}</small><strong>{date(data.expiresAt)}</strong></div>
+   </div>
+   <p>{t("inviteEmail")} <bdi dir="ltr">{data.emailHint}</bdi></p>
+   {accepted?<div><Banner kind="success">{t("acceptedMessage")}</Banner>
+    <div className="phase-actions"><a className="btn btn-primary" href={"/clinic?clinic="+accepted.clinicId}>
+      {t("continue")}</a></div></div>:
+     data.status!=="pending"?<Banner kind="warning">{t("invalid")} ({t(data.status)})</Banner>:
+     authError==="AUTH_REQUIRED"?<div className="phase-actions">
+      <a className="btn btn-primary" href={"/clinic/login?next="+encodeURIComponent(next)}>{t("login")}</a>
+      <a className="btn btn-secondary" href={"/clinic/signup?next="+encodeURIComponent(next)}>{t("signup")}</a></div>:
+     !ctx?<Busy/>:
+     <button className="btn btn-primary" onClick={accept} disabled={busy}>{busy?t("loading"):t("accept")}</button>}
+   {problem&&<Banner kind="error">{t("rejected")}: {problem}</Banner>}
+   <p className="muted staff-small">{t("receipt")}</p>
+ </section></div>;
+}
