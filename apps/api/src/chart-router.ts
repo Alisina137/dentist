@@ -260,7 +260,9 @@ export function chartRouter(){
   const code=(error as any)?.code||(error as any)?.cause?.code;
   if(code==="23505")return void res.status(409).json({code:"CHART_CONFLICT"});
   if(code==="23514"||code==="23503")return void res.status(422).json({code:"CHART_CONSTRAINT_INVALID"});
-  console.error("PH08 dental chart request failed",error instanceof Error?error.name:"unknown");
+  // Log SQLSTATE and schema constraint only; never log SQL text, params or patient content.
+  console.error("PH08 dental chart request failed",error instanceof Error?error.name:"unknown",
+   "sqlState",code||"none","constraint",String((error as any)?.constraint||"none"));
   res.status(500).json({code:"CHART_UNAVAILABLE"});
  });
  return api;
