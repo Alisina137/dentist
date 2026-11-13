@@ -147,17 +147,18 @@ export function patientRegistryRouter(){
    if(!["active","inactive","archived"].includes(next))fail(422,"INVALID_STATUS");
    if(next===existing.status)fail(409,"STATUS_UNCHANGED");
    str(req.body?.reason,10,300,"REASON");
-   if(next!=="active"){
-    const upcoming=await db.select({id:schema.clinicAppointment.id})
-      .from(schema.clinicAppointment).where(and(
-       eq(schema.clinicAppointment.clinicId,cid),
-       eq(schema.clinicAppointment.patientId,existing.id),
-       gt(schema.clinicAppointment.endAt,new Date()),
-       inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"])
-      )).limit(1);
-    if(upcoming.length)fail(409,"PATIENT_HAS_FUTURE_APPOINTMENTS");
-   }
    await db.transaction(async tx=>{
+     await lockClinic(tx,cid);
+     if(next!=="active"){
+      const upcoming=await tx.select({id:schema.clinicAppointment.id})
+       .from(schema.clinicAppointment).where(and(
+        eq(schema.clinicAppointment.clinicId,cid),
+        eq(schema.clinicAppointment.patientId,existing.id),
+        gt(schema.clinicAppointment.endAt,new Date()),
+        inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"])
+       )).limit(1);
+      if(upcoming.length)fail(409,"PATIENT_HAS_FUTURE_APPOINTMENTS");
+     }
      const changed=await tx.update(schema.clinicPatient).set({
        status:next,revision:existing.revision+1,updatedAt:new Date(),updatedBy:req.actor!.id
      }).where(and(eq(schema.clinicPatient.id,existing.id),eq(schema.clinicPatient.clinicId,cid),
