@@ -933,3 +933,306 @@ function QueuePanel({space}:{space:Space}){
   </div>
  </div>;
 }
+
+
+function BookingWizard({space}:{space:Space}){
+ const {t,fmt,time}=useWords();
+ const base="/clinics/"+space.clinicId;
+ const {data:catalog,error:catalogError,refresh:reloadCatalog}=useData(base+"/catalog");
+ const [step,setStep]=useState(0);
+ const [patient,setPatient]=useState<Patient|null>(null);
+ const [search,setSearch]=useState(""),[query,setQuery]=useState("");
+ const [inline,setInline]=useState(false),[person,setPerson]=useState({
+  preferredName:"",familyName:"",phone:"",noticeAcknowledged:false
+ });
+ const [candidate,setCandidate]=useState<Patient[]>([]);
+ const [patientBusy,setPatientBusy]=useState(false),[patientError,setPatientError]=useState("");
+ const [serviceId,setServiceId]=useState(""),[providerId,setProviderId]=useState("");
+ const [source,setSource]=useState<"staff"|"phone"|"walk_in">("staff");
+ const [note,setNote]=useState("");
+ const [date,setDate]=useState(dayKabul()),[chair,setChair]=useState("");
+ const [slot,setSlot]=useState<Slot|null>(null);
+ const [idempotencyKey,setIdempotencyKey]=useState(()=>crypto.randomUUID());
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [alternatives,setAlternatives]=useState<ConflictOption[]>([]);
+ const [initialStart,setInitialStart]=useState("");
+ useEffect(()=>{
+  const q=new URLSearchParams(location.search);
+  const requested=q.get("date");
+  if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDate(requested);
+  const start=q.get("start");
+  if(start&&/^([01]\d|2[0-3]):(00|15|30|45)$/.test(start))setInitialStart(start);
+ },[]);
+ useEffect(()=>{const timer=setTimeout(()=>setQuery(search.trim()),280);return()=>clearTimeout(timer);},[search]);
+ const {data:matching,error:searchError}=useData(query.length>=2?
+  base+"/patients/search?q="+encodeURIComponent(query):null);
+ const services:Service[]=catalog?.services||[];
+ const doctors:Provider[]=catalog?.providers||[];
+ const chairs:Resource[]=catalog?.resources||[];
+ const selectedService=services.find(x=>x.id===serviceId);
+ const doctor=doctors.find(x=>x.membershipId===providerId);
+ const chairResource=chairs.find(x=>x.id===slot?.resourceId);
+ const slotQuery=step>=2&&serviceId&&providerId&&date?
+  new URLSearchParams({serviceId,providerId,date,
+    ...(selectedService?.requiresChair&&chair?{resourceId:chair}:{})}).toString():null;
+ const {data:available,error:slotError,refresh:refreshSlots}=useData(slotQuery?
+  base+"/slots?"+slotQuery:null);
+ const slots:Slot[]=(available?.slots||[]).filter((s:Slot)=>Date.parse(s.startAt)>Date.now()-30000);
+ useEffect(()=>{
+  if(initialStart&&slots.length){
+   const selected=slots.find(x=>x.start===initialStart);
+   if(selected){setSlot(selected);setInitialStart("");}
+  }
+ },[available,initialStart]);
+ function resetRequest(){
+  setIdempotencyKey(crypto.randomUUID());setError("");setAlternatives([]);setSlot(null);
+ }
+ function chooseService(id:string){setServiceId(id);resetRequest();}
+ function chooseProvider(id:string){setProviderId(id);resetRequest();}
+ function chooseDate(id:string){setDate(id);resetRequest();}
+ function chooseChair(id:string){setChair(id);resetRequest();}
+ function chooseSlot(s:Slot){setSlot(s);setIdempotencyKey(crypto.randomUUID());
+  setError("");setAlternatives([]);}
+ async function addInline(event:FormEvent){
+  event.preventDefault();setPatientBusy(true);setPatientError("");setCandidate([]);
+  try{
+   const saved=await registry(space.clinicId,{
+    preferredName:person.preferredName.trim(),familyName:person.familyName.trim()||null,
+    phone:person.phone.trim()||null,dateOfBirth:null,ageEstimate:null,
+    noticeAcknowledged:person.noticeAcknowledged
+   });
+   setPatient(saved.patient);setInline(false);setSearch("");setStep(1);
+  }catch(e:any){setPatientError(e.message);
+   if(e.candidates?.length)setCandidate(e.candidates);
+  }finally{setPatientBusy(false);}
+ }
+ async function submit(event:FormEvent){
+  event.preventDefault();
+  if(!patient||!slot||!selectedService||!providerId)return;
+  setBusy(true);setError("");setAlternatives([]);
+  try{
+   const response=await call(base+"/appointments","POST",{
+    patientId:patient.id,serviceId,providerId,resourceId:slot.resourceId,
+    date,start:slot.start,source,administrativeNote:note.trim()||null,idempotencyKey
+   });
+   window.location.assign(appHref(space.clinicId,response.appointment.id)+"&created=1");
+  }catch(e:any){
+   setError(e.message);setAlternatives(e.alternatives||[]);
+   if(e.message==="APPOINTMENT_SLOT_UNAVAILABLE"){
+    setStep(2);setSlot(null);refreshSlots();
+   }
+  }finally{setBusy(false);}
+ }
+ const progress=["stepPatient","stepService","stepTime","stepConfirm"];
+ return <div className="phase06-booking-layout">
+  <section className="card phase06-booking-main">
+   <div className="phase06-stepper" aria-label={t("step")}>
+    {progress.map((key,index)=><button key={key} type="button"
+     aria-current={step===index?"step":undefined}
+     className={"phase06-step "+(step===index?"active":index<step?"done":"")}
+     disabled={index>step}
+     onClick={()=>{if(index<step)setStep(index);}}>
+     <span>{index<step?"✓":index+1}</span><strong>{t(key)}</strong></button>)}
+   </div>
+   {catalogError?<Problem error={catalogError} retry={reloadCatalog}/>:
+    !catalog?<Busy/>:<>
+    {step===0&&<section className="phase06-booking-step">
+     <div className="phase06-step-header"><span className="phase06-step-index">01</span>
+      <div><h2>{t("choosePatient")}</h2><p>{t("nameHelp")}</p></div></div>
+     {patient&&<div className="phase06-selected-person">
+      <div><strong>{patient.preferredName} {patient.familyName||""}</strong>
+       <span><bdi dir="ltr">{patient.patientNumber}</bdi> · <bdi dir="ltr">{patient.phone||"—"}</bdi></span></div>
+      <button type="button" className="btn btn-secondary" onClick={()=>setPatient(null)}>{t("clear")}</button>
+     </div>}
+     {!patient&&<>
+      <div className="phase06-patient-controls">
+       <div className="phase06-patient-search">
+        <span aria-hidden="true">⌕</span>
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+         placeholder={t("searchHint")} aria-label={t("search")} type="search"
+         maxLength={100}/>
+       </div>
+       <button className={inline?"btn btn-secondary":"btn btn-primary"} onClick={()=>setInline(v=>!v)}
+         type="button">+ {t("addPatient")}</button>
+      </div>
+      {searchError&&<Problem error={searchError}/>}
+      {query.length>=2&&!inline&&<div className="phase06-search-results">
+       {matching?.patients?.length?matching.patients.map((p:Patient)=>
+        <button key={p.id} className="phase06-patient-row" type="button"
+         onClick={()=>{setPatient(p);setInline(false);setSearch("");}}>
+         <span className="phase06-person-avatar">{p.preferredName.slice(0,1)}</span>
+         <span><strong>{p.preferredName} {p.familyName||""}</strong>
+          <small><bdi dir="ltr">{p.patientNumber} · {p.phone||"—"}</bdi></small></span>
+         <span aria-hidden="true">↗</span></button>):
+        <div className="phase06-search-empty">{matching?t("empty"):t("loading")}</div>}
+      </div>}
+      {inline&&<form className="phase06-inline-patient" onSubmit={addInline}>
+       <div className="phase06-between"><h3>{t("inlinePatient")}</h3>
+        <button className="phase06-icon-btn" type="button" onClick={()=>setInline(false)} aria-label={t("close")}>×</button></div>
+       <div className="phase06-form-grid">
+        <Field label={t("patientName")} required value={person.preferredName} maxLength={120}
+         onChange={v=>setPerson(p=>({...p,preferredName:v}))}/>
+        <Field label={t("familyName")} value={person.familyName} maxLength={120}
+         onChange={v=>setPerson(p=>({...p,familyName:v}))}/>
+        <Field label={t("phone")} type="tel" value={person.phone} maxLength={24}
+         onChange={v=>setPerson(p=>({...p,phone:v}))}/>
+       </div>
+       <label className="phase06-check"><input type="checkbox"
+        checked={person.noticeAcknowledged} onChange={e=>setPerson(p=>({
+         ...p,noticeAcknowledged:e.target.checked}))}/>
+        <span>{t("privacyConfirm")}</span></label>
+       <p className="phase06-help">{t("newPatientInfo")}</p>
+       {patientError&&<Problem error={patientError}/>}
+       {candidate.length>0&&<div className="phase06-duplicates">
+        <Notice kind="warning">{t("patientDuplicate")}</Notice>
+        {candidate.map(p=><button key={p.id} type="button" className="phase06-patient-row"
+          onClick={()=>{setPatient(p);setInline(false);setSearch("");setCandidate([]);
+            setPatientError("");setStep(1);}}>
+         <strong>{p.preferredName} {p.familyName||""}</strong>
+         <span><bdi dir="ltr">{p.patientNumber}</bdi></span>
+         <span>{t("chooseExisting")} ↗</span>
+        </button>)}
+        <a href={"/clinic/patients/new?clinic="+space.clinicId}
+          className="phase06-text-action">{t("reviewPatient")} ↗</a>
+       </div>}
+       <button type="submit" className="btn btn-primary"
+        disabled={patientBusy||!person.noticeAcknowledged||person.preferredName.trim().length<2}>
+        {patientBusy?t("saving"):t("createPatient")}</button>
+      </form>}
+     </>}
+     <div className="phase06-form-footer">
+      <a className="btn btn-secondary" href={appHref(space.clinicId)}>{t("cancel")}</a>
+      <button className="btn btn-primary" disabled={!patient} onClick={()=>setStep(1)}>{t("continue")} →</button>
+     </div>
+    </section>}
+    {step===1&&<section className="phase06-booking-step">
+     <div className="phase06-step-header"><span className="phase06-step-index">02</span>
+      <div><h2>{t("stepService")}</h2><p>{t("newIntro")}</p></div></div>
+     {!services.length&&<Notice kind="warning">{t("servicesUnavailable")}
+      <a className="phase06-text-action" href={"/clinic/services?clinic="+space.clinicId}>{t("services")} ↗</a>
+     </Notice>}
+     {!doctors.length&&<Notice kind="warning">{t("providersUnavailable")}
+      <a className="phase06-text-action" href={"/clinic/staff?clinic="+space.clinicId}>{t("staffLink")} ↗</a>
+     </Notice>}
+     <div className="phase06-procedures" role="group" aria-label={t("chooseService")}>
+      {services.map(s=><button type="button" key={s.id}
+       className={"phase06-procedure-card "+(serviceId===s.id?"selected":"")}
+       aria-pressed={serviceId===s.id} onClick={()=>chooseService(s.id)}>
+       <span className="phase06-procedure-icon" aria-hidden="true">✚</span>
+       <span><strong>{s.name}</strong><small>{s.category} · {s.durationMinutes} {t("minutes")}
+         {s.preparationMinutes>0?" + "+s.preparationMinutes+" "+t("minutes"):""}</small></span>
+       <span className="phase06-procedure-price"><bdi dir="ltr">{s.basePriceAfn.toLocaleString("en-US")}</bdi> {t("afn")}</span>
+      </button>)}
+     </div>
+     <div className="phase06-form-grid">
+      <Select label={t("chooseDentist")} value={providerId} onChange={chooseProvider}
+        options={[{value:"",label:t("chooseDentist")},...doctors.map(d=>({
+         value:d.membershipId,label:d.name}))]}/>
+      <Select label={t("source")} value={source} onChange={v=>{
+        setSource(v as typeof source);resetRequest();}}
+       options={[{value:"staff",label:t("sourceStaff")},
+        {value:"phone",label:t("phoneBooking")},{value:"walk_in",label:t("walkIn")}]}/>
+     </div>
+     <label className="phase06-field"><span>{t("note")}</span>
+      <textarea value={note} maxLength={500} onChange={e=>{setNote(e.target.value);resetRequest();}}
+       rows={3} placeholder={t("noteHelp")}/></label>
+     <div className="phase06-form-footer">
+      <button type="button" className="btn btn-secondary" onClick={()=>setStep(0)}>{t("back")}</button>
+      <button type="button" className="btn btn-primary" disabled={!serviceId||!providerId}
+       onClick={()=>{setStep(2);resetRequest();}}>{t("continue")} →</button>
+     </div>
+    </section>}
+    {step===2&&<section className="phase06-booking-step">
+     <div className="phase06-step-header"><span className="phase06-step-index">03</span>
+      <div><h2>{t("stepTime")}</h2><p>{t("selectSlot")}</p></div></div>
+     <div className="phase06-form-grid">
+      <Field label={t("dateGregorian")} value={date} type="date"
+       min={dayKabul()} max={advance(dayKabul(),365)} onChange={chooseDate} required/>
+      {selectedService?.requiresChair&&<Select label={t("chooseChair")} value={chair}
+       onChange={chooseChair}
+       options={[{value:"",label:t("anyChair")},...chairs.map(r=>({
+        value:r.id,label:r.label+" · "+r.code}))]}/>}
+     </div>
+     {selectedService?.requiresChair&&!chairs.length&&<Notice kind="warning">{t("resourcesUnavailable")}
+      <a href={"/clinic/resources?clinic="+space.clinicId} className="phase06-text-action">{t("resources")} ↗</a></Notice>}
+     <div className="phase06-slot-section">
+      <div className="phase06-between"><div><h3>{t("slots")}</h3>
+       <p>{t("timeZone")} · {t("candidateOnly")||t("noPublic")}</p></div>
+       <button type="button" className="btn btn-secondary" onClick={refreshSlots}>
+        {t("checkAvailability")} ↻</button></div>
+      {slotError?<Problem error={slotError} retry={refreshSlots}/>:!available?<Busy/>:
+       !slots.length?<div className="phase06-slot-empty"><span aria-hidden="true">◷</span>
+        <strong>{t("noSlots")}</strong><p>{t("otherDates")}</p>
+       </div>:<div className="phase06-slots">
+        {slots.map(s=><button type="button" key={s.startAt+"-"+s.resourceId}
+         onClick={()=>chooseSlot(s)}
+         className={"phase06-slot-button "+(slot?.startAt===s.startAt&&slot.resourceId===s.resourceId?"selected":"")}
+         aria-pressed={slot?.startAt===s.startAt&&slot.resourceId===s.resourceId}>
+         <span><bdi dir="ltr">{s.start}</bdi> – <bdi dir="ltr">{s.end}</bdi></span>
+         <small>{s.resourceId?chairs.find(r=>r.id===s.resourceId)?.label||t("chair"):t("service")}</small>
+        </button>)}
+       </div>}
+     </div>
+     {error&&<Problem error={error}/>}
+     {alternatives.length>0&&<div className="phase06-alternatives"><h3>{t("alternatives")}</h3>
+      <div className="phase06-alternative-list">{alternatives.map((a,i)=><button key={i}
+        onClick={()=>{setDate(a.date);setChair(a.resourceId||"");setInitialStart(a.start);
+         resetRequest();refreshSlots();}} type="button">
+       <strong>{a.date} · <bdi dir="ltr">{a.start}</bdi></strong>
+       <span>{t("chooseAlternative")} ↗</span></button>)}</div></div>}
+     <div className="phase06-form-footer">
+      <button type="button" className="btn btn-secondary" onClick={()=>setStep(1)}>{t("back")}</button>
+      <button type="button" className="btn btn-primary" disabled={!slot||!selectedService||!providerId}
+       onClick={()=>setStep(3)}>{t("continue")} →</button>
+     </div>
+    </section>}
+    {step===3&&<section className="phase06-booking-step">
+     <div className="phase06-step-header"><span className="phase06-step-index">04</span>
+      <div><h2>{t("stepConfirm")}</h2><p>{t("review")}</p></div></div>
+     <div className="phase06-confirm-details">
+      <div><span>{t("patient")}</span><strong>{patient?.preferredName} {patient?.familyName||""}</strong>
+       <small>{patient?.patientNumber||"—"}</small></div>
+      <div><span>{t("service")}</span><strong>{selectedService?.name}</strong>
+       <small>{selectedService?.durationMinutes} {t("minutes")}</small></div>
+      <div><span>{t("dentist")}</span><strong>{doctor?.name}</strong></div>
+      <div><span>{t("chair")}</span><strong>{chairResource?.label||t("none")}</strong></div>
+      <div><span>{t("date")}</span><strong>{date}</strong></div>
+      <div><span>{t("time")}</span><strong><bdi dir="ltr">{slot?.start} – {slot?.end}</bdi></strong>
+       <small>Asia/Kabul</small></div>
+      <div><span>{t("source")}</span><strong>{t(source==="walk_in"?"walkIn":
+         source==="phone"?"phoneBooking":"sourceStaff")}</strong></div>
+      <div><span>{t("price")}</span><strong><bdi dir="ltr">
+       {selectedService?.basePriceAfn.toLocaleString("en-US")}</bdi> {t("afn")}</strong></div>
+     </div>
+     <Notice>{t("noPersonalAccount")} {t("financialNext")}</Notice>
+     <Notice kind="warning">{t("avoidDouble")} {t("noPublic")}</Notice>
+     {error&&<Problem error={error}/>}
+     <form onSubmit={submit}><div className="phase06-form-footer">
+      <button type="button" className="btn btn-secondary" onClick={()=>setStep(2)}
+       disabled={busy}>{t("back")}</button>
+      <button className="btn btn-primary" disabled={busy||!slot||!patient}>
+       {busy?t("saving"):t("book")}</button>
+     </div></form>
+    </section>}
+   </>}
+  </section>
+  <aside className="phase06-booking-sidebar">
+   <div className="card phase06-summary-card">
+    <span className="phase06-eyebrow">{t("review")}</span><h3>{t("newAppointment")}</h3>
+    <div className="phase06-summary-list">
+     <div><span>{t("patient")}</span><strong>{patient?.preferredName||"—"}</strong></div>
+     <div><span>{t("service")}</span><strong>{selectedService?.name||"—"}</strong></div>
+     <div><span>{t("dentist")}</span><strong>{doctor?.name||"—"}</strong></div>
+     <div><span>{t("date")}</span><strong><bdi dir="ltr">{date}</bdi></strong></div>
+     <div><span>{t("time")}</span><strong><bdi dir="ltr">{slot?.start||"—"}</bdi></strong></div>
+    </div>
+    <div className="phase06-summary-total"><span>{t("price")}</span>
+     <strong><bdi dir="ltr">{selectedService?.basePriceAfn.toLocaleString("en-US")||"0"}</bdi> {t("afn")}</strong></div>
+   </div>
+   <div className="phase06-aside-help">
+    <span aria-hidden="true">◇</span>
+    <p>{t("oneClinic")} {t("clinicalNext")} {t("deliveryNotice")}</p>
+   </div>
+  </aside>
+ </div>;
+}
