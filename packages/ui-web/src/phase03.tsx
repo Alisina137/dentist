@@ -35,7 +35,7 @@ const labels:Record<string,Record<string,string>>={
   missingClinic:"Clinic not found in your memberships. Choose an active clinic.",
   inviteIntro:"You've been invited to join a dental clinic.",
   accept:"Accept invitation",inviteEmail:"The invitation requires a verified account using this exact email.",
-  signup:"Create an account",login:"Sign in",invalid:"Invitation is invalid or has expired.",
+  switchAccount:"Switch account",retryLater:"Available after 60 seconds",signup:"Create an account",login:"Sign in",invalid:"Invitation is invalid or has expired.",
   acceptedMessage:"Membership accepted. Open your clinic workspace.",
   rejected:"Invitation cannot be accepted.",notAllowed:"You do not have permission to open this page.",
   updateSuccess:"Changes saved.",sentSuccess:"The invitation was sent.",loading:"Loading…",
@@ -84,7 +84,7 @@ const labels:Record<string,Record<string,string>>={
   noClinics:"عضویت فعال کلینیک ندارید.",missingClinic:"کلینیک در عضویت‌های شما نیست.",
   inviteIntro:"شما برای پیوستن به یک کلینیک دندان دعوت شده‌اید.",
   accept:"پذیرفتن دعوت",inviteEmail:"برای پذیرش، حساب تأییدشده با همین ایمیل لازم است.",
-  signup:"ایجاد حساب",login:"ورود",invalid:"دعوت نامعتبر یا منقضی شده است.",
+  switchAccount:"تغییر حساب",retryLater:"پس از ۶۰ ثانیه قابل ارسال است",signup:"ایجاد حساب",login:"ورود",invalid:"دعوت نامعتبر یا منقضی شده است.",
   acceptedMessage:"عضویت پذیرفته شد. پنل کلینیک را باز کنید.",
   rejected:"این دعوت پذیرفته نمی‌شود.",notAllowed:"اجازه دسترسی به این صفحه را ندارید.",
   updateSuccess:"تغییرات ذخیره شد.",sentSuccess:"دعوت ارسال شد.",loading:"در حال بارگیری…",
@@ -132,7 +132,7 @@ const labels:Record<string,Record<string,string>>={
   noClinics:"فعال کلینیکي غړیتوب نه لرئ.",missingClinic:"کلینیک ستاسو په غړیتوب کې نشته.",
   inviteIntro:"تاسو د غاښونو کلینیک ته بلل شوي یاست.",
   accept:"بلنه ومنئ",inviteEmail:"دا بلنه په همدې تایید شوي برېښنالیک منل کېدای شي.",
-  signup:"حساب جوړول",login:"ننوتل",invalid:"بلنه ناسمه یا پای ته رسېدلې ده.",
+  switchAccount:"حساب بدلول",retryLater:"له ۶۰ ثانیو وروسته",signup:"حساب جوړول",login:"ننوتل",invalid:"بلنه ناسمه یا پای ته رسېدلې ده.",
   acceptedMessage:"غړیتوب ومنل شو. خپل کلینیک ته لاړ شئ.",
   rejected:"دا بلنه نه منل کېږي.",notAllowed:"دې پاڼې ته اجازه نه لرئ.",
   updateSuccess:"بدلونونه خوندي شول.",sentSuccess:"بلنه ولېږل شوه.",loading:"بارېږي…",
@@ -418,7 +418,10 @@ function Invitations({space,ctx}:{space:Space,ctx:Context}){
       <div><strong dir="ltr">{i.email}</strong><div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)} {i.resolutionReason?" · "+i.resolutionReason:""}</div></div>
       <div className="staff-invite-actions"><Badge value={i.status}/>
        {(i.status==="pending"||i.status==="expired")&&
-         <button className="btn btn-secondary" disabled={busy} onClick={()=>action(i.id,"resend")}>{t("resend")}</button>}
+         <button className="btn btn-secondary" disabled={busy||
+           (i.sentAt && Date.now()-new Date(i.sentAt).getTime()<60000)}
+           title={i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000?t("retryLater"):undefined}
+           onClick={()=>action(i.id,"resend")}>{t("resend")}</button>}
        {i.status==="pending"&&
          <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
           onClick={()=>action(i.id,"revoke")}>{t("removeInvite")}</button>}
@@ -565,7 +568,9 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
     <label className="field"><span>{t("bio")}</span>
       <textarea rows={4} maxLength={1000} value={draft.biography||""}
        onChange={e=>setDraft((d:any)=>({...d,biography:e.target.value}))}/></label>
-    {data.canEditDentist&&<button className="btn btn-primary" disabled={busy}>{t("saveProfile")}</button>}
+    {data.canEditDentist&&(ctx.mfaEnabled||member.email===ctx.email)
+      ?<button className="btn btn-primary" disabled={busy}>{t("saveProfile")}</button>
+      :data.canEditDentist?<Banner kind="warning">{t("activateMfa")}</Banner>:null}
    </form>
    <p className="muted">{t("version")}: {draft.draftVersion} · {t("pendingReview")}</p>
   </section>}
@@ -612,7 +617,11 @@ export function InvitationAccept(){
       <a className="btn btn-secondary" href={"/clinic/signup?next="+encodeURIComponent(next)}>{t("signup")}</a></div>:
      authError?<ErrorBox error={authError} retry={()=>location.reload()}/>:
      !ctx?<Busy/>:
-     <button className="btn btn-primary" onClick={accept} disabled={busy}>{busy?t("loading"):t("accept")}</button>}
+     <div className="phase-actions"><button className="btn btn-primary" onClick={accept}
+       disabled={busy}>{busy?t("loading"):t("accept")}</button>
+       <button className="btn btn-secondary" onClick={async()=>{
+         await authClient.signOut();location.assign(next);
+       }}>{t("switchAccount")}</button></div>}
    {problem&&<Banner kind="error">{t("rejected")}: {problem}</Banner>}
    <p className="muted staff-small">{t("receipt")}</p>
  </section></div>;
