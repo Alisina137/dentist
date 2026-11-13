@@ -36,14 +36,16 @@ jobs:
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
+      - name: Bundle Expo patient app for Android
+        run: pnpm --filter @dandanlink/mobile exec expo export --platform android --output-dir .expo-export
       - name: HTTP auth integration against PostgreSQL
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/dandan_test
           BETTER_AUTH_SECRET: ci_test_secret_only_not_for_public_use_0123456789
           API_BASE_URL: http://localhost:4000
-          CLINIC_WEB_URL: http://localhost:3000
-          ADMIN_WEB_URL: http://localhost:3001
+          CLINIC_WEB_URL: http://localhost:3001
+          ADMIN_WEB_URL: http://localhost:3000
           PATIENT_WEB_URL: http://localhost:3002
         run: |
           pnpm db:migrate
