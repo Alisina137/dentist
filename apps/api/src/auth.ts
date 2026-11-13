@@ -45,7 +45,11 @@ export const auth = betterAuth({
     customRules: {
       "/sign-in/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 8 },
       "/sign-up/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
-      "/request-password-reset": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 }
+      "/request-password-reset": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
+      ...(process.env.NODE_ENV === "test" ? {
+        "/two-factor/enable": { window: 60, max: 100 },
+        "/two-factor/verify-totp": { window: 60, max: 100 }
+      } : {})
     }
   },
   plugins: [twoFactor({ issuer: "DandanLink", totpOptions: { digits: 6, period: 30 } })],
