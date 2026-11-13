@@ -4,7 +4,7 @@ import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls 
 import { Phase02Portal } from "./phase02";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
-  membershipId:string;role:Role;capabilities:string[]};
+  membershipId:string;role:Role;clinicianEnabled:boolean;capabilities:string[]};
 type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 const base=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const labels:Record<string,Record<string,string>>={
@@ -35,7 +35,7 @@ const labels:Record<string,Record<string,string>>={
   missingClinic:"Clinic not found in your memberships. Choose an active clinic.",
   inviteIntro:"You've been invited to join a dental clinic.",
   accept:"Accept invitation",inviteEmail:"The invitation requires a verified account using this exact email.",
-  switchAccount:"Switch account",retryLater:"Available after 60 seconds",signup:"Create an account",login:"Sign in",invalid:"Invitation is invalid or has expired.",
+  clinicianOn:"Enable dentist draft",clinicianOff:"Disable dentist draft",clinicalAffiliation:"Dentist affiliation",switchAccount:"Switch account",retryLater:"Available after 60 seconds",signup:"Create an account",login:"Sign in",invalid:"Invitation is invalid or has expired.",
   acceptedMessage:"Membership accepted. Open your clinic workspace.",
   rejected:"Invitation cannot be accepted.",notAllowed:"You do not have permission to open this page.",
   updateSuccess:"Changes saved.",sentSuccess:"The invitation was sent.",loading:"Loading…",
@@ -84,7 +84,7 @@ const labels:Record<string,Record<string,string>>={
   noClinics:"عضویت فعال کلینیک ندارید.",missingClinic:"کلینیک در عضویت‌های شما نیست.",
   inviteIntro:"شما برای پیوستن به یک کلینیک دندان دعوت شده‌اید.",
   accept:"پذیرفتن دعوت",inviteEmail:"برای پذیرش، حساب تأییدشده با همین ایمیل لازم است.",
-  switchAccount:"تغییر حساب",retryLater:"پس از ۶۰ ثانیه قابل ارسال است",signup:"ایجاد حساب",login:"ورود",invalid:"دعوت نامعتبر یا منقضی شده است.",
+  clinicianOn:"فعال‌سازی پیش‌نویس داکتر",clinicianOff:"غیرفعال‌سازی پیش‌نویس داکتر",clinicalAffiliation:"عضویت داکتر دندان",switchAccount:"تغییر حساب",retryLater:"پس از ۶۰ ثانیه قابل ارسال است",signup:"ایجاد حساب",login:"ورود",invalid:"دعوت نامعتبر یا منقضی شده است.",
   acceptedMessage:"عضویت پذیرفته شد. پنل کلینیک را باز کنید.",
   rejected:"این دعوت پذیرفته نمی‌شود.",notAllowed:"اجازه دسترسی به این صفحه را ندارید.",
   updateSuccess:"تغییرات ذخیره شد.",sentSuccess:"دعوت ارسال شد.",loading:"در حال بارگیری…",
@@ -132,7 +132,7 @@ const labels:Record<string,Record<string,string>>={
   noClinics:"فعال کلینیکي غړیتوب نه لرئ.",missingClinic:"کلینیک ستاسو په غړیتوب کې نشته.",
   inviteIntro:"تاسو د غاښونو کلینیک ته بلل شوي یاست.",
   accept:"بلنه ومنئ",inviteEmail:"دا بلنه په همدې تایید شوي برېښنالیک منل کېدای شي.",
-  switchAccount:"حساب بدلول",retryLater:"له ۶۰ ثانیو وروسته",signup:"حساب جوړول",login:"ننوتل",invalid:"بلنه ناسمه یا پای ته رسېدلې ده.",
+  clinicianOn:"د ډاکټر مسوده فعاله کړئ",clinicianOff:"د ډاکټر مسوده غیرفعاله کړئ",clinicalAffiliation:"د ډاکټر غړیتوب",switchAccount:"حساب بدلول",retryLater:"له ۶۰ ثانیو وروسته",signup:"حساب جوړول",login:"ننوتل",invalid:"بلنه ناسمه یا پای ته رسېدلې ده.",
   acceptedMessage:"غړیتوب ومنل شو. خپل کلینیک ته لاړ شئ.",
   rejected:"دا بلنه نه منل کېږي.",notAllowed:"دې پاڼې ته اجازه نه لرئ.",
   updateSuccess:"بدلونونه خوندي شول.",sentSuccess:"بلنه ولېږل شوه.",loading:"بارېږي…",
@@ -501,7 +501,7 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
  useEffect(()=>{
   if(data?.member)setRole(data.member.role);
   if(data?.draft)setDraft(data.draft);
-  else if(data?.member?.role==="dentist")setDraft({
+  else if(data?.canEditDentist)setDraft({
    displayName:data.member.name,specialty:"",qualifications:"",
    professionalLicense:"",experienceYears:"",biography:"",draftVersion:0
   });
@@ -555,8 +555,16 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
     <p className="muted staff-small">{t("ownerSafe")} {t("suspendedInfo")}</p>
    </>}
   </section>}
+  {data.canManage&&space.role==="owner"&&member.role==="manager"&&ctx.mfaEnabled&&
+   <section className="card panel"><h2>{t("clinicalAffiliation")}</h2>
+    <p className="muted">{t("notPublic")}</p>
+    <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+     onClick={()=>action("/clinician",{enabled:!member.clinicianEnabled,reason},true)}>
+     {t(member.clinicianEnabled?"clinicianOff":"clinicianOn")}</button>
+    <p className="muted staff-small">{t("roleReason")}: {t("reason")}</p>
+   </section>}
   {member.reason&&<Banner kind="warning">{t("reason")}: {member.reason}</Banner>}
-  {member.role==="dentist"&&draft&&<section className="card panel">
+  {(member.role==="dentist"||member.clinicianEnabled||data.canEditDentist)&&draft&&<section className="card panel">
    <h2>{t("profile")}</h2><Banner kind="warning">{t("notPublic")}</Banner>
    <form className="phase-form" onSubmit={e=>{e.preventDefault();
     action("/dentist",{...draft,draftVersion:draft.draftVersion});}}>
