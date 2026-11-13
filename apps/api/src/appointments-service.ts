@@ -33,7 +33,8 @@ export async function appointmentAccess(req:StaffRequest,cid:string,mode:Appoint
  if(mode!=="read"){
   if(ctx.clinic.status==="suspended")fail(403,"CLINIC_SUSPENDED");
   const sub=await db.query.clinicSubscription.findFirst({where:eq(schema.clinicSubscription.clinicId,cid)});
-  if(!sub&&ctx.clinic.status!=="draft")fail(403,"SUBSCRIPTION_REQUIRED");
+  // Drafts can configure services/chairs/hours (PH04), but cannot bypass a trial or plan to book real patients.
+  if(!sub)fail(403,"SUBSCRIPTION_REQUIRED");
   if(sub){
    if(sub.status==="cancelled")fail(403,"SUBSCRIPTION_INACTIVE");
    const plan=await db.query.planVersion.findFirst({where:eq(schema.planVersion.id,sub.planVersionId)});
