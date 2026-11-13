@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "DandanLink",
+    "slug": "dandanlink-patient",
+    "scheme": "dandanlink",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dandanlink.patient"
+    },
+    "android": {
+      "package": "com.dandanlink.patient",
+      "edgeToEdgeEnabled": true
+    },
+    "experiments": {
+      "reactCompiler": false
+    }
+  }
+}
