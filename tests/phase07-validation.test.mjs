@@ -37,3 +37,13 @@ test("PH07 navigation and routes do not expose unfinished chart/treatment tabs",
  assert.doesNotMatch(s,/<a[^>]+\/chart/);
  assert.doesNotMatch(s,/<a[^>]+\/treatments/);
 });
+
+test("PH07 nonclinical owner overview is aggregate-only",()=>{
+ const source=load("apps/api/src/clinical-router.ts");
+ assert.match(source,/\/worklist\/status/);
+ assert.match(source,/operational:true/);
+ assert.match(source,/COUNT\(\*\) FILTER/);
+ const web=load("packages/ui-web/src/phase07.tsx");
+ assert.match(web,/OperationalSummary/);
+ assert.match(web,/qualified\?<Worklist space=\{space\}\/>:<OperationalSummary/);
+});
