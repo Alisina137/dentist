@@ -3,7 +3,8 @@ import {sqlClient} from "../packages/db/src/client.js";
 // CI-only direct PostgreSQL assertion: no API path, no PHI is logged.
 const ids=process.argv.slice(2);
 assert.equal(ids.length,2,"expected two fixture observations");
-try{
+async function verifyImmutable(){
+ try{
  for(const id of ids){
   const existing=await sqlClient`SELECT id,status,condition FROM clinic_tooth_observations WHERE id=${id}`;
   assert.equal(existing.length,1);
@@ -20,3 +21,8 @@ try{
 }finally{
  await sqlClient.end();
 }
+}
+verifyImmutable().catch(error=>{
+ console.error("PH08_DB_PROTECTION_FAILED",error instanceof Error?error.name:"unknown");
+ process.exitCode=1;
+});
