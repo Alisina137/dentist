@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH03 staff invitation, membership security & dentist identity
+## Current phase: PH04 services/chairs/hours completed after PH05 patient registry
 
-Status: **IMPLEMENTED — GITHUB CI / HUMAN VERIFICATION PENDING** (update upon successful CI).
+Status: **PH04–PH05 CODE IMPLEMENTED; GITHUB CI AND HUMAN QA TRACKED SEPARATELY**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -29,14 +29,14 @@ API: /v1/team/context, /v1/team/sessions, /v1/team/invitations/{preview,accept},
 PH02 clinic owner onboarding, subscription settings and platform verification remain operational.
 
 ### Not included yet
-Clinic staff scheduling, chairs, clinical encounters, dental charting, patient records, appointments,
+Recorded appointments/queue, clinical encounters, dental charting,
 financial ledgers, dentist credential verification or public booking. Future planned navigation is hidden until implemented.
 
 ### Verification limits and follow-up
 GitHub Actions is configured to run PH01–PH03 integration against a real temporary PostgreSQL server, plus TypeScript and production web builds. Actual local browser/device review, SMTP delivery, human translation review, credential validation, retention, backup restore and healthcare security/legal acceptance remain outstanding.
 
 See docs/PH03-ACCEPTANCE.md for the full acceptance matrix and manual checks.
-Next phase: **PH04 — Services, chairs, working hours and reliable availability foundation**.
+Next phase: **PH06 — Internal appointments, queue, and conflict-free booking**, built on PH04 and PH05.
 
 ## Platform/dev-command adjustment — 13 November 2026
 
@@ -78,7 +78,7 @@ external verification steps. No real clinical data or booked appointments yet.
 - No real patient data or public production launch is authorized while development email verification is disabled.
 
 ## PH05 — Patient registry delivered independently of PH04
-Status: PH05 implementation in branch; CI and real-browser checks tracked separately.
+Status: PH05 merged to main (538e06c); web browser and production privacy checks remain separately required.
 Product specification explicitly permits PH05 after PH03 in parallel with PH04.
 Clinic UI: /clinic/patients (search/status/sort/10-or-20 pagination),
 /clinic/patients/new, /clinic/patients/import, /clinic/patients/:patientId
@@ -88,6 +88,34 @@ medical intake stored separately and readable only by qualified clinician roles,
 duplicate candidate confirmation, and resumable idempotent CSV import.
 Imported records are never falsely marked as having individually accepted
 the privacy notice. Import does not include histories, X-rays, visits or billing.
-PH04 services/chairs/hours are NOT implemented yet, and PH06 scheduling must not
-appear active. Production handling of real clinical information requires PH19 approval.
+PH04 now implements services/chairs/hours as a separate additive phase; PH06 scheduling is not yet live. Production handling of real clinical information requires PH19 approval.
 See docs/PH05-ACCEPTANCE.md for detailed role matrix and remaining verification.
+
+## PH04 — Real clinic operations and availability previews
+
+- Clinic web modules: `/clinic/services`, `/clinic/resources`, `/clinic/settings/hours`.
+- Service catalog: durations, buffer, AFN estimate, chair requirement,
+  active/inactive state and immutable version/price history.
+- Clinic resources: chairs/rooms, unique internal code, equipment, status;
+  cannot deactivate a resource still assigned an active chair schedule.
+- Hours & Holidays five live tabs: clinic weekly schedule, dentist shifts,
+  chair-specific hours, exceptional closures, and safe candidate preview.
+- Saturday-first Afghanistan schedule, validated nonoverlapping breaks,
+  version-checking for concurrent updates, explicit clinic closures.
+- Candidate availability is clinic-hours ∩ dentist shift ∩ optional chair
+  shift minus breaks/closures, with duration+preparation buffer. UTC
+  timestamps use the Asia/Kabul IANA timezone. No bookings/holds yet.
+- Owner PH02 onboarding and dashboard now link to an actual operations
+  checklist; staff workspace navigation has grouped icon+label links.
+- No public listings, verified professionals or patient booking have been
+  published. No fake appointments or default stored availability.
+- New migration `0004_services_resources_hours.sql` is additive even
+  when PH05 migration `0005_patient_registry.sql` was applied first.
+- Automated AC04 tests cover clinician permissions, resource conflicts,
+  versions, staff plan limits, Saturday candidate windows, holiday overrides,
+  Kabul time conversion and correct inactive/empty states.
+- Pending manual: real browser UX and focus QA, RTL native language review,
+  privacy/security/retention/backup approval before real medical data.
+- Next planned phase is PH06 appointments and queue.
+
+See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
