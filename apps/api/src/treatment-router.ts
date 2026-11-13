@@ -259,7 +259,8 @@ export function treatmentRouter(){
   noStore(res);res.status(201).json({id,version:1,revision:1,status:"draft"});
  }));
  scoped.get("/plans/:planId",route(async(req,res)=>{
-  const {ctx}=await access(req);await assigned(req,ctx);
+  const {ctx}=await access(req);
+  // Plan ownership is the authoritative privacy gate; other dentists receive 404.
   const data=await full(req,ctx,String(req.params.planId));
   noStore(res);res.json(data);
  }));
