@@ -120,7 +120,7 @@ ok(await api("/v1/admin/invoices/"+invoice.invoiceId+"/decision","POST",
  [200],"confirm manual payment");
 const after=ok(await api("/v1/clinics/"+clinic.id,"GET",undefined,owner.cookie),[200],"payment activated");
 assert.equal(after.effectiveStatus,"active");
-assert.equal(after.clinic.status,"suspend","subscription must not approve clinic");
+assert.equal(after.clinic.status,"suspended","subscription must not approve clinic");
 ok(await api("/v1/admin/invoices/"+invoice.invoiceId+"/decision","POST",
  {action:"confirm",reason:"Replay verification",confirmation:"bank-transfer-12345"},admin.cookie),
  [409],"payment replay blocked");
