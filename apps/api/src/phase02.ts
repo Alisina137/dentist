@@ -226,6 +226,10 @@ export function phase02Router() {
     const sub=await db.query.clinicSubscription.findFirst({where:eq(schema.clinicSubscription.clinicId,c.id)});
     if(!sub)fail(409,"SUBSCRIPTION_NOT_STARTED");
     const plan=await selectedPlan(req.body?.planVersionId);
+    const existingInvoice=await db.query.platformInvoice.findFirst({where:and(
+      eq(schema.platformInvoice.clinicId,c.id),eq(schema.platformInvoice.status,"awaiting")
+    )});
+    if(existingInvoice)fail(409,"INVOICE_ALREADY_PENDING");
     const evidenceReference=field(req.body?.evidenceReference,5,160,"PAYMENT_REFERENCE");
     const id=randomUUID();
     try {
@@ -240,7 +244,7 @@ export function phase02Router() {
         await audit(tx,req.actor!.id,c.id,"subscription.payment.requested",id);
         await notify(tx,c.id,"subscription.payment.review");
       });
-    } catch(e) { if((e as any)?.code==="23505")fail(409,"INVOICE_ALREADY_PENDING"); throw e; }
+    } catch(e) { if((e as any)?.code==="23505" || (e as any)?.cause?.code==="23505")fail(409,"INVOICE_ALREADY_PENDING"); throw e; }
     res.status(201).json({invoiceId:id,status:"awaiting",amountAfn:plan.priceAfn});
   }));
   api.get("/admin/overview",job(async(req,res)=>{
@@ -426,7 +430,7 @@ export function phase02Router() {
   }));
   api.use((err:unknown,_req:Request,res:Response,_next:NextFunction)=>{
     if(err instanceof Fault){res.status(err.status).json({code:err.code});return;}
-    if((err as any)?.code==="23505"){res.status(409).json({code:"DUPLICATE"});return;}
+    if((err as any)?.code==="23505" || (err as any)?.cause?.code==="23505"){res.status(409).json({code:"DUPLICATE"});return;}
     console.error("PH02 API error",err instanceof Error?err.name:"unknown");
     res.status(500).json({code:"INTERNAL_ERROR"});
   });
