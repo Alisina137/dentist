@@ -62,6 +62,9 @@ function allowedAction(ctx:ActorContext,a:Appointment,target:string){
  }else if(target==="in_treatment"||target==="completed"){
   if(!mayChangeClinically(ctx,a))fail(403,"APPOINTMENT_CLINICIAN_REQUIRED");
  }else fail(422,"INVALID_APPOINTMENT_TRANSITION");
+ if(target==="no_show"&&a.startAt>new Date())fail(409,"NO_SHOW_BEFORE_START");
+ if(target==="arrived"&&localDate(a.startAt)!==localDate(new Date()))
+  fail(409,"CHECK_IN_ONLY_ON_APPOINTMENT_DAY");
  const allowed:Record<string,string[]>={
   confirmed:["arrived","no_show","cancelled"],
   arrived:["in_treatment","cancelled"],
@@ -236,18 +239,13 @@ export async function rescheduleAppointment(ctx:ActorContext,cid:string,actorId:
    if(!Number.isInteger(raw.revision)||raw.revision!==before.revision)
     fail(409,"STALE_APPOINTMENT_REVISION");
    // Snapshot survives service reprice; existing appointments retain exact duration and estimate.
-   const currentService=await db.query.clinicService.findFirst({where:and(
-    eq(schema.clinicService.clinicId,cid),eq(schema.clinicService.id,before.serviceId))});
-   if(!currentService||!currentService.active||currentService.version!==before.serviceVersion){
-    // Versioned catalog edits must not retroactively change the scheduled treatment.
-    // Revalidate availability using the ORIGINAL duration by temporarily filtering candidate slots.
-   }
+   // Rescheduling retains the booked service duration and price snapshot even if the catalog changed.
    const view=await availabilityPreview(cid,{date:input.date,serviceId:before.serviceId,
     providerId:input.providerId,resourceId:input.resourceId??undefined,excludeAppointmentId:id,
-    overrideDuration:before.serviceDurationMinutes,overridePreparation:before.preparationMinutes});
+    overrideDuration:before.serviceDurationMinutes,overridePreparation:before.preparationMinutes,
+    allowInactiveService:true});
    const slot=view.slots.find(x=>x.start===input.start&&
-    (!before.resourceId&&!view.service.requiresChair||!view.service.requiresChair||
-     x.resourceId===input.resourceId));
+    (!view.service.requiresChair||x.resourceId===input.resourceId));
    if(!slot||view.service.requiresChair&&!input.resourceId)fail(409,"APPOINTMENT_SLOT_UNAVAILABLE");
    if(Date.parse(slot.startAt)<Date.now()-60000)fail(422,"PAST_APPOINTMENT_NOT_ALLOWED");
    const [after]=await tx.update(schema.clinicAppointment).set({
