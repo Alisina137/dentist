@@ -9,7 +9,7 @@ type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 const base=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const labels:Record<string,Record<string,string>>={
  en:{
-  workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
+  settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
   security:"Security & Access",myProfile:"My membership",home:"Overview",account:"Account",
   clinics:"Clinic",role:"Role",status:"Status",email:"Email",name:"Name",
   invitedBy:"Invited by",joined:"Joined",joinedOn:"Joined at",activity:"Activity history",
@@ -59,7 +59,7 @@ const labels:Record<string,Record<string,string>>={
   unpaid:"Subscription plan capacity is enforced before staff invitations."
  },
  "fa-AF":{
-  workspace:"فضای کاری",operations:"عملیات کلینیک",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",patients:"مریضان",staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
+  settings:"تنظیمات",workspace:"فضای کاری",operations:"عملیات کلینیک",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",patients:"مریضان",staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
   security:"امنیت و دسترسی",myProfile:"عضویت من",home:"نمای کلی",account:"حساب",
   clinics:"کلینیک",role:"نقش",status:"وضعیت",email:"ایمیل",name:"نام",
   invitedBy:"دعوت‌شده توسط",joined:"پیوست",joinedOn:"تاریخ عضویت",activity:"تاریخچه فعالیت",
@@ -107,7 +107,7 @@ const labels:Record<string,Record<string,string>>={
   ownerSafe:"دسترسی مالک از مدیریت کارمندان لغو نمی‌شود.",unpaid:"ظرفیت پلن قبل از دعوت بررسی می‌شود."
  },
  "ps-AF":{
-  workspace:"کاري برخه",operations:"د کلینیک چارې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",patients:"ناروغان",staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
+  settings:"تنظیمات",workspace:"کاري برخه",operations:"د کلینیک چارې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",patients:"ناروغان",staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
   security:"امنیت او لاسرسی",myProfile:"زما غړیتوب",home:"لنډیز",account:"حساب",
   clinics:"کلینیک",role:"دنده",status:"حالت",email:"برېښنالیک",name:"نوم",
   invitedBy:"بلنه ورکوونکی",joined:"ګډ شوی",joinedOn:"د غړیتوب نېټه",activity:"د کړنو تاریخ",
