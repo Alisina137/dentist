@@ -105,6 +105,24 @@ for(const user of [manager,dentist,receptionist,cashier]){
 }
 expect(await http(inviteEndpoint,"POST",{email:dentist.email,role:"dentist"},owner.jar),
   [409],"duplicate invitation prevented");
+// Pending invitations reserve seats, and an owner is one counted seat.
+const pendingOne="pending-one-"+nonce+"@example.test";
+const pendingTwo="pending-two-"+nonce+"@example.test";
+const inviteOne=expect(await http(inviteEndpoint,"POST",
+  {email:pendingOne,role:"assistant"},owner.jar),[201],"reserve sixth seat");
+expect(await http(inviteEndpoint,"POST",
+  {email:pendingTwo,role:"cashier"},owner.jar),[201],"reserve seventh seat");
+expect(await http(inviteEndpoint,"POST",
+  {email:"overflow-"+nonce+"@example.test",role:"dentist"},owner.jar),
+  [409],"subscription capacity blocks additional invitations");
+const revokedPreviewToken=uri(await message(pendingOne,"clinic staff invitation"));
+expect(await http(inviteEndpoint+"/"+inviteOne.invitationId+"/revoke","POST",
+  {reason:"Invitation sent to outdated address"},owner.jar),[200],"revoke pending invitation");
+const previewRevoked=expect(await http("/v1/team/invitations/preview?token="+encodeURIComponent(revokedPreviewToken)),
+  [200],"view revoked invite");
+assert.equal(previewRevoked.status,"revoked");
+expect(await http(inviteEndpoint+"/"+inviteOne.invitationId+"/resend","POST",undefined,owner.jar),
+  [409],"revoked invitation cannot be resent");
 const mail=await message(dentist.email,"clinic staff invitation");
 const preview=expect(await http("/v1/team/invitations/preview?token="+encodeURIComponent(uri(mail))),
   [200],"preview role");
@@ -149,6 +167,8 @@ expect(await http("/v1/team/clinics/"+clinic.id+"/staff/"+receptionAccepted.memb
   "POST",{role:"manager",reason:"Promote other manager"},manager.jar),[403],"manager role ceiling");
 expect(await http(inviteEndpoint,"POST",{email:stranger.email,role:"manager"},manager.jar),
   [403],"manager cannot invite manager");
+const invitedByManager=expect(await http(inviteEndpoint,"POST",
+  {email:stranger.email,role:"assistant"},manager.jar),[201],"manager invites lower role");
 const cashierToken=uri(await message(cashier.email,"clinic staff invitation"));
 const cashierAccepted=expect(await http("/v1/team/invitations/accept","POST",
   {token:cashierToken},cashier.jar),[200],"cashier accepts");
@@ -202,4 +222,29 @@ const ownContext=expect(await http("/v1/team/context","GET",undefined,owner.jar)
 assert.equal(ownContext.clinics.filter(c=>c.role==="owner").length,2);
 expect(await http("/v1/team/clinics/"+another.id+"/staff/"+dentistAccepted.membershipId,
  "GET",undefined,owner.jar),[404],"staff ID cannot be used across tenants");
+// Exercise the exact expired-link recovery path without waiting seven days in CI.
+const firstStrangerToken=uri(await message(stranger.email,"clinic staff invitation"));
+const expire=spawnSync("pnpm",["--filter","@dandanlink/api","exec","tsx",
+  "src/test-invitation-expiry.ts",invitedByManager.invitationId,stranger.email],{
+  env:{...process.env,PH03_TEST_FIXTURE:"allow"},encoding:"utf8"
+});
+assert.equal(expire.status,0,"isolated expiry fixture: "+expire.stderr);
+const expiredPreview=expect(await http("/v1/team/invitations/preview?token="+
+  encodeURIComponent(firstStrangerToken)),[200],"expired invite preview");
+assert.equal(expiredPreview.status,"expired");
+expect(await http("/v1/team/invitations/accept","POST",{token:firstStrangerToken},stranger.jar),
+  [410],"expired invite cannot be accepted");
+expect(await http(inviteEndpoint+"/"+invitedByManager.invitationId+"/resend",
+  "POST",undefined,manager.jar),[200],"manager resends expired invite");
+const newStrangerToken=uri(await message(stranger.email,"clinic staff invitation"));
+assert.notEqual(newStrangerToken,firstStrangerToken,"resend must rotate secret");
+expect(await http("/v1/team/invitations/accept","POST",{token:firstStrangerToken},stranger.jar),
+  [409],"rotated secret cannot be replayed");
+const newStaff=expect(await http("/v1/team/invitations/accept",
+  "POST",{token:newStrangerToken},stranger.jar),[200],"invitee accepts rotated token");
+const multiContext=expect(await http("/v1/team/context","GET",undefined,stranger.jar),
+  [200],"new member context");
+assert.equal(multiContext.clinics[0].role,"assistant");
+expect(await http("/v1/team/clinics/"+another.id+"/staff/"+newStaff.membershipId,
+  "GET",undefined,stranger.jar),[404],"accepted staff still cannot access other tenant");
 console.log("PH03 integration passed: owner seats, email invite, MFA, acceptance, role ceiling, dentist draft, immediate revocation, access logs and tenant scope.");
