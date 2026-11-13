@@ -219,7 +219,7 @@ export function chartRouter(){
    VALUES (${id},${cid(req)},${pid(req)},${data.encounterId},${enc.provider_membership_id},
     ${data.toothCode},${data.dentition},${data.condition},${JSON.stringify(data.surfaces)}::jsonb,
     ${data.notes},${data.observationDate}::date,${status},${req.actor!.id},
-    ${isValidated?req.actor!.id:null},${isValidated?new Date():null},${data.actionKey},${digest})
+    ${isValidated?req.actor!.id:null},CASE WHEN ${isValidated} THEN now() ELSE NULL END,${data.actionKey},${digest})
    ON CONFLICT (clinic_id,recorded_by,action_key) DO NOTHING RETURNING *`;
   if(!result.length){
    const [saved]=await sqlClient`SELECT * FROM clinic_tooth_observations
@@ -262,7 +262,8 @@ export function chartRouter(){
   if(code==="23514"||code==="23503")return void res.status(422).json({code:"CHART_CONSTRAINT_INVALID"});
   // Log SQLSTATE and schema constraint only; never log SQL text, params or patient content.
   console.error("PH08 dental chart request failed",error instanceof Error?error.name:"unknown",
-   "sqlState",code||"none","constraint",String((error as any)?.constraint||"none"));
+   "sqlState",code||"none","constraint",String((error as any)?.constraint||"none"),
+   "source",String((error as any)?.stack||"").match(/chart-router\\.ts:\\d+:\\d+/)?.[0]||"unknown");
   res.status(500).json({code:"CHART_UNAVAILABLE"});
  });
  return api;
