@@ -557,3 +557,101 @@ export const clinicToothObservation=pgTable("clinic_tooth_observations",{
  index("tooth_observation_visit_idx").on(t.clinicId,t.patientId,t.encounterId,t.createdAt),
  index("tooth_observation_history_idx").on(t.clinicId,t.patientId,t.toothCode,t.observationDate,t.createdAt,t.id)
 ]);
+
+
+/** PH09: clinician-owned, versioned treatment proposals. Estimates are AFN integer
+ * snapshots, not invoices or ledger entries. */
+export const clinicTreatmentPlan=pgTable("clinic_treatment_plans",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ clinicianMembershipId:text("clinician_membership_id").notNull().references(()=>clinicMembership.id),
+ title:text("title").notNull(),indication:text("indication").notNull(),
+ expectedSessions:integer("expected_sessions").notNull(),
+ durationMinutes:integer("duration_minutes"),notes:text("notes"),
+ status:text("status").notNull().default("draft"),
+ revision:integer("revision").notNull().default(1),
+ version:integer("version").notNull().default(1),
+ acceptedVersion:integer("accepted_version"),consentState:text("consent_state").notNull().default("none"),
+ estimateTotalAfn:integer("estimate_total_afn").notNull().default(0),
+ patientReleased:boolean("patient_released").notNull().default(false),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ index("clinic_treatment_plans_patient_idx").on(t.clinicId,t.patientId,t.status,t.updatedAt),
+ index("clinic_treatment_plans_provider_idx").on(t.clinicId,t.clinicianMembershipId,t.status,t.updatedAt)
+]);
+
+type TreatmentPriceSnapshot={
+ serviceId:string;serviceVersion:number;name:string;quantity:number;
+ unitPriceAfn:number;discountAfn:number;totalAfn:number;
+};
+/** Append-only proposal snapshots; clinician re-approval/consent is version-specific. */
+export const clinicTreatmentVersion=pgTable("clinic_treatment_versions",{
+ planId:text("plan_id").notNull().references(()=>clinicTreatmentPlan.id),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ version:integer("version").notNull(),
+ title:text("title").notNull(),indication:text("indication").notNull(),
+ expectedSessions:integer("expected_sessions").notNull(),durationMinutes:integer("duration_minutes"),
+ notes:text("notes"),items:jsonb("items").$type<TreatmentPriceSnapshot[]>().notNull(),
+ estimateTotalAfn:integer("estimate_total_afn").notNull(),revisionReason:text("revision_reason"),
+ authorId:text("author_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("clinic_treatment_version_unique").on(t.planId,t.version),
+ index("clinic_treatment_versions_hist_idx").on(t.clinicId,t.patientId,t.planId,t.version)
+]);
+
+/** Current and historical stage instances are version-bound; performed evidence
+ * must come from an assigned signed PH07 encounter before completion. */
+export const clinicTreatmentStage=pgTable("clinic_treatment_stages",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ planId:text("plan_id").notNull().references(()=>clinicTreatmentPlan.id),
+ version:integer("version").notNull(),position:integer("position").notNull(),
+ description:text("description").notNull(),
+ toothCodes:jsonb("tooth_codes").$type<string[]>().notNull().default([]),
+ expectedVisits:integer("expected_visits").notNull().default(1),
+ dueDate:date("due_date",{mode:"string"}),status:text("status").notNull().default("pending"),
+ startedAt:timestamp("started_at",{withTimezone:true}),
+ startedBy:text("started_by").references(()=>user.id),
+ completedAt:timestamp("completed_at",{withTimezone:true}),
+ completedBy:text("completed_by").references(()=>user.id),
+ linkedEncounterId:text("linked_encounter_id").references(()=>clinicEncounter.id),
+ completionNote:text("completion_note")
+},t=>[
+ uniqueIndex("clinic_treatment_stage_order").on(t.planId,t.version,t.position),
+ index("clinic_treatment_stages_current_idx").on(t.clinicId,t.patientId,t.planId,t.version,t.position)
+]);
+
+/** Witnessed in-person consent only. No inferred electronic signature or
+ * unverified patient-app release. Consent and withdrawal rows are immutable. */
+export const clinicTreatmentConsent=pgTable("clinic_treatment_consents",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ planId:text("plan_id").notNull().references(()=>clinicTreatmentPlan.id),
+ version:integer("version").notNull(),action:text("action").notNull(),
+ patientRole:text("patient_role").notNull(),personName:text("person_name").notNull(),
+ relationship:text("relationship"),witnessName:text("witness_name").notNull(),
+ scopeDescription:text("scope_description").notNull(),
+ acknowledgedAt:timestamp("acknowledged_at",{withTimezone:true}).notNull(),
+ reason:text("reason"),actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_treatment_consent_history_idx").on(t.clinicId,t.patientId,t.planId,t.createdAt)]);
+
+/** Append-only lifecycle events for staged care, proposals and consent. */
+export const clinicTreatmentEvent=pgTable("clinic_treatment_events",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ planId:text("plan_id").notNull().references(()=>clinicTreatmentPlan.id),
+ version:integer("version").notNull(),action:text("action").notNull(),
+ stageId:text("stage_id").references(()=>clinicTreatmentStage.id),
+ fromStatus:text("from_status"),toStatus:text("to_status"),
+ reason:text("reason"),details:jsonb("details").$type<Record<string,unknown>>().notNull().default({}),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_treatment_events_history_idx").on(t.clinicId,t.patientId,t.planId,t.createdAt)]);
