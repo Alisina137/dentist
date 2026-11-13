@@ -9,7 +9,7 @@ type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 const base=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const labels:Record<string,Record<string,string>>={
  en:{
-  settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
+  appointments:"Appointments",settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
   security:"Security & Access",myProfile:"My membership",home:"Overview",account:"Account",
   clinics:"Clinic",role:"Role",status:"Status",email:"Email",name:"Name",
   invitedBy:"Invited by",joined:"Joined",joinedOn:"Joined at",activity:"Activity history",
@@ -28,7 +28,7 @@ const labels:Record<string,Record<string,string>>={
   qualifications:"Qualifications (unverified)",license:"Professional license (unverified)",
   experience:"Years of experience (unverified)",bio:"Professional biography",
   saveProfile:"Save draft",version:"Draft version",notPublic:"Draft only. Not verified or public.",
-  schedulingLater:"Patient registry and operational settings are now available. Appointments, clinical encounters and billing open in their assigned phases.",
+  schedulingLater:"Appointments, patient records and clinic operations are now active. Clinical encounters and billing open in their assigned phases.",
   noStaff:"No staff yet. Invite the first colleague.",noDentists:"No dentists yet. Invite a dentist.",
   noInvites:"No invitations yet.",noHistory:"No security activity recorded.",
   noClinics:"You do not currently have an active clinic membership.",
@@ -59,7 +59,7 @@ const labels:Record<string,Record<string,string>>={
   unpaid:"Subscription plan capacity is enforced before staff invitations."
  },
  "fa-AF":{
-  settings:"تنظیمات",workspace:"فضای کاری",operations:"عملیات کلینیک",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",patients:"مریضان",staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
+  appointments:"وقت‌های ملاقات",settings:"تنظیمات",workspace:"فضای کاری",operations:"عملیات کلینیک",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",patients:"مریضان",staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
   security:"امنیت و دسترسی",myProfile:"عضویت من",home:"نمای کلی",account:"حساب",
   clinics:"کلینیک",role:"نقش",status:"وضعیت",email:"ایمیل",name:"نام",
   invitedBy:"دعوت‌شده توسط",joined:"پیوست",joinedOn:"تاریخ عضویت",activity:"تاریخچه فعالیت",
@@ -78,7 +78,7 @@ const labels:Record<string,Record<string,string>>={
   qualifications:"تحصیلات و مدارک (تأییدنشده)",license:"شماره جواز مسلکی (تأییدنشده)",
   experience:"سال‌های تجربه (تأییدنشده)",bio:"معرفی مسلکی",
   saveProfile:"ذخیره پیش‌نویس",version:"نسخه پیش‌نویس",notPublic:"فقط پیش‌نویس؛ نه تأیید شده و نه عمومی.",
-  schedulingLater:"ثبت مریضان و تنظیمات عملیاتی فعال است؛ نوبت‌دهی، معاینات و بل‌ها در مراحل بعدی فعال می‌شوند.",
+  schedulingLater:"وقت‌دهی، ثبت مریضان و تنظیمات کلینیک فعال‌اند؛ معاینات و بل‌ها در مراحل بعدی فعال می‌شوند.",
   noStaff:"هنوز کارمندی نیست. اولین همکار را دعوت کنید.",noDentists:"داکتر دندان ثبت نشده.",
   noInvites:"هنوز دعوتی نیست.",noHistory:"هنوز فعالیت امنیتی ثبت نشده.",
   noClinics:"عضویت فعال کلینیک ندارید.",missingClinic:"کلینیک در عضویت‌های شما نیست.",
@@ -107,7 +107,7 @@ const labels:Record<string,Record<string,string>>={
   ownerSafe:"دسترسی مالک از مدیریت کارمندان لغو نمی‌شود.",unpaid:"ظرفیت پلن قبل از دعوت بررسی می‌شود."
  },
  "ps-AF":{
-  settings:"تنظیمات",workspace:"کاري برخه",operations:"د کلینیک چارې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",patients:"ناروغان",staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
+  appointments:"لیدنې",settings:"تنظیمات",workspace:"کاري برخه",operations:"د کلینیک چارې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",patients:"ناروغان",staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
   security:"امنیت او لاسرسی",myProfile:"زما غړیتوب",home:"لنډیز",account:"حساب",
   clinics:"کلینیک",role:"دنده",status:"حالت",email:"برېښنالیک",name:"نوم",
   invitedBy:"بلنه ورکوونکی",joined:"ګډ شوی",joinedOn:"د غړیتوب نېټه",activity:"د کړنو تاریخ",
@@ -126,7 +126,7 @@ const labels:Record<string,Record<string,string>>={
   qualifications:"اسناد (نه دي تایید شوي)",license:"د جواز شمېره (نه ده تایید شوې)",
   experience:"د تجربې کلونه (نه دي تایید شوي)",bio:"مسلکي پېژندنه",
   saveProfile:"مسوده خوندي کړئ",version:"د مسودې نسخه",notPublic:"یوازې مسوده؛ نه تایید شوې او نه عامه.",
-  schedulingLater:"د ناروغانو ثبت او عملیاتي تنظیمات فعال دي؛ ملاقاتونه، طبي ریکارډونه او بیلونه وروسته فعالېږي.",
+  schedulingLater:"د لیدنو ثبت، د ناروغانو ریکارډونه او د کلینیک چارې فعالې دي؛ طبي اسناد او بیلونه وروسته فعالېږي.",
   noStaff:"تر اوسه کارکوونکي نشته. یو همکار راوبلئ.",noDentists:"ډاکټر نشته.",
   noInvites:"بلنې نشته.",noHistory:"امنیتي کړنې نشته.",
   noClinics:"فعال کلینیکي غړیتوب نه لرئ.",missingClinic:"کلینیک ستاسو په غړیتوب کې نشته.",
@@ -211,6 +211,7 @@ function navigation(space:Space,t:(key:string)=>string){
   title:t(key),href:path+clinic,key,icon,group
  });
  const home=link("home","/clinic","⌂","workspace");
+ const appointments=link("appointments","/clinic/appointments","▦","workspace");
  const patients=link("patients","/clinic/patients","♧","workspace");
  const staff=link("staff","/clinic/staff","◉","operations");
  const resources=link("resources","/clinic/resources","▦","operations");
@@ -220,9 +221,11 @@ function navigation(space:Space,t:(key:string)=>string){
  const profile=link("myProfile","/clinic/staff/"+space.membershipId,"◎","settings");
  const options=[home];
  if(space.role==="owner"||space.role==="manager"){
-  options.push(patients,staff,resources,services,hours,security);
+  options.push(appointments,patients,staff,resources,services,hours,security);
  }else if(space.role==="dentist"||space.role==="receptionist"){
-  options.push(patients,resources,services,hours,profile,security);
+  options.push(appointments,patients,resources,services,hours,profile,security);
+ }else if(space.role==="assistant"){
+  options.push(appointments,profile,security);
  }else if(space.role==="cashier"){
   options.push(patients,profile,security);
  }else options.push(profile,security);
@@ -230,7 +233,7 @@ function navigation(space:Space,t:(key:string)=>string){
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
  const {t}=useLang();const nav=navigation(space,t);
- const pageHasOwnHeading=["patients","services","resources","hours"].includes(active);
+ const pageHasOwnHeading=["patients","services","resources","hours","appointments"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
     <div className="pill">{t(space.role)}</div>
