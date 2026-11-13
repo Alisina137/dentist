@@ -67,3 +67,12 @@ Metro tunnel does not tunnel Express port 4000.
 builds and Expo Android bundling are CI gates. Manual Expo Go device testing,
 app store SDK compatibility, mobile connectivity, and visual RTL QA remain
 external verification steps. No real clinical data or booked appointments yet.
+
+## Development-only email policy
+
+- To simplify local testing, `.env` may opt into `DEV_SKIP_EMAIL_VERIFICATION=true` when `NODE_ENV=development`.
+- Signup sends no verification mail in that mode, and login/clinic/team/admin APIs allow an unverified email **only locally with the explicit flag**.
+- Database emailVerified stays false until verified; production and CI test contexts still require verification.
+- `pnpm dev:auth:no-email` adjusts only the flag in an existing development `.env` file.
+- Platform admin still requires an existing account, an explicit owner-specified admin bootstrap and TOTP MFA before entering protected admin routes.
+- No real patient data or public production launch is authorized while development email verification is disabled.
