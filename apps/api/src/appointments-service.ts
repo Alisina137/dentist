@@ -367,8 +367,13 @@ export async function calendar(ctx:ActorContext,cid:string,raw:any){
   truncated:rows.length===1500};
 }
 export async function timeline(cid:string,id:string){
- return db.select().from(schema.clinicAppointmentEvent).where(and(
+ const events=await db.select().from(schema.clinicAppointmentEvent).where(and(
   eq(schema.clinicAppointmentEvent.clinicId,cid),
   eq(schema.clinicAppointmentEvent.appointmentId,id)
  )).orderBy(asc(schema.clinicAppointmentEvent.createdAt),asc(schema.clinicAppointmentEvent.id));
+ const actorIds=[...new Set(events.map(e=>e.actorId))];
+ const people=actorIds.length?await db.select({id:schema.user.id,name:schema.user.name})
+  .from(schema.user).where(inArray(schema.user.id,actorIds)):[];
+ const names=new Map(people.map(p=>[p.id,p.name]));
+ return events.map(e=>({...e,actorName:names.get(e.actorId)||"Clinic staff"}));
 }
