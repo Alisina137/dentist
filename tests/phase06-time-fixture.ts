@@ -10,11 +10,13 @@ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
 const values=Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));
 const date=[values.year,values.month,values.day].join("-");
 const start=localToUtc(date,0),end=localToUtc(date,30);
-try{
+void (async()=>{
+ try{
  const rows=await sqlClient.unsafe(
   "UPDATE clinic_appointments SET start_at=$1, end_at=$2 WHERE clinic_id=$3 AND id=$4 AND status='confirmed' RETURNING id",
   [start,end,clinicId,appointmentId]
  );
  if(rows.length!==1)throw Error("PH06 fixture target missing");
  console.info("PH06_TEST_TIME_SET",date);
-}finally{await sqlClient.end();}
+ }finally{await sqlClient.end();}
+})().catch(error=>{console.error(error instanceof Error?error.name:"fixture_failed");process.exitCode=1;});
