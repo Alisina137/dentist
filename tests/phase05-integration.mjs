@@ -84,6 +84,15 @@ const other=expect(await api("/v1/clinics","POST",{
  licenseNumber:"PH05-OTHER-"+runId
 },owner.session),[201],"create other clinic").clinic;
 await mfa(owner);
+const document=Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF");
+const evidence=await fetch(API+"/v1/clinics/"+clinic.id+"/evidence",{
+  method:"POST",headers:{origin,cookie:owner.session,
+   "content-type":"application/octet-stream","x-document-kind":"clinic_license","x-file-name":"clinic.pdf"},
+  body:document
+});
+assert.equal(evidence.status,201,"upload test clinic registration proof");
+expect(await api("/v1/clinics/"+clinic.id+"/submit","POST",
+ {attested:true},owner.session),[200],"start trial before staffing");
 const receptionistGrant=await invite(owner,clinic.id,receptionist,"receptionist");
 const dentistGrant=await invite(owner,clinic.id,dentist,"dentist");
 const c="/v1/registry/clinics/"+clinic.id+"/patients",d="/v1/registry/clinics/"+other.id+"/patients";
