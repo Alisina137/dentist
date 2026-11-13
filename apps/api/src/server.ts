@@ -12,6 +12,7 @@ import { phase02Router } from "./phase02.js";
 import { phase03Router } from "./phase03.js";
 import { patientRegistryRouter } from "./patient-registry.js";
 import { operationsRouter } from "./operations-router.js";
+import { appointmentsRouter } from "./appointments-router.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -34,6 +35,7 @@ app.all("/api/auth/*", toNodeHandler(auth));
 app.use("/v1/registry", express.json({limit:"1.5mb"}), patientRegistryRouter());
 app.use(express.json({ limit: "16kb" }));
 app.use("/v1/operations", operationsRouter());
+app.use("/v1/appointments", appointmentsRouter());
 app.get("/health", (_req, res) => res.json({ status: "up" }));
 app.get("/ready", async (_req, res) => {
   try {
@@ -44,7 +46,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH04+PH05", marketplaceAvailable: false,
+  product: "DandanLink", release: "PH06", marketplaceAvailable: false,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));
 
