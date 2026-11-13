@@ -14,7 +14,7 @@ const userId=(req:StaffRequest)=>req.actor!.id;
 const clinicId=(req:StaffRequest)=>String(req.params.clinicId);
 function details(csv:unknown,mapping:any){
   if(typeof csv!=="string")fail(422,"CSV_REQUIRED");
-  return csvRecords(csv,mapping);
+  return csvRecords(csv as string,mapping);
 }
 function safeCode(error:unknown){
   return error instanceof PatientError?error.code:"ROW_PROCESSING_FAILED";
