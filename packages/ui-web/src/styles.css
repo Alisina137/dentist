@@ -638,3 +638,8 @@ a.phase-list-item:hover{background:#f5fbfe}
 }
 @media(min-width:1400px){.phase04-workspace{max-width:1300px}}
 @media(prefers-reduced-motion:reduce){.phase04-workspace *, .phase04-drawer-backdrop *{transition:none!important}}
+
+/* PH04 heading owns the semantic H1 on operations and patient routes. */
+.phase04-shell-topbar{padding-block:3px 13px;margin-block-end:13px;border-bottom:1px solid var(--line)}
+.phase04-shell-topbar .muted{margin:5px 0 0;font-size:12px}
+.phase04-shell-topbar .btn{white-space:nowrap}
