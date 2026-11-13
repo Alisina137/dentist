@@ -91,8 +91,8 @@ async function doBooking(cid,user,patient,service,provider,resource,date,start,i
   administrativeNote:"Appointment registered at the front desk",idempotencyKey
  },user.session);
 }
-function fixture(cid,id){
- const run=spawnSync("pnpm",["exec","tsx","tests/phase06-time-fixture.ts",cid,id],
+function fixture(cid,id,offset=0){
+ const run=spawnSync("pnpm",["exec","tsx","tests/phase06-time-fixture.ts",cid,id,String(offset)],
   {cwd:process.cwd(),encoding:"utf8",env:process.env});
  assert.equal(run.status,0,"PH06 clock fixture failed: "+run.stderr+" "+run.stdout);
 }
@@ -345,7 +345,7 @@ ok(await request(base+"/appointments/"+first.id+"/status","POST",{
 },reception.session),[409],"completed appointment cannot cancel");
 const finalQueue=ok(await request(base+"/queue","GET",undefined,owner.session),[200],"queue updated");
 assert.ok(finalQueue.queue.some(a=>a.id===first.id&&a.status==="completed"));
-fixture(clinic.id,winner.id);
+fixture(clinic.id,winner.id,60);
 const currentWinner=ok(await request(base+"/appointments/"+winner.id,"GET",undefined,reception.session),
  [200],"fixture winner").appointment;
 const absent=ok(await request(base+"/appointments/"+winner.id+"/status","POST",{
