@@ -623,3 +623,216 @@ function ClinicalIntake({value,path,reload}:{value:any,path:string,reload:()=>vo
   {done&&<Notice kind="success">{done}</Notice>}
  </form>;
 }
+
+
+type ImportPreview={headers:string[];mapping:Record<string,string>;previewHash:string;
+ counts:{ready:number,duplicates:number,invalid:number};
+ rows:{rowNumber:number;values:Record<string,string|null>;status:"ready"|"invalid"|"duplicate";
+  errorCode:string|null;candidates:Patient[]}[]};
+type RowAction={mode:"skip"|"create"|"merge";reason?:string;targetPatientId?:string};
+const CSV_FIELDS=[
+ ["preferredName","preferredName"],["familyName","familyName"],["phone","phone"],
+ ["importSourceId","idLabel"],["dateOfBirth","dob"],["ageEstimate","ageEstimate"],
+ ["province","province"],["city","city"],["address","address"],
+ ["alternateContact","altContact"],["emergencyContact","emergency"]
+] as const;
+const CSV_HEADERS:Record<string,string>={
+ preferredName:"preferred_name",familyName:"family_name",phone:"phone",
+ importSourceId:"source_id",dateOfBirth:"date_of_birth",ageEstimate:"age_estimate",
+ province:"province",city:"city",address:"address",
+ alternateContact:"alternate_contact",emergencyContact:"emergency_contact"
+};
+function CsvImport({space}:{space:Space}){
+ const {t}=useWords();
+ const [step,setStep]=useState(0),[csv,setCsv]=useState(""),[name,setName]=useState("");
+ const [headers,setHeaders]=useState<string[]>([]);
+ const [mapping,setMapping]=useState<Record<string,string>>({...CSV_HEADERS});
+ const [authorized,setAuthorized]=useState(false),[confirmed,setConfirmed]=useState(false);
+ const [preview,setPreview]=useState<ImportPreview|null>(null);
+ const [actions,setActions]=useState<Record<string,RowAction>>({});
+ const [jobId,setJobId]=useState("");
+ const [result,setResult]=useState<any>(null);
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const path="/clinics/"+space.clinicId+"/patients/import";
+ const canImport=["owner","manager"].includes(space.role);
+ function startOver(){setStep(0);setCsv("");setPreview(null);setActions({});
+  setJobId("");setResult(null);setError("");setConfirmed(false);setName("");}
+ async function choose(file:File|null){
+  if(!file)return;
+  setError("");setPreview(null);setResult(null);setActions({});setJobId("");
+  if(file.size>1048576||file.size<10){setError("CSV_TOO_LARGE_OR_EMPTY");return;}
+  if(!file.name.toLocaleLowerCase("en").endsWith(".csv")){setError("CSV_FILE_REQUIRED");return;}
+  try{
+   const contents=await file.text();
+   if(contents.includes("\u0000"))throw new Error("CSV_INVALID_ENCODING");
+   const names=contents.replace(/^\ufeff/,"").split(/\r?\n/)[0].split(",")
+      .map(s=>s.trim().replace(/^"|"$/g,"").toLocaleLowerCase("en"));
+   if(!names.length)throw new Error("CSV_EMPTY");
+   const initial:Record<string,string>={};
+   for(const field of Object.keys(CSV_HEADERS))
+      initial[field]=names.includes(CSV_HEADERS[field])?CSV_HEADERS[field]:"";
+   setCsv(contents);setName(file.name);setHeaders(names);setMapping(initial);setStep(1);
+  }catch(e:any){setError(e.message||"CSV_INVALID_ENCODING");}
+ }
+ async function openPreview(){
+  setBusy(true);setError("");
+  try{
+   const response=await api(path+"/preview","POST",{csv,mapping,authorizedTransfer:authorized});
+   setPreview(response);setStep(2);
+  }catch(e:any){setError(e.message);}finally{setBusy(false);}
+ }
+ function setAction(row:number,field:"mode"|"reason"|"targetPatientId",value:string){
+  setActions(current=>{
+   const item={...(current[row]||{mode:"skip"})} as RowAction;
+   return {...current,[row]:{...item,[field]:value}};
+  });
+ }
+ function duplicateRows(){return preview?.rows.filter(r=>r.status==="duplicate")||[];}
+ function resolved(){
+  return duplicateRows().every(r=>{
+   const decision=actions[r.rowNumber];
+   if(!decision||decision.mode==="skip")return true;
+   if(decision.reason?.trim().length!>=10)return false;
+   if(decision.mode==="merge"&&!decision.targetPatientId)return false;
+   return true;
+  });
+ }
+ async function commit(){
+  if(!preview||!confirmed||!resolved())return;
+  const key=jobId||crypto.randomUUID();
+  setJobId(key);setBusy(true);setError("");
+  try{
+   const value=await api(path+"/commit","POST",{
+    csv,mapping:preview.mapping,previewHash:preview.previewHash,
+    actions,jobId:key,authorizedTransfer:authorized,confirmed
+   });
+   setResult(value);setStep(4);
+  }catch(e:any){setError(e.message);}finally{setBusy(false);}
+ }
+ function downloadReport(){
+  if(!result)return;
+  const quote=(v:unknown)=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const report="row_number,result,code,patient_id\r\n"+(result.rows||[])
+    .filter((r:any)=>r.result!=="created").map((r:any)=>[
+      r.rowNumber,r.result,r.code,r.patientId||""].map(quote).join(",")).join("\r\n");
+  const blob=new Blob(["\ufeff"+report],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);const anchor=document.createElement("a");
+  anchor.href=url;anchor.download="dandanlink-import-report.csv";document.body.append(anchor);
+  anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+ }
+ async function template(){
+  try{
+   const response=await fetch(API+"/v1/registry"+path+"/template",{credentials:"include"});
+   if(!response.ok)throw new Error("TEMPLATE_UNAVAILABLE");
+   const url=URL.createObjectURL(await response.blob()),anchor=document.createElement("a");
+   anchor.href=url;anchor.download="dandanlink-patient-import-template.csv";
+   document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e:any){setError(e.message);}
+ }
+ if(!canImport)return <ErrorPanel message={t("disabled")}/>;
+ return <div className="phase05-gap">
+  <Notice kind="warning">{t("noPublic")}</Notice>
+  <section className="card panel">
+   <div className="phase05-tabs phase05-steps" role="tablist" aria-label={t("importTitle")}>
+    {["stepUpload","stepMap","stepPreview","stepResolve","stepCommit"].map((key,index)=>
+     <button key={key} type="button" className={"phase05-tab "+(step===index?"current":"")}
+       role="tab" aria-selected={step===index} disabled={index>step||step===4&&index!==4}
+       onClick={()=>{if(index<=step&&step<4){setStep(index);setError("");}}}>
+       {index+1}. {t(key)}</button>)}
+   </div>
+   <p className="muted">{t("importHelp")}</p>
+   {step===0&&<div className="phase05-form">
+     <button className="btn btn-secondary" onClick={template}>{t("template")} ↓</button>
+     <label className="field"><span>{t("uploadCsv")}</span>
+       <input type="file" accept=".csv,text/csv" onChange={e=>choose(e.currentTarget.files?.[0]||null)}/></label>
+     <label className="phase05-check"><input type="checkbox" checked={authorized}
+       onChange={e=>setAuthorized(e.target.checked)}/>
+       <span>{t("noticeImport")}</span></label>
+     <Notice>{t("noticeImportImportant")}</Notice>
+   </div>}
+   {step===1&&<div className="phase05-form">
+     <h2>{t("mapping")}</h2><p><strong>{name}</strong> · {headers.length} {t("rows")}</p>
+     <div className="phase05-form-grid">
+     {CSV_FIELDS.map(([key,label])=><Select key={key} name={t(label)}
+       value={mapping[key]||""} onChange={v=>setMapping(m=>({...m,[key]:v}))}
+       options={[{value:"",label:t("mapNoColumn")},
+         ...headers.map(h=>({value:h,label:h}))]}/>)}</div>
+     <div className="phase-actions">
+       <button className="btn btn-secondary" onClick={()=>setStep(0)}>{t("back")}</button>
+       <button className="btn btn-primary" disabled={!authorized||!mapping.preferredName||busy}
+        onClick={openPreview}>{busy?t("loading"):t("preview")}</button>
+     </div>
+   </div>}
+   {step===2&&preview&&<div className="phase05-form">
+     <h2>{t("stepPreview")}</h2>
+     <div className="phase05-counters">
+      {(["ready","duplicates","invalid"] as const).map(key=><div className="phase05-stat card" key={key}>
+        <span>{t(key==="duplicates"?"duplicate":key)}</span>
+        <strong>{preview.counts[key]}</strong></div>)}
+     </div>
+     <p className="muted">{t("preview")}: {Math.min(preview.rows.length,15)} / {preview.rows.length} {t("rows")}</p>
+     <div className="phase05-scroll"><table className="staff-table"><thead>
+      <tr><th>{t("rows")}</th><th>{t("preferredName")}</th><th>{t("phone")}</th>
+        <th>{t("status")}</th><th>{t("resultCode")}</th></tr></thead>
+      <tbody>{preview.rows.slice(0,15).map(r=><tr key={r.rowNumber}>
+       <td>{r.rowNumber}</td><td>{r.values.preferredName||"—"}</td>
+       <td><bdi dir="ltr">{r.values.phone||"—"}</bdi></td>
+       <td><Chip value={r.status}/></td><td>{r.errorCode||"—"}</td>
+      </tr>)}</tbody></table></div>
+     <div className="phase-actions"><button className="btn btn-secondary" onClick={()=>setStep(1)}>{t("back")}</button>
+      <button className="btn btn-primary" onClick={()=>setStep(3)}>{t("next")}</button></div>
+   </div>}
+   {step===3&&preview&&<div className="phase05-form">
+     <h2>{t("stepResolve")}</h2><Notice kind="warning">{t("duplicateInfo")}</Notice>
+     {!duplicateRows().length?<p className="muted">{t("noFilter")}</p>:
+      <div className="phase05-resolve-list">{duplicateRows().map(r=><article key={r.rowNumber} className="phase05-resolve-row">
+       <div><strong>#{r.rowNumber} · {r.values.preferredName||"—"} {r.values.familyName||""}</strong>
+       <p className="muted"><bdi dir="ltr">{r.values.phone||"—"}</bdi> · {r.errorCode}</p></div>
+       <Select name={t("decision")} value={actions[r.rowNumber]?.mode||"skip"}
+        onChange={v=>setAction(r.rowNumber,"mode",v)}
+        options={[{value:"skip",label:t("skip")},{value:"create",label:t("new")},
+         ...(r.candidates.length?[{value:"merge",label:t("merge")}]:[])]}/>
+       {(actions[r.rowNumber]?.mode==="merge")&&<Select name={t("selectPatient")}
+        value={actions[r.rowNumber]?.targetPatientId||""}
+        onChange={v=>setAction(r.rowNumber,"targetPatientId",v)}
+        options={[{value:"",label:t("mapNoColumn")},
+          ...r.candidates.map(p=>({value:p.id,label:p.patientNumber+" · "+p.preferredName}))]}/>}
+       {(actions[r.rowNumber]?.mode==="merge"||actions[r.rowNumber]?.mode==="create")&&
+        <Field name={t("reasonImport")} value={actions[r.rowNumber]?.reason||""}
+         onChange={v=>setAction(r.rowNumber,"reason",v)} maxLength={300}/>}
+       {r.candidates.length>0&&<div className="phase05-match-list">
+         {r.candidates.map(p=><PatientLink key={p.id} cid={space.clinicId} id={p.id}>
+           {t("openExisting")}: <bdi dir="ltr">{p.patientNumber}</bdi> {p.preferredName}</PatientLink>)}
+       </div>}
+      </article>)}</div>}
+     <label className="phase05-check"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>
+      <span>{t("importConfirm")}</span></label>
+     <p className="muted">{t("noticeImportImportant")}</p>
+     <div className="phase-actions"><button className="btn btn-secondary" onClick={()=>setStep(2)}>{t("back")}</button>
+      <button className="btn btn-primary" disabled={!confirmed||!resolved()||busy}
+       onClick={commit}>{busy?t("loading"):t("confirmImport")}</button></div>
+   </div>}
+   {step===4&&result&&<div className="phase05-form" aria-live="polite">
+     <h2>{t("finished")}</h2>
+     <div className="phase05-counters">
+       {(["created","skipped","needsReview","failed"] as const).map(key=>
+       <div className="phase05-stat card" key={key}><span>{t(key==="needsReview"?"needsReview":key==="failed"?"failedRows":key)}</span>
+        <strong>{result.job[key]}</strong></div>)}
+     </div>
+     <p className="muted">{t("reportSummary")}</p>
+     <div className="phase05-scroll"><table className="staff-table"><thead><tr>
+       <th>{t("rows")}</th><th>{t("status")}</th><th>{t("resultCode")}</th><th>{t("view")}</th>
+       </tr></thead><tbody>{result.rows?.map((row:any)=><tr key={row.rowNumber}>
+         <td>{row.rowNumber}</td><td>{t(row.result)}</td><td>{row.code}</td>
+         <td>{row.patientId?<PatientLink cid={space.clinicId} id={row.patientId}>{t("view")} ↗</PatientLink>:"—"}</td>
+       </tr>)}</tbody></table></div>
+     <div className="phase-actions">
+       <button className="btn btn-secondary" onClick={downloadReport}>{t("rowErrors")} ↓</button>
+       <button className="btn btn-secondary" onClick={startOver}>{t("import")}</button>
+       <a className="btn btn-primary" href={patientHref(space.clinicId)}>{t("directory")}</a>
+     </div>
+   </div>}
+   {error&&<Notice kind="error">{t("failed")}: {error}</Notice>}
+  </section>
+ </div>;
+}
