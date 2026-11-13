@@ -118,7 +118,10 @@ export function operationsRouter(){
  }));
  clinic.get("/availability/preview",wrap(async(req,res)=>{
   await operationsAccess(req,cid(req));
-  const slots=await availabilityPreview(cid(req),req.query);
+  const slots=await availabilityPreview(cid(req),{
+    date:req.query.date,serviceId:req.query.serviceId,
+    providerId:req.query.providerId,resourceId:req.query.resourceId
+  });
   nocache(res);res.json(slots);
  }));
  api.use((error:unknown,_req:Request,res:Response,_next:NextFunction)=>{
