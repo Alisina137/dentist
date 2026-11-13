@@ -365,7 +365,6 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
  const canRecord=Boolean(context?.canRecord&&encounterId&&
   context.encounters.some((v:Visit)=>v.id===encounterId&&v.canRecord));
  const options=context?.encounters.filter((v:Visit)=>v.canRecord) as Visit[]||[];
- const selectedVisit=context?.encounters.find((v:Visit)=>v.id===encounterId) as Visit|undefined;
  const isAssistant=space.role==="assistant";
  function changeSurfaces(s:string){setFormSurfaces(prev=>prev.includes(s)?prev.filter(x=>x!==s):[...prev,s]);
   keyRef.current="";}
@@ -479,7 +478,7 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
           {ob.notes&&<p className="phase08-obs-note">{ob.notes}</p>}
           {ob.status==="validated"&&ob.validatedByName&&<p>{t("validatedBy")}: {ob.validatedByName}</p>}
          </div>
-         {context.canValidate&&ob.status==="draft"&&selectedVisit?.id===ob.encounterId&&
+         {context.canValidate&&ob.status==="draft"&&context.encounters.some((v:Visit)=>v.id===ob.encounterId)&&
           <button type="button" className="btn btn-secondary" disabled={writing}
            onClick={()=>validate(ob.id)}>{t("validate")} ✓</button>}
         </li>)}</ol>}
