@@ -114,3 +114,26 @@ console.log("PH01 HTTP integration passed: signup, verification, login, protecte
 // Administrative grant requires an explicit operator command; smoke verifies API remains denied by default.
 assert.ok(!(await (await http("/v1/me", undefined, cookie)).json()).isPlatformAdmin);
 console.log("PH01 security passed: ordinary verified account has no platform administrator membership.");
+
+const { spawnSync } = await import("node:child_process");
+const grant = spawnSync("pnpm", ["--filter", "@dandanlink/api", "grant:admin", email], {
+  env: { ...process.env, ALLOW_ADMIN_BOOTSTRAP: "true", ADMIN_BOOTSTRAP_EMAIL: email },
+  cwd: process.cwd(), encoding: "utf8"
+});
+assert.equal(grant.status, 0, "trusted admin grant command failed: " + grant.stderr);
+const promoted = await (await http("/v1/me", undefined, cookie)).json();
+assert.equal(promoted.isPlatformAdmin, true);
+assert.equal(promoted.adminMfaVerified, false);
+await expectStatus(await http("/v1/clinic/home", undefined, cookie), [403], "admin cannot use clinic shell");
+await expectStatus(await http("/v1/admin/home", undefined, cookie), [403], "admin MFA enforced");
+
+const mfaEnroll = await http("/api/auth/two-factor/enable", { password: newPassword, method: "totp" }, cookie);
+await expectStatus(mfaEnroll, [200], "TOTP enrollment");
+const enrollment = await mfaEnroll.json();
+const uri = enrollment.totpURI || enrollment.data?.totpURI;
+assert.ok(uri, "TOTP enrollment did not return authenticator URI");
+const verifiedMfa = await http("/api/auth/two-factor/verify-totp", { code: totp(uri) }, cookie);
+await expectStatus(verifiedMfa, [200], "TOTP verification");
+if (cookieOf(verifiedMfa)) cookie = cookieOf(verifiedMfa);
+await expectStatus(await http("/v1/admin/home", undefined, cookie), [200], "admin home after MFA");
+console.log("PH01 privileged integration passed: explicit grant, clinic deny, MFA deny/enrollment/verification.");
