@@ -6,7 +6,7 @@ Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\d
 
 ## Current phase: PH09 treatment proposals, clinical stages and consent
 
-Status: **PH01–PH08 implemented and verified; PH09 treatment planning is implemented on its feature branch and awaits full CI acceptance. Manual clinical review, accessibility, privacy/security and legal acceptance remain separate production gates**.
+Status: **PH01–PH09 implemented and tested. PH09 automated tests, typechecks, builds, Expo bundle and PostgreSQL-backed clinical acceptance passed. Manual clinical review, accessibility, privacy/security and legal consent verification remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
