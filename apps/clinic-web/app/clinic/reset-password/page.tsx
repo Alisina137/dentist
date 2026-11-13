@@ -1,2 +1,2 @@
 import { PasswordResetRoute } from "@dandanlink/ui";
-export default function Page(){ return <AuthPanel audience="clinic" />; }
+export default function Page(){ return <PasswordResetRoute audience="clinic" />; }
