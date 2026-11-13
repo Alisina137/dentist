@@ -155,3 +155,68 @@ a.phase-list-item:hover{background:#f5fbfe}
 .phase-search{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:19px}
 .phase-search .field{flex:1 1 240px}
 .phase-search input[type=search]{width:100%;min-height:46px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+
+/* PH03 staff workspace — shared across all clinic roles. */
+.staff-shell{grid-template-columns:248px minmax(0,1fr);max-width:1350px}
+.staff-side{position:sticky;top:14px;min-width:0}
+.staff-side-locale{padding-top:18px;border-top:1px solid var(--line);margin-top:20px}
+.staff-side-locale .preferences{display:grid;gap:10px}
+.staff-tenant-title{font-weight:800;font-size:17px;padding:16px 2px;overflow-wrap:anywhere}
+.staff-side .side-nav{gap:4px}
+.staff-side .side-nav a{min-height:44px}
+.staff-phone-menu{display:none}
+.staff-page-heading{font-size:clamp(25px,3vw,32px);margin:12px 0 8px}
+.staff-content{min-width:0}
+.staff-gap{display:grid;gap:20px}
+.staff-switch{padding:0 0 16px}
+.staff-switch .field{max-width:460px}
+.staff-switch .field select,.staff-invite-form .field select,
+.staff-roles-controls .field select{width:100%;border-radius:10px;border:1px solid #b9cbd6;padding:11px;min-height:48px;background:white;color:var(--ink)}
+.staff-role-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.staff-role-summary>div{display:grid;gap:8px;border:1px solid var(--line);padding:16px;border-radius:10px;min-width:0}
+.staff-role-summary strong{overflow-wrap:anywhere}
+.staff-panel-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:17px}
+.staff-panel-heading h2{margin-bottom:0}
+.staff-panel-heading .field{min-width:150px}
+.staff-empty,.team-empty{padding:28px 12px;color:var(--muted);text-align:center}
+.staff-small{font-size:13px;line-height:1.6}
+.staff-scroll{overflow:auto;max-width:100%;scrollbar-width:thin}
+.staff-table{width:100%;min-width:620px;border-collapse:collapse;text-align:start}
+.staff-table th{background:var(--canvas);font-size:13px;text-align:start;color:var(--muted);padding:14px 12px}
+.staff-table td{padding:14px 12px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+.staff-table tr:hover td{background:#f5fbfe}
+.staff-dentist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.staff-dentist-card{display:flex;gap:15px;padding:18px;border:1px solid var(--line);border-radius:12px}
+.staff-dentist-avatar{display:grid;place-items:center;width:50px;height:50px;flex-shrink:0;border-radius:12px;background:var(--brand-pale);font-size:24px;font-weight:800;color:var(--brand)}
+.staff-dentist-info{min-width:0}
+.staff-dentist-info h3{margin-bottom:6px}
+.staff-dentist-info p{font-size:14px;margin:8px 0}
+.staff-dentist-info .text-link{display:inline-block;margin-top:7px}
+.staff-invite-form{display:grid;grid-template-columns:minmax(200px,2fr) minmax(150px,1fr) auto;align-items:end;gap:14px}
+.staff-invite-form .btn{min-height:48px}
+.staff-invitation-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;padding:16px 4px;border-bottom:1px solid var(--line)}
+.staff-invite-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.staff-invitation-row strong{overflow-wrap:anywhere}
+.staff-roles-controls{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end}
+.staff-role-summary .state-badge{justify-self:start}
+.team-tab{padding:11px 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:10px;background:#fff;border:1px solid var(--line);font-weight:700;color:var(--muted)}
+.team-tab.current,.team-tab[aria-selected="true"]{background:var(--brand-pale);color:var(--brand-hover);border-color:var(--brand)}
+.staff-invite-heading{font-size:clamp(25px,3vw,36px);margin:22px 0}
+.staff-gap .field textarea{background:#fff;border:1px solid #b9cbd6;border-radius:10px;padding:12px;color:var(--ink);width:100%;max-width:100%}
+.staff-gap .phase-list-item{overflow-wrap:anywhere}
+@media (max-width:900px) {
+ .staff-shell{grid-template-columns:1fr}
+ .staff-side{position:static}
+ .staff-desktop-menu{display:none}
+ .staff-phone-menu{display:block;border:1px solid var(--line);padding:8px 12px;border-radius:10px}
+ .staff-phone-menu summary{padding:10px;font-weight:700;cursor:pointer;min-height:44px}
+ .staff-phone-menu .side-nav{display:grid;padding:8px}
+ .staff-side-locale .preferences{display:flex}
+}
+@media(max-width:670px){
+ .staff-role-summary,.staff-invite-form,.staff-roles-controls{grid-template-columns:1fr}
+ .staff-invite-form .btn{width:100%}
+ .staff-shell .work-heading{align-items:start}
+ .staff-invitation-row{align-items:start}
+ .staff-invite-actions{width:100%}
+}
