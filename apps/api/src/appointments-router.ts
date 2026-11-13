@@ -130,7 +130,9 @@ export function appointmentsRouter(){
   res.json({appointment:(await enriched([value.appointment!],ctx))[0],replayed:value.replayed});
  }));
  clinic.post("/appointments/:appointmentId/status",wrap(async(req,res)=>{
-  const ctx=await appointmentAccess(req,cid(req),"read");
+  const target=String(req.body?.status||"");
+  const ctx=await appointmentAccess(req,cid(req),
+    ["arrived","no_show","cancelled"].includes(target)?"arrival":"clinical");
   const value=await transitionAppointment(ctx,cid(req),req.actor!.id,
     String(req.params.appointmentId),req.body);
   noCache(res);res.json({appointment:(await enriched([value.appointment],ctx))[0],
