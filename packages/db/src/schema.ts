@@ -177,3 +177,57 @@ export const clinicReview = pgTable("clinic_review_events", {
   reason: text("reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 },table=>[index("clinic_review_clinic_idx").on(table.clinicId,table.createdAt)]);
+
+
+/** Clinic role grants are tenant-local. No user global role can grant clinical access. */
+export const clinicMembership = pgTable("clinic_memberships", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(() => clinic.id),
+  userId: text("user_id").notNull().references(() => user.id),
+  role: text("role").notNull(),
+  status: text("status").notNull().default("active"),
+  invitedBy: text("invited_by").references(() => user.id),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  reason: text("reason")
+}, t => [
+  uniqueIndex("clinic_membership_unique").on(t.clinicId, t.userId),
+  index("clinic_membership_user_status_idx").on(t.userId, t.status),
+  index("clinic_membership_clinic_status_idx").on(t.clinicId, t.status, t.role)
+]);
+
+export const clinicInvitation = pgTable("clinic_invitations", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(() => clinic.id),
+  email: text("email").notNull(),
+  role: text("role").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  status: text("status").notNull().default("pending"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  invitedBy: text("invited_by").notNull().references(() => user.id),
+  acceptedBy: text("accepted_by").references(() => user.id),
+  resendCount: integer("resend_count").notNull().default(0)
+}, t => [index("clinic_invite_clinic_status_idx").on(t.clinicId, t.status, t.createdAt)]);
+
+export const dentistDraft = pgTable("clinic_dentist_drafts", {
+  membershipId: text("membership_id").primaryKey().references(() => clinicMembership.id),
+  clinicId: text("clinic_id").notNull().references(() => clinic.id),
+  userId: text("user_id").notNull().references(() => user.id),
+  displayName: text("display_name").notNull(),
+  specialty: text("specialty"),
+  qualifications: text("qualifications"),
+  professionalLicense: text("professional_license"),
+  experienceYears: integer("experience_years"),
+  biography: text("biography"),
+  draftVersion: integer("draft_version").notNull().default(1),
+  verificationState: text("verification_state").notNull().default("unverified"),
+  updatedBy: text("updated_by").references(() => user.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, t => [index("dentist_drafts_clinic_idx").on(t.clinicId)]);
