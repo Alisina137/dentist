@@ -469,7 +469,7 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
       !observations?<Busy/>:
       !observations.observations.length?<p className="phase08-empty">{t("noHistory")}</p>:
        <ol className="phase08-observations">{observations.observations.map((ob:Observation)=>
-        <li key={ob.id}><div className="phase08-obs-dot state-"+ob.condition aria-hidden="true"/>
+        <li key={ob.id}><div className={"phase08-obs-dot state-"+ob.condition} aria-hidden="true"/>
          <div className="phase08-obs-content">
           <div className="phase08-obs-head"><strong>{t(ob.condition)}</strong>
            <span className={"phase08-status "+ob.status}>{t(ob.status)}</span></div>
