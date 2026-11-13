@@ -474,3 +474,57 @@ export const clinicAppointmentAction=pgTable("clinic_appointment_actions",{
  uniqueIndex("clinic_appointment_actions_clinic_id_actor_id_action_key_key").on(t.clinicId,t.actorId,t.actionKey),
  index("appointment_action_date_idx").on(t.clinicId,t.createdAt)
 ]);
+
+
+/** PH07 clinic-scoped encounters. Signed content is protected by a PostgreSQL trigger. */
+export const clinicEncounter=pgTable("clinic_encounters",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ appointmentId:text("appointment_id").unique().references(()=>clinicAppointment.id),
+ providerMembershipId:text("provider_membership_id").notNull().references(()=>clinicMembership.id),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ status:text("status").notNull().default("draft"),
+ revision:integer("revision").notNull().default(1),reason:text("reason").notNull(),
+ historySource:text("history_source"),historyDate:date("history_date",{mode:"string"}),
+ findings:text("findings").notNull().default(""),assessment:text("assessment").notNull().default(""),
+ performedProcedures:jsonb("performed_procedures").$type<{description:string;serviceId:string|null;toothIds:string[]}[]>().notNull().default([]),
+ followUp:text("follow_up"),signedBy:text("signed_by").references(()=>user.id),
+ signedAt:timestamp("signed_at",{withTimezone:true}),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ index("clinic_encounter_patient_idx").on(t.clinicId,t.patientId,t.createdAt),
+ index("clinic_encounter_provider_idx").on(t.clinicId,t.providerMembershipId,t.status,t.updatedAt),
+ index("clinic_encounter_creator_idx").on(t.clinicId,t.createdBy,t.status,t.updatedAt)
+]);
+
+/** Append-only clinical chronology: draft revisions, signing and corrections. */
+export const clinicEncounterVersion=pgTable("clinic_encounter_versions",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ encounterId:text("encounter_id").notNull().references(()=>clinicEncounter.id),
+ revision:integer("revision").notNull(),action:text("action").notNull(),
+ note:jsonb("note").$type<{reason:string;findings:string;assessment:string;historySource:string|null;
+  historyDate:string|null;performedProcedures:{description:string;serviceId:string|null;toothIds:string[]}[];
+  followUp:string|null}>().notNull(),
+ correctionReason:text("correction_reason"),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("clinic_encounter_version_unique").on(t.encounterId,t.revision),
+ index("clinic_encounter_versions_history_idx").on(t.clinicId,t.encounterId,t.revision)
+]);
+
+/** Encrypted volume / database at rest and a PH19 retention policy are deployment gates. */
+export const clinicClinicalFile=pgTable("clinic_clinical_files",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ encounterId:text("encounter_id").references(()=>clinicEncounter.id),
+ title:text("title").notNull(),kind:text("kind").notNull(),fileName:text("file_name").notNull(),
+ mime:text("mime").notNull(),sizeBytes:integer("size_bytes").notNull(),sha256:text("sha256").notNull(),
+ notes:text("notes"),scanStatus:text("scan_status").notNull().default("signature_verified"),
+ uploadedBy:text("uploaded_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ index("clinic_clinical_files_patient_idx").on(t.clinicId,t.patientId,t.createdAt),
+ index("clinic_clinical_files_encounter_idx").on(t.clinicId,t.encounterId,t.createdAt)
+]);
