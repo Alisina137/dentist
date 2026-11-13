@@ -533,3 +533,238 @@ export function AppointmentsPortal({view}:{view:Page}){
   </div>
  </Shell>;
 }
+
+
+function localPart(value:string){
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",
+  hourCycle:"h23"}).formatToParts(new Date(value));
+ return Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+}
+function localDay(value:string){
+ const p=localPart(value);return p.year+"-"+p.month+"-"+p.day;
+}
+function localClock(value:string){const p=localPart(value);return p.hour+":"+p.minute;}
+function CalendarCard({space,a,compact=false}:{space:Space;a:Appointment;compact?:boolean}){
+ const {t}=useWords();
+ return <a className={"phase06-event phase06-event-"+a.status+(compact?" phase06-event-compact":"")}
+  href={appHref(space.clinicId,a.id)}
+  aria-label={patientDisplay(a)+": "+a.serviceName+" "+localClock(a.startAt)}>
+  <div className="phase06-event-time"><bdi dir="ltr">{localClock(a.startAt)}</bdi>
+   {!compact&&<> – <bdi dir="ltr">{localClock(a.endAt)}</bdi></>}</div>
+  <strong>{patientDisplay(a,true)}</strong>
+  {!compact&&<span className="phase06-event-service">{a.serviceName}</span>}
+  {!compact&&<span className="phase06-event-dentist">{a.providerName}</span>}
+  <Badge status={a.status}/>
+ </a>;
+}
+function CalendarPanel({space}:{space:Space}){
+ const {t,fmt,lang}=useWords();
+ const [date,setDate]=useState(dayKabul());
+ const [mode,setMode]=useState<ViewMode>(space.role==="receptionist"?"day":"week");
+ const [doctor,setDoctor]=useState(""),[chair,setChair]=useState(""),[status,setStatus]=useState("all");
+ const [ready,setReady]=useState(false);
+ useEffect(()=>{
+  const q=new URLSearchParams(location.search);
+  const queryDate=q.get("date");
+  const queryView=q.get("view");
+  if(queryDate&&/^\d{4}-\d\d-\d\d$/.test(queryDate))setDate(queryDate);
+  if(["day","week","month"].includes(queryView||""))setMode(queryView as ViewMode);
+  else if(window.innerWidth<=740)setMode("day");
+  setReady(true);
+ },[]);
+ function navigate(value:string,view=mode){
+  setDate(value);setMode(view);
+  const q=new URLSearchParams(location.search);
+  q.set("clinic",space.clinicId);q.set("date",value);q.set("view",view);
+  history.replaceState(null,"",location.pathname+"?"+q);
+ }
+ const period=dateRange(date,mode);
+ const query=ready?new URLSearchParams({from:period.from,to:period.to,
+   ...(doctor?{providerId:doctor}:{}),
+   ...(chair?{resourceId:chair}:{}),
+   ...(status!=="all"?{status}:{})}):null;
+ const base="/clinics/"+space.clinicId;
+ const {data,error,refresh}=useData(query?base+"/calendar?"+query.toString():null);
+ const {data:catalog}=useData(base+"/catalog");
+ const {data:overview,refresh:refreshOverview}=useData(base+"/overview");
+ const appointments:Appointment[]=data?.appointments||[];
+ const byDate=useMemo(()=>{
+  const grouped=new Map<string,Appointment[]>();
+  for(const a of appointments){
+   const key=localDay(a.startAt);grouped.set(key,[...(grouped.get(key)||[]),a]);
+  }
+  return grouped;
+ },[appointments]);
+ const counts=overview?.counts||{};
+ const dateLabel=mode==="day"?dateTitle(date,lang):
+  mode==="week"?dateTitle(period.from,lang)+" — "+dateTitle(period.to,lang):
+  new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",
+   calendar:"gregory"}).format(new Date(date.slice(0,7)+"-01T12:00:00Z"));
+ const next=()=>navigate(mode==="day"?advance(date,1):mode==="week"?advance(date,7):moveMonth(date,1));
+ const previous=()=>navigate(mode==="day"?advance(date,-1):mode==="week"?advance(date,-7):moveMonth(date,-1));
+ const controls=<div className="phase06-controls">
+  <div className="phase06-date-controls">
+    <button className="phase06-icon-btn" aria-label={t("prevPeriod")} onClick={previous}>‹</button>
+    <button className="phase06-icon-btn" aria-label={t("nextPeriod")} onClick={next}>›</button>
+    <button className="btn btn-secondary phase06-today-btn" onClick={()=>navigate(dayKabul(),mode)}>{t("today")}</button>
+    <span className="phase06-date-title">{dateLabel}</span>
+    <label className="phase06-small-date"><span className="visually-hidden">{t("specificDate")}</span>
+      <input type="date" aria-label={t("specificDate")} value={date}
+        onChange={e=>{if(e.target.value)navigate(e.target.value);}}/></label>
+  </div>
+  <div className="phase06-view-toggle" role="group" aria-label={t("views")}>
+    {(["day","week","month"] as ViewMode[]).map(view=><button key={view}
+      aria-pressed={mode===view} onClick={()=>navigate(date,view)}>{t(view)}</button>)}
+  </div>
+ </div>;
+ const legend=<div className="phase06-status-legend" aria-label={t("statusLegend")}>
+  {(["confirmed","arrived","in_treatment","completed","cancelled","no_show"] as AppointmentStatus[])
+  .map(state=><Badge key={state} status={state}/>)}
+ </div>;
+ return <div className="phase06-calendar-page">
+  <section className="phase06-stats" aria-label={t("today")}>
+    {(["todayTotal","waiting","in_treatment","completedToday"] as const).map((key,i)=>{
+     const values=[overview?.todayTotal,counts.arrived||0,counts.in_treatment||0,counts.completed||0];
+     return <article className="phase06-stat card" key={key}>
+      <span className="phase06-stat-symbol">{["▦","◷","✚","✓"][i]}</span>
+      <div><span>{t(key)}</span><strong>{overview?values[i]:"—"}</strong></div>
+     </article>;
+    })}
+  </section>
+  <section className="phase06-panel card">
+   <div className="phase06-panel-title"><div><span className="phase06-eyebrow">{t("scheduleManagement")}</span>
+    <h2>{t("calendar")}</h2></div>
+    <a className="phase06-text-action" href={appHref(space.clinicId,"queue")}>{t("goQueue")} ↗</a>
+   </div>
+   <div className="phase06-calendar-tools">{controls}
+    <div className="phase06-filterbar">
+     <Select label={t("filterDentist")} value={doctor} onChange={setDoctor}
+      options={[{value:"",label:t("allDentists")},...(catalog?.providers||[]).map((p:Provider)=>({
+       value:p.membershipId,label:p.name}))]}/>
+     <Select label={t("filterChair")} value={chair} onChange={setChair}
+      options={[{value:"",label:t("allChairs")},...(catalog?.resources||[]).map((r:Resource)=>({
+       value:r.id,label:r.label}))]}/>
+     <Select label={t("filterStatus")} value={status} onChange={setStatus}
+      options={[{value:"all",label:t("allStatuses")},
+       ...(["confirmed","arrived","in_treatment","completed","cancelled","no_show"] as AppointmentStatus[])
+        .map(s=>({value:s,label:t(s)}))]}/>
+     <button className="btn btn-secondary" onClick={()=>{refresh();refreshOverview();}}>{t("refresh")} ↻</button>
+    </div>
+    <div className="phase06-calendar-meta"><span>{appointments.length} {t("count")}
+      {data?.truncated?" · "+t("limitReached"):""}</span>{legend}</div>
+   </div>
+   {error?<Problem error={error} retry={refresh}/>:!data?<Busy/>:
+    <div className="phase06-calendar-body">
+     {mode==="day"?<DayGrid space={space} date={date} appointments={byDate.get(date)||[]}/>:
+      mode==="week"?<WeekGrid space={space} start={period.from} byDate={byDate}
+        onSelect={d=>navigate(d,"day")}/>:
+       <MonthGrid space={space} date={date} byDate={byDate}
+        onSelect={d=>navigate(d,"day")}/>}
+    </div>}
+  </section>
+  <section className="phase06-bottom-strip card">
+   <div><h3>{t("nextBookings")}</h3><p>{t("noPublic")}</p></div>
+   <a className="btn btn-secondary" href={appHref(space.clinicId,"queue")}>{t("queue")} ↗</a>
+  </section>
+ </div>;
+}
+function DayGrid({space,date,appointments}:{space:Space;date:string;appointments:Appointment[]}){
+ const {t,lang}=useWords();
+ const earliest=appointments.length?Math.max(0,Math.floor(Math.min(...appointments.map(a=>
+  Number(localClock(a.startAt).slice(0,2)))))-1):8;
+ const latest=appointments.length?Math.min(23,Math.ceil(Math.max(...appointments.map(a=>
+  Number(localClock(a.endAt).slice(0,2)))))+1):19;
+ const rows=Array.from({length:Math.max(1,latest-earliest+1)},(_,i)=>earliest+i);
+ const grouped=new Map<number,Appointment[]>();
+ for(const a of appointments){
+  const hour=Number(localClock(a.startAt).slice(0,2));
+  grouped.set(hour,[...(grouped.get(hour)||[]),a]);
+ }
+ return <div className="phase06-day">
+  <div className="phase06-day-heading">
+   <div><span className="phase06-day-number">
+    {new Date(date+"T12:00:00Z").getUTCDate()}</span>
+    <div><strong>{dateTitle(date,lang)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
+   </div>
+   {canBook(space)&&<a className="phase06-text-action"
+     href={appHref(space.clinicId,"new")+"&date="+date}>{t("newAppointment")} ↗</a>}
+  </div>
+  <div className="phase06-day-grid">
+   {rows.map(hour=>{
+    const group=grouped.get(hour)||[];
+    return <div className="phase06-hour-row" key={hour}>
+      <time className="phase06-hour-label" dateTime={String(hour).padStart(2,"0")+":00"}>
+       <bdi dir="ltr">{String(hour).padStart(2,"0")}:00</bdi></time>
+      <div className="phase06-hour-cell">
+       {group.map(a=><CalendarCard key={a.id} space={space} a={a}/>)}
+       {!group.length&&canBook(space)&&
+        <a className="phase06-hour-create" href={appHref(space.clinicId,"new")+
+         "&date="+date+"&start="+String(hour).padStart(2,"0")+":00"}
+        aria-label={t("newAppointment")+" "+hour+":00"}>+</a>}
+      </div>
+    </div>;
+   })}
+  </div>
+  {!appointments.length&&<div className="phase06-day-empty"><strong>{t("noAppointments")}</strong>
+   <p>{t("noAppointmentsHint")}</p>
+   {canBook(space)&&<a className="btn btn-primary" href={appHref(space.clinicId,"new")+"&date="+date}>
+    + {t("newAppointment")}</a>}
+  </div>}
+ </div>;
+}
+function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
+ byDate:Map<string,Appointment[]>;onSelect:(date:string)=>void}){
+ const {t,lang}=useWords();
+ return <div className="phase06-week-scroll">
+  <div className="phase06-week-grid">
+  {Array.from({length:7},(_,weekday)=>{
+   const date=advance(start,weekday),events=byDate.get(date)||[];
+   return <section className={"phase06-week-day "+(date===dayKabul()?"phase06-current-day":"")} key={date}>
+    <button className="phase06-week-day-head" onClick={()=>onSelect(date)}
+     aria-label={t("selectDay")+" "+date}>
+     <span>{t(weekLabels[weekday])}</span>
+     <strong>{Number(date.slice(-2))}</strong><small>{events.length} {t("count")}</small>
+    </button>
+    <div className="phase06-week-content">
+     {events.slice(0,7).map(a=><CalendarCard a={a} space={space} compact key={a.id}/>)}
+     {events.length>7&&<button className="phase06-text-action" onClick={()=>onSelect(date)}>
+       +{events.length-7} {t("moreInDay")}</button>}
+     {!events.length&&<div className="phase06-week-empty">—</div>}
+    </div>
+   </section>;
+  })}
+  </div>
+ </div>;
+}
+function MonthGrid({space,date,byDate,onSelect}:{space:Space;date:string;
+ byDate:Map<string,Appointment[]>;onSelect:(date:string)=>void}){
+ const {t}=useWords();
+ const start=saturday(monthStart(date));
+ const end=monthEnd(date);
+ const dayCount=Math.ceil((Math.ceil((Date.parse(end)-Date.parse(start))/86400000)+1)/7)*7;
+ const cells=Array.from({length:Math.min(42,dayCount)},(_,i)=>advance(start,i));
+ return <div className="phase06-month">
+  <div className="phase06-month-head">
+   {weekLabels.map(key=><div key={key}>{t(key)}</div>)}
+  </div>
+  <div className="phase06-month-grid">
+   {cells.map(day=>{
+    const events=byDate.get(day)||[],outside=day.slice(0,7)!==date.slice(0,7);
+    const counts=events.reduce<Record<string,number>>((a,e)=>{
+     a[e.status]=(a[e.status]||0)+1;return a;},{});
+    return <button key={day} className={"phase06-month-cell "+
+     (outside?"phase06-month-outside ":"")+(day===dayKabul()?"phase06-month-today":"")}
+     onClick={()=>onSelect(day)} aria-label={day+" · "+events.length+" "+t("count")}>
+      <strong>{Number(day.slice(-2))}</strong>
+      <div className="phase06-month-bars">
+       {events.slice(0,3).map(a=><span key={a.id} className={"phase06-month-bar phase06-month-bar-"+a.status}>
+        <bdi dir="ltr">{localClock(a.startAt)}</bdi> {patientDisplay(a,true)}</span>)}
+       {events.length>3&&<small>+{events.length-3} {t("moreInDay")}</small>}
+      </div>
+      {!events.length&&<span className="phase06-month-none">·</span>}
+    </button>;
+   })}
+  </div>
+ </div>;
+}
