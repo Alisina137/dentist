@@ -10,7 +10,7 @@ type Ctx=Awaited<ReturnType<typeof scope>>;
 type Item={serviceId:string;serviceVersion:number;name:string;quantity:number;unitPriceAfn:number;discountAfn:number;totalAfn:number};
 type Stage={description:string;toothCodes:string[];expectedVisits:number;dueDate:string|null};
 class Fault extends Error{constructor(public status:number,public code:string){super(code);}}
-const reject=(status:number,code:string):never=>{throw new Fault(status,code);};
+function reject(status:number,code:string):never{throw new Fault(status,code);}
 const route=(fn:(req:StaffRequest,res:Response)=>Promise<void>)=>
  (req:StaffRequest,res:Response,next:NextFunction)=>{fn(req,res).catch(next);};
 const cid=(r:StaffRequest)=>String(r.params.clinicId);
@@ -23,8 +23,9 @@ function str(v:unknown,min:number,max:number,key:string):string{
  return v.trim();
 }
 function number(v:unknown,min:number,max:number,key:string):number{
- if(typeof v!=="number"||!Number.isSafeInteger(v)||v<min||v>max)reject(422,"INVALID_"+key);
- return v;
+ const n=Number(v);
+ if(typeof v!=="number"||!Number.isSafeInteger(n)||n<min||n>max)reject(422,"INVALID_"+key);
+ return n;
 }
 function day(v:unknown,allowNull=true):string|null{
  if((v==null||v==="")&&allowNull)return null;
