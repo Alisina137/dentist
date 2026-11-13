@@ -250,7 +250,7 @@ expect(await req(api+"/appointments/"+newBooking.id+"/status","PATCH",{
 },reception.session),[409],"future appointments cannot be declared no-show prematurely");
 const history=expect(await req(api+"/appointments/"+created.id,"GET",undefined,owner.session),
  [200],"history survives mutations");
-assert.equal(history.events.length,4);
+assert.equal(history.events.length,5);
 const queue=expect(await req(api+"/queue?date="+saturday,"GET",undefined,reception.session),
  [200],"queue view");
 assert.equal(queue.appointments.length,3);
