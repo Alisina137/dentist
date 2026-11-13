@@ -74,7 +74,7 @@ export async function insertPatient(tx:any,cid:string,actorId:string,input:Patie
   const id=randomUUID(),patientNumber=await allocatePatientNumber(tx,cid);
   await tx.insert(schema.clinicPatient).values({
     id,clinicId:cid,patientNumber,...input,
-    noticeAcknowledgedAt:new Date(),intakeSource:source,createdBy:actorId,updatedBy:actorId
+    noticeAcknowledgedAt:input.noticeAcknowledged?new Date():null,intakeSource:source,createdBy:actorId,updatedBy:actorId
   });
   await tx.insert(schema.clinicPatientIntake).values({patientId:id,clinicId:cid});
   await logPatient(tx,actorId,cid,id,"patient.created");
