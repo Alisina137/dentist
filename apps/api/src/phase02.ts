@@ -1,7 +1,7 @@
 
 import { randomUUID, createHash } from "node:crypto";
 import express, { Router, type Request, type Response, type NextFunction } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or, ilike } from "drizzle-orm";
 import { fromNodeHeaders } from "better-auth/node";
 import { db, schema } from "@dandanlink/db";
 import { auth } from "./auth.js";
@@ -256,8 +256,13 @@ export function phase02Router() {
     const status=String(req.query.status||"pending");
     if(!["pending","needs_info","approved","rejected","suspended","draft","all"].includes(status))fail(422,"INVALID_FILTER");
     const page=Math.min(100000,Math.max(1,Number.parseInt(String(req.query.page||"1"),10)||1));
-    const filter=status==="all"?undefined:status==="pending"
+    const state=status==="all"?undefined:status==="pending"
       ?inArray(schema.clinic.status,["pending","needs_info"]):eq(schema.clinic.status,status);
+    const q=String(req.query.q||"").trim().slice(0,80);
+    const search=q?or(ilike(schema.clinic.displayName,"%"+q+"%"),
+      ilike(schema.clinic.city,"%"+q+"%"),
+      ilike(schema.clinic.licenseNumber,"%"+q+"%")):undefined;
+    const filter=and(state,search);
     const clinics=await db.select().from(schema.clinic).where(filter).orderBy(desc(schema.clinic.updatedAt))
       .limit(20).offset((page-1)*20);
     const count=(await db.select({id:schema.clinic.id}).from(schema.clinic).where(filter)).length;
