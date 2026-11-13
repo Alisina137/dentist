@@ -129,7 +129,7 @@ export function clinicalRouter(){
   const window=isoDayWindow(date);
   const schedule=await sqlClient`SELECT a.id AS appointment_id,a.patient_id,a.provider_membership_id,
    a.status,a.start_at,a.end_at,a.service_name,p.patient_number,p.preferred_name,p.family_name,
-   e.id AS encounter_id,e.status AS encounter_status
+   CASE WHEN ${ctx.role==="assistant"} AND e.created_by<>${req.actor!.id} THEN NULL ELSE e.id END AS encounter_id,e.status AS encounter_status
    FROM clinic_appointments a JOIN clinic_patients p ON p.id=a.patient_id AND p.clinic_id=a.clinic_id
    LEFT JOIN clinic_encounters e ON e.appointment_id=a.id AND e.clinic_id=a.clinic_id
    WHERE a.clinic_id=${cid(req)} AND a.start_at>=${window.from} AND a.start_at<${window.to}
@@ -188,7 +188,7 @@ export function clinicalRouter(){
      performed_procedures,follow_up)
      VALUES (${id},${cid(req)},${pid(req)},${appointmentId},${providerId},
       ${req.actor!.id},${note.reason},${note.findings},${note.assessment},
-      ${note.historySource},${note.historyDate},${noteDb(note)}::jsonb->'performedProcedures',${note.followUp})`;
+      ${note.historySource},${note.historyDate},${JSON.stringify(note.performedProcedures)}::jsonb,${note.followUp})`;
     await tx`INSERT INTO clinic_encounter_versions(id,clinic_id,encounter_id,revision,action,note,actor_id)
      VALUES(${randomUUID()},${cid(req)},${id},1,'created',${noteDb(note)}::jsonb,${req.actor!.id})`;
    });
@@ -219,7 +219,8 @@ export function clinicalRouter(){
  }));
  clinics.patch("/patients/:patientId/encounters/:encounterId",wrap(async(req,res)=>{
   const ctx=await access(req,cid(req),true);
-  const note=noteInput(req.body);const rev=revision(req.body?.revision);
+  const note=noteInput(req.body);if(!note.reason)fail(422,"REQUIRED_COMPLAINT");
+  const rev=revision(req.body?.revision);
   const id=String(req.params.encounterId);let newRev=rev+1;
   await sqlClient.begin(async tx=>{
    const r=await tx`SELECT * FROM clinic_encounters WHERE id=${id} AND clinic_id=${cid(req)}
