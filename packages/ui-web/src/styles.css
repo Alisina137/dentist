@@ -1282,3 +1282,8 @@ a.phase-list-item:hover{background:#f5fbfe}
  .phase07-datebadge{flex-basis:54px;width:54px}
 }
 @media(prefers-reduced-motion:reduce){.phase07-workspace *{transition:none!important;scroll-behavior:auto!important}}
+
+.phase07-await{display:inline-flex;align-items:center;justify-content:center;
+ border:1px solid #f0dbad;border-radius:9px;background:#fff8e9;color:#815912;
+ padding:10px 12px;max-width:235px;text-align:center;font-size:11px;line-height:1.65;font-weight:800}
+@media(max-width:700px){.phase07-await{flex:1 1 100%;max-width:none}}
