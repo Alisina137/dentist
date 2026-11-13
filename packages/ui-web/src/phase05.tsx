@@ -692,7 +692,7 @@ function CsvImport({space}:{space:Space}){
   return duplicateRows().every(r=>{
    const decision=actions[r.rowNumber];
    if(!decision||decision.mode==="skip")return true;
-   if(decision.reason?.trim().length!>=10)return false;
+   if((decision.reason?.trim().length??0)<10)return false;
    if(decision.mode==="merge"&&!decision.targetPatientId)return false;
    return true;
   });
