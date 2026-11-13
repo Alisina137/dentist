@@ -268,7 +268,7 @@ const dict:Record<Language,Record<string,string>>={
   manualOnly:"د کارکوونکو لیدنې اوس د ملاقاتونو په برخه کې فعالې دي؛ عامه بکینګ لا بند دی.",
   status_ready:"چمتو",status_clinic_closed:"کلینیک بند",
   status_provider_unavailable:"ډاکټر نشته",status_chair_unavailable:"څوکۍ نشته",
-  status_holiday_closed:"رخصتي",noPublic:"عامه لړلیک لا نه دی خپور",
+  status_holiday_closed:"رخصتي",conflictBooked:"راتلونکې لیدنې دا خدمت یا سرچینه کاروي؛ لومړی یې وخت بدل یا لغوه کړئ.",scheduleBooked:"د ساعتونو بدلون له راتلونکو لیدنو سره ټکر لري؛ لومړی اړوندې لیدنې بدل کړئ.",noPublic:"عامه لړلیک لا نه دی خپور",
   notConfigured:"نه دی ټاکل شوی",more:"نور",lastUpdated:"وروستی بدلون",
   staffLink:"کارکوونکي",openServices:"خدمتونه",openResources:"سرچینې",
   openHours:"وختونه",stepDone:"بشپړ",stepPending:"پاتې",
