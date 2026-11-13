@@ -185,6 +185,7 @@ export const clinicMembership = pgTable("clinic_memberships", {
   clinicId: text("clinic_id").notNull().references(() => clinic.id),
   userId: text("user_id").notNull().references(() => user.id),
   role: text("role").notNull(),
+  clinicianEnabled: boolean("clinician_enabled").notNull().default(false),
   status: text("status").notNull().default("active"),
   invitedBy: text("invited_by").references(() => user.id),
   joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
