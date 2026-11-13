@@ -61,8 +61,8 @@ assert.deepEqual(Buffer.from(await response.arrayBuffer()),pdf);
 ok(await request(first+"/files/"+uploaded.id+"/content","GET",undefined,dentist2.session),
  [404],"other dentist file denied");
 const booked=ok(await doBooking(clinic.id,reception,p2,service,
- {membershipId:(await request("/v1/appointments/clinics/"+clinic.id+"/catalog",
- "GET",undefined,reception.session)).data.providers[0].membershipId},chair,date,"09:00"),
+ {membershipId:(await request("/v1/team/context","GET",undefined,dentist.session)).data.clinics
+  .find(c=>c.clinicId===clinic.id).membershipId},chair,date,"09:00"),
  [201],"appointment for assistant draft").appointment;
 ok(await request(second+"/encounters","POST",{reason:"No appointment"},assistant.session),
  [403],"assistant cannot create unscheduled note");
