@@ -22,7 +22,7 @@ function ok(result,codes,label){
 async function linkFor(email){
  for(let t=0;t<80;t++){
   const logs=await readFile(log,"utf8").catch(()=>"");
-  const items=[...logs.matchAll(/subject:\\s*'Verify your DandanLink account'[\\s\\S]{0,1500}?url:\\s*'([^']+)'/g)];
+  const items=[...logs.matchAll(/subject:\s*'Verify your DandanLink account'[\s\S]{0,1500}?url:\s*'([^']+)'/g)];
   if(items.length)return items.at(-1)[1];
   await new Promise(r=>setTimeout(r,130));
  }
