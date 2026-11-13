@@ -109,7 +109,7 @@ export async function availabilityPreview(cid:string,q:AvailabilityRequest){
    slot.resourceId!==null&&taken.resourceId===slot.resourceId)&&
   taken.startAt.getTime()<Date.parse(slot.endAt)&&
   taken.endAt.getTime()>Date.parse(slot.startAt)));
- candidates.sort((a,b)=>a.startAt.localeCompare(b.startAt)||String(a.resourceId).localeCompare(String(b.resourceId)));
+ available.sort((a,b)=>a.startAt.localeCompare(b.startAt)||String(a.resourceId).localeCompare(String(b.resourceId)));
  if(reason==="ready"&&!available.length)
   reason=service.requiresChair?"chair_unavailable":"provider_unavailable";
  return {
