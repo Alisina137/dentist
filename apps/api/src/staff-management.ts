@@ -133,7 +133,7 @@ export function staffManagementRouter(){
         }).onConflictDoNothing();
       }
       // Unclaimed invites issued by a demoted manager cannot silently survive.
-      await tx.update(schema.clinicInvitation).set({status:"revoked",resolvedAt:new Date(),updatedAt:new Date()})
+      await tx.update(schema.clinicInvitation).set({status:"revoked",resolutionReason:"Inviter permission revoked",resolvedAt:new Date(),updatedAt:new Date()})
         .where(and(eq(schema.clinicInvitation.clinicId,clinicId),
           eq(schema.clinicInvitation.invitedBy,m.userId),eq(schema.clinicInvitation.status,"pending")));
       await revokeSessions(tx,m.userId);
