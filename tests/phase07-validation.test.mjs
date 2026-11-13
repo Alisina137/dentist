@@ -34,7 +34,7 @@ test("PH07 private file checks reject invalid bytes, nonclinical reads and cache
 test("PH07 navigation and routes do not expose unfinished chart/treatment tabs",()=>{
  const s=load("packages/ui-web/src/phase07.tsx");
  for(const key of ["today","pending","cases","visitDetail","patientFiles","amend","upload"])assert.match(s,new RegExp(key));
- assert.doesNotMatch(s,/<a[^>]+\/chart/);
+ assert.match(s,/\/chart\?clinic=/); // PH08 activates the real chart after PH07.
  assert.doesNotMatch(s,/<a[^>]+\/treatments/);
 });
 
