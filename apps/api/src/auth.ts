@@ -3,6 +3,7 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { twoFactor } from "better-auth/plugins";
 import { db, schema } from "@dandanlink/db";
 import { sendAccountMail } from "./mail.js";
+import { devEmailVerificationDisabled } from "./email-policy.js";
 
 const clinic = process.env.CLINIC_WEB_URL || "http://localhost:3000";
 const admin = process.env.ADMIN_WEB_URL || "http://localhost:3001";
@@ -24,13 +25,13 @@ export const auth = betterAuth({
     }
   }),
   emailAndPassword: {
-    enabled: true, requireEmailVerification: true, autoSignIn: false,
+    enabled: true, requireEmailVerification: !devEmailVerificationDisabled, autoSignIn: false,
     minPasswordLength: 10, revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) =>
       sendAccountMail({ to: user.email, subject: "Reset your DandanLink password", url })
   },
   emailVerification: {
-    sendOnSignUp: true, sendOnSignIn: true, expiresIn: 3600,
+    sendOnSignUp: !devEmailVerificationDisabled, sendOnSignIn: !devEmailVerificationDisabled, expiresIn: 3600,
     sendVerificationEmail: async ({ user, url }) =>
       sendAccountMail({ to: user.email, subject: "Verify your DandanLink account", url })
   },
