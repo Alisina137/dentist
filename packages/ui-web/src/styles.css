@@ -975,3 +975,11 @@ a.phase-list-item:hover{background:#f5fbfe}
  .ph06-timeline-panel{padding:17px}
 }
 @media(prefers-reduced-motion:reduce){.ph06-workspace *{transition:none!important}}
+
+/* Day uses chronological grid on desktop and compact agenda on mobile, never duplicated. */
+@media(min-width:651px){
+ .ph06-agenda-heading.ph06-agenda-day,.ph06-agenda-list.ph06-agenda-day{display:none}
+}
+@media(max-width:650px){
+ .ph06-day-layout{display:none}
+}
