@@ -326,7 +326,7 @@ const again=ok(await request(base+"/appointments/"+first.id+"/status","POST",
 assert.equal(again.replayed,true);
 ok(await request(base+"/appointments/"+first.id+"/status","POST",{
  status:"in_treatment",revision:arrived.revision,idempotencyKey:key()
-},dentist2.session),[403],"unassigned clinician cannot begin care");
+},dentist2.session),[404],"unassigned clinician cannot begin care (privacy-preserving 404)");
 ok(await request(base+"/appointments/"+first.id+"/status","POST",{
  status:"in_treatment",revision:arrived.revision,idempotencyKey:key()
 },reception.session),[403],"reception cannot start clinical care");
