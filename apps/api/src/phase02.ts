@@ -1,6 +1,6 @@
 
 import { randomUUID, createHash } from "node:crypto";
-import { Router, type Request, type Response, type NextFunction } from "express";
+import express, { Router, type Request, type Response, type NextFunction } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { fromNodeHeaders } from "better-auth/node";
 import { db, schema } from "@dandanlink/db";
@@ -164,7 +164,7 @@ export function phase02Router() {
     res.json({clinic:await ownerClinic(req,c.id)});
   }));
   // A small, private, tightly restricted binary upload. No public file URL.
-  api.post("/clinics/:id/evidence",job(async(req,res)=>{
+  api.post("/clinics/:id/evidence",express.raw({type:"application/octet-stream",limit:"2mb"}),job(async(req,res)=>{
     owner(req);
     const c=await ownerClinic(req,String(req.params.id));
     if(!["draft","needs_info","rejected"].includes(c.status))fail(409,"EVIDENCE_LOCKED");
