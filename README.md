@@ -194,7 +194,7 @@ Patient overview is private to the clinic; medical intake requires qualified
 staff. No appointments, dental chart, visits or patient billing in this release.
 Run pnpm install --frozen-lockfile, pnpm db:migrate, then pnpm dev.
 The database migrations include 0004 for operational configuration and 0005 for patients.
-PH04 and PH05 are independent foundations, and both are now implemented.
+PH04, PH05 and PH06 are implemented, with PH06 adding real internal appointment scheduling.
 Do not enter real patient records while development email verification is disabled.
 Details and limitations: docs/PH05-ACCEPTANCE.md.
 
@@ -219,9 +219,7 @@ To try the Saturday scenario, add a 30-minute active consultation, create
 Treatment Chair A, save Saturday 09:00–12:00 clinic hours, save the same
 Saturday dentist shift and optionally the chair shift, then open Hours →
 Availability preview and select a Saturday. Times are computed in Asia/Kabul;
-preview entries are **not bookings or patient appointments**. Appointments
-and conflict-proof reservations first become real in PH06, while public booking
-remains deferred until PH15. Do not enter actual clinical or patient records
+PH04 candidate preview now reflects actual booked slots, and PH06 internal appointments are real: bookings enforce PostgreSQL clinician/chair exclusion constraints, with an arrivals queue. Public patient booking remains deferred until PH15. Do not enter actual clinical or patient records
 in insecure development mode.
 
 ### Updating your local checkout
@@ -241,3 +239,24 @@ variables are required. Admin remains on 3000, clinic on 3001, API on 4000,
 and the patient's Expo Go app still starts with `pnpm dev:mobile`.
 
 See `docs/PH04-ACCEPTANCE.md` for the exact permissions, validation and CI tests.
+
+## PH06 — Real internal appointment calendar and patient queue
+
+Clinic web: `http://localhost:3001/clinic/appointments` (Day/Week/Month calendar, filters,
+appointment wizard, detail/reschedule/status history) and
+`http://localhost:3001/clinic/appointments/queue` (Expected, Arrived, In Treatment,
+Complete; no-shows separately visible). Owners/managers/receptionists can schedule;
+dentists schedule and manage their own assigned appointments; assistants see a redacted,
+read-only calendar. Clinic patient records link to their appointment history.
+
+Real reservations are idempotent and protected by PostgreSQL dentist/chair overlap
+constraints, with preserved estimate snapshots and atomic rescheduling.
+Walk-in and phone appointments require no public patient account. This phase **does
+not** enable patient-facing/Expo booking, public requests, dental charts or invoices.
+
+After pulling, run `pnpm install --frozen-lockfile`, `pnpm db:migrate`
+(applies `0006_appointments_queue.sql`, PostgreSQL `btree_gist`) and `pnpm dev`.
+`pnpm dev:clinic` serves 3001, `pnpm dev:admin` serves 3000, and
+`pnpm dev:mobile` starts Expo Go. No new secrets are required.
+Do not enter real patient data while development-only verification bypass is enabled.
+See `docs/PH06-ACCEPTANCE.md` for permissions and acceptance criteria.
