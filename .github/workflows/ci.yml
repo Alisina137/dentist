@@ -16,12 +16,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: pnpm install --no-frozen-lockfile
-      - name: Initial lockfile export
-        run: |
-          echo DANDAN_LOCK_START
-          cat pnpm-lock.yaml
-          echo DANDAN_LOCK_END
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
