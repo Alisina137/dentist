@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { db, schema } from "@dandanlink/db";
 import type { StaffRequest } from "./staff-access.js";
 import { scope } from "./staff-access.js";
@@ -76,6 +76,14 @@ export async function changeService(cid:string,actorId:string,id:string,raw:any)
   const existing=row[0];
   if(!existing)fail(404,"SERVICE_NOT_FOUND");
   if(existing.version!==version)fail(409,"STALE_SERVICE_VERSION");
+  if(existing.active && !validated.active){
+   const reserved=await tx.select({id:schema.clinicAppointment.id}).from(schema.clinicAppointment)
+    .where(and(eq(schema.clinicAppointment.clinicId,cid),
+      eq(schema.clinicAppointment.serviceId,id),
+      inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"]),
+      gte(schema.clinicAppointment.endAt,new Date()))).limit(1);
+   if(reserved.length)fail(409,"SERVICE_HAS_ACTIVE_BOOKINGS");
+  }
   const [fresh]=await tx.update(schema.clinicService).set({
    ...validated,version:existing.version+1,updatedBy:actorId,updatedAt:new Date()
   }).where(and(eq(schema.clinicService.id,id),eq(schema.clinicService.clinicId,cid),
@@ -129,6 +137,12 @@ export async function changeResource(cid:string,actorId:string,id:string,raw:any
   if(!resource)fail(404,"RESOURCE_NOT_FOUND");
   if(resource.revision!==raw.revision)fail(409,"STALE_RESOURCE_REVISION");
   if(resource.active && !values.active){
+   const reserved=await tx.select({id:schema.clinicAppointment.id}).from(schema.clinicAppointment)
+    .where(and(eq(schema.clinicAppointment.clinicId,cid),
+      eq(schema.clinicAppointment.resourceId,id),
+      inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"]),
+      gte(schema.clinicAppointment.endAt,new Date()))).limit(1);
+   if(reserved.length)fail(409,"RESOURCE_HAS_ACTIVE_BOOKINGS");
    const shifts=await tx.select().from(schema.clinicResourceHour).where(and(
     eq(schema.clinicResourceHour.clinicId,cid),
     eq(schema.clinicResourceHour.resourceId,id)
