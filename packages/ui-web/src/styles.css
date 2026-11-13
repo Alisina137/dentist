@@ -151,3 +151,7 @@ a.phase-list-item:hover{background:#f5fbfe}
   .phase-stepper button,.phase-tabs button{font-size:13px;padding:9px 11px}
   .phase-work-heading{align-items:start}
 }
+
+.phase-search{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:19px}
+.phase-search .field{flex:1 1 240px}
+.phase-search input[type=search]{width:100%;min-height:46px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
