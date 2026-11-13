@@ -7,6 +7,7 @@ import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import { db, sqlClient, schema } from "@dandanlink/db";
 import { hasAdminAccess, normalizePreference } from "@dandanlink/domain";
 import { auth } from "./auth.js";
+import { phase02Router } from "./phase02.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -128,6 +129,7 @@ app.get("/v1/admin/home", loadIdentity, async (req: AuthenticatedRequest, res, n
     res.json({ name: ctx.identity.name, release: "PH01", modules: ["account", "security"] });
   } catch (error) { next(error); }
 });
+app.use("/v1", phase02Router());
 app.use("/v1", (_req, res) => res.status(404).json({ code: "NOT_FOUND", messageKey: "errors.notFound" }));
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   // Never return stack traces, tokens, medical information, or user identifiers.
