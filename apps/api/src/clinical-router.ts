@@ -135,6 +135,9 @@ export function clinicalRouter(){
    WHERE a.clinic_id=${cid(req)} AND a.start_at>=${window.from} AND a.start_at<${window.to}
    AND (${ctx.role==="assistant"} OR a.provider_membership_id=${ctx.membership.id})
    AND a.status NOT IN ('cancelled','no_show')
+   AND (${ctx.role!=="assistant"} OR (
+    a.status IN ('arrived','in_treatment','completed')
+    AND (e.id IS NULL OR e.created_by=${req.actor!.id})))
    ORDER BY a.start_at ASC LIMIT 100`;
   const pending=await sqlClient`SELECT e.id,e.patient_id,e.reason,e.updated_at,e.revision,
    p.patient_number,p.preferred_name,p.family_name
