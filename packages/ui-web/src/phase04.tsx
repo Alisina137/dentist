@@ -420,6 +420,15 @@ function ServiceEditor({space,service,close,done}:{space:Space;service:Service|n
  const {t}=useWords();
  const [form,setForm]=useState({...emptyService,...(service||{})});
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ useEffect(()=>{
+  const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();close();}};
+  document.addEventListener("keydown",onKey);
+  const timer=setTimeout(()=>{
+   const field=document.querySelector<HTMLInputElement>(".phase04-drawer input:not([type=checkbox])");
+   field?.focus();
+  },60);
+  return()=>{document.removeEventListener("keydown",onKey);clearTimeout(timer);};
+ },[close]);
  const put=(key:string,value:unknown)=>setForm(o=>({...o,[key]:value}));
  async function submit(event:FormEvent){
   event.preventDefault();setError("");setBusy(true);
@@ -584,6 +593,14 @@ function ResourceEditor({space,resource,done,close}:{space:Space;resource:Resour
  const {t}=useWords();
  const [form,setForm]=useState({...emptyResource,...(resource||{})});
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ useEffect(()=>{
+  const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();close();}};
+  document.addEventListener("keydown",onKey);
+  const timer=setTimeout(()=>{
+   document.querySelector<HTMLInputElement>(".phase04-drawer input:not([type=checkbox])")?.focus();
+  },60);
+  return()=>{document.removeEventListener("keydown",onKey);clearTimeout(timer);};
+ },[close]);
  const set=(key:string,value:unknown)=>setForm(x=>({...x,[key]:value}));
  async function submit(event:FormEvent){
   event.preventDefault();setBusy(true);setError("");
@@ -719,6 +736,12 @@ function WeekEditor({space,kind,target,existing,updated}:{space:Space;kind:"clin
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[success,setSuccess]=useState("");
  const [dirty,setDirty]=useState(false);
  useEffect(()=>{setDays(suggestedWeek(existing,kind));setDirty(false);setProblem("");},[existing,kind]);
+ useEffect(()=>{
+  if(!dirty)return;
+  const guard=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+  window.addEventListener("beforeunload",guard);
+  return()=>window.removeEventListener("beforeunload",guard);
+ },[dirty]);
  const hasSaved=existing.some(d=>d.isOpen||(d.revision??0)>0);
  const allowed=canManage(space);
  const amend=(weekday:number,change:Partial<Shift>)=>{
