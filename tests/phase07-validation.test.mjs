@@ -16,7 +16,7 @@ test("PH07 signed base and version history are write-protected at DB layer",()=>
 });
 test("PH07 signed record requires assignment, and assistant cannot sign",()=>{
  const s=load("apps/api/src/clinical-router.ts");
- assert.match(s,/function canSign/);
+ assert.match(s,/const canSign=/);
  assert.match(s,/ONLY_CLINICIAN_MAY_SIGN/);
  assert.match(s,/SIGN_CONFIRMATION_REQUIRED/);
  assert.match(s,/STALE_ENCOUNTER_REVISION/);
