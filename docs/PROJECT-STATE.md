@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH06 internal appointments and patient queue
+## Current phase: PH07 clinician worklist, encounters, and guarded clinical files
 
-Status: **PH01–PH06 implemented with automated CI; manual browser, accessibility, privacy and legal acceptance remain separate gates**.
+Status: **PH01–PH06 implemented with automated CI. PH07 is implemented on its feature branch and awaits full CI HTTP/DB checks; clinical, privacy, accessibility and legal acceptance remain separate gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -138,3 +138,17 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
   agenda, empty/loading/error controls. Browser UX/keyboard/a11y and legal review remain pending.
 - CI tests: `tests/phase06-validation.test.mjs`, `tests/phase06-integration.mjs`.
 - Next: PH07 clinical worklist and private encounters. See docs/PH06-ACCEPTANCE.md.
+
+
+## PH07 — Clinical worklist, notes and private files
+
+- Clinic clinical sidebar entry appears for dentist, assistant, and clinician-enabled owner/manager roles.
+- Clinicians get Today / Pending Notes / My Cases; assigned encounters link to Visits and private Files.
+- Visits can originate from checked-in appointments or clinician-authorized unscheduled care; assistants only open appointment-associated drafts.
+- Structured complaint, findings, assessment, history provenance, performed procedures and follow-up are versioned.
+- Signed baseline is immutable at PostgreSQL trigger layer; reasoned clinician amendments append rather than replace signed content; stale revisions rejected.
+- Tenant-scoped JPG/PNG/PDF bytes are stored in a guarded DB table, not in public storage; clinical-only upload/download with MIME/magic and size guards.
+- Tablet/phone responsive UI, keyboard focus, role-specific navigation, Dari/Pashto/English localization, retry messaging and in-memory form preservation.
+- Integration/quality evidence in `tests/phase07-validation.test.mjs` and `tests/phase07-integration.mjs` plus GitHub Actions.
+- **Not production approved:** no malware scanner, no verified at-rest encryption/retention signoff, no real patient-data go-live until medical/legal/security review and PH19 gates. See `docs/PH07-ACCEPTANCE.md`.
+- Next planned phase: PH08 permanent/primary FDI odontogram. 
