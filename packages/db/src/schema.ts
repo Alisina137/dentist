@@ -210,6 +210,7 @@ export const clinicInvitation = pgTable("clinic_invitations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolutionReason: text("resolution_reason"),
   invitedBy: text("invited_by").notNull().references(() => user.id),
   acceptedBy: text("accepted_by").references(() => user.id),
   resendCount: integer("resend_count").notNull().default(0)
