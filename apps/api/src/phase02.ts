@@ -5,6 +5,7 @@ import { and, desc, eq, inArray, or, ilike } from "drizzle-orm";
 import { fromNodeHeaders } from "better-auth/node";
 import { db, schema } from "@dandanlink/db";
 import { auth } from "./auth.js";
+import { permitsUnverifiedEmail } from "./email-policy.js";
 
 type Actor = { id: string; admin: boolean };
 type R = Request & { actor?: Actor };
@@ -103,7 +104,7 @@ export function phase02Router() {
   api.use(async(req:R,res,next)=>{
     try {
       const session=await auth.api.getSession({headers:fromNodeHeaders(req.headers)});
-      if(!session?.user?.emailVerified)fail(401,"AUTH_REQUIRED");
+      if(!session?.user||!permitsUnverifiedEmail(session.user.emailVerified))fail(401,"AUTH_REQUIRED");
       const membership=await db.query.platformAdmin.findFirst({where:eq(schema.platformAdmin.userId,session.user.id)});
       const factor=membership&&!membership.revokedAt
         ?await db.query.twoFactor.findFirst({where:eq(schema.twoFactor.userId,session.user.id)}):null;

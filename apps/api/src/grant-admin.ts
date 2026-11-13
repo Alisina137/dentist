@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, schema, sqlClient } from "@dandanlink/db";
+import { devEmailVerificationDisabled, permitsUnverifiedEmail } from "./email-policy.js";
 
 const email = process.argv[2]?.trim().toLowerCase();
 if (process.env.ALLOW_ADMIN_BOOTSTRAP !== "true" || !email ||
@@ -10,7 +11,9 @@ if (process.env.ALLOW_ADMIN_BOOTSTRAP !== "true" || !email ||
 }
 try {
   const record = await db.query.user.findFirst({ where: eq(schema.user.email, email) });
-  if (!record?.emailVerified) throw new Error("Only an existing, verified account can be granted admin membership");
+  if (!record || !permitsUnverifiedEmail(record.emailVerified)) {
+    throw new Error("Only an existing, verified account can be granted admin membership (unless explicit development-only email bypass is enabled)");
+  }
   await db.transaction(async tx => {
     await tx.insert(schema.platformAdmin).values({
       userId: record.id, grantedBy: "explicit_owner_bootstrap"
@@ -23,6 +26,8 @@ try {
       subjectType: "platform_admin", subjectId: record.id, outcome: "success"
     });
   });
+  if (devEmailVerificationDisabled && !record.emailVerified)
+    console.warn("DEVELOPMENT ONLY: admin account email ownership was not verified.");
   console.log("Admin membership granted. This user MUST enroll and verify TOTP to access admin.");
 } catch (error) {
   console.error(error instanceof Error ? error.message : "Admin grant failed");

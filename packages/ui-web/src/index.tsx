@@ -148,6 +148,12 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [devNoEmail, setDevNoEmail] = useState(false);
+  useEffect(() => {
+    request<{ emailVerificationRequired?: boolean }>("/v1/public/status")
+      .then(data => setDevNoEmail(data.emailVerificationRequired === false))
+      .catch(() => { /* Network failures retain verification-required messaging. */ });
+  }, []);
   const title = mode === "login" ? t("login") : mode === "signup" ? t("signup") :
     mode === "forgot" ? t("resetRequest") : mode === "reset" ? t("resetPassword") : t("verifyTitle");
   const isVerificationError = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("error");
@@ -162,7 +168,8 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
               ? "?next=" + encodeURIComponent(new URLSearchParams(window.location.search).get("next") || "") : "")
         });
         if (result.error) throw result.error;
-        setMessage(t("duplicateSafe"));
+        const policy = await request<{ emailVerificationRequired?: boolean }>("/v1/public/status").catch(() => null);
+        setMessage(policy?.emailVerificationRequired === false ? t("devEmailSignupReady") : t("duplicateSafe"));
       } else if (mode === "login") {
         const result = await authClient.signIn.email({ email: email.trim().toLowerCase(), password });
         if (result.error) throw result.error;
@@ -203,7 +210,7 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
         <p className="muted">{audience === "admin" ? t("adminSummary") : t("clinicSummary")}</p>
         <form className="form-stack" onSubmit={submit}>
           {mode === "signup" && <Field title={t("name")} value={name} onChange={setName} autoComplete="name" />}
-          {mode !== "reset" && <Field title={t("email")} type="email" value={email} onChange={setEmail} autoComplete="email" hint={t("emailHelp")} />}
+          {mode !== "reset" && <Field title={t("email")} type="email" value={email} onChange={setEmail} autoComplete="email" hint={devNoEmail ? t("devEmailHelp") : t("emailHelp")} />}
           {(mode === "login" || mode === "signup" || mode === "reset") &&
             <Field title={t("password")} type="password" value={password} onChange={setPassword}
               autoComplete={mode === "login" ? "current-password" : "new-password"} hint={t("passwordHint")} />}

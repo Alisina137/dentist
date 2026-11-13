@@ -21,7 +21,8 @@
     "check": "pnpm test && pnpm typecheck && pnpm build",
     "dev:mobile": "pnpm --filter @dandanlink/mobile exec expo start --tunnel --clear --go",
     "dev:patient:web": "pnpm --filter @dandanlink/patient-web dev",
-    "dev:ports:sync": "node scripts/sync-dev-ports.mjs"
+    "dev:ports:sync": "node scripts/sync-dev-ports.mjs",
+    "dev:auth:no-email": "node scripts/enable-dev-email-bypass.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
