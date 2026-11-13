@@ -1,49 +1,37 @@
 # DandanLink — project state
 
-Product specification: DandanLink Product Specification v1.0, November 13 2026.
+Specification: Product Specification v1.0, November 13, 2026.
 Workflow: Software Development Workflow V5.
-GitHub: Alisina137/dentist.
-User IDE folder: dentist (Windows local path not directly accessible).
+GitHub: Alisina137/dentist. Local IDE folder: dentist.
 
-## Current phase
+## PH02 — Clinic creation, versioned subscription and verification
 
-PH01 — Identity, localization, and application shells.
+Status: IMPLEMENTED — VERIFICATION PENDING for real-browser RTL, production email, security/legal review and pilot configuration.
+The repository holds integrated tenant and billing workflows; GitHub Actions is the proof of automated execution, not a substitute for field testing.
 
-Status: **IMPLEMENTED — VERIFICATION PENDING** for real-user browser/SMTP/device review. GitHub Actions passed frozen dependency install, Node tests, TypeScript, three production web builds, PostgreSQL migration, and HTTP authentication integration including email verification, password reset, session revocation, tenant/preference guards, trusted admin grant and real TOTP enrollment. These CI checks are actual recorded executions, not implementation claims.
+### Routes
+Clinic: /clinic, /clinic/onboarding, /clinic/settings, /clinic/settings/subscription, /pricing, /for-clinics.
+Admin (verified 2FA): /admin, /admin/clinics, /admin/clinics/:clinicId, /admin/plans, /admin/subscriptions.
+The patient public web remains informational until PH13; do not publish fictitious dentist profiles.
 
-## Phase 01 scope in source
+### Data
+Migration 0002_clinics.sql adds clinics, versioned platform plans, subscriptions, platform payment requests, secure administrative evidence, verification history.
+Clinic owner access is scoped server-side; platform admin operations require admin membership and verified MFA.
+Professional verification and payment status remain independent.
+Documents (max 2 MiB each) are private and stored inside the encrypted-at-rest database provider volume; do not treat as production-compliant without a formal hosting/security review.
+No patient clinical data is collected.
 
-- Auth: Better Auth signup, email verification, login, password reset, sessions and rate limits.
-- Authorization: administrative grant only via a trusted CLI; TOTP MFA enrollment/challenge enforced for admin; API 401 and 403.
-- Shared API: structured errors, health/readiness, authenticated profile and preference endpoints; audit/outbox schema.
-- Database: versioned PostgreSQL schema for auth, administrative membership, audit and outbox.
-- Design: DandanLink Care UI, reusable layouts/forms/states, desktop and mobile width adaptations.
-- Localization: Dari and Pashto RTL, English LTR; Solar Hijri and Gregorian display options; local and account preference persistence.
-- Three distinct responsive web applications; no fictional dentist listings, clinical operations or payments.
-- Test suite and run commands.
+### Important limitations and decisions
+- No subscription prices are hardcoded. An authenticated TOTP-enabled platform admin must create an active Starter/Professional/Business plan before a clinic can register.
+- Payment is NOT online: owner records a manual transaction reference, admin reconciles and marks paid. No payment receipt is fabricated.
+- Tenant can submit one clinic per request and can own multiple clinics; switching uses explicit clinic selection.
+- Staff/chair/services setup is PH03–04; public publishing is PH12 and booking PH15.
+- Trial duration and grace come from immutable plan version; renewals are manual until gateway integration.
+- Clinic verification evidence is only for manual professional review, not automated validation.
+- Clinic record updates after approval reopen human review, not silent publication.
+- Medical record retention/export and production privacy/security signoff remain PH19 gates.
 
-## Route and feature ownership
+### Verification
+See docs/PH02-ACCEPTANCE.md and GitHub Actions. Current local browser/SMTP/device verification is still pending.
 
-| Phase requirement | Routes and behavior |
-| --- | --- |
-| F01 — owner identity | /clinic/signup, /clinic/verify, /clinic/login, /clinic/reset-password |
-| F01 — clinic shell | /clinic, restricted to verified nonplatform accounts |
-| F01 — admin identity | /admin/login, /admin/2fa, /admin, secure grant + TOTP |
-| F01 — public shell | / on patient web, /privacy, /terms |
-| F01 — recoverability | /403, /offline, 404 in each web application |
-| F01 — API | /api/auth/*, /v1/me, /v1/me/preferences, /v1/admin/home, /v1/clinic/home, /ready |
-
-Deferred correctly: PH02 clinic creation/subscription, PH03 staff invitations, PH04 chairs/services, PH05 patient data, PH06 calendar, PH12 public provider listings, PH15 patient booking, PH16 native mobile parity.
-
-## Verification limitations
-
-The repository is remotely editable and GitHub Actions can run installs, builds, PostgreSQL and API integration. The assistant cannot access the user's Windows IDE; local browser/device accessibility, RTL visual inspection, SMTP deliverability with a real provider, operational backup/restore and medical/legal review remain unverified. Run the remaining checklist in docs/PH01-ACCEPTANCE.md. Translators and legal advisers must review patient-facing clinical/legal language before production.
-
-Do not use real patient records in PH01 or claim HIPAA/legal compliance. PH19 will require the production data protection, restore, retention, export and security release gates.
-
-Next approved phase after PH01 verification: PH02 — clinic creation, subscriptions and manual verification.
-
-## Recorded CI evidence
-
-- [Phase 01 auth and TOTP integration](https://github.com/Alisina137/dentist/actions/runs/43387532343): all tests, builds and PostgreSQL/API integration passed.
-- Final branch CI must also pass before merge to main. Healthcare production launch is not approved by this check.
+Next approved phase: PH03 — Staff invitations, role-based memberships and dentist identity.
