@@ -447,7 +447,8 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
         <input type="date" max={today()} value={asOf}
          onChange={e=>setAsOf(e.target.value)}/></label>
        <span>{t("viewAsOf")}</span></div>}
-      {snapshotError?<Problem code={snapshotError} retry={refreshSnapshot}/>:
+      {mode==="visit"&&!encounterId?<p className="phase08-empty">{t("noVisit")}</p>:
+       snapshotError?<Problem code={snapshotError} retry={refreshSnapshot}/>:
        !snapshot?<Busy/>:<>
         <Odontogram dentition={dentition} teeth={teeth} selected={selected}
          choose={choose} zoom={zoom} t={t}/>
