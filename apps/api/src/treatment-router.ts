@@ -23,7 +23,7 @@ function str(v:unknown,min:number,max:number,key:string):string{
  return v.trim();
 }
 function number(v:unknown,min:number,max:number,key:string):number{
- if(!Number.isSafeInteger(v)||v<min||v>max)reject(422,"INVALID_"+key);
+ if(typeof v!=="number"||!Number.isSafeInteger(v)||v<min||v>max)reject(422,"INVALID_"+key);
  return v;
 }
 function day(v:unknown,allowNull=true):string|null{
@@ -286,7 +286,7 @@ export function treatmentRouter(){
    await event(tx,req,next,p.status==="draft"?"draft_edited":"revised",p.status,to,reason);
   });
   noStore(res);res.json({id,version,revision:rev+1,
-   status:"revised",consentState:"none",reconsentRequired:true});
+   status:"proposed",consentState:"none",reconsentRequired:true});
  }));
  scoped.post("/plans/:planId/propose",route(async(req,res)=>{
   const {ctx}=await access(req,true),rev=revision(req.body?.revision),id=String(req.params.planId);
@@ -321,6 +321,7 @@ export function treatmentRouter(){
     AND clinic_id=${cid(req)} AND patient_id=${pid(req)} FOR UPDATE`;
    if(!p||p.clinician_membership_id!==ctx.membership.id)reject(404,"TREATMENT_NOT_FOUND");
    if(p.revision!==rev)reject(409,"STALE_TREATMENT_REVISION");
+   if(p.consent_state==="withdrawn")reject(409,"CONSENT_WITHDRAWN_REVISE_REQUIRED");
    if(p.status!=="proposed"||p.consent_state==="recorded")reject(409,"CONSENT_NOT_ALLOWED");
    // No e-sign is claimed; the named clinician is recording an in-person attestation.
    await tx`INSERT INTO clinic_treatment_consents(id,clinic_id,patient_id,plan_id,version,action,
