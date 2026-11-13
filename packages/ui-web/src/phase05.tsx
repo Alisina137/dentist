@@ -45,7 +45,7 @@ const text:Record<string,Record<string,string>>={
   details:"Details / known issues",sourceKind:"Source of clinical information",sourceDate:"Source date (Gregorian)",
   patient_reported:"Patient reported",clinician_observed:"Clinician observed",transcribed:"Transcribed from authorized document",
   saveIntake:"Save clinical intake",intakeUnknown:"No qualified clinical intake has been recorded yet.",
-  noAppointments:"Appointments and visits will be available in their scheduled development phases.",
+  noAppointments:"Appointments",bookAppointment:"Book appointment",nextBooking:"Upcoming appointment",pastBookings:"Appointment history",emptyBookings:"No appointments for this patient yet.",
   noFinancial:"No invoices or balances are available in Phase 5.",
   patientHeader:"Patient overview",recordStatus:"Record status",setStatus:"Update status",
   reason:"Reason (at least 10 characters)",confirm:"Confirm action",showArchived:"Including archived",
@@ -106,7 +106,7 @@ const text:Record<string,Record<string,string>>={
   patient_reported:"گزارش مریض",clinician_observed:"مشاهده داکتر",
   transcribed:"نقل از سند معتبر",saveIntake:"ذخیره معلومات صحی",
   intakeUnknown:"هنوز معلومات طبی توسط شخص مجاز ثبت نشده است.",
-  noAppointments:"وقت‌ها و ملاقات‌ها در مراحل بعدی فعال می‌شوند.",
+  noAppointments:"وقت‌های ملاقات",bookAppointment:"ثبت وقت ملاقات",nextBooking:"وقت آینده",pastBookings:"تاریخچه ملاقات‌ها",emptyBookings:"برای این مریض هنوز وقتی ثبت نشده است.",
   noFinancial:"حسابداری و بل‌ها در مرحله پنجم فعال نیستند.",
   patientHeader:"نمای کلی مریض",recordStatus:"وضعیت سند",setStatus:"تغییر وضعیت",
   reason:"دلیل (حداقل ۱۰ حرف)",confirm:"تأیید عملیات",showArchived:"شامل بایگانی",
@@ -167,7 +167,7 @@ const text:Record<string,Record<string,string>>={
   patient_reported:"د ناروغ راپور",clinician_observed:"د ډاکټر مشاهده",
   transcribed:"له تایید شوي سند څخه",saveIntake:"روغتیايي معلومات خوندي کړئ",
   intakeUnknown:"طبي معلومات لا د مجاز کس لخوا نه دي ثبت شوي.",
-  noAppointments:"وختونه او لیدنې په راتلونکو پړاوونو کې فعالېږي.",
+  noAppointments:"ملاقاتونه",bookAppointment:"ملاقات ثبت کړئ",nextBooking:"راتلونکی ملاقات",pastBookings:"د ملاقاتونو تاریخچه",emptyBookings:"د دې ناروغ لپاره ملاقات نشته.",
   noFinancial:"بیلونه او تادیات په پنځم پړاو کې نشته.",
   patientHeader:"د ناروغ لنډیز",recordStatus:"د ثبت حالت",setStatus:"حالت بدلول",
   reason:"دلیل (لږترلږه ۱۰ توري)",confirm:"کار تایید کړئ",showArchived:"د آرشیف په ګډون",
@@ -559,10 +559,7 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
   {!data.clinicalAvailable&&<section className="card panel">
     <h2>{t("intake")}</h2><Notice kind="warning">{t("clinicalUnavailable")}</Notice>
   </section>}
-  <section className="card panel">
-    <h2>{t("noAppointments")}</h2>
-    <Notice>{t("noFinancial")}</Notice>
-  </section>
+  <PatientAppointments clinicId={space.clinicId} patientId={p.id}/>
   {["owner","manager"].includes(space.role)&&<section className="card panel">
     <h2>{t("setStatus")}</h2>
     <div className="phase05-filters">
@@ -577,6 +574,50 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
     {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):problem}</Notice>}
   </section>}
  </div>;
+}
+function PatientAppointments({clinicId,patientId}:{clinicId:string,patientId:string}){
+ const {t,date}=useWords();
+ const [rows,setRows]=useState<any[]|null>(null),[error,setError]=useState("");
+ useEffect(()=>{
+  let mounted=true;setRows(null);setError("");
+  fetch(API+"/v1/appointments/clinics/"+encodeURIComponent(clinicId)+
+   "/patients/"+encodeURIComponent(patientId)+"/bookings",
+   {credentials:"include",cache:"no-store"})
+   .then(async r=>{
+    const result=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(result.code||"NETWORK_ERROR");
+    if(mounted)setRows(result.appointments||[]);
+   }).catch(e=>{if(mounted)setError(e.message)});
+  return()=>{mounted=false};
+ },[clinicId,patientId]);
+ const upcoming=rows?.filter(x=>new Date(x.startAt).getTime()>=Date.now()&&
+  ["confirmed","arrived","in_treatment"].includes(x.status))
+  .sort((a,b)=>new Date(a.startAt).getTime()-new Date(b.startAt).getTime())[0];
+ return <section className="card panel">
+  <div className="phase05-patient-head"><div><h2>{t("noAppointments")}</h2>
+   <p className="muted">{t("pastBookings")}</p></div>
+   <a className="btn btn-primary" href={"/clinic/appointments/new?clinic="+
+    encodeURIComponent(clinicId)+"&patientId="+encodeURIComponent(patientId)}>
+    + {t("bookAppointment")}</a>
+  </div>
+  {error&&<Notice kind="error">{error}</Notice>}
+  {!rows&&!error?<Loading/>:rows&&<>
+   {upcoming&&<div className="phase05-booking-next">
+    <strong>{t("nextBooking")}</strong> · {upcoming.serviceName} — {date(upcoming.startAt)}
+    <a className="text-link" href={"/clinic/appointments/"+upcoming.id+"?clinic="+clinicId}>↗</a>
+   </div>}
+   {!rows.length?<p className="muted">{t("emptyBookings")}</p>:
+    <div className="phase05-scroll"><table className="staff-table">
+     <thead><tr><th>{t("lastChange")}</th><th>{t("noAppointments")}</th>
+      <th>{t("status")}</th><th>{t("view")}</th></tr></thead>
+     <tbody>{rows.slice(0,12).map(item=><tr key={item.id}>
+      <td>{date(item.startAt)}</td><td>{item.serviceName}</td><td>{item.status}</td>
+      <td><a className="text-link" href={"/clinic/appointments/"+item.id+"?clinic="+clinicId}>
+       {t("view")} ↗</a></td>
+     </tr>)}</tbody></table></div>}
+  </>}
+  <p className="muted">{t("noFinancial")}</p>
+ </section>;
 }
 function ClinicalIntake({value,path,reload}:{value:any,path:string,reload:()=>void}){
  const {t,date}=useWords();
