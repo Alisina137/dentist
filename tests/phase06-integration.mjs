@@ -363,5 +363,6 @@ ok(await request(base+"/appointments/"+winner.id+"/status","POST",{
 const final=ok(await request(base+"/overview","GET",undefined,owner.session),
  [200],"real owner dashboard counts");
 assert.ok(final.counts.completed>=1);
-assert.ok(final.counts.no_show>=1);
+// Today's overview intentionally excludes yesterday's no-show, but detail history retains it.
+assert.equal(final.counts.no_show,0);
 console.log("PH06_INTEGRATION_OK — clinician/chair conflict, concurrent idempotency, safe reschedule, leave/closure guards, role-private calendar, walk-in queue and terminal states.");
