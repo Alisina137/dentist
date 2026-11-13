@@ -888,3 +888,181 @@ function HoursPanel({space,onChange}:{space:Space;onChange:()=>void}){
     chairs={activeResources}/>}
  </section>;
 }
+
+
+function dateKabul(){
+ const fmt=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit"});
+ const parts=Object.fromEntries(fmt.formatToParts(new Date()).filter(x=>x.type!=="literal")
+  .map(x=>[x.type,x.value]));
+ return [parts.year,parts.month,parts.day].join("-");
+}
+function ExceptionPanel({space,items,updated}:{space:Space;items:HoursData["exceptions"];updated:()=>void}){
+ const {t,date}=useWords();
+ const [form,setForm]=useState({startDate:dateKabul(),endDate:dateKabul(),
+  kind:"closed",startMinute:"09:00",endMinute:"17:00",reason:""});
+ const [removing,setRemoving]=useState(""),[removeReason,setRemoveReason]=useState("");
+ const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[ok,setOk]=useState("");
+ const set=(key:string,value:string)=>setForm(current=>({...current,[key]:value}));
+ async function submit(event:FormEvent){
+  event.preventDefault();setBusy(true);setProblem("");setOk("");
+  try{
+   await OpsApi(cPath(space.clinicId)+"/exceptions","POST",{
+    ...form,startMinute:form.kind==="special_hours"?timeMinute(form.startMinute):null,
+    endMinute:form.kind==="special_hours"?timeMinute(form.endMinute):null
+   });
+   setOk(t("success"));set("reason","");updated();
+  }catch(e:any){setProblem(e.message);}finally{setBusy(false);}
+ }
+ async function remove(id:string){
+  if(removeReason.trim().length<5)return;
+  setBusy(true);setProblem("");
+  try{
+   await OpsApi(cPath(space.clinicId)+"/exceptions/"+id,"DELETE",{reason:removeReason.trim()});
+   setRemoving("");setRemoveReason("");setOk(t("success"));updated();
+  }catch(e:any){setProblem(e.message);}finally{setBusy(false);}
+ }
+ return <div className="phase04-schedule-pane">
+  <div className="phase04-panel-subhead"><h3>{t("exceptions")}</h3>
+   <p>{t("exceptionHint")}</p></div>
+  {canManage(space)&&<form className="phase04-exception-form" onSubmit={submit}>
+    <div className="phase04-form-grid">
+     <FormField label={t("startDate")+" (YYYY-MM-DD)"} type="date"
+      value={form.startDate} onChange={v=>set("startDate",v)} required/>
+     <FormField label={t("endDate")+" (YYYY-MM-DD)"} type="date"
+      value={form.endDate} onChange={v=>set("endDate",v)} required/>
+     <Select label={t("kindException")} value={form.kind} onChange={v=>set("kind",v)}
+      options={[{value:"closed",label:t("holiday")},{value:"special_hours",label:t("special")}]}/>
+     {form.kind==="special_hours"&&<>
+      <FormField label={t("from")} type="time" value={form.startMinute} onChange={v=>set("startMinute",v)}/>
+      <FormField label={t("to")} type="time" value={form.endMinute} onChange={v=>set("endMinute",v)}/>
+     </>}
+    </div>
+    <FormField label={t("reason")+" (5–200)"} value={form.reason}
+     onChange={v=>set("reason",v)} required/>
+    <div className="phase04-schedule-footer"><p>{t("hoursWarning")}</p>
+     <button className="btn btn-primary" disabled={busy||form.reason.trim().length<5}>
+      {busy?t("saving"):"+ "+t("addException")}</button></div>
+   </form>}
+  <div className="phase04-exception-list">
+   {!items.length?<div className="phase04-empty"><div className="phase04-empty-icon">▧</div>
+    <h3>{t("emptyException")}</h3></div>:
+    items.map(item=><article className="phase04-exception" key={item.id}>
+     <span className={"phase04-exception-icon "+(item.kind==="closed"?"closed":"special")}>
+       {item.kind==="closed"?"×":"◷"}</span>
+     <div className="phase04-exception-main">
+      <div className="phase04-between"><strong>{t(item.kind==="closed"?"holiday":"special")}</strong>
+       <span>{item.kind==="special_hours"?minuteTime(item.startMinute!)+" – "+minuteTime(item.endMinute!):t("closed")}</span></div>
+      <p><bdi dir="ltr">{item.startDate}</bdi> – <bdi dir="ltr">{item.endDate}</bdi> · {item.reason}</p>
+      {removing===item.id&&<div className="phase04-remove-box">
+       <FormField label={t("removeReason")} value={removeReason}
+        onChange={setRemoveReason} required/>
+       <div className="phase-actions"><button className="btn btn-secondary" onClick={()=>setRemoving("")}>
+        {t("cancel")}</button><button className="btn btn-primary" onClick={()=>remove(item.id)}
+        disabled={busy||removeReason.trim().length<5}>{t("confirm")}</button></div>
+      </div>}
+     </div>
+     {canManage(space)&&<button className="phase04-inline-action"
+      onClick={()=>{setRemoving(item.id);setRemoveReason("");}}>
+      {t("remove")} ↗</button>}
+    </article>)}
+  </div>
+  {problem&&<Alert kind="error">{problem==="OVERLAPPING_EXCEPTION"?t("exceptionHint"):problem}</Alert>}
+  {ok&&<Alert kind="success">{ok}</Alert>}
+ </div>;
+}
+type Slot={start:string;end:string;startAt:string;endAt:string;resourceId:string|null;
+ durationMinutes:number;preparationMinutes:number};
+type Preview={date:string;timezone:string;status:string;slots:Slot[];
+ service:{name:string;basePriceAfn:number;requiresChair:boolean;
+  durationMinutes:number;preparationMinutes:number};previewOnly:boolean;bookable:boolean};
+function PreviewPanel({space,data,services,chairs}:{space:Space;data:HoursData;
+ services:Service[];chairs:Resource[]}){
+ const {t,date}=useWords();
+ const activeServices=services.filter(s=>s.active);
+ const [service,setService]=useState(""),[provider,setProvider]=useState(""),[chair,setChair]=useState("");
+ const [day,setDay]=useState(()=>dateKabul());
+ const [busy,setBusy]=useState(false),[problem,setProblem]=useState("");
+ const [preview,setPreview]=useState<Preview|null>(null);
+ useEffect(()=>{if(!service&&activeServices.length)setService(activeServices[0].id);},[services]);
+ useEffect(()=>{if(!provider&&data.clinicians.length)setProvider(data.clinicians[0].membershipId);},[data.clinicians]);
+ const selected=activeServices.find(s=>s.id===service);
+ const resourceList=selected?.requiresChair?chairs:[];
+ async function check(event:FormEvent){
+  event.preventDefault();setProblem("");setPreview(null);setBusy(true);
+  try{
+   const query=new URLSearchParams({
+    date:day,serviceId:service,providerId:provider,
+    ...(selected?.requiresChair&&chair?{resourceId:chair}:{})
+   });
+   setPreview(await OpsApi(cPath(space.clinicId)+"/availability/preview?"+query.toString()));
+  }catch(e:any){setProblem(e.message);}
+  finally{setBusy(false);}
+ }
+ const grouped=new Map<string,Slot[]>();
+ for(const slot of preview?.slots||[]){
+  const key=slot.resourceId||"none";
+  grouped.set(key,[...(grouped.get(key)||[]),slot]);
+ }
+ return <div className="phase04-schedule-pane">
+  <div className="phase04-preview-hero">
+   <div><span className="phase04-eyebrow">{t("preview")}</span>
+    <h3>{t("candidate")}</h3><p>{t("candidateOnly")}</p></div>
+   <span className="phase04-preview-badge">◎ {t("publicOff")}</span>
+  </div>
+  {(!activeServices.length||!data.clinicians.length||!chairs.length&&activeServices.every(s=>s.requiresChair))&&
+   <Alert kind="warning">{t("notReady")}
+    <div className="phase04-shortcuts">
+     {!activeServices.length&&<a href={href(space.clinicId,"services")}>{t("openServices")} ↗</a>}
+     {!data.clinicians.length&&<a href={"/clinic/staff?clinic="+space.clinicId}>{t("staffLink")} ↗</a>}
+     {!chairs.length&&<a href={href(space.clinicId,"resources")}>{t("openResources")} ↗</a>}
+    </div>
+   </Alert>}
+  <form onSubmit={check} className="phase04-preview-form">
+   <Select label={t("selectService")} value={service} onChange={v=>{setService(v);setPreview(null);setChair("");}}
+    options={[{value:"",label:t("selectService")},...activeServices.map(s=>({
+     value:s.id,label:s.name+" · "+s.durationMinutes+" "+t("minutes")}))]}/>
+   <Select label={t("chooseProvider")} value={provider} onChange={v=>{setProvider(v);setPreview(null);}}
+    options={[{value:"",label:t("chooseProvider")},...data.clinicians.map(x=>({
+     value:x.membershipId,label:x.name}))]}/>
+   <FormField label={t("selectDate")+" · Gregorian"} type="date" required value={day}
+    onChange={v=>{setDay(v);setPreview(null);}}/>
+   {selected?.requiresChair&&<Select label={t("chooseChair")} value={chair}
+    onChange={v=>{setChair(v);setPreview(null);}}
+    options={[{value:"",label:t("allCategories")},...resourceList.map(r=>({
+     value:r.id,label:r.label+" ("+r.code+")"}))]}/>}
+   <button className="btn btn-primary" disabled={!service||!provider||!day||busy}>
+    {busy?t("loading"):t("checkSlots")+" →"}</button>
+  </form>
+  {problem&&<Alert kind="error">{problem}</Alert>}
+  {!preview&&!busy&&<div className="phase04-preview-placeholder">
+    <div className="phase04-preview-placeholder-icon">◷</div>
+    <h4>{t("previewFirst")}</h4><p>{t("candidateOnly")}</p>
+   </div>}
+  {busy&&<Busy/>}
+  {preview&&<div className="phase04-preview-results" aria-live="polite">
+   <div className="phase04-preview-meta">
+    <div><strong>{date(preview.date+"T12:00:00+04:30")}</strong>
+     <p>{preview.service.name} · {preview.service.durationMinutes} {t("minutes")}</p></div>
+    <div><span className="phase04-preview-counter">{preview.slots.length}</span><small>{t("slots")}</small></div>
+   </div>
+   <div className="phase04-preview-info">
+    <Pill active={preview.status==="ready"}>{t("status_"+preview.status)}</Pill>
+    <span>{t("slotCost")}: <bdi dir="ltr">{preview.service.basePriceAfn.toLocaleString("en-US")}</bdi> AFN</span>
+    <span>{t("timezone")} · Asia/Kabul</span>
+   </div>
+   {!preview.slots.length?<div className="phase04-empty"><div className="phase04-empty-icon">◷</div>
+    <h3>{t("noSlots")}</h3><p>{t("slotHint")}</p></div>:
+    [...grouped].map(([resourceId,slots])=><div className="phase04-slot-group" key={resourceId}>
+      <h4>{resourceId?(chairs.find(c=>c.id===resourceId)?.label||t("chair")):t("selectService")}</h4>
+      <div className="phase04-slot-grid">
+       {slots.map(slot=><div className="phase04-slot" key={slot.startAt+"-"+resourceId}>
+        <strong><bdi dir="ltr">{slot.start}</bdi></strong>
+        <span>– <bdi dir="ltr">{slot.end}</bdi></span>
+       </div>)}
+      </div>
+     </div>)}
+   <Alert kind="warning">{t("candidateOnly")} {t("manualOnly")}</Alert>
+  </div>}
+ </div>;
+}
