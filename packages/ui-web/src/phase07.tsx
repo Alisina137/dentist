@@ -17,7 +17,7 @@ const empty:Note={reason:"",findings:"",assessment:"",historySource:"",historyDa
 type Language="en"|"fa-AF"|"ps-AF";
 const labels:Record<Language,Record<string,string>>={
  en:{
- clinical:"Clinical",worklist:"Clinical worklist",today:"Today",pending:"Pending Notes",cases:"My Cases",
+ clinical:"Clinical",operational:"Operational progress · aggregate counts only",scheduled:"Scheduled today",arrived:"Checked in",inTreatment:"In treatment",completed:"Completed today",pendingCount:"Pending notes",signedCount:"Signed encounters",worklist:"Clinical worklist",today:"Today",pending:"Pending Notes",cases:"My Cases",
  date:"Date",refresh:"Refresh",visits:"Visits",files:"Files",overview:"Overview",
  newVisit:"New visit",newVisitHint:"Open an unscheduled encounter or continue from an in-progress appointment.",
  complaint:"Presenting complaint",findings:"Clinical findings",assessment:"Clinical assessment",
@@ -56,7 +56,7 @@ const labels:Record<Language,Record<string,string>>={
  assistantHint:"Assistants may prepare their own assigned appointment drafts but cannot sign or amend."
  },
  "fa-AF":{
- clinical:"کلینیکی",worklist:"فهرست کارهای کلینیکی",today:"امروز",pending:"یادداشت‌های ناتمام",cases:"موارد من",
+ clinical:"کلینیکی",operational:"پیشرفت عملیاتی · فقط آمار کلی",scheduled:"وقت‌های امروز",arrived:"پذیرش‌شده",inTreatment:"در حال تداوی",completed:"تکمیل‌شده امروز",pendingCount:"یادداشت‌های ناتمام",signedCount:"معاینات امضاشده",worklist:"فهرست کارهای کلینیکی",today:"امروز",pending:"یادداشت‌های ناتمام",cases:"موارد من",
  date:"تاریخ",refresh:"تازه‌سازی",visits:"معاینات",files:"فایل‌ها",overview:"نمای کلی",
  newVisit:"معاینه جدید",newVisitHint:"معاینه بدون نوبت بسازید یا از وقت ملاقات ادامه دهید.",
  complaint:"شکایت اصلی مریض",findings:"یافته‌های کلینیکی",assessment:"ارزیابی داکتر",
@@ -95,7 +95,7 @@ const labels:Record<Language,Record<string,string>>={
  assistantHint:"دستیار می‌تواند پیش‌نویس وظیفه مربوط را بسازد؛ اما امضا یا اصلاحیه انجام نمی‌دهد."
  },
  "ps-AF":{
- clinical:"کلینیکي",worklist:"د کلینیکي کارونو لړلیک",today:"نن",pending:"نیمګړې یادښتونه",cases:"زما قضیې",
+ clinical:"کلینیکي",operational:"د چارو لنډیز · یوازې شمېرې",scheduled:"نن ټاکل شوې",arrived:"رارسېدلي",inTreatment:"تر درملنې لاندې",completed:"نن بشپړ شوي",pendingCount:"پاتې یادښتونه",signedCount:"لاسلیک شوې معاینې",worklist:"د کلینیکي کارونو لړلیک",today:"نن",pending:"نیمګړې یادښتونه",cases:"زما قضیې",
  date:"نېټه",refresh:"بیا تازه کول",visits:"معاینې",files:"فایلونه",overview:"لنډیز",
  newVisit:"نوې معاینه",newVisitHint:"له نوبت پرته معاینه پیل کړئ یا ټاکلې لیدنه پرمخ یوسئ.",
  complaint:"د ناروغ اصلي شکایت",findings:"کلینیکي موندنې",assessment:"د ډاکټر ارزونه",
@@ -211,9 +211,11 @@ export function ClinicalPortal({view}:{view:View}){
  if(!ctx||selected===undefined)return <Loading/>;
  const space=selected?ctx.clinics.find(s=>s.clinicId===selected):ctx.clinics[0];
  if(!space)return <ErrorBox error={t("forbidden")}/>;
- const allowed=space.role==="assistant"||space.role==="dentist"||
-  (["owner","manager"].includes(space.role)&&space.clinicianEnabled);
- if(!allowed)return <ErrorBox error={t("forbidden")}/>;
+ const manager=["owner","manager"].includes(space.role);
+ const qualified=space.role==="assistant"||space.role==="dentist"||
+  (manager&&space.clinicianEnabled);
+ if(!qualified&&!manager)return <ErrorBox error={t("forbidden")}/>;
+ if(!qualified&&view!=="worklist")return <ErrorBox error={t("forbidden")}/>;
  const bits=typeof location==="undefined"?[]:location.pathname.split("/").filter(Boolean);
  const index=bits.indexOf("patients"),patientId=index<0?"":bits[index+1]||"";
  const encounterId=bits[index+2]==="visits"?bits[index+3]||"":"";
@@ -228,13 +230,31 @@ export function ClinicalPortal({view}:{view:View}){
       {t("returnToPatient")}</a>}</div>
    </header>
    {view!=="worklist"&&<Tabs space={space} patientId={patientId} current={view}/>}
-   {view==="worklist"?<Worklist space={space}/>:
+   {view==="worklist"?(qualified?<Worklist space={space}/>:<OperationalSummary space={space}/>):
     view==="visits"?<Visits space={space} patientId={patientId}/>:
     view==="files"?<Files space={space} patientId={patientId}/>:
     <VisitNote space={space} patientId={patientId} encounterId={encounterId}/>}
    <footer className="phase07-footer">◇ {t("storage")} {t("care")}</footer>
   </div>
  </Shell>;
+}
+function OperationalSummary({space}:{space:Space}){
+ const {t,fmt}=useW();
+ const {data,error,refresh}=useLoad("/clinics/"+space.clinicId+"/worklist/status");
+ if(error)return <ErrorBox error={error} retry={refresh}/>;
+ if(!data)return <Loading/>;
+ const cards:[string,number][]=[["scheduled",data.scheduled],["arrived",data.arrived],
+  ["inTreatment",data.inTreatment],["completed",data.completed],
+  ["pendingCount",data.pending],["signedCount",data.signed]];
+ return <section className="card phase07-panel">
+  <div className="phase07-section">
+   <div><h2>{t("operational")}</h2><p className="phase07-meta">{fmt(data.date+"T12:00:00Z")}</p></div>
+   <button type="button" className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
+  </div>
+  <div className="phase07-overview-stats">{cards.map(([key,value])=>
+   <div key={key}><span>{t(key)}</span><strong>{value}</strong></div>)}</div>
+  <Banner kind="warning">{t("protected")}. {t("operational")}</Banner>
+ </section>;
 }
 function Worklist({space}:{space:Space}){
  const {t,fmt}=useW();const [date,setDate]=useState(day());
