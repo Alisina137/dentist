@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH04 services/chairs/hours completed after PH05 patient registry
+## Current phase: PH06 internal appointments and patient queue
 
-Status: **PH04–PH05 CODE IMPLEMENTED; GITHUB CI AND HUMAN QA TRACKED SEPARATELY**.
+Status: **PH01–PH05 merged; PH06 implemented in branch pending merge, GitHub CI and manual QA tracked separately**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -36,7 +36,7 @@ financial ledgers, dentist credential verification or public booking. Future pla
 GitHub Actions is configured to run PH01–PH03 integration against a real temporary PostgreSQL server, plus TypeScript and production web builds. Actual local browser/device review, SMTP delivery, human translation review, credential validation, retention, backup restore and healthcare security/legal acceptance remain outstanding.
 
 See docs/PH03-ACCEPTANCE.md for the full acceptance matrix and manual checks.
-Next phase: **PH06 — Internal appointments, queue, and conflict-free booking**, built on PH04 and PH05.
+Next phase after PH06: **PH07 — Clinician worklist, encounters and private files**.
 
 ## Platform/dev-command adjustment — 13 November 2026
 
@@ -107,7 +107,7 @@ See docs/PH05-ACCEPTANCE.md for detailed role matrix and remaining verification.
   timestamps use the Asia/Kabul IANA timezone. No bookings/holds yet.
 - Owner PH02 onboarding and dashboard now link to an actual operations
   checklist; staff workspace navigation has grouped icon+label links.
-- No public listings, verified professionals or patient booking have been
+- No public listings, verified professionals or public patient booking have been
   published. No fake appointments or default stored availability.
 - New migration `0004_services_resources_hours.sql` is additive even
   when PH05 migration `0005_patient_registry.sql` was applied first.
@@ -119,3 +119,22 @@ See docs/PH05-ACCEPTANCE.md for detailed role matrix and remaining verification.
 - Next planned phase is PH06 appointments and queue.
 
 See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
+
+## PH06 — Clinic appointments, safe bookings and arrival queue
+
+- Clinic calendar `/clinic/appointments` has synchronized Day/Week/Month, Saturday-first.
+- New wizard `/clinic/appointments/new` selects active patient, service, dentist, chair, source and time.
+- Details `/clinic/appointments/:id` shows original estimate snapshot, true status and audit timeline,
+  with atomic rescheduling and role-gated check-in, cancellation and no-show.
+- Queue `/clinic/appointments/queue` has real Expected/Arrived/In Treatment/Complete states.
+- Patient records link to real appointment history; owner's dashboard has live activity cards.
+- Migration `0006_appointments_queue.sql` adds PostgreSQL GiST exclusion for overlapping clinician
+  and chair times, idempotent actions and immutable events. Status actions are audited.
+- PH04 schedule, holiday, service, chair changes and PH05 patient archival block invalidating
+  future confirmed visits; no silent deletion or retroactive repricing.
+- Clinic data never appears in public patient/Expo interface; assistants see redacted calendars,
+  dentists see own cases. Public booking, clinical encounter/chart, invoices remain future phases.
+- Full responsive Dari/Pashto/English localized navigation, real calendar/queue tabs, touch mobile
+  agenda, empty/loading/error controls. Browser UX/keyboard/a11y and legal review remain pending.
+- CI tests: `tests/phase06-validation.test.mjs`, `tests/phase06-integration.mjs`.
+- Next: PH07 clinical worklist and private encounters. See docs/PH06-ACCEPTANCE.md.
