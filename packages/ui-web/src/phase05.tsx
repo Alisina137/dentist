@@ -16,7 +16,7 @@ type Patient={id:string;clinicId?:string;patientNumber:string;preferredName:stri
   noticeAcknowledged?:boolean;intakeSource?:string;updatedAt:string;createdAt:string};
 const text:Record<string,Record<string,string>>={
  en:{
-  patients:"Patients",directory:"Directory",import:"Import",newPatient:"Add patient",identity:"Identification",
+  appointmentHistory:"Appointment history",newAppointment:"New appointment",noBookedVisits:"No appointments for this clinic patient yet.",confirmed:"Scheduled",arrived:"Arrived",in_treatment:"In treatment",completed:"Completed",cancelled:"Cancelled",no_show:"No-show",patients:"Patients",directory:"Directory",import:"Import",newPatient:"Add patient",identity:"Identification",
   contact:"Contact",intake:"Medical intake",consent:"Consent",overview:"Overview",edit:"Edit demographics",
   preferredName:"Preferred name",familyName:"Family name",phone:"Phone (optional)",altContact:"Alternate contact",
   dob:"Date of birth (Gregorian)",ageEstimate:"Estimated age (if DOB unknown)",
@@ -75,7 +75,7 @@ const text:Record<string,Record<string,string>>={
   idLabel:"Internal clinic identifier",notVerified:"Unverified",staffOnly:"Authorized clinic staff only"
  },
  "fa-AF":{
-  patients:"مریضان",directory:"فهرست",import:"وارد کردن",newPatient:"افزودن مریض",
+  appointmentHistory:"تاریخچه ملاقات‌ها",newAppointment:"ثبت وقت جدید",noBookedVisits:"برای این مریض هنوز ملاقات ثبت نشده است.",confirmed:"وقت تعیین‌شده",arrived:"حاضر",in_treatment:"در تداوی",completed:"تکمیل",cancelled:"لغو",no_show:"غیرحاضر",patients:"مریضان",directory:"فهرست",import:"وارد کردن",newPatient:"افزودن مریض",
   identity:"معلومات هویت",contact:"تماس",intake:"معلومات صحی",consent:"رضایت و اطلاع",
   overview:"نمای کلی",edit:"ویرایش مشخصات",preferredName:"نام مورد استفاده",
   familyName:"تخلص",phone:"شماره تماس (اختیاری)",altContact:"تماس دوم",
@@ -135,7 +135,7 @@ const text:Record<string,Record<string,string>>={
   idLabel:"شناسه داخلی کلینیک",notVerified:"تأیید نشده",staffOnly:"فقط کارمندان مجاز کلینیک"
  },
  "ps-AF":{
-  patients:"ناروغان",directory:"نوملړ",import:"واردول",newPatient:"ناروغ ثبت کړئ",
+  appointmentHistory:"د لیدنو تاریخچه",newAppointment:"نوی وخت ثبت کړئ",noBookedVisits:"د دې ناروغ لپاره تر اوسه لیدنه نشته.",confirmed:"ټاکل شوی",arrived:"راغلی",in_treatment:"درملنه",completed:"بشپړ",cancelled:"لغوه",no_show:"نه راغلی",patients:"ناروغان",directory:"نوملړ",import:"واردول",newPatient:"ناروغ ثبت کړئ",
   identity:"د پېژندنې معلومات",contact:"اړیکه",intake:"روغتیايي معلومات",consent:"خبرتیا او رضا",
   overview:"لنډیز",edit:"د معلوماتو سمون",preferredName:"د ناروغ نوم",familyName:"تخلص",
   phone:"شمېره (اختیاري)",altContact:"بله اړیکه",dob:"د زېږېدو نېټه (میلادي)",
@@ -560,7 +560,15 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
     <h2>{t("intake")}</h2><Notice kind="warning">{t("clinicalUnavailable")}</Notice>
   </section>}
   <section className="card panel">
-    <h2>{t("noAppointments")}</h2>
+    <div className="phase05-patient-head">
+      <div><span className="phase06-eyebrow">{t("appointmentHistory")}</span>
+       <h2 style={{margin:"7px 0 0"}}>{t("appointmentHistory")}</h2></div>
+      {canEdit&&p.status==="active"&&
+       <a className="btn btn-primary" href={"/clinic/appointments/new?clinic="+space.clinicId+
+        "&patientId="+p.id}>+ {t("newAppointment")}</a>}
+    </div>
+    {canEdit?<PatientBookings space={space} patientId={p.id}/>:
+      <Notice kind="warning">{t("disabled")}</Notice>}
     <Notice>{t("noFinancial")}</Notice>
   </section>
   {["owner","manager"].includes(space.role)&&<section className="card panel">
@@ -576,6 +584,36 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
     {notice&&<Notice kind="success">{notice}</Notice>}
     {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):problem}</Notice>}
   </section>}
+ </div>;
+}
+function PatientBookings({space,patientId}:{space:Space;patientId:string}){
+ const {t,date}=useWords();
+ const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ const [again,setAgain]=useState(0);
+ useEffect(()=>{
+  let active=true;setData(null);setError("");
+  fetch(API+"/v1/appointments/clinics/"+space.clinicId+"/patients/"+patientId+"/appointments",{
+   credentials:"include",cache:"no-store"})
+   .then(async r=>{const x=await r.json().catch(()=>({}));
+     if(!r.ok)throw new Error(x.code||"REQUEST_FAILED");return x;})
+   .then(x=>{if(active)setData(x);})
+   .catch(e=>{if(active)setError(e.message);});
+  return()=>{active=false;};
+ },[space.clinicId,patientId,again]);
+ if(error)return <ErrorPanel message={error} retry={()=>setAgain(n=>n+1)}/>;
+ if(!data)return <Loading/>;
+ const visits=(data.appointments||[]).slice().reverse();
+ if(!visits.length)return <div className="phase06-patient-empty">
+    <span aria-hidden="true">▦</span><p>{t("noBookedVisits")}</p>
+  </div>;
+ return <div className="phase06-patient-appointments">
+  {visits.map((a:any)=><a href={"/clinic/appointments/"+a.id+"?clinic="+space.clinicId}
+    className="phase06-patient-appointment" key={a.id}>
+   <div><strong>{a.serviceName}</strong>
+    <span>{a.providerName} · {date(a.startAt)}</span></div>
+   <span className={"phase06-status phase06-status-"+a.status}>{t(a.status)}</span>
+   <span aria-hidden="true">↗</span>
+  </a>)}
  </div>;
 }
 function ClinicalIntake({value,path,reload}:{value:any,path:string,reload:()=>void}){
