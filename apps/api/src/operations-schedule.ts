@@ -79,21 +79,21 @@ export async function saveWeek(cid:string,actorId:string,kind:"clinic"|"provider
    if(kind==="clinic"){
     await tx.insert(schema.clinicWeeklyHour).values(values).onConflictDoUpdate({
      target:[schema.clinicWeeklyHour.clinicId,schema.clinicWeeklyHour.weekday],
-     set:{...values,revision:sql.raw('"revision" + 1')}
+     set:{...values,revision:sql.raw('"clinic_weekly_hours"."revision" + 1')}
     });
    }else if(kind==="provider"){
     await tx.insert(schema.clinicProviderHour).values({...values,membershipId:target!})
     .onConflictDoUpdate({
      target:[schema.clinicProviderHour.clinicId,schema.clinicProviderHour.membershipId,
              schema.clinicProviderHour.weekday],
-     set:{...values,revision:sql.raw('"revision" + 1')}
+     set:{...values,revision:sql.raw('"clinic_provider_hours"."revision" + 1')}
     });
    }else{
     await tx.insert(schema.clinicResourceHour).values({...values,resourceId:target!})
     .onConflictDoUpdate({
      target:[schema.clinicResourceHour.clinicId,schema.clinicResourceHour.resourceId,
              schema.clinicResourceHour.weekday],
-     set:{...values,revision:sql.raw('"revision" + 1')}
+     set:{...values,revision:sql.raw('"clinic_resource_hours"."revision" + 1')}
     });
    }
   }
