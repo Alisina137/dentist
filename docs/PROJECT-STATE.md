@@ -6,7 +6,7 @@ Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\d
 
 ## Current phase: PH06 internal appointments and patient queue
 
-Status: **PH01–PH05 merged; PH06 implemented in branch pending merge, GitHub CI and manual QA tracked separately**.
+Status: **PH01–PH06 implemented with automated CI; manual browser, accessibility, privacy and legal acceptance remain separate gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
