@@ -35,7 +35,7 @@ export function phase03Router(){
     for(const m of memberships){
       const c=await db.query.clinic.findFirst({where:eq(schema.clinic.id,m.clinicId)});
       if(c)clinics.push({clinicId:c.id,clinicName:c.displayName,clinicStatus:c.status,
-        membershipId:m.id,role:m.role,capabilities:capabilities[m.role as Role]||[]});
+        membershipId:m.id,role:m.role,clinicianEnabled:m.clinicianEnabled,capabilities:capabilities[m.role as Role]||[]});
     }
     res.setHeader("Cache-Control","no-store");
     res.json({name:req.actor!.name,email:req.actor!.email,
