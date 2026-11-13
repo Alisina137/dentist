@@ -227,7 +227,7 @@ export function treatmentRouter(){
  scoped.get("/plans",route(async(req,res)=>{
   const {ctx}=await access(req);await assigned(req,ctx);
   const status=String(req.query.status||"all"),search=String(req.query.search||"").trim().slice(0,100);
-  if(!["all","draft","proposed","accepted","in_progress","completed","discontinued"].includes(status))
+  if(!["all","draft","proposed","accepted","in_progress","active","completed","discontinued"].includes(status))
    reject(422,"INVALID_STATUS");
   const page=Number(req.query.page||1);
   if(!Number.isInteger(page)||page<1||page>10000)reject(422,"INVALID_PAGE");
@@ -239,7 +239,7 @@ export function treatmentRouter(){
    JOIN auth_users u ON u.id=m.user_id
    WHERE p.clinic_id=${cid(req)} AND p.patient_id=${pid(req)}
    AND p.clinician_membership_id=${ctx.membership.id}
-   AND (${status}='all' OR p.status=${status})
+   AND (${status}='all' OR p.status=${status} OR (${status}='active' AND p.status IN ('accepted','in_progress')))
    AND (${search}='' OR p.title ILIKE ${"%"+search+"%"})
    ORDER BY p.updated_at DESC,p.id DESC LIMIT 11 OFFSET ${(page-1)*10}`;
   noStore(res);res.json({plans:rows.slice(0,10),hasMore:rows.length>10,page});
@@ -268,7 +268,7 @@ export function treatmentRouter(){
   const data=await input(req,ctx,req.body);
   const rev=revision(req.body.revision),reason=str(req.body.reason,10,500,"REVISION_REASON");
   const id=String(req.params.planId);
-  let version=0;
+  let version=0,resultStatus='proposed';
   await sqlClient.begin(async tx=>{
    const [p]=await tx`SELECT * FROM clinic_treatment_plans WHERE id=${id}
     AND clinic_id=${cid(req)} AND patient_id=${pid(req)} FOR UPDATE`;
@@ -277,6 +277,7 @@ export function treatmentRouter(){
    if(["completed","discontinued"].includes(p.status))reject(409,"PLAN_IS_FINAL");
    version=p.version+1;
    const to=p.status==="draft"?"draft":"proposed";
+   resultStatus=to;
    await tx`UPDATE clinic_treatment_plans SET title=${data.title},indication=${data.indication},
     expected_sessions=${data.expectedSessions},duration_minutes=${data.durationMinutes},
     notes=${data.notes},estimate_total_afn=${data.total},version=${version},revision=revision+1,
@@ -287,7 +288,7 @@ export function treatmentRouter(){
    await event(tx,req,next,p.status==="draft"?"draft_edited":"revised",p.status,to,reason);
   });
   noStore(res);res.json({id,version,revision:rev+1,
-   status:"proposed",consentState:"none",reconsentRequired:true});
+   status:resultStatus,consentState:"none",reconsentRequired:true});
  }));
  scoped.post("/plans/:planId/propose",route(async(req,res)=>{
   const {ctx}=await access(req,true),rev=revision(req.body?.revision),id=String(req.params.planId);
