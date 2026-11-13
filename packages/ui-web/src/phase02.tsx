@@ -16,7 +16,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
-  dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
+  search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
   organization:"Organization",choosePlan:"Choose plan",review:"Review & submit",legalName:"Registered clinic name",
@@ -58,7 +58,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"Next action",privacyGate:"No patient or dental records are available at this stage."
  },
  "fa-AF":{
-  dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
+  search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
   subscription:"اشتراک",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",overview:"نمای کلی",verification:"تأیید",
   newClinic:"ثبت کلینیک جدید",continue:"ادامه",save:"ذخیره پیش‌نویس",back:"بازگشت",submit:"ارسال برای بررسی",
   organization:"معلومات کلینیک",choosePlan:"انتخاب پلن",review:"بررسی و ارسال",legalName:"نام رسمی کلینیک",
@@ -99,7 +99,7 @@ const words:Record<string,Record<string,string>>={
   privacyGate:"در این مرحله سوابق مریضان و دندان وجود ندارد."
  },
  "ps-AF":{
-  dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
+  search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
   subscription:"ګډون",subscriptions:"ګډونونه",plans:"پلانونه",overview:"لنډیز",verification:"تایید",
   newClinic:"نوی کلینیک ثبت کړئ",continue:"دوام",save:"مسوده وساتئ",back:"شاته",submit:"د کتنې لپاره واستوئ",
   organization:"د کلینیک معلومات",choosePlan:"پلان غوره کړئ",review:"بیاکتنه او استول",
@@ -509,7 +509,8 @@ function ClinicSubscription(){
 function AdminClinics(){
  const l=useText();
  const [status,setStatus]=useState("pending"),[page,setPage]=useState(1);
- const {data,error,refresh}=useResource("/admin/clinics?status="+status+"&page="+page);
+ const [draft,setDraft]=useState(""),[term,setTerm]=useState("");
+ const {data,error,refresh}=useResource("/admin/clinics?status="+status+"&page="+page+"&q="+encodeURIComponent(term));
  useEffect(()=>{
   const fromUrl=new URLSearchParams(window.location.search).get("status");
   if(fromUrl&&["pending","needs_info","approved","rejected","suspended"].includes(fromUrl))setStatus(fromUrl);
@@ -522,6 +523,11 @@ function AdminClinics(){
       {l(s)}</button>)}
   </div>
   <section className="card panel">
+    <form className="phase-search" onSubmit={e=>{e.preventDefault();setTerm(draft.trim());setPage(1);}}>
+      <label className="field"><span>{l("search")}</span>
+        <input type="search" value={draft} maxLength={80} onChange={e=>setDraft(e.target.value)}/></label>
+      <button type="submit" className="btn btn-secondary">{l("filter")}</button>
+    </form>
     {!data?<InlineAlert>{l("loading")}</InlineAlert>:!data.clinics?.length?<Empty>{l("noRecords")}</Empty>:
       <Rows>{data.clinics.map((c:any)=><a className="phase-row phase-list-item" href={"/admin/clinics/"+c.id} key={c.id}>
         <div><strong>{c.displayName}</strong><p className="muted">{c.city} · {c.province} · {short(c.submittedAt)}</p></div>
