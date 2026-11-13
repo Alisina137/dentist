@@ -23,7 +23,7 @@ const CONDITIONS:Condition[]=["sound","caries_suspected","restored","missing","e
 const surfaces=["M","D","B","L","P","O","I"] as const;
 const dict:Record<Language,Record<string,string>>={
  en:{
- chart:"Dental Chart",description:"FDI tooth observations · privately recorded clinical findings",
+ chart:"Dental Chart",treatments:"Treatments",description:"FDI tooth observations · privately recorded clinical findings",
  overview:"Overview",visits:"Visits",files:"Files",worklist:"Worklist",patient:"Patient",
  system:"FDI system",primary:"Primary teeth",permanent:"Permanent teeth",chooseDentition:"Select dentition",
  chooseDentitionHelp:"Age is unknown; choose permanent or primary teeth before charting.",
@@ -64,7 +64,7 @@ const dict:Record<Language,Record<string,string>>={
  invalid:"Check the tooth, visit, date, condition and surfaces.",retryAction:"Retry save"
  },
  "fa-AF":{
- chart:"چارت دندان",description:"مشاهدات دندان با سیستم FDI · معلومات کلینیکی خصوصی",
+ chart:"چارت دندان",treatments:"پلان‌های تداوی",description:"مشاهدات دندان با سیستم FDI · معلومات کلینیکی خصوصی",
  overview:"نمای کلی",visits:"معاینات",files:"فایل‌ها",worklist:"وظایف کلینیکی",patient:"مریض",
  system:"سیستم FDI",primary:"دندان‌های شیری",permanent:"دندان‌های دایمی",chooseDentition:"انتخاب نوع دندان",
  chooseDentitionHelp:"سن نامعلوم است؛ نوع دندان را برای ثبت انتخاب کنید.",
@@ -108,7 +108,7 @@ const dict:Record<Language,Record<string,string>>={
  retryAction:"تلاش دوباره برای ذخیره"
  },
  "ps-AF":{
- chart:"د غاښونو چارټ",description:"د FDI د غاښونو کتنې · شخصي کلینیکي معلومات",
+ chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",description:"د FDI د غاښونو کتنې · شخصي کلینیکي معلومات",
  overview:"لنډیز",visits:"معاینې",files:"فایلونه",worklist:"کلینیکي چارې",patient:"ناروغ",
  system:"د FDI سیستم",primary:"د شیدو غاښونه",permanent:"دایمي غاښونه",chooseDentition:"د غاښونو ډول",
  chooseDentitionHelp:"عمر نه دی معلوم؛ د معاینې لپاره د غاښونو ډول وټاکئ.",
@@ -415,6 +415,7 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
    <a href={patientPath(space.clinicId,patientId)}>{t("overview")}</a>
    <a href={visitPath(space.clinicId,patientId)}>{t("visits")}</a>
    <a href={chartPath(space.clinicId,patientId)} aria-current="page">{t("chart")}</a>
+   <a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
    <a href={filePath(space.clinicId,patientId)}>{t("files")}</a>
   </nav>
   <div className="phase08-layout">

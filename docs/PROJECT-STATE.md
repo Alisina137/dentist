@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH08 interactive FDI dental chart and historical observations
+## Current phase: PH09 treatment proposals, clinical stages and consent
 
-Status: **PH01–PH08 implemented; automated CI, typechecks, builds, and PostgreSQL-backed PH08 acceptance passed. Manual clinical review, accessibility, privacy/security and legal acceptance remain separate production gates**.
+Status: **PH01–PH09 implemented and tested. PH09 automated tests, typechecks, builds, Expo bundle and PostgreSQL-backed clinical acceptance passed. Manual clinical review, accessibility, privacy/security and legal consent verification remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -166,3 +166,17 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Tests: `tests/phase08-validation.test.mjs`, `tests/phase08-integration.mjs`, `tests/phase08-immutability.ts`; CI includes HTTP/PostgreSQL and prior phase regressions.
 - **Not production ready:** clinically reviewed anatomy, accessibility/RTL inspection, legal/medical retention, security/data backup checks still required; chart shapes are schematic, no diagnosis/billing.
 - Next phase: PH09 treatment plans and consent. See `docs/PH08-ACCEPTANCE.md`.
+
+
+## PH09 — Treatment plans, consent, progress and estimates (C13/C14 / AC09)
+
+- Plan status groups Draft / Proposed / Accepted-In Progress / Completed / Discontinued, searchable list and create action at `/clinic/patients/:patientId/treatments`.
+- Dedicated plan detail with Summary, Stages, Estimate, Consent and Timeline tabs. Patient Overview, Visits and Dental Chart include Treatments navigation.
+- Authorized clinician creates/revises multi-stage care proposals, with service catalog price/version snapshots and 100% clinic/private patient scope. Estimated AFN amounts are not invoices, charges or paid revenue.
+- Stages require explicit start; completion requires signed PH07 encounter with matched performed procedure and tooth references. No inferred treatment from appointment or service booking.
+- Explicit recorded in-person patient/guardian attestation with named witness, scope and time. Changing an accepted proposal creates a new version requiring new consent; withdrawal suspends stage work; reasons are required for discontinuations and skipped stages.
+- New migration `0009_treatment_plans.sql` and PostgreSQL constraints preserve immutable proposal versions, consent history, events, and completed-stage evidence.
+- Clinician-private detail endpoints, low-privilege status-only summary and finance projection, optimistic update revisions, actor audit, and subscription gates.
+- Tests: `tests/phase09-validation.test.mjs`, `tests/phase09-integration.mjs`, `tests/phase09-immutability.ts`.
+- Medical, legal consent, device accessibility, backup/retention and privacy sign-off remain required before real patient data; PH10 handles invoices and payment ledgers.
+- Next phase: PH10 patient billing and receipt ledger. See `docs/PH09-ACCEPTANCE.md`.

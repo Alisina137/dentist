@@ -35,7 +35,7 @@ test("PH07 navigation and routes do not expose unfinished chart/treatment tabs",
  const s=load("packages/ui-web/src/phase07.tsx");
  for(const key of ["today","pending","cases","visitDetail","patientFiles","amend","upload"])assert.match(s,new RegExp(key));
  assert.match(s,/\/chart\?clinic=/); // PH08 activates the real chart after PH07.
- assert.doesNotMatch(s,/<a[^>]+\/treatments/);
+ assert.match(s,/\/treatments\?clinic=/); // PH09 activates a real treatment workflow.
 });
 
 test("PH07 nonclinical owner overview is aggregate-only",()=>{
