@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema, sqlClient } from "@dandanlink/db";
 import { authStaff, scope, AccessFault, type StaffRequest } from "./staff-access.js";
 import { getPatient } from "./patient-service.js";
+import { PatientError } from "./patient-validation.js";
 import { isoDayWindow, localDate } from "./appointments-service.js";
 
 class ClinicalFault extends Error {
@@ -135,12 +136,12 @@ export function clinicalRouter(){
    AND (${ctx.role==="assistant"} OR a.provider_membership_id=${ctx.membership.id})
    AND a.status NOT IN ('cancelled','no_show')
    ORDER BY a.start_at ASC LIMIT 100`;
-  const visibleDrafts=ctx.role==="assistant"?
-   sqlClient`AND e.created_by=${req.actor!.id}` : sqlClient`AND e.provider_membership_id=${ctx.membership.id}`;
   const pending=await sqlClient`SELECT e.id,e.patient_id,e.reason,e.updated_at,e.revision,
    p.patient_number,p.preferred_name,p.family_name
    FROM clinic_encounters e JOIN clinic_patients p ON p.id=e.patient_id AND p.clinic_id=e.clinic_id
-   WHERE e.clinic_id=${cid(req)} AND e.status='draft' ${visibleDrafts}
+   WHERE e.clinic_id=${cid(req)} AND e.status='draft'
+   AND (${ctx.role==="assistant"} AND e.created_by=${req.actor!.id}
+    OR ${ctx.role!=="assistant"} AND e.provider_membership_id=${ctx.membership.id})
    ORDER BY e.updated_at DESC LIMIT 60`;
   const cases=ctx.role==="assistant"?[]:await sqlClient`SELECT e.id,e.patient_id,e.reason,e.signed_at,
    p.patient_number,p.preferred_name,p.family_name
@@ -152,13 +153,12 @@ export function clinicalRouter(){
  }));
  clinics.get("/patients/:patientId/encounters",wrap(async(req,res)=>{
   const ctx=await access(req,cid(req));const patient=await getPatient(cid(req),pid(req));
-  const visible=ctx.role==="assistant"?
-   sqlClient`AND e.created_by=${req.actor!.id} AND e.status='draft'`:
-   sqlClient`AND e.provider_membership_id=${ctx.membership.id}`;
   const rows=await sqlClient`SELECT e.id,e.reason,e.status,e.revision,e.created_at,e.updated_at,
    e.signed_at,e.appointment_id,u.name AS author_name
    FROM clinic_encounters e JOIN auth_users u ON u.id=e.created_by
-   WHERE e.clinic_id=${cid(req)} AND e.patient_id=${pid(req)} ${visible}
+   WHERE e.clinic_id=${cid(req)} AND e.patient_id=${pid(req)}
+   AND (${ctx.role==="assistant"} AND e.created_by=${req.actor!.id} AND e.status='draft'
+     OR ${ctx.role!=="assistant"} AND e.provider_membership_id=${ctx.membership.id})
    ORDER BY e.created_at DESC LIMIT 100`;
   noStore(res);res.json({patient:{id:patient.id,patientNumber:patient.patientNumber,
    preferredName:patient.preferredName,familyName:patient.familyName},encounters:rows});
@@ -346,6 +346,7 @@ export function clinicalRouter(){
   res.send(row.bytes);
  }));
  api.use((error:unknown,_req:Request,res:Response,_next:NextFunction)=>{
+  if(error instanceof PatientError){res.status(error.statusCode).json({code:error.code});return;}
   if(error instanceof ClinicalFault||error instanceof AccessFault){
    res.status(error.status).json({code:error.code});return;
   }
