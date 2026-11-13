@@ -31,7 +31,7 @@ async function waitForReady(){
 }
 async function request(path,body,cookie=""){
  const response=await fetch(url+path,{method:body===undefined?"GET":"POST",
-  headers:{...(cookie?{cookie}:{}),...(body===undefined?{}:{"content-type":"application/json"})},
+  headers:{origin:"http://localhost:3001",...(cookie?{cookie}:{}),...(body===undefined?{}:{"content-type":"application/json"})},
   redirect:"manual",body:body===undefined?undefined:JSON.stringify(body)
  });
  const raw=await response.text();let json;
