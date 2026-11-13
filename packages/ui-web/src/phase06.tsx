@@ -651,9 +651,8 @@ function BookingEditor({space,existing,close,afterSave}:{
  const validSlots=slots.filter(slot=>
   !booked.some(a=>a.id!==existing?.id&&live(a.status)&&(
    a.providerMembershipId===provider||slot.resourceId&&a.resourceId===slot.resourceId
-  )&&(Date.parse(a.startAt)<Date.parse(new Date(
-      Date.parse(slotDate(date,slot.end))).toISOString()) &&
-      Date.parse(a.endAt)>Date.parse(slotDate(date,slot.start)))) );
+  )&&(Date.parse(a.startAt)<slotDate(date,slot.end) &&
+      Date.parse(a.endAt)>slotDate(date,slot.start))) );
  // The client-side status filter is only a convenience. The DB exclusion constraint
  // and fresh PH04 preview are authoritative, including competing users.
  async function submit(event:FormEvent){
