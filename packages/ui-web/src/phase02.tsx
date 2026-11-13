@@ -16,7 +16,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
-  appointments:"Appointments",operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
+  appointments:"Appointments",bookedToday:"Scheduled",arrivalsToday:"Arrived",careToday:"In treatment",finishedToday:"Completed",todayQueue:"Today’s queue",newAppointment:"New appointment",operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
   organization:"Organization",choosePlan:"Choose plan",review:"Review & submit",legalName:"Registered clinic name",
@@ -58,7 +58,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"Next action",privacyGate:"Patient records are private clinic data; live scheduling and clinical encounters are not released yet."
  },
  "fa-AF":{
-  appointments:"وقت‌های ملاقات",operations:"عملیات",management:"مدیریت",workspace:"بخش اصلی",staffWorkspace:"کارمندان و منابع",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
+  appointments:"وقت‌های ملاقات",bookedToday:"ثبت شده",arrivalsToday:"رسیده",careToday:"زیر تداوی",finishedToday:"تکمیل",todayQueue:"صف امروز",newAppointment:"ثبت وقت جدید",operations:"عملیات",management:"مدیریت",workspace:"بخش اصلی",staffWorkspace:"کارمندان و منابع",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
   subscription:"اشتراک",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",overview:"نمای کلی",verification:"تأیید",
   newClinic:"ثبت کلینیک جدید",continue:"ادامه",save:"ذخیره پیش‌نویس",back:"بازگشت",submit:"ارسال برای بررسی",
   organization:"معلومات کلینیک",choosePlan:"انتخاب پلن",review:"بررسی و ارسال",legalName:"نام رسمی کلینیک",
@@ -99,7 +99,7 @@ const words:Record<string,Record<string,string>>={
   privacyGate:"معلومات مریضان خصوصی است؛ نوبت‌دهی و معاینات طبی در مراحل بعدی فعال می‌شوند."
  },
  "ps-AF":{
-  appointments:"ملاقاتونه",operations:"عملیات",management:"مدیریت",workspace:"اصلي برخه",staffWorkspace:"کارکوونکي او سرچینې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
+  appointments:"ملاقاتونه",bookedToday:"ټاکلي",arrivalsToday:"راغلي",careToday:"تر درملنې لاندې",finishedToday:"بشپړ",todayQueue:"د نن ورځې کتار",newAppointment:"نوی ملاقات",operations:"عملیات",management:"مدیریت",workspace:"اصلي برخه",staffWorkspace:"کارکوونکي او سرچینې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
   subscription:"ګډون",subscriptions:"ګډونونه",plans:"پلانونه",overview:"لنډیز",verification:"تایید",
   newClinic:"نوی کلینیک ثبت کړئ",continue:"دوام",save:"مسوده وساتئ",back:"شاته",submit:"د کتنې لپاره واستوئ",
   organization:"د کلینیک معلومات",choosePlan:"پلان غوره کړئ",review:"بیاکتنه او استول",
@@ -298,6 +298,37 @@ function OperationsSetup({clinicId}:{clinicId:string}){
   </div>
  </section>;
 }
+function AppointmentDashboardPulse({clinicId}:{clinicId:string}){
+ const l=useText();
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const value=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+ const today=[value.year,value.month,value.day].join("-");
+ const {data,error,refresh}=useResource("/appointments/clinics/"+clinicId+"/summary?date="+today);
+ return <section className="phase04-setup-card card ph06-dashboard-pulse">
+  <div className="phase04-between"><div><span className="phase04-eyebrow">{l("appointments")}</span>
+   <h3>{l("appointments")} · {today}</h3><p className="muted">{l("operational")}</p></div>
+   <a className="btn btn-primary" href={"/clinic/appointments?clinic="+clinicId}>
+    {l("appointments")} ↗</a>
+  </div>
+  {error?<InlineAlert kind="error">{error}</InlineAlert>:!data?
+   <InlineAlert>{l("loading")}</InlineAlert>:
+   <div className="ph06-dashboard-numbers">
+    {(["confirmed","arrived","in_treatment","completed"] as const).map(key=>
+     <a key={key} href={"/clinic/appointments?clinic="+clinicId} className="ph06-dashboard-number">
+      <strong>{data.counts?.[key]??0}</strong>
+      <span>{l(key==="confirmed"?"bookedToday":key==="arrived"?"arrivalsToday":
+       key==="in_treatment"?"careToday":"finishedToday")}</span>
+     </a>)}
+   </div>}
+  <div className="phase04-setup-shortcuts">
+   <a className="btn btn-secondary" href={"/clinic/appointments/queue?clinic="+clinicId}>
+    {l("todayQueue")} ↗</a>
+   <a className="btn btn-secondary" href={"/clinic/appointments/new?clinic="+clinicId}>
+    + {l("newAppointment")}</a>
+  </div>
+ </section>;
+}
 function ClinicDashboardCard({clinic:c}:{clinic:any}){
   const l=useText();const {data}=useResource("/clinics/"+c.id);
   return <article className="card panel">
@@ -311,6 +342,7 @@ function ClinicDashboardCard({clinic:c}:{clinic:any}){
     </div>
     <div className="phase-actions"><a className="btn btn-primary" href={"/clinic/onboarding?clinic="+c.id}>{l("onboarding")}</a>
       <a className="btn btn-secondary" href={"/clinic/settings/subscription?clinic="+c.id}>{l("subscription")}</a></div>
+    <AppointmentDashboardPulse clinicId={c.id}/>
     <OperationsSetup clinicId={c.id}/>
   </article>;
 }
