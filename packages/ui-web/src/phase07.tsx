@@ -362,7 +362,11 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
   try{
    const rev=data.encounter.revision;
    if(type==="save")await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
-   if(type==="sign")await call(base+"/encounters/"+encounterId+"/sign","POST",{revision:rev,confirmation:"SIGN"});
+   if(type==="sign"){
+    // Persist the visible form first so the signed snapshot exactly matches what was confirmed.
+    await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
+    await call(base+"/encounters/"+encounterId+"/sign","POST",{revision:rev+1,confirmation:"SIGN"});
+   }
    if(type==="amend")await call(base+"/encounters/"+encounterId+"/amend","POST",
     {...note,revision:rev,correctionReason:reason});
    setNotice(t(type==="sign"?"signedSuccess":"saved"));setReason("");refresh();
@@ -393,11 +397,7 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       onClick={()=>action("save")}>{busy?t("busy"):t("saveDraft")}</button>}
      {data.canSign&&<button type="button" className="btn btn-primary" disabled={busy||
       !note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
-      onClick={async()=>{if(note.reason!==e.note.reason||note.findings!==e.note.findings||
-       note.assessment!==e.note.assessment||note.followUp!==e.note.followUp||
-       JSON.stringify(note.performedProcedures)!==JSON.stringify(e.note.performedProcedures)){
-       await action("save");return;
-      }await action("sign");}}>{busy?t("busy"):t("sign")}</button>}
+      onClick={()=>action("sign")}}>{busy?t("busy"):t("sign")}</button>}
      {data.canAmend&&<button type="button" className="btn btn-primary" disabled={busy||
       reason.trim().length<10||!note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
       onClick={()=>action("amend")}>{busy?t("busy"):t("amend")}</button>}
