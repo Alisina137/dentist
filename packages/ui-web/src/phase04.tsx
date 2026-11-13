@@ -1,0 +1,412 @@
+"use client";
+import React,{useCallback,useEffect,useMemo,useState,type FormEvent,type ReactNode} from "react";
+import { InlineAlert,usePreferences } from "./index";
+import { Shell } from "./phase03";
+type Language="en"|"fa-AF"|"ps-AF";
+type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
+type Space={clinicId:string;clinicName:string;clinicStatus:string;membershipId:string;
+ role:Role;clinicianEnabled:boolean;capabilities:string[]};
+type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
+type Page="services"|"resources"|"hours";
+type Service={id:string;clinicId:string;name:string;category:string;description:string|null;
+ durationMinutes:number;preparationMinutes:number;basePriceAfn:number;requiresChair:boolean;
+ publicBooking:boolean;active:boolean;version:number;createdAt:string;updatedAt:string};
+type Resource={id:string;clinicId:string;code:string;label:string;kind:"chair"|"room";
+ equipment:string|null;active:boolean;revision:number;updatedAt:string};
+type Shift={weekday:number;isOpen:boolean;startMinute:number;endMinute:number;
+ breaks:{start:number;end:number}[];revision?:number};
+type Doctor={membershipId:string;name:string;role:string};
+type HoursData={hours:Shift[];providers:(Shift&{membershipId:string})[];
+ resources:(Shift&{resourceId:string})[];clinicians:Doctor[];
+ exceptions:{id:string;startDate:string;endDate:string;kind:string;startMinute:number|null;
+  endMinute:number|null;reason:string}[];timezone:string};
+const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
+const dict:Record<Language,Record<string,string>>={
+ en:{
+  services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",
+  servicesIntro:"Build the clinic catalog with reliable durations, transparent AFN prices and chair needs.",
+  resourcesIntro:"Keep treatment chairs and rooms organized before scheduling patients.",
+  hoursIntro:"Define real clinic hours, provider shifts and closures. Preview only, not live booking.",
+  operations:"Clinic operations",settings:"Settings",dashboard:"Dashboard",patients:"Patients",
+  staff:"Staff & Resources",team:"Team",overview:"Overview",refresh:"Refresh",
+  addService:"New service",editService:"Edit service",serviceName:"Service name",category:"Category",
+  description:"Description",duration:"Treatment minutes",buffer:"Preparation / buffer minutes",
+  price:"Base price (AFN)",requiresChair:"Requires a dental chair",publicBooking:"Allow public booking when published",
+  active:"Active",inactive:"Inactive",status:"Status",all:"All",search:"Search services",filter:"Filter",
+  save:"Save changes",create:"Create",cancel:"Cancel",close:"Close",action:"Action",
+  edit:"Edit",history:"Price & version history",version:"Version",current:"Current",
+  neverRetroactive:"Changes create a new catalog version. Historic quotes and invoices remain unchanged.",
+  durationHelp:"5–240 minutes in 5-minute increments; preparation time is added to each slot.",
+  priceHelp:"Prices are nonnegative amounts in Afghan afghanis; not invoices or payments.",
+  publicHelp:"Public booking stays unavailable until the verification and patient-booking phases.",
+  noneServices:"No services created yet",noneServicesHelp:"Add a consultation to begin configuring your practice.",
+  noneResources:"No chairs or rooms yet",noneResourcesHelp:"Add a treatment chair to unlock resource-based availability.",
+  addResource:"Add chair / room",editResource:"Edit resource",resourceName:"Display name",code:"Internal code",
+  kind:"Type",chair:"Chair",room:"Room",equipment:"Equipment or capabilities",
+  resourceCodeHelp:"Unique within the clinic, 2–24 uppercase letters, numbers, hyphen or underscore.",
+  resourceUsed:"This resource has a saved working schedule. Clear its schedule before deactivating.",
+  scheduleResource:"Manage resource hours",deactivate:"Deactivate",reactivate:"Reactivate",
+  noDeletes:"Resources and services are deactivated, never silently deleted.",
+  weekly:"Clinic hours",providers:"Dentist shifts",chairs:"Chair schedules",exceptions:"Holidays & closures",
+  preview:"Availability preview",daysOpen:"Open days",scheduledDentists:"Scheduled dentists",
+  ready:"Ready to preview",setup:"Setup checklist",notReady:"Finish setup to preview candidate times",
+  stepService:"Add a service",stepChair:"Add an active chair (if needed)",stepHours:"Set clinic hours",
+  stepDoctor:"Assign a dentist shift",daySat:"Saturday",daySun:"Sunday",dayMon:"Monday",
+  dayTue:"Tuesday",dayWed:"Wednesday",dayThu:"Thursday",dayFri:"Friday",
+  open:"Open",closed:"Closed",from:"From",to:"To",breaks:"Breaks",addBreak:"Add break",
+  remove:"Remove",saveWeek:"Save weekly hours",weekHint:"Daily hours use Afghanistan time (Asia/Kabul).",
+  unsavedWeek:"Suggested working hours are not saved. Save this week to enable previews.",
+  chooseProvider:"Choose dentist",chooseChair:"Choose chair or room",
+  noProviders:"No active dentist identities yet. Invite a dentist or enable the owner’s clinician identity in Staff.",
+  noChairs:"No active chairs are available. Create one in Chairs & Rooms.",
+  providerShiftHelp:"Save each clinician's working days separately. A dentist must have saved shifts to appear in previews.",
+  resourceShiftHelp:"Optional chair shifts further restrict clinic hours. Without a chair shift, an active chair follows clinic hours.",
+  clearResourceHours:"Clear chair schedule",clearHelp:"Clearing a chair schedule allows deactivation and restores inherited clinic hours.",
+  noResourceSchedule:"No custom chair schedule yet.",date:"Date",startDate:"Start date",
+  endDate:"End date",kindException:"Exception type",holiday:"Closed / holiday",special:"Special opening hours",
+  reason:"Reason",addException:"Add exception",emptyException:"No recorded closures or special days.",
+  exceptionHint:"Exceptions cannot overlap. A closure never silently deletes booked appointments.",
+  exceptionRemove:"Remove exception",removeReason:"Reason for removing this exception",
+  selectService:"Choose service",selectDate:"Choose date",checkSlots:"Preview candidate slots",
+  candidate:"Candidate times",candidateOnly:"Configuration preview — not a reservation or public appointment.",
+  noSlots:"No candidate times for these settings",slotHint:"Update the service, working hours, dentist shift or chair and try again.",
+  timezone:"Afghanistan time",publicOff:"Public booking is not live",
+  minutes:"min",slots:"slots",capacity:"Resources",activeServices:"Active services",
+  openDays:"Open days",setupProgress:"Operational readiness",
+  loading:"Loading…",tryAgain:"Try again",failed:"Request failed",success:"Changes saved",
+  forbidden:"You can view these settings, but only the clinic owner or manager can modify them.",
+  stale:"Someone else updated this item. Refresh and try again.",permission:"Sign in to the correct clinic.",
+  empty:"Nothing here yet",searchEmpty:"Nothing matches these filters",clearFilters:"Clear filters",
+  statusLive:"Active",statusInactive:"Inactive",statusDraft:"Draft only",timeError:"Start must be before end; breaks cannot overlap.",
+  allCategories:"All categories",allStatuses:"All statuses",custom:"Custom",
+  clickToEdit:"Choose a row to edit its details",linked:"Linked from scheduling",
+  selected:"Selected",dateRange:"Dates",saving:"Saving…",previewFirst:"Select a service and a dentist to preview.",
+  effective:"Effective",errors:"Please correct the fields and retry.",readOnly:"Read-only",
+  clinicStatus:"Clinic",trialInfo:"Operation settings do not publish a clinic or verify a dentist.",
+  readonlyAccess:"You have read-only access to scheduling settings.",
+  summary:"Operations summary",startSetup:"Configure operations",reviewSetup:"Review configuration",
+  servicesTab:"Service catalog",versionsTab:"Version history",resourcesTab:"Resources",
+  applyFilter:"Apply",done:"Done",disable:"Disable",enable:"Enable",
+  noProvidersHint:"Use Staff & Resources to invite a dentist or activate your clinician role.",
+  breakStart:"Break start",breakEnd:"Break end",breaksCount:"Breaks",configured:"Configured",
+  unsaved:"Unsaved",required:"Required",deleteConfirm:"Remove this exception?",
+  codeTaken:"That resource code or service name already exists in this clinic.",
+  slotCost:"Estimated price",today:"Today",tomorrow:"Tomorrow",unknown:"Not scheduled",
+  hoursWarning:"Saving hours changes candidate availability but does not cancel confirmed appointments.",
+  manualOnly:"Clinic-only configuration. Appointment scheduling ships in Phase 6.",
+  status_ready:"Ready",status_clinic_closed:"Clinic closed",status_provider_unavailable:"Provider unavailable",
+  status_chair_unavailable:"Chair unavailable",status_holiday_closed:"Holiday / closure",
+  noPublic:"Not a live marketplace listing",notConfigured:"Not configured",more:"More",
+  lastUpdated:"Last updated",staffLink:"Manage staff",openServices:"Open services",
+  openResources:"Open resources",openHours:"Open hours",stepDone:"Complete",stepPending:"To do",
+  createFirst:"Create your first service"
+ },
+ "fa-AF":{
+  services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",
+  servicesIntro:"خدمات کلینیک را با مدت دقیق، قیمت افغانی و نیاز چوکی تنظیم کنید.",
+  resourcesIntro:"چوکی‌های تداوی و اتاق‌ها را پیش از ثبت وقت منظم کنید.",
+  hoursIntro:"ساعات کلینیک، شیفت داکتر و رخصتی‌ها را تنظیم کنید. پیش‌نمایش هنوز رزرو نیست.",
+  operations:"عملیات کلینیک",settings:"تنظیمات",dashboard:"داشبورد",patients:"مریضان",
+  staff:"کارمندان و منابع",team:"تیم",overview:"نمای کلی",refresh:"تازه‌سازی",
+  addService:"افزودن خدمت",editService:"ویرایش خدمت",serviceName:"نام خدمت",category:"دسته‌بندی",
+  description:"توضیحات",duration:"دقیقه تداوی",buffer:"دقیقه آماده‌سازی",
+  price:"قیمت پایه (افغانی)",requiresChair:"نیاز به چوکی دندان",publicBooking:"اجازه رزرو عمومی بعد از نشر",
+  active:"فعال",inactive:"غیرفعال",status:"وضعیت",all:"همه",search:"جستجوی خدمات",
+  filter:"فیلتر",save:"ذخیره تغییرات",create:"ایجاد",cancel:"انصراف",close:"بستن",
+  action:"عملیات",edit:"ویرایش",history:"تاریخچه قیمت و نسخه",version:"نسخه",current:"فعلی",
+  neverRetroactive:"هر تغییر نسخه جدید می‌سازد؛ نرخ‌ها و بل‌های قبلی تغییر نمی‌کنند.",
+  durationHelp:"مدت ۵ تا ۲۴۰ دقیقه با گام‌های ۵ دقیقه؛ آماده‌سازی به وقت اضافه می‌شود.",
+  priceHelp:"قیمت به افغانی و بدون رقم منفی است؛ این بل یا پرداخت نیست.",
+  publicHelp:"رزرو عمومی تا مرحله تأیید و رزرو مریض فعال نمی‌شود.",
+  noneServices:"هنوز خدمتی ثبت نشده",noneServicesHelp:"برای شروع یک خدمت مشوره اضافه کنید.",
+  noneResources:"چوکی یا اتاق ثبت نشده",noneResourcesHelp:"برای نمایش وقت‌ها ابتدا چوکی ثبت کنید.",
+  addResource:"افزودن چوکی / اتاق",editResource:"ویرایش منبع",resourceName:"نام نمایشی",
+  code:"کود داخلی",kind:"نوع",chair:"چوکی",room:"اتاق",equipment:"وسایل یا قابلیت‌ها",
+  resourceCodeHelp:"کود یکتا در کلینیک، ۲–۲۴ حرف انگلیسی، عدد یا خط تیره.",
+  resourceUsed:"این منبع شیفت ذخیره‌شده دارد؛ برای غیرفعال‌سازی ابتدا شیفت را پاک کنید.",
+  scheduleResource:"تنظیم ساعات منبع",deactivate:"غیرفعال‌سازی",reactivate:"فعال‌سازی",
+  noDeletes:"خدمات و منابع غیرفعال می‌شوند، نه اینکه بدون هشدار حذف شوند.",
+  weekly:"ساعات کلینیک",providers:"شیفت داکتران",chairs:"ساعات چوکی‌ها",exceptions:"رخصتی‌ها و تعطیلی‌ها",
+  preview:"پیش‌نمایش وقت‌ها",daysOpen:"روزهای باز",scheduledDentists:"داکتران شیفت‌دار",
+  ready:"آماده بررسی",setup:"چک‌لیست تنظیمات",notReady:"برای دیدن وقت‌ها تنظیمات را کامل کنید.",
+  stepService:"افزودن خدمت",stepChair:"افزودن چوکی فعال (در صورت نیاز)",
+  stepHours:"ثبت ساعات کلینیک",stepDoctor:"تنظیم شیفت داکتر",
+  daySat:"شنبه",daySun:"یکشنبه",dayMon:"دوشنبه",dayTue:"سه‌شنبه",dayWed:"چهارشنبه",
+  dayThu:"پنجشنبه",dayFri:"جمعه",open:"باز",closed:"بسته",from:"از",to:"تا",
+  breaks:"وقفه‌ها",addBreak:"افزودن وقفه",remove:"حذف",saveWeek:"ذخیره ساعات هفته",
+  weekHint:"ساعات به وقت افغانستان (Asia/Kabul) ذخیره می‌شود.",
+  unsavedWeek:"این ساعات پیشنهادی هنوز ذخیره نشده‌اند؛ دکمه ذخیره را بزنید.",
+  chooseProvider:"انتخاب داکتر",chooseChair:"انتخاب چوکی یا اتاق",
+  noProviders:"داکتر فعالی وجود ندارد؛ از بخش کارمندان داکتر دعوت کنید.",
+  noChairs:"چوکی فعال پیدا نشد؛ ابتدا یک چوکی بسازید.",
+  providerShiftHelp:"شیفت هر داکتر جداگانه ثبت می‌شود. بدون شیفت ذخیره‌شده وقت نمایش داده نمی‌شود.",
+  resourceShiftHelp:"شیفت چوکی اختیاری است؛ بدون آن ساعات کلینیک اعمال می‌شود.",
+  clearResourceHours:"پاک‌کردن شیفت چوکی",clearHelp:"با پاک‌کردن شیفت، منبع دوباره تابع ساعات کلینیک می‌شود.",
+  noResourceSchedule:"شیفت جداگانه چوکی موجود نیست.",date:"تاریخ",
+  startDate:"تاریخ آغاز",endDate:"تاریخ پایان",kindException:"نوع استثنا",
+  holiday:"تعطیل / رخصتی",special:"ساعات ویژه",reason:"دلیل",addException:"افزودن استثنا",
+  emptyException:"رخصتی یا ساعات ویژه ثبت نشده است.",
+  exceptionHint:"استثناها نباید همپوشانی داشته باشند؛ وقت‌های ثبت‌شده بی‌خبر لغو نمی‌شوند.",
+  exceptionRemove:"حذف استثنا",removeReason:"دلیل حذف این استثنا",
+  selectService:"انتخاب خدمت",selectDate:"انتخاب تاریخ",checkSlots:"بررسی وقت‌های پیشنهادی",
+  candidate:"وقت‌های پیشنهادی",candidateOnly:"فقط پیش‌نمایش تنظیمات است؛ رزرو یا وقت عمومی نیست.",
+  noSlots:"در این شرایط وقتی پیدا نشد",slotHint:"خدمت، شیفت داکتر، ساعات یا چوکی را بررسی کنید.",
+  timezone:"وقت افغانستان",publicOff:"رزرو عمومی فعال نیست",
+  minutes:"دقیقه",slots:"وقت",capacity:"منابع",activeServices:"خدمات فعال",
+  openDays:"روزهای باز",setupProgress:"آمادگی عملیاتی",loading:"در حال بارگیری…",
+  tryAgain:"تلاش دوباره",failed:"درخواست ناموفق",success:"تغییرات ذخیره شد",
+  forbidden:"می‌توانید ببینید اما تنها مالک یا مدیر کلینیک می‌تواند تغییر دهد.",
+  stale:"اطلاعات تغییر کرده؛ دوباره تازه‌سازی کنید.",permission:"به کلینیک درست وارد شوید.",
+  empty:"موردی ثبت نشده",searchEmpty:"موردی با این فیلتر یافت نشد",clearFilters:"پاک کردن",
+  statusLive:"فعال",statusInactive:"غیرفعال",statusDraft:"پیشنویس",
+  timeError:"شروع باید پیش از پایان باشد و وقفه‌ها همپوشانی نداشته باشند.",
+  allCategories:"همه دسته‌ها",allStatuses:"همه وضعیت‌ها",custom:"سفارشی",
+  clickToEdit:"برای ویرایش خدمت را انتخاب کنید",linked:"مرتبط با شیفت",
+  selected:"انتخاب‌شده",dateRange:"تاریخ‌ها",saving:"در حال ذخیره…",
+  previewFirst:"برای دیدن وقت، خدمت و داکتر انتخاب کنید.",effective:"قابل اجرا",
+  errors:"فیلدها را اصلاح کنید.",readOnly:"فقط مشاهده",
+  clinicStatus:"کلینیک",trialInfo:"تنظیمات کلینیک را نشر یا داکتر را تأیید نمی‌کند.",
+  readonlyAccess:"شما تنها اجازه مشاهده تنظیمات را دارید.",
+  summary:"خلاصه عملیات",startSetup:"تنظیم عملیات",reviewSetup:"بررسی تنظیمات",
+  servicesTab:"فهرست خدمات",versionsTab:"تاریخچه نسخه‌ها",
+  resourcesTab:"منابع",applyFilter:"اعمال",done:"تمام",disable:"غیرفعال‌سازی",
+  enable:"فعال‌سازی",noProvidersHint:"از کارمندان و منابع، داکتر دعوت کنید.",
+  breakStart:"شروع وقفه",breakEnd:"پایان وقفه",breaksCount:"وقفه‌ها",
+  configured:"تنظیم‌شده",unsaved:"ذخیره نشده",required:"ضروری",
+  deleteConfirm:"این استثنا حذف شود؟",codeTaken:"کود منبع یا نام خدمت قبلاً ثبت شده است.",
+  slotCost:"قیمت تخمینی",today:"امروز",tomorrow:"فردا",unknown:"شیفت ندارد",
+  hoursWarning:"تغییر ساعات، وقت‌های پیشنهادی را عوض می‌کند ولی رزروهای تأییدشده را لغو نمی‌کند.",
+  manualOnly:"فقط تنظیمات کلینیک؛ نوبت‌دهی در مرحله ۶ فعال می‌شود.",
+  status_ready:"آماده",status_clinic_closed:"کلینیک بسته",status_provider_unavailable:"داکتر در دسترس نیست",
+  status_chair_unavailable:"چوکی در دسترس نیست",status_holiday_closed:"روز تعطیل",
+  noPublic:"فهرست عمومی فعال نیست",notConfigured:"تنظیم نشده",more:"بیشتر",
+  lastUpdated:"آخرین تغییر",staffLink:"مدیریت کارمندان",openServices:"خدمات",
+  openResources:"منابع",openHours:"ساعات",stepDone:"تکمیل",stepPending:"باقی",
+  createFirst:"اولین خدمت را اضافه کنید"
+ },
+ "ps-AF":{
+  services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"کاري وختونه او رخصتۍ",
+  servicesIntro:"د کلینیک خدمتونه د دقیق وخت، افغانیو بیې او څوکۍ اړتیا سره برابر کړئ.",
+  resourcesIntro:"د وخت اخیستلو له پیل مخکې د غاښونو څوکۍ او خونې تنظیم کړئ.",
+  hoursIntro:"د کلینیک وختونه، د ډاکټر شیفټونه او رخصتۍ وټاکئ. دا لا رښتینې بکینګ نه دی.",
+  operations:"د کلینیک چارې",settings:"تنظیمات",dashboard:"ډشبورډ",patients:"ناروغان",
+  staff:"کارکوونکي او سرچینې",team:"ټیم",overview:"لنډیز",refresh:"تازه کول",
+  addService:"خدمت اضافه کړئ",editService:"خدمت سم کړئ",serviceName:"د خدمت نوم",
+  category:"کټګوري",description:"تشریح",duration:"د درملنې دقیقې",
+  buffer:"د چمتووالي دقیقې",price:"اصلي بیه (افغانۍ)",
+  requiresChair:"د غاښونو څوکۍ ته اړتیا لري",publicBooking:"له خپرېدو وروسته د عامه وخت اجازه",
+  active:"فعال",inactive:"غیرفعال",status:"حالت",all:"ټول",search:"خدمتونه ولټوئ",
+  filter:"چاڼ",save:"بدلونونه خوندي کړئ",create:"جوړ کړئ",cancel:"لغوه",
+  close:"بندول",action:"کړنه",edit:"سمون",history:"د بیو او نسخو تاریخچه",
+  version:"نسخه",current:"اوسنی",neverRetroactive:"هر بدلون نوې نسخه جوړوي؛ پخوانۍ بیې نه بدلېږي.",
+  durationHelp:"له ۵ تر ۲۴۰ دقیقو، پنځه دقیقې ګام؛ چمتووالی هم حسابېږي.",
+  priceHelp:"بیې په افغانیو دي، منفي نه شي کېدای او بل نه دی.",
+  publicHelp:"عامه وخت اخیستل د تایید او بکینګ تر پړاوونو بند دي.",
+  noneServices:"خدمتونه نشته",noneServicesHelp:"لومړی یو مشورتي خدمت ثبت کړئ.",
+  noneResources:"څوکۍ او خونې نشته",noneResourcesHelp:"لومړی یوه څوکۍ ثبت کړئ.",
+  addResource:"څوکۍ / خونه اضافه کړئ",editResource:"سرچینه سمه کړئ",
+  resourceName:"د ښکاره نوم",code:"داخلي کوډ",kind:"ډول",chair:"څوکۍ",
+  room:"خونه",equipment:"وسایل او ځانګړتیاوې",
+  resourceCodeHelp:"په کلینیک کې ځانګړی کوډ، ۲–۲۴ انګلیسي توري، شمېرې او نښې.",
+  resourceUsed:"دا سرچینه خوندي شوی شیفټ لري. لومړی هغه پاک کړئ.",
+  scheduleResource:"د سرچینې شیفټونه",deactivate:"غیرفعالول",reactivate:"فعالول",
+  noDeletes:"خدمتونه او سرچینې له خبرتیا پرته نه پاکېږي.",
+  weekly:"د کلینیک وختونه",providers:"د ډاکټرانو شیفټونه",chairs:"د څوکیو شیفټونه",
+  exceptions:"رخصتۍ او بندې ورځې",preview:"د وختونو مخکتنه",
+  daysOpen:"پرانیستې ورځې",scheduledDentists:"شیفټ لرونکي ډاکټران",
+  ready:"د کتنې لپاره چمتو",setup:"د تنظیم لړلیک",
+  notReady:"د وختونو کتنې لپاره ټول تنظیمات بشپړ کړئ.",
+  stepService:"خدمت جوړ کړئ",stepChair:"فعاله څوکۍ جوړه کړئ (که اړینه وي)",
+  stepHours:"د کلینیک وختونه وټاکئ",stepDoctor:"د ډاکټر شیفټ وټاکئ",
+  daySat:"شنبه",daySun:"یکشنبه",dayMon:"دوشنبه",dayTue:"سې شنبه",
+  dayWed:"چهارشنبه",dayThu:"پنجشنبه",dayFri:"جمعه",
+  open:"خلاص",closed:"بند",from:"له",to:"تر",breaks:"دمې",
+  addBreak:"دمه اضافه کړئ",remove:"لرې کړئ",saveWeek:"اونیز وختونه خوندي کړئ",
+  weekHint:"وختونه د افغانستان د وخت (Asia/Kabul) له مخې دي.",
+  unsavedWeek:"دا وړاندیز شوي ساعتونه لا نه دي خوندي؛ خوندي یې کړئ.",
+  chooseProvider:"ډاکټر غوره کړئ",chooseChair:"څوکۍ یا خونه غوره کړئ",
+  noProviders:"فعال ډاکټر نشته؛ له کارکوونکو څخه ډاکټر دعوت کړئ.",
+  noChairs:"فعاله څوکۍ نشته؛ لومړی یوه جوړه کړئ.",
+  providerShiftHelp:"د هر ډاکټر شیفټونه جلا خوندي کېږي. بې شیفټه وخت نه ښکاري.",
+  resourceShiftHelp:"د څوکۍ ځانګړی شیفټ اختیاري دی؛ که نه وي د کلینیک ساعتونه پلي کېږي.",
+  clearResourceHours:"د څوکۍ شیفټ پاک کړئ",clearHelp:"د شیفټ له پاکېدو سره څوکۍ د کلینیک ساعتونه اخلي.",
+  noResourceSchedule:"ځانګړی شیفټ نه دی ټاکل شوی.",date:"نېټه",startDate:"له نېټې",
+  endDate:"تر نېټې",kindException:"د استثنا ډول",holiday:"رخصت / بند",
+  special:"ځانګړي وختونه",reason:"دلیل",addException:"استثنا اضافه کړئ",
+  emptyException:"رخصتۍ یا ځانګړي ورځې نشته.",
+  exceptionHint:"استثناوې باید سره ونه نښلي. ثبت شوي وختونه په خپله نه لغوه کېږي.",
+  exceptionRemove:"استثنا لرې کړئ",removeReason:"د استثنا لرې کولو دلیل",
+  selectService:"خدمت وټاکئ",selectDate:"نېټه وټاکئ",
+  checkSlots:"د شونو وختونو مخکتنه",candidate:"شوني وختونه",
+  candidateOnly:"دا یوازې مخکتنه ده؛ رښتینې ریزرو یا عامه وخت نه دی.",
+  noSlots:"په دې ترتیب کې وخت نشته",slotHint:"خدمت، د ډاکټر شیفټ، ساعتونه یا څوکۍ وګورئ.",
+  timezone:"د افغانستان وخت",publicOff:"عامه بکینګ لا فعال نه دی",
+  minutes:"دقیقې",slots:"وختونه",capacity:"سرچینې",activeServices:"فعال خدمتونه",
+  openDays:"خلاصې ورځې",setupProgress:"د کار چمتووالی",loading:"بارېږي…",
+  tryAgain:"بیا هڅه",failed:"غوښتنه ناکامه شوه",success:"بدلونونه خوندي شول",
+  forbidden:"تاسې لیدلی شئ، خو یوازې مالک او مدیر بدلون راوستلای شي.",
+  stale:"بل چا معلومات بدل کړي؛ تازه یې کړئ.",permission:"سم کلینیک ته ننوځئ.",
+  empty:"لا معلومات نشته",searchEmpty:"له دې فلټر سره څه نشته",
+  clearFilters:"فلټر پاک کړئ",statusLive:"فعال",statusInactive:"غیرفعال",
+  statusDraft:"مسوده",timeError:"پیل باید له پای مخکې وي او دمې باید سره ونه نښلي.",
+  allCategories:"ټولې کټګورۍ",allStatuses:"ټول حالتونه",custom:"خپل",
+  clickToEdit:"د سمون لپاره کرښه غوره کړئ",linked:"له شیفټ سره تړلی",
+  selected:"ټاکل شوی",dateRange:"نېټې",saving:"خوندي کېږي…",
+  previewFirst:"لومړی خدمت او ډاکټر وټاکئ.",effective:"عملي",
+  errors:"برخې سمې کړئ.",readOnly:"یوازې لیدل",
+  clinicStatus:"کلینیک",trialInfo:"دا تنظیمات کلینیک نه خپروي او ډاکټر نه تاییدوي.",
+  readonlyAccess:"ستاسې لاسرسی یوازې د لیدلو دی.",summary:"د چارو لنډیز",
+  startSetup:"چارې تنظیم کړئ",reviewSetup:"ترتیب وګورئ",
+  servicesTab:"د خدمتونو لړلیک",versionsTab:"د نسخو تاریخچه",
+  resourcesTab:"سرچینې",applyFilter:"پلي کړئ",done:"بشپړ",disable:"بند کړئ",
+  enable:"فعال کړئ",noProvidersHint:"له کارکوونکو څخه ډاکټر دعوت کړئ.",
+  breakStart:"د دمې پیل",breakEnd:"د دمې پای",breaksCount:"دمې",
+  configured:"تنظیم شوی",unsaved:"نه دی خوندي",required:"اړین",
+  deleteConfirm:"دا استثنا لرې شي؟",codeTaken:"دا کوډ یا د خدمت نوم مخکې شته.",
+  slotCost:"اټکلي بیه",today:"نن",tomorrow:"سبا",unknown:"شیفټ نشته",
+  hoursWarning:"د ساعتونو بدلون وړاندیزي وختونه بدلوي خو تایید شوې رزرو نه لغوه کوي.",
+  manualOnly:"یوازې د کلینیک تنظیمات؛ وخت اخیستل په شپږم پړاو کې فعالېږي.",
+  status_ready:"چمتو",status_clinic_closed:"کلینیک بند",
+  status_provider_unavailable:"ډاکټر نشته",status_chair_unavailable:"څوکۍ نشته",
+  status_holiday_closed:"رخصتي",noPublic:"عامه لړلیک لا نه دی خپور",
+  notConfigured:"نه دی ټاکل شوی",more:"نور",lastUpdated:"وروستی بدلون",
+  staffLink:"کارکوونکي",openServices:"خدمتونه",openResources:"سرچینې",
+  openHours:"وختونه",stepDone:"بشپړ",stepPending:"پاتې",
+  createFirst:"لومړی خدمت جوړ کړئ"
+ }
+};
+function useWords(){
+ const {locale,calendar}=usePreferences();
+ const lang=(locale==="en"||locale==="ps-AF"||locale==="fa-AF")?locale:"fa-AF";
+ const t=(key:string)=>dict[lang][key]||dict.en[key]||key;
+ const date=(value:unknown)=>{
+  if(!value)return "—";
+  try{return new Intl.DateTimeFormat(lang,{calendar:calendar==="solar_hijri"?"persian":"gregory",
+   timeZone:"Asia/Kabul",year:"numeric",month:"short",day:"numeric"}).format(new Date(String(value)));}
+  catch{return String(value);}
+ };
+ return {t,date,lang};
+}
+const OpsApi=async(path:string,method="GET",body?:unknown):Promise<any>=>{
+ const result=await fetch(API+"/v1/operations"+path,{method,credentials:"include",cache:"no-store",
+  headers:body===undefined?{}:{"content-type":"application/json"},
+  body:body===undefined?undefined:JSON.stringify(body)});
+ const data=await result.json().catch(()=>({}));
+ if(!result.ok)throw new Error(data.code||"NETWORK_ERROR");
+ return data;
+};
+function useResource(path:string|null){
+ const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ const [tick,setTick]=useState(0);
+ const reload=()=>{setTick(n=>n+1);setError("");setData(null);};
+ useEffect(()=>{
+  if(!path)return;
+  let valid=true;setData(null);setError("");
+  OpsApi(path).then(d=>{if(valid)setData(d);}).catch(e=>{if(valid)setError(e.message);});
+  return()=>{valid=false;};
+ },[path,tick]);
+ return {data,error,reload};
+}
+const cPath=(cid:string)=>"/clinics/"+encodeURIComponent(cid);
+const href=(cid:string,view:Page,tab?:string)=>"/clinic/"+
+ (view==="hours"?"settings/hours":view)+"?clinic="+encodeURIComponent(cid)+
+ (tab?"&tab="+encodeURIComponent(tab):"");
+const canManage=(space:Space)=>space.role==="owner"||space.role==="manager";
+const minuteTime=(m:number)=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const timeMinute=(raw:string)=>{
+ const parts=raw.split(":").map(Number);return parts[0]*60+parts[1];
+};
+const activeLabel=(t:(s:string)=>string,active:boolean)=>active?t("active"):t("inactive");
+function ErrorBox({error,retry}:{error:string,retry:()=>void}){
+ const {t}=useWords();return <section className="card panel phase04-empty" role="alert">
+  <h2>{t("failed")}</h2><p>{error==="STALE_SERVICE_VERSION"||error==="STALE_RESOURCE_REVISION"||error==="STALE_SCHEDULE_VERSION"?
+   t("stale"):error}</p>
+  <button className="btn btn-secondary" onClick={retry}>{t("tryAgain")}</button></section>;
+}
+function Busy(){const {t}=useWords();return <div className="card panel phase04-loading" aria-live="polite">
+ <span className="phase05-spinner" aria-hidden="true"/> {t("loading")}</div>;}
+function Alert({kind="info",children}:{kind?:"info"|"success"|"error"|"warning",children:ReactNode}){
+ return <InlineAlert kind={kind}>{children}</InlineAlert>;
+}
+function Pill({active,children}:{active:boolean,children:ReactNode}){
+ return <span className={"phase04-pill "+(active?"phase04-pill-on":"phase04-pill-off")}>
+  <span className="phase04-dot"/> {children}</span>;
+}
+function FormField({label,value,onChange,required=false,type="text",min,max,step,placeholder,disabled=false}:{
+ label:string;value:string|number;onChange:(s:string)=>void;required?:boolean;type?:string;
+ min?:number;max?:number;step?:number;placeholder?:string;disabled?:boolean}){
+ return <label className="phase04-field"><span>{label}{required?" *":""}</span>
+  <input type={type} value={value} onChange={e=>onChange(e.target.value)}
+   min={min} max={max} step={step} required={required} placeholder={placeholder} disabled={disabled}/></label>;
+}
+function Select({label,value,onChange,options,disabled=false}:{label:string;value:string;onChange:(s:string)=>void,
+ options:{value:string,label:string}[];disabled?:boolean}){
+ return <label className="phase04-field"><span>{label}</span>
+  <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}>
+   {options.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}
+  </select></label>;
+}
+function Switch({checked,onChange,label,disabled=false}:{checked:boolean;onChange:(v:boolean)=>void;label:string;disabled?:boolean}){
+ return <label className="phase04-switch"><input type="checkbox" checked={checked}
+  onChange={e=>onChange(e.target.checked)} disabled={disabled}/><span>{label}</span></label>;
+}
+function Header({view,space,refresh}:{view:Page;space:Space;refresh?:()=>void}){
+ const {t}=useWords();
+ return <header className="phase04-header">
+  <div><span className="phase04-eyebrow">{t("operations")} <span aria-hidden="true">/</span> {space.clinicName}</span>
+   <h1>{t(view)}</h1><p>{t(view+"Intro")}</p></div>
+  <div className="phase04-header-actions">
+   <span className="phase04-timezone">◷ {t("timezone")} · Asia/Kabul</span>
+   {refresh&&<button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>}
+  </div>
+ </header>;
+}
+function SectionNav({view,space}:{view:Page;space:Space}){
+ const {t}=useWords();
+ return <nav className="phase04-section-nav" aria-label={t("operations")}>
+  {(["services","resources","hours"] as Page[]).map((key,i)=><a key={key}
+   href={href(space.clinicId,key)} aria-current={view===key?"page":undefined}>
+   <span aria-hidden="true">{["▤","▦","◷"][i]}</span>{t(key)}</a>)}
+ </nav>;
+}
+export function OperationsPortal({view}:{view:Page}){
+ const {t}=useWords();
+ const [ctx,setCtx]=useState<Context|null>(null),[error,setError]=useState("");
+ const [requested,setRequested]=useState<string|null|undefined>(undefined);
+ const {data:summary,reload:reloadSummary}=useResource(ctx&&requested!==undefined?
+  cPath(requested||ctx.clinics[0]?.clinicId||"")+"/summary":null);
+ useEffect(()=>{
+  setRequested(new URLSearchParams(location.search).get("clinic"));
+  fetch(API+"/v1/team/context",{credentials:"include",cache:"no-store"})
+  .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.code||"AUTH_REQUIRED");setCtx(d);})
+  .catch(e=>setError(e.message));
+ },[]);
+ if(error==="AUTH_REQUIRED")return <div className="page-narrow card panel">
+  <Alert kind="warning">{t("permission")}</Alert>
+  <a className="btn btn-primary" href="/clinic/login">{t("permission")}</a></div>;
+ if(error)return <ErrorBox error={error} retry={()=>location.reload()}/>;
+ if(!ctx||requested===undefined)return <Busy/>;
+ const space=requested?ctx.clinics.find(c=>c.clinicId===requested):ctx.clinics[0];
+ if(!space)return <div className="page-narrow card panel">
+  <Alert kind="warning">{t("permission")}</Alert><a href="/clinic" className="btn btn-primary">{t("dashboard")}</a></div>;
+ if(!["owner","manager","dentist","receptionist"].includes(space.role))
+  return <ErrorBox error="OPERATIONS_ACCESS_DENIED" retry={()=>location.assign("/clinic")}/>;
+ return <Shell ctx={ctx} space={space} active={view}>
+  <div className="phase04-workspace">
+   <Header view={view} space={space} refresh={reloadSummary}/>
+   <SectionNav view={view} space={space}/>
+   <div className="phase04-summary">
+    {(["services","chairs","openDays","scheduledDentists"] as const).map((key,i)=>
+     <article className="phase04-kpi" key={key}><div className="phase04-kpi-head">
+      <span className="phase04-kpi-icon" aria-hidden="true">{["▤","▦","◷","◎"][i]}</span>
+      <span>{t(key==="services"?"activeServices":key==="chairs"?"capacity":key==="openDays"?"openDays":"scheduledDentists")}</span></div>
+      <strong>{summary?.metrics?.[key]??"—"}</strong></article>)}
+   </div>
+   {!canManage(space)&&<Alert kind="warning">{t("forbidden")}</Alert>}
+   {view==="services"?<ServicesPanel space={space} onChange={reloadSummary}/>:
+    view==="resources"?<ResourcesPanel space={space} onChange={reloadSummary}/>:
+    <HoursPanel space={space} onChange={reloadSummary}/>}
+   <div className="phase04-footer-note"><span>◈</span>{t("trialInfo")} {t("manualOnly")}</div>
+  </div>
+ </Shell>;
+}
