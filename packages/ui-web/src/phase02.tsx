@@ -16,7 +16,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
-  operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
+  appointments:"Appointments",clinicQueue:"Patient queue",bookingToday:"Today’s bookings",bookingArrived:"Arrived",bookingActive:"In treatment",bookingCompleted:"Completed",bookingPreview:"Appointments are real and synchronized across the clinic calendar and queue.",newAppointment:"New appointment",operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
   organization:"Organization",choosePlan:"Choose plan",review:"Review & submit",legalName:"Registered clinic name",
@@ -58,7 +58,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"Next action",privacyGate:"Patient records are private clinic data; live scheduling and clinical encounters are not released yet."
  },
  "fa-AF":{
-  operations:"عملیات",management:"مدیریت",workspace:"بخش اصلی",staffWorkspace:"کارمندان و منابع",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
+  appointments:"وقت‌های ملاقات",clinicQueue:"صف مریضان",bookingToday:"ملاقات‌های امروز",bookingArrived:"حاضر",bookingActive:"در تداوی",bookingCompleted:"تکمیل",bookingPreview:"ملاقات‌ها در تقویم و صف کلینیک ثبت و همزمان نشان داده می‌شوند.",newAppointment:"ثبت وقت جدید",operations:"عملیات",management:"مدیریت",workspace:"بخش اصلی",staffWorkspace:"کارمندان و منابع",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
   subscription:"اشتراک",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",overview:"نمای کلی",verification:"تأیید",
   newClinic:"ثبت کلینیک جدید",continue:"ادامه",save:"ذخیره پیش‌نویس",back:"بازگشت",submit:"ارسال برای بررسی",
   organization:"معلومات کلینیک",choosePlan:"انتخاب پلن",review:"بررسی و ارسال",legalName:"نام رسمی کلینیک",
@@ -99,7 +99,7 @@ const words:Record<string,Record<string,string>>={
   privacyGate:"معلومات مریضان خصوصی است؛ نوبت‌دهی و معاینات طبی در مراحل بعدی فعال می‌شوند."
  },
  "ps-AF":{
-  operations:"عملیات",management:"مدیریت",workspace:"اصلي برخه",staffWorkspace:"کارکوونکي او سرچینې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
+  appointments:"لیدنې",clinicQueue:"د ناروغانو کتار",bookingToday:"د نن لیدنې",bookingArrived:"راغلي",bookingActive:"درملنه",bookingCompleted:"بشپړ",bookingPreview:"رښتینې لیدنې په کلینیکي مهالوېش او کتار کې یو شان ښکاري.",newAppointment:"نوی وخت",operations:"عملیات",management:"مدیریت",workspace:"اصلي برخه",staffWorkspace:"کارکوونکي او سرچینې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
   subscription:"ګډون",subscriptions:"ګډونونه",plans:"پلانونه",overview:"لنډیز",verification:"تایید",
   newClinic:"نوی کلینیک ثبت کړئ",continue:"دوام",save:"مسوده وساتئ",back:"شاته",submit:"د کتنې لپاره واستوئ",
   organization:"د کلینیک معلومات",choosePlan:"پلان غوره کړئ",review:"بیاکتنه او استول",
@@ -175,7 +175,7 @@ function DataError({message,retry}:{message:string,retry:()=>void}){
 function Frame({audience,view,children,name}:{audience:Audience,view:View,children:ReactNode,name:string}){
   const l=useText();
   const nav=audience==="clinic"?[
-    ["dashboard","/clinic"],["patients","/clinic/patients"],["staffWorkspace","/clinic/staff"],
+    ["dashboard","/clinic"],["appointments","/clinic/appointments"],["patients","/clinic/patients"],["staffWorkspace","/clinic/staff"],
     ["resources","/clinic/resources"],["services","/clinic/services"],["hours","/clinic/settings/hours"],
     ["onboarding","/clinic/onboarding"],
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
@@ -187,11 +187,11 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
       <div className="pill">{audience==="clinic"?l("clinic"):l("verification")}</div>
       <nav className="side-nav" style={{marginBlockStart:18}} aria-label={l("dashboard")}>
         {nav.map(([key,link],index)=><React.Fragment key={key}>
-        {audience==="clinic"&&(index===0||index===2||index===6)&&
-          <span className="phase04-side-group">{l(index===0?"workspace":index===2?"operations":"management")}</span>}
+        {audience==="clinic"&&(index===0||index===3||index===7)&&
+          <span className="phase04-side-group">{l(index===0?"workspace":index===3?"operations":"management")}</span>}
         <a href={link} className="phase04-side-link" aria-current={active===key?"page":undefined}>
          <span className="phase04-side-icon" aria-hidden="true">
-          {({dashboard:"⌂",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
+          {({dashboard:"⌂",appointments:"▦",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
             onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",
             clinics:"▤",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
          <span>{l(key)}</span></a>
@@ -263,6 +263,35 @@ function Dashboard({audience}:{audience:Audience}){
       <InlineAlert>{l("privacyGate")}</InlineAlert></section>
   </div>;
 }
+function AppointmentActivity({clinicId}:{clinicId:string}){
+ const l=useText();
+ const {data,error,refresh}=useResource("/appointments/clinics/"+clinicId+"/overview");
+ const blocks=[
+  {label:"bookingToday",value:data?.todayTotal??0},
+  {label:"bookingArrived",value:data?.counts?.arrived??0},
+  {label:"bookingActive",value:data?.counts?.in_treatment??0},
+  {label:"bookingCompleted",value:data?.counts?.completed??0}
+ ];
+ return <section className="phase06-owner-activity card">
+  <div className="phase04-between"><div>
+   <span className="phase04-eyebrow">{l("appointments")}</span>
+   <h3>{l("clinicQueue")}</h3>
+   <p className="muted">{l("bookingPreview")}</p></div>
+   <button className="btn btn-secondary" onClick={refresh} type="button">{l("refresh")||"↻"}</button>
+  </div>
+  {error?<InlineAlert kind="error">{error}</InlineAlert>:!data?
+   <InlineAlert>{l("loading")}</InlineAlert>:
+   <div className="phase06-owner-stats">
+    {blocks.map(block=><div key={block.label}>
+      <span>{l(block.label)}</span><strong>{block.value}</strong></div>)}
+   </div>}
+  <div className="phase04-setup-shortcuts">
+   <a className="btn btn-primary" href={"/clinic/appointments?clinic="+clinicId}>{l("appointments")} ↗</a>
+   <a className="btn btn-secondary" href={"/clinic/appointments/queue?clinic="+clinicId}>{l("clinicQueue")} ↗</a>
+   <a className="btn btn-secondary" href={"/clinic/appointments/new?clinic="+clinicId}>{l("newAppointment")} ↗</a>
+  </div>
+ </section>;
+}
 function OperationsSetup({clinicId}:{clinicId:string}){
  const l=useText();
  const {data,error,refresh}=useResource("/operations/clinics/"+clinicId+"/summary");
@@ -308,6 +337,7 @@ function ClinicDashboardCard({clinic:c}:{clinic:any}){
     <div className="phase-actions"><a className="btn btn-primary" href={"/clinic/onboarding?clinic="+c.id}>{l("onboarding")}</a>
       <a className="btn btn-secondary" href={"/clinic/settings/subscription?clinic="+c.id}>{l("subscription")}</a></div>
     <OperationsSetup clinicId={c.id}/>
+    <AppointmentActivity clinicId={c.id}/>
   </article>;
 }
 const emptyClinic={
