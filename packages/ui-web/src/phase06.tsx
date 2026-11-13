@@ -471,3 +471,108 @@ function EmptyState({cid,day}:{cid:string;day?:string}){
   <p>{t("emptyMessage")}</p><a className="btn btn-primary" href={href(cid,"new",day)}>
   + {t("newAppointment")}</a></div>;
 }
+
+
+function Queue({space}:{space:Space}){
+ const {t,format}=useWords();
+ const [date,setDate]=useState(todayKabul),[doctor,setDoctor]=useState("all");
+ const base=url(space.clinicId);
+ const query=new URLSearchParams({date,...(doctor!=="all"&&space.role!=="dentist"?{providerId:doctor}:{})});
+ const {data,error,retry}=useData(base+"/queue?"+query);
+ const {data:hourData}=useData(null);
+ const [clinicians,setClinicians]=useState<Doctor[]>([]);
+ const [saving,setSaving]=useState<string|null>(null),[problem,setProblem]=useState("");
+ const [reason,setReason]=useState(""),[reasonId,setReasonId]=useState("");
+ useEffect(()=>{ops(base+"/hours").then(d=>setClinicians(d.clinicians||[])).catch(()=>{});},[base]);
+ const bookings:Booking[]=data?.appointments||[];
+ const columns=[
+  {key:"confirmed",label:"queueExpected",icon:"◷"},
+  {key:"arrived",label:"queueArrived",icon:"◎"},
+  {key:"in_treatment",label:"queueTreatment",icon:"✦"},
+  {key:"completed",label:"queueDone",icon:"✓"}
+ ];
+ const canClinical=(space.role==="dentist"||space.clinicianEnabled&&
+  ["owner","manager"].includes(space.role));
+ const canReception=space.role!=="dentist";
+ async function change(a:Booking,status:string){
+  if(["cancelled","no_show"].includes(status)&&reasonId!==a.id){setReasonId(a.id);setReason("");return;}
+  setSaving(a.id);setProblem("");
+  try{
+   await request(base+"/appointments/"+a.id+"/status","PATCH",{
+    status,revision:a.revision,...(["cancelled","no_show"].includes(status)?{reason}:{})
+   });
+   setReason("");setReasonId("");retry();
+  }catch(e:any){setProblem(e.message);retry();}
+  finally{setSaving(null);}
+ }
+ function actions(a:Booking){
+  return <div className="ph06-queue-actions">
+   {a.status==="confirmed"&&canReception&&<button disabled={saving===a.id}
+    onClick={()=>change(a,"arrived")}>{t("checkIn")}</button>}
+   {a.status==="arrived"&&canClinical&&
+    (space.role!=="dentist"||space.membershipId===a.providerMembershipId)&&
+    <button disabled={saving===a.id} onClick={()=>change(a,"in_treatment")}>{t("startCare")}</button>}
+   {a.status==="in_treatment"&&canClinical&&
+    (space.role!=="dentist"||space.membershipId===a.providerMembershipId)&&
+    <button disabled={saving===a.id} onClick={()=>change(a,"completed")}>{t("completeAction")}</button>}
+   {a.status==="confirmed"&&canReception&&<>
+    <button disabled={saving===a.id} onClick={()=>change(a,"no_show")}>{t("markNoShow")}</button>
+   </>}
+  </div>;
+ }
+ return <div className="ph06-stack">
+  <div className="ph06-queue-toolbar card">
+   <div><span className="ph06-eyebrow">{t("todaySummary")}</span>
+    <h2>{format(date+"T12:00:00+04:30",{weekday:"long",month:"long",day:"numeric"})}</h2></div>
+   <div className="ph06-toolbar-right">
+    <Input label={t("date")} type="date" value={date} onChange={setDate}/>
+    {space.role!=="dentist"&&<Select label={t("providerFilter")} value={doctor}
+      onChange={setDoctor} options={[{value:"all",label:t("allProviders")},
+      ...clinicians.map(x=>({value:x.membershipId,label:x.name}))]}/>}
+    <button className="btn btn-secondary" onClick={()=>{setDate(todayKabul());retry();}}>{t("today")}</button>
+    <a className="btn btn-primary" href={href(space.clinicId,"new",date)}>+ {t("newAppointment")}</a>
+   </div>
+  </div>
+  <div className="ph06-queue-metrics">
+   {columns.map(x=><div key={x.key} className={"ph06-queue-metric metric-"+x.key}>
+    <span aria-hidden="true">{x.icon}</span><div><small>{t(x.label)}</small>
+    <strong>{bookings.filter(a=>a.status===x.key).length}</strong></div></div>)}
+  </div>
+  {problem&&<Warning message={problem} retry={retry}/>}
+  {error?<Warning message={error} retry={retry}/>:!data?<Busy/>:
+    <div className="ph06-kanban">
+     {columns.map(column=><section className="ph06-kanban-column" key={column.key}
+      aria-label={t(column.label)}>
+      <div className={"ph06-column-header ph06-column-"+column.key}>
+       <div><span aria-hidden="true">{column.icon}</span><h3>{t(column.label)}</h3></div>
+       <span className="ph06-column-count">{bookings.filter(a=>a.status===column.key).length}</span>
+      </div>
+      <div className="ph06-queue-cards">
+       {bookings.filter(a=>a.status===column.key).map(a=><article className="ph06-queue-card card" key={a.id}>
+        <div className="ph06-queue-card-top"><time><bdi dir="ltr">{localTime(a.startAt)}</bdi></time>
+         <Status value={a.status}/></div>
+        <h4>{a.patient?.preferredName||"—"} {a.patient?.familyName||""}</h4>
+        <span className="ph06-patient-code"><bdi dir="ltr">{a.patient?.patientNumber||"—"}</bdi></span>
+        <p>{a.serviceName}</p>
+        <div className="ph06-queue-provider"><span>◎</span>
+        {clinicians.find(d=>d.membershipId===a.providerMembershipId)?.name||t("dentist")}</div>
+        {actions(a)}
+        {reasonId===a.id&&<div className="ph06-reason-input">
+         <Input label={t("noShowReason")} value={reason} onChange={setReason}/>
+         <button disabled={saving===a.id||reason.trim().length<10}
+          className="btn btn-secondary" onClick={()=>change(a,"no_show")}>{t("confirm")}</button>
+         <button className="btn btn-quiet" onClick={()=>setReasonId("")}>{t("dismiss")}</button>
+        </div>}
+        <a className="ph06-card-link" href={"/clinic/appointments/"+a.id+"?clinic="+space.clinicId}>
+         {t("viewDetails")} ↗</a>
+       </article>)}
+       {!bookings.some(a=>a.status===column.key)&&<div className="ph06-kanban-empty">
+         <span aria-hidden="true">◌</span><p>{t("emptyQueue")}</p></div>}
+      </div>
+     </section>)}
+    </div>}
+   <div className="ph06-bottom-links"><a className="btn btn-secondary"
+    href={href(space.clinicId,"calendar",date)}>{t("goCalendar")} ↗</a>
+    <p>{t("privacy")}</p></div>
+ </div>;
+}
