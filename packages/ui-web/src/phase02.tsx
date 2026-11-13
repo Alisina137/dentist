@@ -175,7 +175,8 @@ function DataError({message,retry}:{message:string,retry:()=>void}){
 function Frame({audience,view,children,name}:{audience:Audience,view:View,children:ReactNode,name:string}){
   const l=useText();
   const nav=audience==="clinic"?[
-    ["dashboard","/clinic"],["onboarding","/clinic/onboarding"],["settings","/clinic/settings"],
+    ["dashboard","/clinic"],["onboarding","/clinic/onboarding"],["staff","/clinic/staff"],
+    ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
   ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
   const active=view==="review"?"clinics":view;
