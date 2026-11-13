@@ -96,7 +96,7 @@ const words:Record<Lang,Record<string,string>>={
   timeBooked:"Scheduled",arrivalTime:"Checked in at",elapsed:"Elapsed",
   noShowToday:"No-shows",phoneUnverified:"Unverified number",
   noPersonalAccount:"A DandanLink patient account is not required for walk-in or phone bookings.",
-  noPublic:"Private clinic appointment only. Patient-facing booking is not enabled yet.",
+  candidateOnly:"Available times are rechecked when confirming. This is not a public booking.",noPublic:"Private clinic appointment only. Patient-facing booking is not enabled yet.",
   deliveryNotice:"External reminders and booking requests are not enabled at this stage.",
   clinicalNext:"Clinical encounters and dental charts are delivered in later phases.",
   financialNext:"The price shown is an estimate; no patient invoice has been created.",
@@ -203,7 +203,7 @@ const words:Record<Lang,Record<string,string>>={
   timeBooked:"وقت تعیین‌شده",arrivalTime:"زمان حضور",elapsed:"زمان سپری‌شده",
   noShowToday:"غیرحاضری‌ها",phoneUnverified:"شماره تأییدنشده",
   noPersonalAccount:"مریض حضوری یا تلفنی به حساب عمومی DandanLink نیاز ندارد.",
-  noPublic:"فقط وقت خصوصی کلینیک؛ رزرو عمومی هنوز فعال نیست.",
+  candidateOnly:"وقت‌های موجود هنگام تأیید دوباره بررسی می‌شوند؛ این رزرو عمومی نیست.",noPublic:"فقط وقت خصوصی کلینیک؛ رزرو عمومی هنوز فعال نیست.",
   deliveryNotice:"یادآوری خودکار و درخواست رزرو عمومی هنوز فعال نیست.",
   clinicalNext:"معاینات طبی و چارت دندان در مراحل بعدی فعال می‌شود.",
   financialNext:"این قیمت تخمینی است؛ بل مریض ساخته نشده است.",
@@ -308,7 +308,7 @@ const words:Record<Lang,Record<string,string>>={
   timeBooked:"ټاکل شوی وخت",arrivalTime:"د راتګ وخت",elapsed:"تېر وخت",
   noShowToday:"نه راغلي",phoneUnverified:"ناتایید شمېره",
   noPersonalAccount:"د حضوري او ټیلیفوني لیدنو لپاره عام حساب اړین نه دی.",
-  noPublic:"دا یوازې د کلینیک لیدنه ده؛ عامه بکینګ لا نه دی فعال.",
+  candidateOnly:"شته وختونه د تایید پر وخت بیا کتل کېږي؛ دا عامه بکینګ نه دی.",noPublic:"دا یوازې د کلینیک لیدنه ده؛ عامه بکینګ لا نه دی فعال.",
   deliveryNotice:"اتومات یادونې او عامه غوښتنې لا نشته.",
   clinicalNext:"طبي لیدنې او د غاښونو چارتونه په راتلونکو پړاوونو کې فعالیږي.",
   financialNext:"دا اټکلي بیه ده؛ بیل نه دی جوړ شوی.",
@@ -960,6 +960,14 @@ function BookingWizard({space}:{space:Space}){
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
   if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDate(requested);
+  const patientId=q.get("patientId");
+  if(patientId&&patientId.length>=8){
+   call("/clinics/"+space.clinicId+"/patients/"+encodeURIComponent(patientId)+"/appointments")
+    .then(result=>{
+     if(result.patient?.status==="active"){setPatient(result.patient);setStep(1);}
+     else setPatientError("ACTIVE_CLINIC_PATIENT_REQUIRED");
+    }).catch(e=>setPatientError(e.message||"PATIENT_NOT_FOUND"));
+  }
   const start=q.get("start");
   if(start&&/^([01]\d|2[0-3]):(00|15|30|45)$/.test(start))setInitialStart(start);
  },[]);
@@ -1037,6 +1045,7 @@ function BookingWizard({space}:{space:Space}){
    {catalogError?<Problem error={catalogError} retry={reloadCatalog}/>:
     !catalog?<Busy/>:<>
     {step===0&&<section className="phase06-booking-step">
+     {patientError&&!inline&&<Problem error={patientError}/>}
      <div className="phase06-step-header"><span className="phase06-step-index">01</span>
       <div><h2>{t("choosePatient")}</h2><p>{t("nameHelp")}</p></div></div>
      {patient&&<div className="phase06-selected-person">
