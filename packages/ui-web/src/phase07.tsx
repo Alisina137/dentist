@@ -191,6 +191,7 @@ function Tabs({space,patientId,current}:{space:Space;patientId:string;current:Vi
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
+ <a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
  <a aria-current={current==="files"?"page":undefined}
   href={link(space.clinicId,patientId,"files")}>{t("files")}</a>
  </nav>;
