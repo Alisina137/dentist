@@ -299,3 +299,199 @@ export function PatientPortal({view}:{view:Page}){
   </div>
  </Shell>;
 }
+
+
+function Directory({space}:{space:Space}){
+ const {t,date}=useWords();
+ const [search,setSearch]=useState(""),[q,setQ]=useState("");
+ const [status,setStatus]=useState("active"),[sort,setSort]=useState("activity");
+ const [page,setPage]=useState(1),[limit,setLimit]=useState(20);
+ useEffect(()=>{const id=setTimeout(()=>{setQ(search.trim());setPage(1);},300);return()=>clearTimeout(id);},[search]);
+ const prefix="/clinics/"+space.clinicId+"/patients";
+ const {data:summary,retry:refreshSummary}=useResource(prefix+"/summary");
+ const {data,error,retry}=useResource(prefix+"?"+new URLSearchParams({
+  q,status,sort,page:String(page),limit:String(limit)
+ }).toString());
+ return <div>
+  <div className="phase05-counters" aria-label={t("total")}>
+   {(["total","active","inactive","archived"] as const).map(key=><div className="card phase05-stat" key={key}>
+     <span>{t(key==="total"?"total":key==="active"?"countActive":key==="inactive"?"countInactive":"countArchived")}</span>
+     <strong>{summary?key==="total"?summary.total:summary.counts[key]:"—"}</strong></div>)}
+  </div>
+  <div className="phase05-directory card panel">
+   <div className="phase05-toolbar">
+    <div className="phase05-tabs">
+     <a href={patientHref(space.clinicId)} className="phase05-tab current" aria-current="page">{t("directory")}</a>
+     {["owner","manager"].includes(space.role)&&
+       <a href={importHref(space.clinicId)} className="phase05-tab">{t("import")}</a>}
+    </div>
+    <div className="phase05-filters">
+     <Field name={t("search")} value={search} onChange={setSearch} placeholder={t("search")} maxLength={120}/>
+     <Select name={t("status")} value={status} onChange={v=>{setStatus(v);setPage(1);}}
+       options={["active","inactive","archived","all"].map(v=>({value:v,label:t(v)}))}/>
+     <Select name={t("sort")} value={sort} onChange={v=>{setSort(v);setPage(1);}}
+       options={[{value:"activity",label:t("activity")},{value:"name",label:t("name")}]}/>
+     <Select name={t("pageSize")} value={String(limit)} onChange={v=>{setLimit(Number(v));setPage(1);}}
+       options={[{value:"10",label:"10"},{value:"20",label:"20"}]}/>
+    </div>
+   </div>
+   {error?<ErrorPanel message={error} retry={retry}/>:!data?<Loading/>:
+    !data.patients.length?<div className="phase05-empty">
+      <h2>{search||status!=="active"?t("noFilter"):t("noPatients")}</h2>
+      {search||status!=="active"?<button className="btn btn-secondary"
+       onClick={()=>{setSearch("");setQ("");setStatus("active");setPage(1);}}>{t("clear")}</button>:
+       <a className="btn btn-primary" href={addHref(space.clinicId)}>{t("addFirst")}</a>}
+     </div>:
+    <div className="phase05-scroll"><table className="staff-table phase05-table">
+     <thead><tr><th>{t("patientNumber")}</th><th>{t("name")}</th>
+      <th>{t("contact")}</th><th>{t("status")}</th><th>{t("lastChange")}</th><th>{t("view")}</th></tr></thead>
+     <tbody>{data.patients.map((p:Patient)=><tr key={p.id}>
+       <td><bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></td>
+       <td><PatientLink cid={space.clinicId} id={p.id}>
+         {p.preferredName} {p.familyName||""}</PatientLink></td>
+       <td><bdi dir="ltr">{p.phone||"—"}</bdi>{p.phone&&!p.phoneVerified&&
+        <small className="phase05-unverified">{t("notVerified")}</small>}</td>
+       <td><Chip value={p.status}/></td><td>{date(p.updatedAt)}</td>
+       <td><PatientLink cid={space.clinicId} id={p.id}>{t("view")} ↗</PatientLink></td>
+      </tr>)}</tbody></table></div>}
+   {data&&<div className="phase-pagination">
+    <button className="btn btn-secondary" disabled={page<=1} onClick={()=>setPage(v=>v-1)}>{t("previous")}</button>
+    <span>{data.total} · {data.page}/{data.pages}</span>
+    <button className="btn btn-secondary" disabled={page>=data.pages}
+     onClick={()=>setPage(v=>v+1)}>{t("next")}</button>
+   </div>}
+  </div>
+  <p className="muted phase05-footer">{t("safeguard")} {t("noPublic")}</p>
+ </div>;
+}
+function PatientFields({form,setForm,editing=false}:{
+ form:any;setForm:React.Dispatch<React.SetStateAction<any>>;editing?:boolean
+}){
+ const {t}=useWords();
+ const set=(key:string)=>(value:string)=>setForm((s:any)=>({...s,[key]:value}));
+ const toggleDob=(value:string)=>setForm((s:any)=>({...s,dateOfBirth:value,ageEstimate:value?"":s.ageEstimate}));
+ const toggleAge=(value:string)=>setForm((s:any)=>({...s,ageEstimate:value,dateOfBirth:value?"":s.dateOfBirth}));
+ return <div className="phase05-form">
+  <section className="phase05-form-section"><h2>{t("identity")}</h2>
+   <div className="phase-form-grid">
+    <Field name={t("preferredName")} required value={form.preferredName}
+      maxLength={120} onChange={set("preferredName")}/>
+    <Field name={t("familyName")} value={form.familyName}
+      maxLength={120} onChange={set("familyName")}/>
+    <Field name={t("dob")} value={form.dateOfBirth} type="date" onChange={toggleDob}
+      disabled={Boolean(form.ageEstimate)}/>
+    <Field name={t("ageEstimate")} value={form.ageEstimate} type="number" onChange={toggleAge}
+      disabled={Boolean(form.dateOfBirth)}/>
+   </div>
+   <p className="muted phase05-description">{t("ageWarning")}</p>
+  </section>
+  <section className="phase05-form-section"><h2>{t("contact")}</h2>
+   <div className="phase-form-grid">
+    <Field name={t("phone")} value={form.phone} maxLength={24} onChange={set("phone")} type="tel"/>
+    <Field name={t("altContact")} value={form.alternateContact} maxLength={120} onChange={set("alternateContact")}/>
+    <Field name={t("province")} value={form.province} maxLength={80} onChange={set("province")}/>
+    <Field name={t("city")} value={form.city} maxLength={80} onChange={set("city")}/>
+    <Field name={t("address")} value={form.address} maxLength={250} onChange={set("address")}/>
+    <Field name={t("emergency")} value={form.emergencyContact} maxLength={160} onChange={set("emergencyContact")}/>
+   </div>
+  </section>
+  <section className="phase05-form-section"><h2>{t("intake")}</h2>
+   <Notice>{t("clinicalPrivacy")}</Notice><p className="muted">{t("clinicalUnavailable")}</p>
+   <p className="muted">{t("noFinancial")}</p>
+  </section>
+  <section className="phase05-form-section"><h2>{t("consent")}</h2>
+   <label className="phase05-check"><input type="checkbox"
+      checked={!!form.noticeAcknowledged} onChange={e=>setForm((s:any)=>({
+       ...s,noticeAcknowledged:e.target.checked}))}/>
+    <span>{t("notice")}</span></label>
+   <p className="muted">{t("safeguard")}</p>
+  </section>
+ </div>;
+}
+function DuplicateDialog({candidates,cid,reason,setReason,close,continueCreate,busy}:{
+ candidates:Patient[],cid:string,reason:string,setReason:(s:string)=>void,
+ close:()=>void,continueCreate:()=>void,busy:boolean
+}){
+ const {t}=useWords();
+ return <div className="phase05-dialog-backdrop" role="presentation">
+  <section role="alertdialog" aria-modal="true" aria-labelledby="phase05-dupes-title"
+   aria-describedby="phase05-dupes-desc" className="card phase05-dialog">
+   <h2 id="phase05-dupes-title">{t("duplicateTitle")}</h2>
+   <p id="phase05-dupes-desc">{t("duplicateHelp")} {t("duplicateInfo")}</p>
+   <div className="phase-list">{candidates.map(p=><div key={p.id} className="phase-row phase-list-item">
+    <div><strong>{p.preferredName} {p.familyName||""}</strong><p><bdi dir="ltr">{p.patientNumber} · {p.phone||"—"}</bdi></p></div>
+    <PatientLink cid={cid} id={p.id}>{t("openExisting")}</PatientLink>
+   </div>)}</div>
+   <Field name={t("duplicateReason")} value={reason} onChange={setReason} maxLength={300}/>
+   <div className="phase-actions">
+    <button type="button" className="btn btn-secondary" onClick={close}>{t("cancel")}</button>
+    <button type="button" className="btn btn-primary" onClick={continueCreate}
+     disabled={busy||reason.trim().length<10}>{t("createAnyway")}</button>
+   </div>
+  </section>
+ </div>;
+}
+function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
+ const {t}=useWords();
+ const [form,setForm]=useState<any>(existing?{
+  ...existing,ageEstimate:existing.ageEstimate??"",
+  dateOfBirth:existing.dateOfBirth??"",
+  noticeAcknowledged:existing.noticeAcknowledged===true
+ }:emptyPatient);
+ const [candidates,setCandidates]=useState<Patient[]>([]);
+ const [reason,setReason]=useState("");
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const canWrite=["owner","manager","dentist","receptionist"].includes(space.role);
+ const target="/clinics/"+space.clinicId+"/patients";
+ async function persist(override=false){
+  if(!canWrite)return;
+  setBusy(true);setError("");
+  try{
+   const payload={...form,
+     dateOfBirth:form.dateOfBirth||null,
+     ageEstimate:form.ageEstimate===""||form.ageEstimate===null?null:Number(form.ageEstimate)};
+   let result;
+   if(existing)result=await api(target+"/"+existing.id,"PATCH",{...payload,revision:existing.revision});
+   else result=await api(target,"POST",{...payload,
+    ...(override?{duplicateOverride:"create_anyway",duplicateReason:reason.trim()}:{})});
+   window.location.assign("/clinic/patients/"+result.patient.id+"?clinic="+encodeURIComponent(space.clinicId));
+  }catch(e:any){
+   if(e.code==="DUPLICATE_CANDIDATES"&&e.candidates?.length)setCandidates(e.candidates);
+   else setError(e.message||"NETWORK_ERROR");
+  }finally{setBusy(false);}
+ }
+ async function submit(event:FormEvent){
+  event.preventDefault();
+  if(!form.noticeAcknowledged){setError("NOTICE_ACKNOWLEDGEMENT_REQUIRED");return;}
+  if(!existing){
+   setBusy(true);setError("");
+   try{
+    const payload={...form,dateOfBirth:form.dateOfBirth||null,
+     ageEstimate:form.ageEstimate===""||form.ageEstimate===null?null:Number(form.ageEstimate)};
+    const check=await api(target+"/duplicates","POST",payload);
+    if(check.count){setCandidates(check.candidates);return;}
+   }catch(e:any){setError(e.message);return;}
+   finally{setBusy(false);}
+  }
+  await persist();
+ }
+ return <section className="card panel">
+  {!canWrite?<Notice kind="warning">{t("disabled")}</Notice>:<>
+   {existing&&<p className="muted">{t("idLabel")}: <bdi dir="ltr">{existing.patientNumber}</bdi></p>}
+   <Notice kind="warning">{t("noPublic")}</Notice>
+   {existing&&!existing.noticeAcknowledged&&<Notice kind="warning">{t("importedStatus")}</Notice>}
+   <form onSubmit={submit}><PatientFields form={form} setForm={setForm} editing={!!existing}/>
+    {error&&<Notice kind="error">{t("failed")}: {error==="STALE_PATIENT_REVISION"?t("stale"):error}</Notice>}
+    <div className="phase-actions">
+     <a className="btn btn-secondary" href={existing?
+       "/clinic/patients/"+existing.id+"?clinic="+space.clinicId:patientHref(space.clinicId)}>{t("cancel")}</a>
+     <button className="btn btn-primary" disabled={busy||!form.preferredName?.trim()||!form.noticeAcknowledged}>
+       {busy?t("loading"):existing?t("save"):t("create")}</button>
+    </div>
+   </form></>}
+  {candidates.length>0&&<DuplicateDialog cid={space.clinicId} candidates={candidates}
+    reason={reason} setReason={setReason} busy={busy}
+    close={()=>{setCandidates([]);setReason("");}}
+    continueCreate={async()=>{setCandidates([]);await persist(true);}}/>}
+ </section>;
+}
