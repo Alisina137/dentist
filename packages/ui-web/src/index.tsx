@@ -407,3 +407,13 @@ export function MfaChallenge() {
     <div className="inline-links"><a className="text-link" href="/admin/login">{t("back")}</a></div>
   </div></div>;
 }
+
+/** Route-level selection keeps password-reset tokens out of public page props. */
+export function PasswordResetRoute({ audience }: { audience: "clinic" | "admin" }) {
+  const [mode, setMode] = useState<"forgot" | "reset">("forgot");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("token") || params.has("error")) setMode("reset");
+  }, []);
+  return <AuthPanel mode={mode} audience={audience} />;
+}
