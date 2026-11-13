@@ -258,4 +258,36 @@ const summary=expect(await req(api+"/summary?date="+saturday,"GET",undefined,own
  [200],"appointment stats");
 assert.equal(summary.counts.completed,1);
 assert.equal(summary.counts.cancelled,1);
-console.log("PH06_INTEGRATION_OK: booking, 2 conflict types, replay safety, reschedule atomicity, clinic isolation, role/queue lifecycle and cancellation.");
+
+const simultaneous=[
+ {...first,start:"11:00",idempotencyKey:"PH06-PARALLEL-A-"+nonce},
+ {...second,start:"11:00",idempotencyKey:"PH06-PARALLEL-B-"+nonce}
+];
+const outcomes=await Promise.all([
+ req(api+"/appointments","POST",simultaneous[0],reception.session),
+ req(api+"/appointments","POST",simultaneous[1],owner.session)
+]);
+assert.deepEqual(outcomes.map(x=>x.status).sort(),[201,409],
+ "two concurrent staff actors cannot reserve the same doctor/chair");
+const oneWinner=outcomes.find(x=>x.status===201).data.appointment;
+assert.equal(oneWinner.status,"confirmed");
+expect(await req(op+"/services/"+service.id,"PATCH",{
+ name:service.name,category:service.category,description:service.description,
+ durationMinutes:service.durationMinutes,preparationMinutes:service.preparationMinutes,
+ basePriceAfn:service.basePriceAfn,requiresChair:true,publicBooking:false,
+ active:false,version:service.version
+},owner.session),[409],"service cannot deactivate with future appointments");
+expect(await req(op+"/hours/resources/"+chair.id,"DELETE",{reason:"Safety check"},owner.session),
+ [200],"clear chair-specific hours without destroying confirmed bookings");
+expect(await req(op+"/resources/"+chair.id,"PATCH",{
+ code:"A-01",label:"Chair A",kind:"chair",equipment:"Standard",active:false,
+ revision:chair.revision
+},owner.session),[409],"resource cannot deactivate while a confirmed booking uses it");
+const futureDate=nextSaturday();
+const doctorFilter=expect(await req(api+"/calendar?from="+futureDate+"&to="+futureDate+
+ "&status=completed","GET",undefined,owner.session),[200],"status calendar filter");
+assert.equal(doctorFilter.appointments.length,1);
+expect(await req(api+"/calendar?from=2026-01-01&to=2026-12-31",
+ "GET",undefined,owner.session),[422],"unbounded calendar requests rejected");
+console.log("PH06_INTEGRATION_OK: 2 concurrent staff actors, exclusion conflicts, idempotency, clinic isolation, reschedule, queue lifecycle, cancellation and booked-resource safety.");
+
