@@ -58,6 +58,21 @@ export async function saveWeek(cid:string,actorId:string,kind:"clinic"|"provider
  await db.transaction(async tx=>{
   await lockClinic(tx,cid);
   for(const day of week){
+   // Ensure two editors cannot silently overwrite each other's saved clinic/shift rules.
+   const row=Array.isArray(raw)?raw.find((x:any)=>x?.weekday===day.weekday):null;
+   if(!row||!Number.isInteger(row.revision)||row.revision<0)
+     fail(422,"EXPECTED_SCHEDULE_REVISION_REQUIRED");
+   const current=kind==="clinic"?
+     await tx.select({revision:schema.clinicWeeklyHour.revision}).from(schema.clinicWeeklyHour)
+       .where(and(eq(schema.clinicWeeklyHour.clinicId,cid),eq(schema.clinicWeeklyHour.weekday,day.weekday))):
+     kind==="provider"?
+     await tx.select({revision:schema.clinicProviderHour.revision}).from(schema.clinicProviderHour)
+       .where(and(eq(schema.clinicProviderHour.clinicId,cid),
+         eq(schema.clinicProviderHour.membershipId,target!),eq(schema.clinicProviderHour.weekday,day.weekday))):
+     await tx.select({revision:schema.clinicResourceHour.revision}).from(schema.clinicResourceHour)
+       .where(and(eq(schema.clinicResourceHour.clinicId,cid),
+         eq(schema.clinicResourceHour.resourceId,target!),eq(schema.clinicResourceHour.weekday,day.weekday)));
+   if((current[0]?.revision??0)!==row.revision)fail(409,"STALE_SCHEDULE_VERSION");
    const values={clinicId:cid,weekday:day.weekday,isOpen:day.isOpen,
     startMinute:day.startMinute,endMinute:day.endMinute,breaks:day.breaks,
     updatedBy:actorId,updatedAt:new Date()};
