@@ -591,6 +591,7 @@ function BookingEditor({space,existing,close,afterSave}:{
   return "";
  });
  const [patients,setPatients]=useState<{id:string;preferredName:string;familyName:string|null;patientNumber:string}[]>([]);
+ const [chosenPatient,setChosenPatient]=useState<{id:string;preferredName:string;familyName:string|null;patientNumber:string}|null>(null);
  const [service,setService]=useState(existing?.serviceId||""),[provider,setProvider]=useState(existing?.providerMembershipId||"");
  const [resource,setResource]=useState(existing?.resourceId||""),[date,setDate]=useState(()=>{
    if(existing)return localDate(existing.startAt);
@@ -628,6 +629,21 @@ function BookingEditor({space,existing,close,afterSave}:{
   if(!service&&catalog.services.some(s=>s.active))
    setService(catalog.services.find(s=>s.active)!.id);
  },[catalog,space.role]);
+ useEffect(()=>{
+  if(!patientId){setChosenPatient(null);return;}
+  if(existing?.patient?.id===patientId){setChosenPatient(existing.patient);return;}
+  let active=true;
+  fetch(API+"/v1/registry"+base+"/patients/"+encodeURIComponent(patientId),
+   {credentials:"include",cache:"no-store"})
+   .then(async response=>{
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.code||"PATIENT_NOT_FOUND");
+    if(active&&data.patient?.id===patientId)
+     setChosenPatient({id:patientId,preferredName:data.patient.preferredName,
+      familyName:data.patient.familyName,patientNumber:data.patient.patientNumber});
+   }).catch(()=>{if(active)setChosenPatient(null);});
+  return()=>{active=false;};
+ },[base,patientId,existing?.patient?.id]);
  useEffect(()=>{
   if(!patientQuery.trim()||patientQuery.trim().length<2){setPatients([]);return;}
   let active=true;setPatientLoading(true);
@@ -717,12 +733,12 @@ function BookingEditor({space,existing,close,afterSave}:{
        {patients.length>0&&<div className="ph06-patient-results" role="listbox">
         {patients.map(p=><button key={p.id} type="button" role="option"
          aria-selected={patientId===p.id} onClick={()=>{setPatientId(p.id);setPatientQuery(p.preferredName+
-           " "+(p.familyName||""));setPatients([]);setKey(crypto.randomUUID());}}>
+           " "+(p.familyName||""));setPatients([]);setChosenPatient(p);setKey(crypto.randomUUID());}}>
          <strong>{p.preferredName} {p.familyName||""}</strong><bdi dir="ltr">{p.patientNumber}</bdi>
         </button>)}
        </div>}
-       {patientId?<div className="ph06-selected-patient"><span>✓ {t("patient")} {t("selected")}</span>
-        <button type="button" className="ph06-inline" onClick={()=>{setPatientId("");setPatientQuery("");}}>
+       {patientId?<div className="ph06-selected-patient"><span>✓ {chosenPatient?chosenPatient.preferredName+" "+(chosenPatient.familyName||"")+" · "+chosenPatient.patientNumber:t("patient")+" "+t("selected")}</span>
+        <button type="button" className="ph06-inline" onClick={()=>{setPatientId("");setChosenPatient(null);setPatientQuery("");}}>
          {t("changeDate")}</button></div>:
         <div className="ph06-patient-hint">{t("patientRequired")} 
          <a href={"/clinic/patients/new?clinic="+space.clinicId}>{t("newPatient")} ↗</a></div>}
@@ -773,7 +789,7 @@ function BookingEditor({space,existing,close,afterSave}:{
     </div>
     <aside className="ph06-booking-summary">
      <span className="ph06-eyebrow">{t("details")}</span><h3>{t("bookingSummary")||t("newAppointment")}</h3>
-     <dl><div><dt>{t("patient")}</dt><dd>{patientId?"✓ "+t("selected"):"—"}</dd></div>
+     <dl><div><dt>{t("patient")}</dt><dd>{chosenPatient?chosenPatient.preferredName+" · "+chosenPatient.patientNumber:patientId?"✓ "+t("selected"):"—"}</dd></div>
       <div><dt>{t("service")}</dt><dd>{selected?.name||"—"}</dd></div>
       <div><dt>{t("date")}</dt><dd><bdi dir="ltr">{date}</bdi></dd></div>
       <div><dt>{t("time")}</dt><dd><bdi dir="ltr">{start||"—"}</bdi></dd></div>
