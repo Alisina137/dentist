@@ -121,6 +121,26 @@ export function clinicalRouter(){
  api.use(authStaff);
  const clinics=Router({mergeParams:true});
  api.use("/clinics/:clinicId",clinics);
+ clinics.get("/worklist/status",wrap(async(req,res)=>{
+  const ctx=await scope(req,cid(req));
+  if(!["owner","manager"].includes(ctx.role)&&!clinician(ctx))
+   fail(403,"CLINICAL_STATUS_DENIED");
+  const window=isoDayWindow(localDate(new Date()));
+  // Aggregate counts only: no patient, diagnosis, note or file IDs escape this endpoint.
+  const [today]=await sqlClient`SELECT COUNT(*)::integer AS scheduled,
+   COUNT(*) FILTER(WHERE status='arrived')::integer AS arrived,
+   COUNT(*) FILTER(WHERE status='in_treatment')::integer AS in_treatment,
+   COUNT(*) FILTER(WHERE status='completed')::integer AS completed
+   FROM clinic_appointments WHERE clinic_id=${cid(req)}
+   AND start_at>=${window.from} AND start_at<${window.to}
+   AND status NOT IN ('cancelled','no_show')`;
+  const [notes]=await sqlClient`SELECT COUNT(*) FILTER(WHERE status='draft')::integer AS pending,
+   COUNT(*) FILTER(WHERE status='signed')::integer AS signed
+   FROM clinic_encounters WHERE clinic_id=${cid(req)}`;
+  noStore(res);res.json({date:localDate(new Date()),operational:true,
+   scheduled:today.scheduled,arrived:today.arrived,inTreatment:today.in_treatment,
+   completed:today.completed,pending:notes.pending,signed:notes.signed});
+ }));
  clinics.get("/worklist",wrap(async(req,res)=>{
   const ctx=await access(req,cid(req));
   const date=typeof req.query.date==="string"?req.query.date:localDate(new Date());
