@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index.js";
+import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 async function send(path:string,method="GET",body?:unknown):Promise<any> {
