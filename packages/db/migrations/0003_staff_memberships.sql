@@ -4,6 +4,7 @@ CREATE TABLE clinic_memberships (
   clinic_id text NOT NULL REFERENCES clinics(id),
   user_id text NOT NULL REFERENCES auth_users(id),
   role text NOT NULL CHECK (role IN ('owner','manager','dentist','receptionist','assistant','cashier')),
+  clinician_enabled boolean NOT NULL DEFAULT false,
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','revoked')),
   invited_by text REFERENCES auth_users(id),
   joined_at timestamptz NOT NULL DEFAULT now(),
