@@ -118,6 +118,8 @@ const clinic=ok(await request("/v1/clinics","POST",clinicBody,owner.session),
 const unrelated=ok(await request("/v1/clinics","POST",{
  ...clinicBody,legalName:"PH06 Other Practice",displayName:"PH06 Other",
  licenseNumber:"PH06-OTHER-"+nonce},owner.session),[201],"unrelated clinic").clinic;
+ok(await request(api(clinic.id)+"/appointments","POST",{},owner.session),[403],
+ "draft clinic cannot create real bookings before activating subscription");
 const providerService={name:"Dental Consultation",category:"Consultation",
  description:"Initial general consultation",durationMinutes:30,preparationMinutes:0,
  basePriceAfn:500,requiresChair:true,publicBooking:false,active:true};
