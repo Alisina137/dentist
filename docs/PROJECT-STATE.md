@@ -1,37 +1,39 @@
 # DandanLink — project state
 
-Specification: Product Specification v1.0, November 13, 2026.
-Workflow: Software Development Workflow V5.
-GitHub: Alisina137/dentist. Local IDE folder: dentist.
+Product specification: DandanLink v1.0 (13 November 2026).
+Engineering process: Software Development Workflow V5.
+Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## PH02 — Clinic creation, versioned subscription and verification
+## Current phase: PH03 staff invitation, membership security & dentist identity
 
-Status: IMPLEMENTED — VERIFICATION PENDING for real-browser RTL, production email, security/legal review and pilot configuration.
-The repository holds integrated tenant and billing workflows; GitHub Actions is the proof of automated execution, not a substitute for field testing.
+Status: **IMPLEMENTED — GITHUB CI / HUMAN VERIFICATION PENDING** (update upon successful CI).
+This is a foundational development release, not a medical records or production healthcare system.
+
+### PH03 installed features
+- Clinic-specific immutable owner membership created at clinic creation, with backfill for existing PH02 clinics.
+- Invited members can hold one scoped role per clinic: owner (protected), manager, dentist, receptionist, assistant, cashier.
+- Owner and manager invitation flows use verified-email invitations, 7-day token expiry, hashed tokens, resend and revoke.
+- Managers cannot invite or grant manager/owner role, edit their own privilege, or manage owners.
+- High-risk staff/role changes require verified 2FA; role change/suspension/revocation destroys account sessions to enforce immediate revocation.
+- Multi-clinic role selection; each request verifies tenant membership server-side. A tenant switch forces a full page reload and private fetches use no-store.
+- Team, Dentists, Invitations tabs; role-scoped staff detail; security/access audit and self session list.
+- Dentist professional identity drafts with version checks and explicit unverified status. No public verified profiles.
+- Plan's staff capacity is enforced on invitations. Owner and pending valid invites count against limit. Subscription expiry blocks new invitations.
+- CI test suite covers mail verification/acceptance, role ceilings, dentist drafts, plan scope, audit and session revocation.
 
 ### Routes
-Clinic: /clinic, /clinic/onboarding, /clinic/settings, /clinic/settings/subscription, /pricing, /for-clinics.
-Admin (verified 2FA): /admin, /admin/clinics, /admin/clinics/:clinicId, /admin/plans, /admin/subscriptions.
-The patient public web remains informational until PH13; do not publish fictitious dentist profiles.
+Clinic UI: /clinic, /clinic/staff?tab=team|dentists|invitations, /clinic/staff/:membershipId,
+ /clinic/settings/security, /clinic/invite?token=..., /clinic/2fa.
+API: /v1/team/context, /v1/team/sessions, /v1/team/invitations/{preview,accept},
+ /v1/team/clinics/:clinicId/{team,dentists,invitations,security,staff/:membershipId}.
+PH02 clinic owner onboarding, subscription settings and platform verification remain operational.
 
-### Data
-Migration 0002_clinics.sql adds clinics, versioned platform plans, subscriptions, platform payment requests, secure administrative evidence, verification history.
-Clinic owner access is scoped server-side; platform admin operations require admin membership and verified MFA.
-Professional verification and payment status remain independent.
-Documents (max 2 MiB each) are private and stored inside the encrypted-at-rest database provider volume; do not treat as production-compliant without a formal hosting/security review.
-No patient clinical data is collected.
+### Not included yet
+Clinic staff scheduling, chairs, clinical encounters, dental charting, patient records, appointments,
+financial ledgers, dentist credential verification or public booking. Future planned navigation is hidden until implemented.
 
-### Important limitations and decisions
-- No subscription prices are hardcoded. An authenticated TOTP-enabled platform admin must create an active Starter/Professional/Business plan before a clinic can register.
-- Payment is NOT online: owner records a manual transaction reference, admin reconciles and marks paid. No payment receipt is fabricated.
-- Tenant can submit one clinic per request and can own multiple clinics; switching uses explicit clinic selection.
-- Staff/chair/services setup is PH03–04; public publishing is PH12 and booking PH15.
-- Trial duration and grace come from immutable plan version; renewals are manual until gateway integration.
-- Clinic verification evidence is only for manual professional review, not automated validation.
-- Clinic record updates after approval reopen human review, not silent publication.
-- Medical record retention/export and production privacy/security signoff remain PH19 gates.
+### Verification limits and follow-up
+GitHub Actions is configured to run PH01–PH03 integration against a real temporary PostgreSQL server, plus TypeScript and production web builds. Actual local browser/device review, SMTP delivery, human translation review, credential validation, retention, backup restore and healthcare security/legal acceptance remain outstanding.
 
-### Verification
-See docs/PH02-ACCEPTANCE.md and GitHub Actions. Current local browser/SMTP/device verification is still pending.
-
-Next approved phase: PH03 — Staff invitations, role-based memberships and dentist identity.
+See docs/PH03-ACCEPTANCE.md for the full acceptance matrix and manual checks.
+Next phase: **PH04 — Services, chairs, working hours and reliable availability foundation**.
