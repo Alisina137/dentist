@@ -55,6 +55,25 @@ export function appointmentsRouter(){
   )).orderBy(asc(schema.clinicPatient.preferredName)).limit(12);
   noCache(res);res.json({patients});
  }));
+ clinic.get("/patients/:patientId/appointments",wrap(async(req,res)=>{
+  const ctx=await appointmentAccess(req,cid(req),"read");
+  if(ctx.role==="assistant")fail(403,"PATIENT_DETAIL_DENIED");
+  const patientId=String(req.params.patientId);
+  const p=await db.query.clinicPatient.findFirst({where:and(
+   eq(schema.clinicPatient.clinicId,cid(req)),
+   eq(schema.clinicPatient.id,patientId)
+  )});
+  if(!p)fail(404,"PATIENT_NOT_FOUND");
+  const rows=await db.select().from(schema.clinicAppointment).where(and(
+   eq(schema.clinicAppointment.clinicId,cid(req)),
+   eq(schema.clinicAppointment.patientId,patientId)
+  )).orderBy(asc(schema.clinicAppointment.startAt)).limit(150);
+  noCache(res);res.json({
+   patient:{id:p.id,patientNumber:p.patientNumber,preferredName:p.preferredName,
+    familyName:p.familyName,phone:p.phone,status:p.status},
+   appointments:await enriched(rows,ctx),total:rows.length,maximumRows:150
+  });
+ }));
  clinic.get("/overview",wrap(async(req,res)=>{
   const ctx=await appointmentAccess(req,cid(req),"read");
   const date=localDate(new Date());
