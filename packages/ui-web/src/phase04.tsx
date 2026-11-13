@@ -735,7 +735,12 @@ function WeekEditor({space,kind,target,existing,updated}:{space:Space;kind:"clin
  const [days,setDays]=useState<Shift[]>(()=>suggestedWeek(existing,kind));
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[success,setSuccess]=useState("");
  const [dirty,setDirty]=useState(false);
- useEffect(()=>{setDays(suggestedWeek(existing,kind));setDirty(false);setProblem("");},[existing,kind]);
+ // Parent filters provider/resource rows each render; depend on saved *values*,
+ // never the freshly allocated array or edits would be erased while typing.
+ const savedSignature=existing.map(d=>[d.weekday,d.revision,d.isOpen,d.startMinute,
+   d.endMinute,JSON.stringify(d.breaks)].join(":")).join("|");
+ useEffect(()=>{setDays(suggestedWeek(existing,kind));setDirty(false);setProblem("");},
+   [savedSignature,kind]);
  useEffect(()=>{
   if(!dirty)return;
   const guard=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
