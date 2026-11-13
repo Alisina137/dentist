@@ -9,7 +9,7 @@ User IDE folder: dentist (Windows local path not directly accessible).
 
 PH01 — Identity, localization, and application shells.
 
-Status: **IMPLEMENTED — VERIFICATION PENDING** until dependencies, database, browser and email/MFA integrations have been tested. GitHub source availability is not evidence of a passed build.
+Status: **IMPLEMENTED — VERIFICATION PENDING** for real-user browser/SMTP/device review. GitHub Actions passed frozen dependency install, Node tests, TypeScript, three production web builds, PostgreSQL migration, and HTTP authentication integration including email verification, password reset, session revocation, tenant/preference guards, trusted admin grant and real TOTP enrollment. These CI checks are actual recorded executions, not implementation claims.
 
 ## Phase 01 scope in source
 
@@ -37,8 +37,13 @@ Deferred correctly: PH02 clinic creation/subscription, PH03 staff invitations, P
 
 ## Verification limitations
 
-The repository is remotely editable, but this execution environment has no network access to npm packages or local Windows IDE, so install/build/DB/auth/UI E2E cannot truthfully be marked as passed here. Run the checklist in docs/PH01-ACCEPTANCE.md. Backend/email/OTP need real validation and external configuration. Translators and legal advisers must review patient-facing clinical/legal language before production.
+The repository is remotely editable and GitHub Actions can run installs, builds, PostgreSQL and API integration. The assistant cannot access the user's Windows IDE; local browser/device accessibility, RTL visual inspection, SMTP deliverability with a real provider, operational backup/restore and medical/legal review remain unverified. Run the remaining checklist in docs/PH01-ACCEPTANCE.md. Translators and legal advisers must review patient-facing clinical/legal language before production.
 
 Do not use real patient records in PH01 or claim HIPAA/legal compliance. PH19 will require the production data protection, restore, retention, export and security release gates.
 
 Next approved phase after PH01 verification: PH02 — clinic creation, subscriptions and manual verification.
+
+## Recorded CI evidence
+
+- [Phase 01 auth and TOTP integration](https://github.com/Alisina137/dentist/actions/runs/43387532343): all tests, builds and PostgreSQL/API integration passed.
+- Final branch CI must also pass before merge to main. Healthcare production launch is not approved by this check.
