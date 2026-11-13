@@ -14,6 +14,7 @@ import { patientRegistryRouter } from "./patient-registry.js";
 import { operationsRouter } from "./operations-router.js";
 import { appointmentsRouter } from "./appointments-router.js";
 import { clinicalRouter } from "./clinical-router.js";
+import { chartRouter } from "./chart-router.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -39,6 +40,7 @@ app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
 // PH07 private clinical files have their own strictly bounded body parser.
 app.use("/v1/clinical", express.json({limit:"3.5mb"}), clinicalRouter());
+app.use("/v1/chart", chartRouter());
 app.get("/health", (_req, res) => res.json({ status: "up" }));
 app.get("/ready", async (_req, res) => {
   try {
@@ -49,7 +51,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH07", marketplaceAvailable: false,
+  product: "DandanLink", release: "PH08", marketplaceAvailable: false,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));
 
