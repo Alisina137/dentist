@@ -45,7 +45,7 @@ const words:Record<string,Record<string,string>>={
   noRecords:"Nothing to display",next:"Next",previous:"Previous",refresh:"Refresh",
   unsaved:"Save the updated clinic information to continue.",editing:"Changes to an approved clinic require renewed review.",
   noPayment:"No payment has been confirmed. Do not treat a request as paid.",returnHome:"Back to dashboard",
-  operational:"Dentists, chairs and services will be configured in the next development phases.",
+  operational:"Configure real services, chairs, clinic hours and dentist shifts in Operations.",
   verifiedNote:"Clinic approval does not publish a dentist listing or verify a dentist.",
   awaitingReview:"Your submission is awaiting human review. You can see the status here.",
   privacy:"Verification documents remain private and are accessed only by authorized reviewers.",
@@ -55,7 +55,7 @@ const words:Record<string,Record<string,string>>={
   preview:"Review the current plan price and billing period before requesting payment.",
   signout:"Sign out",failed:"Request failed",success:"Changes saved",loading:"Loading...",
   errorAuth:"Please sign in to access this workspace.",pendingOps:"Further office setup is not available until the next phase.",
-  nextAction:"Next action",privacyGate:"No patient or dental records are available at this stage."
+  nextAction:"Next action",privacyGate:"Patient records are private clinic data; live scheduling and clinical encounters are not released yet."
  },
  "fa-AF":{
   operations:"عملیات",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
@@ -87,7 +87,7 @@ const words:Record<string,Record<string,string>>={
   noRecords:"موردی موجود نیست",next:"بعدی",previous:"قبلی",refresh:"تازه‌سازی",
   unsaved:"معلومات تغییر یافته را ذخیره کنید.",editing:"تغییر معلومات تأییدشده نیاز به بررسی مجدد دارد.",
   noPayment:"هیچ پرداختی هنوز تأیید نشده است.",returnHome:"بازگشت به داشبورد",
-  operational:"داکتران، چوکی‌ها و خدمات در مراحل بعدی تنظیم می‌شوند.",
+  operational:"خدمات، چوکی‌ها، ساعات و شیفت داکتر را از بخش عملیات تنظیم کنید.",
   verifiedNote:"تأیید کلینیک به‌معنی نشر عمومی یا تأیید داکتر نیست.",
   awaitingReview:"ثبت شما در انتظار بررسی انسانی است.",privacy:"اسناد تنها برای بررسی‌کنندگان مجاز قابل دسترسی است.",
   titlePlans:"مدیریت پلن‌های نسخه‌دار",titleSubs:"بررسی اشتراک‌ها و پرداخت‌ها",
@@ -96,7 +96,7 @@ const words:Record<string,Record<string,string>>={
   preview:"پیش از درخواست، مبلغ و دوره پرداخت را بررسی کنید.",signout:"خروج",failed:"درخواست ناموفق",
   success:"ذخیره شد",loading:"در حال بارگیری...",errorAuth:"برای دسترسی وارد شوید.",
   pendingOps:"تنظیمات بیشتر کلینیک در مراحل بعدی فعال می‌شود.",nextAction:"قدم بعدی",
-  privacyGate:"در این مرحله سوابق مریضان و دندان وجود ندارد."
+  privacyGate:"معلومات مریضان خصوصی است؛ نوبت‌دهی و معاینات طبی در مراحل بعدی فعال می‌شوند."
  },
  "ps-AF":{
   operations:"عملیات",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
@@ -131,7 +131,7 @@ const words:Record<string,Record<string,string>>={
   next:"بل",previous:"مخکېنی",refresh:"تازه کول",unsaved:"نوي معلومات خوندي کړئ.",
   editing:"د تایید شوي کلینیک بدلون بیا کتنې ته اړتیا لري.",
   noPayment:"هیڅ تادیه لا نه ده تایید شوې.",returnHome:"ډشبورډ ته ستنېدل",
-  operational:"ډاکټران، چوکۍ او خدمتونه په راتلونکو پړاوونو کې جوړېږي.",
+  operational:"خدمتونه، څوکۍ، د کلینیک وختونه او د ډاکټر شیفټونه د عملیاتو له لارې تنظیم کړئ.",
   verifiedNote:"د کلینیک تایید د ډاکټر تایید یا عامه خپرونه نه ده.",
   awaitingReview:"ستاسو غوښتنه د انساني کتنې په تمه ده.",
   privacy:"سندونه یوازې مجاز کتونکو ته ښکاري.",titlePlans:"د پلانونو مدیریت",
@@ -140,7 +140,7 @@ const words:Record<string,Record<string,string>>={
   reviewer:"کتونکی",noSetup:"خپل کلینیک ثبت کړئ.",preview:"مخکې له تادیې بیه او موده وګورئ.",
   signout:"وتل",failed:"غوښتنه ناکامه شوه",success:"خوندي شو",loading:"بارېږي...",
   errorAuth:"لومړی خپل حساب ته ننوځئ.",pendingOps:"د کلینیک نور کارونه وروسته فعالېږي.",
-  nextAction:"راتلونکی ګام",privacyGate:"د ناروغانو ریکارډونه لا نشته."
+  nextAction:"راتلونکی ګام",privacyGate:"د ناروغانو معلومات شخصي دي؛ رزرو او طبي لیدنې په راتلونکو پړاوونو کې فعالېږي."
  }
 };
 type View="dashboard"|"onboarding"|"settings"|"subscription"|"clinics"|"review"|"plans"|"subscriptions";
