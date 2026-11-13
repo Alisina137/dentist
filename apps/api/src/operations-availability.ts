@@ -41,7 +41,7 @@ export async function availabilityPreview(cid:string,q:AvailabilityRequest){
   db.select().from(schema.clinicResourceHour).where(and(
    eq(schema.clinicResourceHour.clinicId,cid),eq(schema.clinicResourceHour.weekday,day)))
  ]);
- let reason:"ready"|"clinic_closed"|"provider_unavailable"|"chair_unavailable"|"holiday_closed"="ready";
+ let reason:"ready"|"clinic_closed"|"provider_unavailable"|"chair_unavailable"|"holiday_closed"|"fully_booked"="ready";
  const exception=exceptions[0]||null;
  if(exception?.kind==="closed")reason="holiday_closed";
  else if(!exception && !weekly?.isOpen)reason="clinic_closed";
