@@ -406,3 +406,311 @@ function Onboarding(){
     </section>}
   </div>;
 }
+
+
+function ClinicSettings(){
+ const l=useText();
+ const {data,error,refresh}=useResource("/clinics");
+ const [selected,setSelected]=useState("");
+ const [detail,setDetail]=useState<any>(null);
+ const [form,setForm]=useState<any>(null);
+ const [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[failure,setFailure]=useState("");
+ useEffect(()=>{if(data?.clinics?.length&&!selected)setSelected(data.clinics[0].id);},[data,selected]);
+ useEffect(()=>{if(selected)send("/clinics/"+selected).then(d=>{setDetail(d);setForm(d.clinic);})
+   .catch(e=>setFailure(e.message));},[selected]);
+ async function save(e:FormEvent){
+  e.preventDefault();setBusy(true);setFailure("");setMessage("");
+  try{
+   const response=await send("/clinics/"+selected,"PATCH",{...form,revision:detail.clinic.revision});
+   setDetail({...detail,clinic:response.clinic});setForm(response.clinic);setMessage(l("success"));refresh();
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ if(error)return <DataError message={error} retry={refresh}/>;
+ if(!data)return <InlineAlert>{l("loading")}</InlineAlert>;
+ if(!data.clinics.length)return <section className="card panel"><Empty>{l("noClinics")}</Empty>
+   <a className="btn btn-primary" href="/clinic/onboarding">{l("newClinic")}</a></section>;
+ return <section className="card panel"><h1 className="phase-title">{l("titleSettings")}</h1>
+  <Select title={l("chooseClinic")} value={selected} change={setSelected} options={data.clinics.map((c:any)=>({id:c.id,label:c.displayName}))}/>
+  {detail&&<Status value={detail.clinic.status} l={l}/>}
+  {form&&<form onSubmit={save} className="phase-form">
+    <OrganizationFields form={form} setForm={setForm}/>
+    {detail?.clinic.status==="approved"&&<InlineAlert kind="warning">{l("editing")}</InlineAlert>}
+    {!["pending","suspended"].includes(detail?.clinic.status)&&
+    <button className="btn btn-primary" disabled={busy}>{l("update")}</button>}
+  </form>}
+  {failure&&<Alert message={failure}/>}
+  {message&&<Alert message={message} ok/>}
+ </section>;
+}
+function ClinicSubscription(){
+ const l=useText();
+ const {data,error,refresh}=useResource("/clinics");
+ const {data:published}=useResource("/public/plans");
+ const [selected,setSelected]=useState("");
+ const [detail,setDetail]=useState<any>(null);
+ const [plan,setPlan]=useState("");
+ const [reference,setReference]=useState("");
+ const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[message,setMessage]=useState("");
+ useEffect(()=>{
+  const fromUrl=new URLSearchParams(window.location.search).get("clinic");
+  if(fromUrl)setSelected(fromUrl);
+  else if(data?.clinics?.length&&!selected)setSelected(data.clinics[0].id);
+ },[data,selected]);
+ useEffect(()=>{if(selected)send("/clinics/"+selected).then(setDetail)
+   .catch(e=>setFailure(e.message));},[selected]);
+ async function requestPay(e:FormEvent){
+  e.preventDefault();setBusy(true);setFailure("");setMessage("");
+  try{
+   await send("/clinics/"+selected+"/subscription/request","POST",{planVersionId:plan,evidenceReference:reference});
+   setDetail(await send("/clinics/"+selected));setMessage(l("awaiting"));setReference("");refresh();
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ if(error)return <DataError message={error} retry={refresh}/>;
+ if(!data)return <InlineAlert>{l("loading")}</InlineAlert>;
+ if(!data.clinics.length)return <div className="card panel"><Empty>{l("noClinics")}</Empty>
+   <a className="btn btn-primary" href="/clinic/onboarding">{l("newClinic")}</a></div>;
+ const current=detail?.subscription;
+ const activePlan=detail?.plan;
+ const picked=published?.plans?.find((p:any)=>p.id===plan);
+ return <div><h1 className="phase-title">{l("subscription")}</h1>
+  <Select title={l("chooseClinic")} value={selected} change={setSelected}
+    options={data.clinics.map((c:any)=>({id:c.id,label:c.displayName}))}/>
+  {detail?<div>
+    <section className="card panel">
+      <div className="phase-row"><h2>{detail.clinic.displayName}</h2><Status value={detail.effectiveStatus} l={l}/></div>
+      <p>{l("plan")}: <strong>{activePlan?.label||"—"}</strong> · {l(activePlan?.billingPeriod||"")}</p>
+      <p>{l("price")}: {currency(activePlan?.priceAfn)}</p>
+      <p>{l("trial")}: {short(current?.trialEndsAt)} · {l("grace")}: {activePlan?.graceDays??"—"}</p>
+      {current?.currentPeriodEndsAt&&<p>{l("nextAction")}: {short(current.currentPeriodEndsAt)}</p>}
+      <InlineAlert>{l("noPayment")}</InlineAlert>
+    </section>
+    <section className="card panel"><h2>{l("changePlan")} / {l("payment")}</h2>
+      <p className="muted">{l("preview")}</p>
+      <PlanCards plans={published?.plans||[]} selected={plan} onSelect={setPlan}/>
+      {picked&&<InlineAlert>{picked.label} · {currency(picked.priceAfn)} · {l(picked.billingPeriod)}</InlineAlert>}
+      <form className="phase-form" onSubmit={requestPay}>
+        <Input title={l("reference")} value={reference} change={setReference} required/>
+        <button className="btn btn-primary" disabled={!picked||busy||detail.invoices?.some((i:any)=>i.status==="awaiting")}>
+          {l("requestPayment")}</button>
+      </form>
+    </section>
+    <section className="card panel"><h2>{l("payments")}</h2>
+      {detail.invoices?.length?<Rows>{detail.invoices.map((inv:any)=>
+        <div className="phase-row phase-list-item" key={inv.id}>
+          <div><strong>{currency(inv.amountAfn)}</strong><p className="muted">{short(inv.createdAt)} · <bdi>{inv.evidenceReference}</bdi></p></div>
+          <Status value={inv.status} l={l}/>
+        </div>)}</Rows>:<Empty>{l("noRecords")}</Empty>}
+    </section>
+    {failure&&<Alert message={failure}/>}
+    {message&&<Alert message={message} ok/>}
+  </div>:<InlineAlert>{l("loading")}</InlineAlert>}
+ </div>;
+}
+function AdminClinics(){
+ const l=useText();
+ const [status,setStatus]=useState("pending"),[page,setPage]=useState(1);
+ const {data,error,refresh}=useResource("/admin/clinics?status="+status+"&page="+page);
+ useEffect(()=>{
+  const fromUrl=new URLSearchParams(window.location.search).get("status");
+  if(fromUrl&&["pending","needs_info","approved","rejected","suspended"].includes(fromUrl))setStatus(fromUrl);
+ },[]);
+ if(error)return <DataError message={error} retry={refresh}/>;
+ return <div><h1 className="phase-title">{l("titleClinics")}</h1>
+  <div className="phase-tabs" role="tablist" aria-label={l("status")}>
+    {["pending","approved","suspended","rejected"].map(s=><button key={s} role="tab"
+      aria-selected={status===s} className={status===s?"current":""} onClick={()=>{setStatus(s);setPage(1);}}>
+      {l(s)}</button>)}
+  </div>
+  <section className="card panel">
+    {!data?<InlineAlert>{l("loading")}</InlineAlert>:!data.clinics?.length?<Empty>{l("noRecords")}</Empty>:
+      <Rows>{data.clinics.map((c:any)=><a className="phase-row phase-list-item" href={"/admin/clinics/"+c.id} key={c.id}>
+        <div><strong>{c.displayName}</strong><p className="muted">{c.city} · {c.province} · {short(c.submittedAt)}</p></div>
+        <div><Status value={c.status} l={l}/><span className="phase-arrow"> › </span></div>
+      </a>)}</Rows>}
+    <div className="phase-pagination">
+      <button className="btn btn-secondary" disabled={page<2} onClick={()=>setPage(v=>v-1)}>{l("previous")}</button>
+      <span>{page} / {Math.max(1,Math.ceil((data?.total||0)/20))}</span>
+      <button className="btn btn-secondary" disabled={page*20>=(data?.total||0)} onClick={()=>setPage(v=>v+1)}>{l("next")}</button>
+    </div>
+  </section>
+ </div>;
+}
+function AdminReview(){
+ const l=useText();
+ const [id,setId]=useState("");
+ useEffect(()=>{setId(window.location.pathname.split("/").filter(Boolean).at(-1)||"");},[]);
+ const {data,error,refresh}=useResource(id?"/admin/clinics/"+id:"/admin/overview");
+ const [reason,setReason]=useState(""),[confirmation,setConfirmation]=useState("");
+ const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[message,setMessage]=useState("");
+ async function decide(action:string){
+  setFailure("");setMessage("");setBusy(true);
+  try{await send("/admin/clinics/"+id+"/review","POST",{action,reason,confirmation});
+    refresh();setReason("");setConfirmation("");setMessage(l("success"));
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ async function evidence(docId:string){
+  try{
+    const r=await fetch(API+"/v1/admin/clinics/"+id+"/evidence/"+docId,{credentials:"include"});
+    if(!r.ok)throw new Error((await r.json()).code);
+    const url=URL.createObjectURL(await r.blob());
+    const anchor=document.createElement("a");anchor.href=url;anchor.download="verification-evidence";
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){setFailure((e as Error).message);}
+ }
+ if(error)return <DataError message={error} retry={refresh}/>;
+ if(!data?.clinic)return <InlineAlert>{l("loading")}</InlineAlert>;
+ const c=data.clinic;
+ const choices=c.status==="pending"?["approve","needs_info","reject"]:
+   c.status==="approved"?["suspend"]:c.status==="suspended"?["reopen","approve"]:[];
+ return <div><a className="text-link" href="/admin/clinics">← {l("back")}</a>
+  <h1 className="phase-title">{l("reviewClinic")}: {c.displayName}</h1>
+  <div className="phase-status-strip"><Status value={c.status} l={l}/>
+    <span>{l("subscription")}: {l(data.effectiveStatus)}</span></div>
+  <section className="card panel">
+    <h2>{l("organization")}</h2>
+    <div className="phase-detail-grid">
+      {([["legalName",c.legalName],["clinicType",c.clinicType],["province",c.province],["city",c.city],
+        ["address",c.address],["phone",c.phone],["email",c.email],["license",c.licenseNumber]] as const)
+        .map(([key,value])=><div key={key}><small className="muted">{l(key)}</small><p><bdi>{String(value||"—")}</bdi></p></div>)}
+    </div>
+    <InlineAlert>{l("verifiedNote")}</InlineAlert>
+  </section>
+  <section className="card panel"><h2>{l("uploaded")}</h2>
+    {data.documents?.length?data.documents.map((d:any)=><div key={d.id} className="phase-row phase-list-item">
+      <span>{d.kind} · {d.fileName} · {Math.round(d.sizeBytes/1024)} KB</span>
+      <button className="btn btn-secondary" onClick={()=>evidence(d.id)}>{l("review")}</button>
+    </div>):<Empty>{l("noRecords")}</Empty>}
+    <p className="muted">{l("privacy")}</p>
+  </section>
+  {choices.length>0&&<section className="card panel"><h2>{l("verification")}</h2>
+    <div className="phase-form">
+      <label className="field"><span>{l("reason")}</span><textarea rows={3} value={reason}
+        onChange={e=>setReason(e.target.value)}/></label>
+      <Input title={l("confirmName")} value={confirmation} change={setConfirmation}/>
+      <div className="phase-actions">{choices.map(action=><button className={"btn "+(action==="approve"?"btn-primary":"btn-secondary")}
+        key={action} onClick={()=>decide(action)} disabled={busy||action!=="approve"&&reason.trim().length<5||
+          ["approve","suspend"].includes(action)&&confirmation!==c.displayName}>{l(action==="needs_info"?"askInfo":action)}</button>)}</div>
+    </div>
+  </section>}
+  <section className="card panel"><h2>{l("history")}</h2>
+    {data.history?.length?data.history.map((h:any)=><p key={h.id}>{short(h.createdAt)} · {l(h.action)||h.action} · {h.reason||"—"}</p>):
+      <Empty>{l("noRecords")}</Empty>}
+  </section>
+  {failure&&<Alert message={failure}/>}
+  {message&&<Alert message={message} ok/>}
+ </div>;
+}
+function AdminPlans(){
+ const l=useText();
+ const {data,error,refresh}=useResource("/admin/plans");
+ const [form,setForm]=useState<any>({planKey:"starter",billingPeriod:"monthly",
+  label:"Starter",priceAfn:"",staffLimit:"1",branchLimit:"1",trialDays:"14",graceDays:"7"});
+ const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[message,setMessage]=useState("");
+ function change(name:string,value:string){setForm((f:any)=>({...f,[name]:value}));}
+ async function create(e:FormEvent){
+  e.preventDefault();setFailure("");setMessage("");setBusy(true);
+  try{
+    const payload={...form,priceAfn:Number(form.priceAfn),staffLimit:Number(form.staffLimit),
+      branchLimit:Number(form.branchLimit),trialDays:Number(form.trialDays),graceDays:Number(form.graceDays)};
+    await send("/admin/plans","POST",payload);
+    refresh();setMessage(l("success"));
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ async function toggle(p:any){
+  try{await send("/admin/plans/"+p.id,"PATCH",{active:!p.active});refresh();setMessage(l("success"));}
+  catch(e){setFailure((e as Error).message);}
+ }
+ if(error)return <DataError message={error} retry={refresh}/>;
+ return <div><h1 className="phase-title">{l("titlePlans")}</h1>
+  <section className="card panel"><h2>{l("createPlan")}</h2>
+    <form className="phase-form" onSubmit={create}>
+      <div className="phase-form-grid">
+        <Select title={l("planKey")} value={form.planKey} change={v=>change("planKey",v)}
+          options={["starter","professional","business"].map(id=>({id,label:l(id)}))}/>
+        <Select title={l("period")} value={form.billingPeriod} change={v=>change("billingPeriod",v)}
+          options={["monthly","annual"].map(id=>({id,label:l(id)}))}/>
+        <Input title={l("label")} value={form.label} change={v=>change("label",v)} required/>
+        {(["priceAfn","staffLimit","branchLimit","trialDays","graceDays"] as const).map(key=>
+          <Input key={key} title={l(key==="priceAfn"?"amount":key)} value={form[key]}
+            type="number" change={v=>change(key,v)} required/>)}
+      </div>
+      <InlineAlert>{l("preview")}</InlineAlert>
+      <button className="btn btn-primary" disabled={busy}>{l("createPlan")}</button>
+    </form>
+  </section>
+  <section className="card panel"><h2>{l("plans")}</h2>
+    {!data?<InlineAlert>{l("loading")}</InlineAlert>:!data.plans?.length?<Empty>{l("noPlans")}</Empty>:
+      <Rows>{data.plans.map((p:any)=><div className="phase-row phase-list-item" key={p.id}>
+        <div><strong>{p.label}</strong> · v{p.version} · {l(p.billingPeriod)}
+          <p className="muted">{currency(p.priceAfn)} · {p.staffLimit} {l("staff")} · {p.trialDays} {l("trial")}</p></div>
+        <div className="phase-actions"><Status value={p.active?"active":"cancelled"} l={l}/>
+          <button className="btn btn-secondary" onClick={()=>toggle(p)}>{l(p.active?"deactivate":"activate")}</button></div>
+      </div>)}</Rows>}
+  </section>
+  {message&&<Alert message={message} ok/>}{failure&&<Alert message={failure}/>}
+ </div>;
+}
+function AdminSubscriptions(){
+ const l=useText();
+ const {data:subs,error,refresh}=useResource("/admin/subscriptions");
+ const {data:payments,refresh:reload}=useResource("/admin/invoices");
+ const [status,setStatus]=useState("trialing");
+ const [reason,setReason]=useState(""),[confirmation,setConfirmation]=useState("");
+ const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[message,setMessage]=useState("");
+ async function decide(id:string,action:string){
+  setBusy(true);setFailure("");setMessage("");
+  try{
+    await send("/admin/invoices/"+id+"/decision","POST",{action,reason,confirmation});
+    reload();refresh();setMessage(l("success"));setReason("");setConfirmation("");
+  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ }
+ if(error)return <DataError message={error} retry={refresh}/>;
+ return <div><h1 className="phase-title">{l("titleSubs")}</h1>
+  <div className="phase-tabs" role="tablist" aria-label={l("status")}>
+    {["trialing","active","grace","expired","cancelled"].map(s=><button key={s} role="tab" aria-selected={status===s}
+      className={status===s?"current":""} onClick={()=>setStatus(s)}>{l(s==="grace"?"graceState":s)}</button>)}
+  </div>
+  <section className="card panel"><h2>{l("subscriptions")}</h2>
+    {!subs?<InlineAlert>{l("loading")}</InlineAlert>:subs.subscriptions?.filter((x:any)=>x.effectiveStatus===status).length?
+      <Rows>{subs.subscriptions.filter((x:any)=>x.effectiveStatus===status).map((s:any)=>
+        <a href={"/admin/clinics/"+s.clinicId} className="phase-row phase-list-item" key={s.clinicId}>
+          <div><strong>{s.clinicName}</strong><p className="muted">{short(s.trialEndsAt||s.currentPeriodEndsAt)}</p></div>
+          <Status value={s.effectiveStatus} l={l}/>
+        </a>)}</Rows>:<Empty>{l("noRecords")}</Empty>}
+  </section>
+  <section className="card panel"><h2>{l("payments")}</h2>
+    {!payments?<InlineAlert>{l("loading")}</InlineAlert>:!payments.invoices?.length?<Empty>{l("noRecords")}</Empty>:
+      <Rows>{payments.invoices.map((i:any)=><div key={i.id} className="phase-payment-item">
+        <div className="phase-row">
+          <div><strong>{i.clinicName}</strong> · {currency(i.amountAfn)}
+            <p className="muted">{short(i.createdAt)} · <bdi>{i.evidenceReference}</bdi></p></div>
+          <Status value={i.status} l={l}/>
+        </div>
+        {i.status==="awaiting"&&<div className="phase-form">
+          <Input title={l("reason")} value={reason} change={setReason} required/>
+          <Input title={l("confirmReference")} value={confirmation} change={setConfirmation}/>
+          <div className="phase-actions">
+            <button className="btn btn-primary" onClick={()=>decide(i.id,"confirm")}
+              disabled={busy||reason.trim().length<5||confirmation!==i.evidenceReference}>{l("verifyPayment")}</button>
+            <button className="btn btn-secondary" onClick={()=>decide(i.id,"reject")}
+              disabled={busy||reason.trim().length<5}>{l("rejectPayment")}</button>
+          </div>
+        </div>}
+      </div>)}</Rows>}
+  </section>
+  {message&&<Alert message={message} ok/>}{failure&&<Alert message={failure}/>}
+ </div>;
+}
+export function PublicPlans({mode="pricing"}:{mode?:"pricing"|"for-clinics"}){
+ const l=useText();
+ const {data,error,refresh}=useResource("/public/plans");
+ return <div className="page-narrow phase-pricing"><h1>{mode==="pricing"?l("plans"):l("clinic")}</h1>
+  <p className="lead">{l("features")}</p>
+  {error?<DataError message={error} retry={refresh}/>:data?<PlanCards plans={data.plans||[]} selected="" onSelect={()=>{}}/>:
+    <InlineAlert>{l("loading")}</InlineAlert>}
+  <p className="phase-actions"><a href="/clinic/signup" className="btn btn-primary">{l("newClinic")}</a>
+   <a href="/clinic/login" className="btn btn-secondary">{l("continue")}</a></p>
+  <InlineAlert>{l("verifiedNote")}</InlineAlert>
+ </div>;
+}
