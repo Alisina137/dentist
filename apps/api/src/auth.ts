@@ -41,11 +41,14 @@ export const auth = betterAuth({
     }
   },
   rateLimit: {
-    enabled: true, window: 60, max: 30,
+    enabled: true, window: 60, max: process.env.NODE_ENV === "test" ? 100 : 30,
     customRules: {
-      "/sign-in/email": { window: 60, max: 8 },
-      "/sign-up/email": { window: 60, max: 5 },
-      "/request-password-reset": { window: 60, max: 5 }
+      "/sign-in/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 8 },
+      "/sign-up/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
+      "/request-password-reset": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
+      ...(process.env.NODE_ENV === "test" ? {
+        "/two-factor/*": { window: 60, max: 100 }
+      } : {})
     }
   },
   plugins: [twoFactor({ issuer: "DandanLink", totpOptions: { digits: 6, period: 30 } })],

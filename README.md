@@ -1,17 +1,17 @@
 # DandanLink
 
-Dental practice management + free patient discovery platform. **Phases 01–02 foundations are implemented, with real-world/browser verification pending.** Do not enter real patient data or use for clinical care.
+Dental practice management + free patient discovery platform. **Phases 01–03 foundations are implemented; browser, local SMTP and healthcare production verification remain pending.** Do not enter real patient data or use for clinical care.
 
 ## Development applications
 
 | Application | Local URL | Phase 01 |
 | --- | --- | --- |
-| Clinic web | http://localhost:3000 | Signup, login, clinic onboarding, subscriptions, settings and status dashboard |
+| Clinic web | http://localhost:3000 | Signup, clinic onboarding, subscriptions, staff, dentist identity and security |
 | Admin web | http://localhost:3001 | TOTP-protected clinic verification, plans, subscriptions and review queue |
 | Patient web | http://localhost:3002 | Public introduction and informational privacy/terms |
 | API | http://localhost:4000 | Better Auth, PostgreSQL and access-protected routes |
 
-Phase 02 enables clinic onboarding, manual verification, plan/version configuration, trial subscriptions and manual payment reconciliation. Patient records, appointments and public booking are NOT released yet.
+Phases 02–03 enable clinic onboarding, manual verification, plan/version configuration, trial subscriptions, staff invitations, tenant role security and unpublished dentist identity drafts. Patient records, appointments and public booking are NOT released yet.
 
 ## Windows PowerShell setup
 
@@ -71,3 +71,18 @@ Run `pnpm db:migrate` after pulling Phase 02. This adds clinic and subscription 
 6. Owner may enter a bank/cash reference at http://localhost:3000/clinic/settings/subscription; an admin must verify it at http://localhost:3001/admin/subscriptions before the subscription activates.
 
 Run `pnpm check` for local lint-equivalent tests/typecheck/build. For automated API integration see `tests/phase02-integration.mjs` and GitHub Actions. Real-world clinical/data-protection clearance is not established by passing CI.
+
+## Phase 03 — Staff roles and invitations
+
+After pulling this phase, run `pnpm install --frozen-lockfile` and `pnpm db:migrate`. Migration 0003 creates active owner memberships for existing clinics.
+
+1. Sign in with a verified clinic owner at http://localhost:3000/clinic.
+2. Open **Staff & Resources**, and enroll an authenticator app if prompted (required before granting privileges).
+3. Select **Invitations**; invite verified email addresses as manager (owner only), dentist, receptionist, assistant or cashier. Staff seats are bounded by the clinic's active/trial subscription plan, including owner and pending invitations.
+4. An email invitation contains a one-time secure link to `/clinic/invite`. The recipient must verify and sign into the exact invited email, then accept the invitation. During localhost development without configured SMTP, the API terminal logs a local-only invitation URL (not an email delivered).
+5. Recipients see the appropriate clinic workspace and only their allowed navigation. Dentists can edit their private **unverified** professional identity draft.
+6. Owner/authorized manager can view **Team**, **Dentists**, **Invitations** and **Security & Access**. Staff changes/revocations immediately invalidate the affected account sessions; the user may sign in again to access any other still-authorized clinic.
+
+Staff roles are stored per clinic and enforced on the backend. Owners cannot be demoted via staff management. Manager role grants cannot exceed their own grant. Suspended clinics do not automatically become publicly bookable.
+
+Checks: `pnpm check` and GitHub Actions PH01–PH03 PostgreSQL integration. See docs/PH03-ACCEPTANCE.md.

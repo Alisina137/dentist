@@ -157,7 +157,9 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
       if (mode === "signup") {
         const result = await authClient.signUp.email({
           name: name.trim(), email: email.trim().toLowerCase(), password,
-          callbackURL: window.location.origin + base + "/verify"
+          callbackURL: window.location.origin + base + "/verify" +
+            (new URLSearchParams(window.location.search).has("next")
+              ? "?next=" + encodeURIComponent(new URLSearchParams(window.location.search).get("next") || "") : "")
         });
         if (result.error) throw result.error;
         setMessage(t("duplicateSafe"));
@@ -165,7 +167,12 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
         const result = await authClient.signIn.email({ email: email.trim().toLowerCase(), password });
         if (result.error) throw result.error;
         const data = result.data as { twoFactorRedirect?: boolean } | null;
-        window.location.assign(data?.twoFactorRedirect ? "/admin/2fa" : base);
+        const nextValue = new URLSearchParams(window.location.search).get("next");
+        const next = nextValue && nextValue.startsWith("/clinic/") && !nextValue.startsWith("//")
+          ? nextValue : base;
+        window.location.assign(data?.twoFactorRedirect
+          ? (audience === "admin" ? "/admin/2fa" : "/clinic/2fa") + "?next=" + encodeURIComponent(next)
+          : audience === "admin" ? base : next);
       } else if (mode === "forgot") {
         await authClient.requestPasswordReset({
           email: email.trim().toLowerCase(), redirectTo: window.location.origin + base + "/reset-password"
@@ -189,7 +196,9 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
       {mode === "verify" ? <>
         <p className="lead" style={{ fontSize: 16 }}>{t("verifyMessage")}</p>
         <InlineAlert kind={isVerificationError ? "error" : "info"}>{isVerificationError ? t("invalidToken") : t("verifyDone")}</InlineAlert>
-        <p style={{ marginBlockStart: 20 }}><a className="btn btn-primary" href={base + "/login"}>{t("login")}</a></p>
+        <p style={{ marginBlockStart: 20 }}><a className="btn btn-primary" href={base + "/login" +
+          (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("next")
+            ? "?next=" + encodeURIComponent(new URLSearchParams(window.location.search).get("next") || "") : "")}>{t("login")}</a></p>
       </> : <>
         <p className="muted">{audience === "admin" ? t("adminSummary") : t("clinicSummary")}</p>
         <form className="form-stack" onSubmit={submit}>
@@ -336,7 +345,7 @@ export function AccountStatus({ audience }: { audience: "clinic" | "admin" }) {
     </div>
   </div>;
 }
-function AdminMfaSetup() {
+export function AdminMfaSetup({ home = "/admin" }: { home?: string } = {}) {
   const { t } = usePreferences();
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -361,7 +370,7 @@ function AdminMfaSetup() {
     try {
       const response = await authClient.twoFactor.verifyTotp({ code });
       if (response.error) throw response.error;
-      window.location.assign("/admin");
+      window.location.assign(home);
     } catch { setError(t("generalError")); } finally { setBusy(false); }
   }
   return <section className="auth-wrap"><div className="card auth-card">
@@ -384,7 +393,7 @@ function AdminMfaSetup() {
     {error && <div style={{ marginBlockStart: 18 }}><InlineAlert kind="error">{error}</InlineAlert></div>}
   </div></section>;
 }
-export function MfaChallenge() {
+export function MfaChallenge({ home = "/admin" }: { home?: string } = {}) {
   const { t } = usePreferences();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -394,7 +403,10 @@ export function MfaChallenge() {
     try {
       const response = await authClient.twoFactor.verifyTotp({ code });
       if (response.error) throw response.error;
-      window.location.assign("/admin");
+      const nextValue = new URLSearchParams(window.location.search).get("next");
+      const next = nextValue && nextValue.startsWith("/clinic/") && !nextValue.startsWith("//")
+        ? nextValue : home;
+      window.location.assign(home === "/admin" ? "/admin" : next);
     } catch { setError(t("generalError")); setBusy(false); }
   }
   return <div className="auth-wrap"><div className="card auth-card">
