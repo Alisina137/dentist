@@ -308,3 +308,166 @@ export function AppointmentsPortal({view}:{view:View}){
   </main>
  </Shell>;
 }
+
+
+function Calendar({space}:{space:Space}){
+ const {t,format}=useWords();
+ const [day,setDay]=useState(todayKabul);
+ const [mode,setMode]=useState<"day"|"week"|"month">("week");
+ const [dentist,setDentist]=useState("all"),[chair,setChair]=useState("all"),[status,setStatus]=useState("all");
+ useEffect(()=>{const q=new URLSearchParams(location.search);
+  const from=q.get("date");if(from&&/^\d{4}-\d\d-\d\d$/.test(from))setDay(from);
+  if(window.innerWidth<800)setMode("day");
+ },[]);
+ const base=url(space.clinicId);
+ const weekStart=addDays(day,-satIndex(day));
+ const range=mode==="day"?{from:day,to:day}:mode==="week"?
+ {from:weekStart,to:addDays(weekStart,6)}:{
+  from:day.slice(0,7)+"-01",
+  to:addDays(addDays(day.slice(0,7)+"-01",32).slice(0,7)+"-01",-1)
+ };
+ const q=new URLSearchParams({from:range.from,to:range.to,
+  ...(dentist!=="all"&&space.role!=="dentist"?{providerId:dentist}:{}),
+  ...(chair!=="all"?{resourceId:chair}:{}),
+  ...(status!=="all"?{status}:{})
+ });
+ const {data,error,retry}=useData(base+"/calendar?"+q.toString());
+ const [catalog,setCatalog]=useState<{doctors:Doctor[];resources:Resource[]}>({doctors:[],resources:[]});
+ useEffect(()=>{
+  let mounted=true;
+  Promise.all([ops(base+"/hours"),ops(base+"/resources")]).then(([h,c])=>{
+   if(mounted)setCatalog({doctors:h.clinicians,resources:c.resources});}).catch(()=>{});
+  return()=>{mounted=false;};
+ },[base]);
+ const rows:Booking[]=data?.appointments||[];
+ const groups=new Map<string,Booking[]>();
+ for(const a of rows){const d=localDate(a.startAt);
+  groups.set(d,[...(groups.get(d)||[]),a]);}
+ const summary={total:rows.length,confirmed:rows.filter(x=>x.status==="confirmed").length,
+  arrived:rows.filter(x=>x.status==="arrived").length,
+  inCare:rows.filter(x=>x.status==="in_treatment").length,
+  completed:rows.filter(x=>x.status==="completed").length};
+ const move=(delta:number)=>setDay(current=>{
+  if(mode==="day")return addDays(current,delta);
+  if(mode==="week")return addDays(current,delta*7);
+  const pivot=new Date(current.slice(0,7)+"-15T12:00:00Z");
+  pivot.setUTCMonth(pivot.getUTCMonth()+delta);
+  return pivot.toISOString().slice(0,7)+"-01";
+ });
+ const selected=groups.get(day)||[];
+ const days=mode==="month"?Array.from({length:
+  Math.ceil((satIndex(range.from)+Math.round((Date.parse(range.to+"T00:00:00Z")-
+  Date.parse(range.from+"T00:00:00Z"))/86400000)+1)/7)*7},(_,i)=>
+    addDays(range.from,i-satIndex(range.from))):
+  mode==="week"?Array.from({length:7},(_,i)=>addDays(range.from,i)):[day];
+ return <div className="ph06-stack">
+  <section className="ph06-kpis">
+   {([["total","bookedCount"],["confirmed","scheduled"],["arrived","waiting"],
+    ["inCare","inCare"],["completed","done"]] as const).map(([key,label],i)=>
+    <article key={key} className="ph06-kpi"><span aria-hidden="true">{["▣","◷","◎","✦","✓"][i]}</span>
+     <div><small>{t(label)}</small><strong>{summary[key]}</strong></div></article>)}
+  </section>
+  <section className="card ph06-panel">
+   <div className="ph06-calendar-heading"><div>
+    <span className="ph06-eyebrow">{t("appointmentsTitle")}</span>
+    <h2>{format(day+"T12:00:00+04:30",{month:"long",year:"numeric"})}</h2>
+    <p>{t("clinicOnly")}</p></div>
+    <a className="btn btn-primary" href={href(space.clinicId,"new",day)}>+ {t("newAppointment")}</a>
+   </div>
+   <div className="ph06-navigation-row">
+    <div className="ph06-date-navigator">
+     <MiniButton onClick={()=>move(-1)}>‹</MiniButton>
+     <button className="ph06-today-btn" onClick={()=>setDay(todayKabul())}>{t("today")}</button>
+     <MiniButton onClick={()=>move(1)}>›</MiniButton>
+     <input aria-label={t("date")} type="date" value={day} onChange={e=>setDay(e.target.value)}
+      className="ph06-date-picker"/>
+    </div>
+    <div className="ph06-segmented" role="group" aria-label={t("calendar")}>
+     {(["day","week","month"] as const).map(view=><button key={view}
+      className={mode===view?"active":""} aria-pressed={mode===view} onClick={()=>setMode(view)}>
+      {t(view)}</button>)}
+    </div>
+   </div>
+   <div className="ph06-filter-bar">
+    {space.role!=="dentist"&&<Select label={t("providerFilter")} value={dentist}
+     onChange={setDentist} options={[{value:"all",label:t("allProviders")},
+      ...catalog.doctors.map(x=>({value:x.membershipId,label:x.name}))]}/>}
+    <Select label={t("chairFilter")} value={chair} onChange={setChair}
+     options={[{value:"all",label:t("allChairs")},
+      ...catalog.resources.filter(x=>x.active&&x.kind==="chair").map(x=>({value:x.id,label:x.label}))]}/>
+    <Select label={t("statusFilter")} value={status} onChange={setStatus}
+     options={[{value:"all",label:t("allStatuses")},
+      ...statusNames.map(x=>({value:x,label:t(x)}))]}/>
+    <button className="ph06-refresh" onClick={retry} aria-label={t("refresh")}>↻ {t("refresh")}</button>
+   </div>
+   {error?<Warning message={error} retry={retry}/>:!data?<Busy/>:<>
+    <div className="ph06-legend">{["confirmed","arrived","in_treatment","completed","cancelled","no_show"].map(x=>
+     <span key={x}><Status value={x}/></span>)}</div>
+    {mode==="day"?<div className="ph06-day-layout">
+      <div className="ph06-timeline" role="list" aria-label={t("dayAppointments")}>
+       {Array.from({length:13},(_,i)=>i+7).map(hour=><div className="ph06-timeline-hour" key={hour}>
+        <span><bdi dir="ltr">{String(hour).padStart(2,"0")}:00</bdi></span>
+        <div className="ph06-timeline-row">
+         {selected.filter(a=>Number(localTime(a.startAt).slice(0,2))===hour).map(a=>
+          <AppointmentCard key={a.id} booking={a} cid={space.clinicId} doctors={catalog.doctors}/>)}
+        </div>
+       </div>)}
+       {selected.filter(a=>Number(localTime(a.startAt).slice(0,2))<7||
+        Number(localTime(a.startAt).slice(0,2))>19).map(a=>
+        <AppointmentCard key={a.id} booking={a} cid={space.clinicId} doctors={catalog.doctors}/>)}
+      </div>
+      {selected.length===0&&<EmptyState cid={space.clinicId} day={day}/>}
+     </div>:mode==="week"?<div className="ph06-week-grid">
+      {days.map(date=><div className={"ph06-week-column"+(date===todayKabul()?" ph06-is-today":"")} key={date}>
+       <button className="ph06-week-date" onClick={()=>{setDay(date);setMode("day");}}>
+        <span>{format(date+"T12:00:00+04:30",{weekday:"short"})}</span>
+        <strong>{date.slice(-2)}</strong><small>{(groups.get(date)||[]).length} {t("count")}</small></button>
+       <div className="ph06-week-items">{(groups.get(date)||[]).map(a=>
+        <AppointmentCard key={a.id} booking={a} cid={space.clinicId} compact doctors={catalog.doctors}/>)}
+        {!(groups.get(date)||[]).length&&<span className="ph06-no-items">—</span>}
+       </div>
+      </div>)}
+     </div>:<div className="ph06-month-grid">
+      {days.map(date=><button key={date} className={"ph06-month-cell"+
+        (date.slice(0,7)!==range.from.slice(0,7)?" outside":"")+
+        (date===todayKabul()?" today":"")+
+        (date===day?" selected":"")}
+        onClick={()=>{setDay(date);setMode("day");}}>
+        <span>{date.slice(-2)}</span>
+        {(groups.get(date)||[]).length>0&&<span className="ph06-month-count">
+        {(groups.get(date)||[]).length} {t("count")}</span>}
+        <span className="ph06-month-dots">{(groups.get(date)||[]).slice(0,4).map(a=>
+         <i key={a.id} className={"ph06-dot-"+a.status}/>)}</span>
+      </button>)}
+     </div>}
+    <div className="ph06-agenda-heading">
+     <div><h3>{t("agenda")} · {format(day+"T12:00:00+04:30")}</h3>
+      <span>{selected.length} {t("count")}</span></div>
+     <button className="btn btn-secondary" onClick={()=>{setMode("day");setDay(todayKabul());}}>{t("today")}</button>
+    </div>
+    {selected.length?<div className="ph06-agenda-list">{selected.map(a=>
+      <AppointmentCard key={a.id} booking={a} cid={space.clinicId} doctors={catalog.doctors}/>)}
+     </div>:<EmptyState cid={space.clinicId} day={day}/>}
+   </>}
+  </section>
+ </div>;
+}
+function AppointmentCard({booking,cid,doctors,compact=false}:{booking:Booking;cid:string;
+ doctors:Doctor[];compact?:boolean}){
+ const {t}=useWords(),name=booking.patient?.preferredName||"—";
+ const doctor=doctors.find(x=>x.membershipId===booking.providerMembershipId)?.name||t("dentist");
+ return <a className={"ph06-appointment-card ph06-card-"+booking.status+(compact?" compact":"")}
+ href={"/clinic/appointments/"+booking.id+"?clinic="+encodeURIComponent(cid)}>
+  <div className="ph06-appointment-top"><time>{localTime(booking.startAt)}–{localTime(booking.endAt)}</time>
+   {!compact&&<Status value={booking.status}/>}</div>
+  <strong>{name} {compact?"":booking.patient?.familyName||""}</strong>
+  <span>{booking.serviceName}</span>
+  <small>{doctor} · <bdi dir="ltr">{booking.patient?.patientNumber||"—"}</bdi></small>
+ </a>;
+}
+function EmptyState({cid,day}:{cid:string;day?:string}){
+ const {t}=useWords();return <div className="ph06-empty">
+  <div className="ph06-empty-icon" aria-hidden="true">▦</div><h3>{t("empty")}</h3>
+  <p>{t("emptyMessage")}</p><a className="btn btn-primary" href={href(cid,"new",day)}>
+  + {t("newAppointment")}</a></div>;
+}
