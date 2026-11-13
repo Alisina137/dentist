@@ -87,3 +87,93 @@ export const outboxEvent = pgTable("outbox_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [index("outbox_events_pending_idx").on(table.state, table.availableAt)]);
+
+
+/** PH02 practice tenancy: one owner per clinic until staff memberships ship in PH03. */
+export const clinic = pgTable("clinics", {
+  id: text("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull().references(() => user.id),
+  legalName: text("legal_name").notNull(),
+  displayName: text("display_name").notNull(),
+  clinicType: text("clinic_type").notNull(),
+  province: text("province").notNull(),
+  city: text("city").notNull(),
+  district: text("district"),
+  address: text("address").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  licenseNumber: text("license_number"),
+  timezone: text("timezone").notNull().default("Asia/Kabul"),
+  status: text("status").notNull().default("draft"),
+  selectedPlanId: text("selected_plan_id").references(() => planVersion.id),
+  revision: integer("revision").notNull().default(1),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+}, table => [index("clinics_owner_idx").on(table.ownerUserId), uniqueIndex("clinics_license_idx").on(table.licenseNumber)]);
+
+export const planVersion = pgTable("platform_plan_versions", {
+  id: text("id").primaryKey(),
+  planKey: text("plan_key").notNull(),
+  version: integer("version").notNull(),
+  label: text("label").notNull(),
+  billingPeriod: text("billing_period").notNull(),
+  priceAfn: integer("price_afn").notNull(),
+  staffLimit: integer("staff_limit").notNull(),
+  branchLimit: integer("branch_limit").notNull().default(1),
+  trialDays: integer("trial_days").notNull().default(14),
+  graceDays: integer("grace_days").notNull().default(7),
+  entitlements: text("entitlements").notNull().default("core"),
+  active: boolean("active").notNull().default(true),
+  effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: text("created_by").references(() => user.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, table => [uniqueIndex("plan_key_version_period_idx").on(table.planKey,table.version,table.billingPeriod)]);
+
+export const clinicSubscription = pgTable("clinic_subscriptions", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().unique().references(() => clinic.id),
+  planVersionId: text("plan_version_id").notNull().references(() => planVersion.id),
+  status: text("status").notNull().default("trialing"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  currentPeriodEndsAt: timestamp("current_period_ends_at", { withTimezone: true }),
+  pendingPlanVersionId: text("pending_plan_version_id").references(() => planVersion.id),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const platformInvoice = pgTable("platform_subscription_invoices", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(() => clinic.id),
+  planVersionId: text("plan_version_id").notNull().references(() => planVersion.id),
+  amountAfn: integer("amount_afn").notNull(),
+  status: text("status").notNull().default("awaiting"),
+  evidenceReference: text("evidence_reference"),
+  verifiedBy: text("verified_by").references(() => user.id),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  periodEndsAt: timestamp("period_ends_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+},table=>[index("platform_invoice_clinic_idx").on(table.clinicId)]);
+
+export const clinicEvidence = pgTable("clinic_evidence", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(() => clinic.id),
+  kind: text("kind").notNull(),
+  fileName: text("file_name").notNull(),
+  mime: text("mime").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  digest: text("digest").notNull(),
+  content: text("content").notNull(),
+  uploadedBy: text("uploaded_by").notNull().references(() => user.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+},table=>[index("clinic_evidence_clinic_idx").on(table.clinicId)]);
+
+export const clinicReview = pgTable("clinic_review_events", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(() => clinic.id),
+  actorId: text("actor_id").notNull().references(() => user.id),
+  action: text("action").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+},table=>[index("clinic_review_clinic_idx").on(table.clinicId,table.createdAt)]);
