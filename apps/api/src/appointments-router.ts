@@ -3,7 +3,7 @@ import {authStaff,AccessFault,type StaffRequest} from "./staff-access.js";
 import {AppointmentFault,access,cid,create,list,detail,reschedule,transition} from "./appointments-service.js";
 import {OpsFault} from "./operations-validation.js";
 import {db,schema} from "@dandanlink/db";
-import {and,eq,asc} from "drizzle-orm";
+import {and,eq,asc,desc} from "drizzle-orm";
 const work=(fn:(req:StaffRequest,res:Response)=>Promise<void>)=>
  (req:StaffRequest,res:Response,next:NextFunction)=>{fn(req,res).catch(next);};
 const privateResponse=(res:Response)=>res.setHeader("Cache-Control","private, no-store");
@@ -41,6 +41,25 @@ export function appointmentsRouter(){
    if(key!=="total"&&key in counts)counts[key]++;
   }
   privateResponse(res);res.json({counts,timezone:"Asia/Kabul"});
+ }));
+ clinic.get("/patients/:patientId/bookings",work(async(req,res)=>{
+  const context=await access(req,cid(req),"read");
+  const patient=await db.query.clinicPatient.findFirst({where:and(
+   eq(schema.clinicPatient.clinicId,cid(req)),
+   eq(schema.clinicPatient.id,String(req.params.patientId)))});
+  if(!patient){res.status(404).json({code:"PATIENT_NOT_FOUND"});return;}
+  const conditions=[eq(schema.clinicAppointment.clinicId,cid(req)),
+   eq(schema.clinicAppointment.patientId,patient.id)];
+  if(context.role==="dentist")
+   conditions.push(eq(schema.clinicAppointment.providerMembershipId,context.membership.id));
+  const rows=await db.select({
+   id:schema.clinicAppointment.id,startAt:schema.clinicAppointment.startAt,
+   endAt:schema.clinicAppointment.endAt,status:schema.clinicAppointment.status,
+   serviceName:schema.clinicAppointment.serviceName,
+   providerMembershipId:schema.clinicAppointment.providerMembershipId
+  }).from(schema.clinicAppointment).where(and(...conditions))
+   .orderBy(desc(schema.clinicAppointment.startAt)).limit(60);
+  privateResponse(res);res.json({appointments:rows});
  }));
  clinic.get("/patients/search",work(async(req,res)=>{
   const context=await access(req,cid(req),"read");
