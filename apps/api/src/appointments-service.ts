@@ -49,7 +49,7 @@ async function log(tx:any,cid:string,appointmentId:string,actorId:string,
  await tx.insert(schema.outboxEvent).values({id:randomUUID(),kind:"appointment."+action,
   state:"pending",safePayload:JSON.stringify({clinicId:cid,appointmentId})});
 }
-async function validate(cid:string,raw:any,role:string,membership:string){
+async function validate(cid:string,raw:any,role:string,membership:string,ignoreId?:string){
  if(!raw||typeof raw!=="object")fail(422,"INVALID_BODY");
  const patientId=String(raw.patientId||""),serviceId=String(raw.serviceId||""),
   providerId=String(raw.providerId||""),resourceId=raw.resourceId||null;
@@ -80,7 +80,7 @@ async function validate(cid:string,raw:any,role:string,membership:string){
  if(startAt.getTime()<Date.now()-60000)fail(422,"SLOT_IN_PAST");
  let preview:any;
  try{preview=await availabilityPreview(cid,{date,serviceId,providerId,
-  resourceId:resourceId||undefined});}
+  resourceId:resourceId||undefined,ignoreAppointmentId:ignoreId});}
  catch(err:any){if(typeof err?.status==="number")fail(err.status,err.code);throw err;}
  if(!preview.slots.some((s:any)=>s.start===raw.start&&(s.resourceId||null)===(resourceId||null)))
   fail(409,"SLOT_NOT_AVAILABLE");
@@ -148,7 +148,7 @@ export async function reschedule(req:StaffRequest,clinic:string,id:string,body:a
    providerId:body.providerId||old.providerMembershipId,
    resourceId:body.resourceId===undefined?old.resourceId:body.resourceId,
    date:body.date,start:body.start,source:old.source,adminNote:old.adminNote
-  },ctx.role,ctx.membership.id);
+  },ctx.role,ctx.membership.id,id);
   const [next]=await tx.update(schema.clinicAppointment).set({
    serviceId:v.service.id,serviceVersion:v.service.version,serviceName:v.service.name,
    priceSnapshotAfn:v.service.basePriceAfn,durationMinutes:v.service.durationMinutes,
