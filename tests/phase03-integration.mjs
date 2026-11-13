@@ -160,8 +160,9 @@ expect(await http("/v1/team/clinics/"+clinic.id+"/staff/"+cashierAccepted.member
   [200],"manager suspends cashier");
 expect(await http("/v1/team/context","GET",undefined,cashier.jar),[401],
   "suspension immediately invalidates global session");
-const cashierAgain=expect(await http("/api/auth/sign-in/email","POST",
-  {email:cashier.email,password:PASSWORD}),[200],"cashier fresh login");
+const cashierAgain=await http("/api/auth/sign-in/email","POST",
+  {email:cashier.email,password:PASSWORD});
+expect(cashierAgain,[200],"cashier fresh login");
 cashier.jar=jarOf(cashierAgain);
 expect(await http("/v1/team/clinics/"+clinic.id+"/staff/"+cashierAccepted.membershipId,
   "GET",undefined,cashier.jar),[403],"suspended member denied even after new login");
@@ -179,8 +180,9 @@ expect(await http("/v1/team/clinics/"+clinic.id+"/staff/"+dentistAccepted.member
   "POST",{action:"revoke",reason:"Staff service ended"},owner.jar),[200],"owner revokes dentist");
 expect(await http("/v1/team/context","GET",undefined,dentist.jar),[401],
   "revocation invalidates session");
-const renewed=expect(await http("/api/auth/sign-in/email","POST",
-  {email:dentist.email,password:PASSWORD}),[200],"revoked dentist signs in globally");
+const renewed=await http("/api/auth/sign-in/email","POST",
+  {email:dentist.email,password:PASSWORD});
+expect(renewed,[200],"revoked dentist signs in globally");
 dentist.jar=jarOf(renewed);
 const after=expect(await http("/v1/team/context","GET",undefined,dentist.jar),[200],"revoked member context");
 assert.ok(!after.clinics.some(c=>c.clinicId===clinic.id),"revoked user must not see clinic");
