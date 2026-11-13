@@ -107,7 +107,7 @@ assert.equal((ok(await api("/v1/clinics/"+clinic.id,"GET",undefined,owner.cookie
 ok(await api("/v1/admin/clinics/"+clinic.id+"/review","POST",
  {action:"suspend",confirmation:"Smile Center",reason:"Verification discrepancy"},admin.cookie),
  [200],"suspension");
-assert.equal((ok(await api("/v1/clinics/"+clinic.id,"GET",undefined,owner.cookie),[200],"suspended")).clinic.status,"suspend");
+assert.equal((ok(await api("/v1/clinics/"+clinic.id,"GET",undefined,owner.cookie),[200],"suspended")).clinic.status,"suspended");
 const invoice=ok(await api("/v1/clinics/"+clinic.id+"/subscription/request","POST",
  {planVersionId:plan.id,evidenceReference:"bank-transfer-12345"},owner.cookie),[201],"request manual payment");
 ok(await api("/v1/clinics/"+clinic.id+"/subscription/request","POST",
