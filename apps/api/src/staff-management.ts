@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db, schema } from "@dandanlink/db";
 import { audit, authStaff, capabilities, fail, mayAssign, optional, outbox,
   permission, required, revokeSessions, roleValid, scope, type StaffRequest } from "./staff-access.js";
@@ -55,7 +55,7 @@ export function staffManagementRouter(){
     const clinicId=cid(req);
     await permission(req,clinicId,"dentist.read");
     const members=await db.select().from(schema.clinicMembership).where(
-      and(eq(schema.clinicMembership.clinicId,clinicId),eq(schema.clinicMembership.role,"dentist"))
+      and(eq(schema.clinicMembership.clinicId,clinicId),or(eq(schema.clinicMembership.role,"dentist"),eq(schema.clinicMembership.clinicianEnabled,true)))
     ).orderBy(desc(schema.clinicMembership.joinedAt));
     const dentists=[];
     for(const m of members){
@@ -95,7 +95,7 @@ export function staffManagementRouter(){
     const m=await memberById(clinicId,String(req.params.membershipId));
     const privileged=capabilities[ctx.role].includes("staff.read");
     if(!privileged&&m.userId!==req.actor!.id)await permission(req,clinicId,"staff.read");
-    const draft=m.role==="dentist"?await db.query.dentistDraft.findFirst({
+    const draft=(m.role==="dentist"||m.clinicianEnabled)?await db.query.dentistDraft.findFirst({
       where:eq(schema.dentistDraft.membershipId,m.id)
     }):null;
     const events=privileged?await db.select({
@@ -108,7 +108,7 @@ export function staffManagementRouter(){
     res.json({member:await person(m),draft:draft||null,events,
       canManage:ctx.role==="owner"&&m.role!=="owner"&&m.userId!==req.actor!.id||
         ctx.role==="manager"&&m.role!=="owner"&&m.role!=="manager"&&m.userId!==req.actor!.id,
-      canEditDentist:m.role==="dentist" && (privileged||m.userId===req.actor!.id)});
+      canEditDentist:(m.role==="dentist"||m.clinicianEnabled||m.role==="owner"&&m.userId===req.actor!.id) && (privileged||m.userId===req.actor!.id)});
   }));
   router.post("/staff/:membershipId/role",work(async(req,res)=>{
     const clinicId=cid(req),ctx=await permission(req,clinicId,"staff.manage",true);
@@ -121,7 +121,7 @@ export function staffManagementRouter(){
     const reason=required(req.body?.reason,5,300,"REASON");
     await db.transaction(async tx=>{
       const changed=await tx.update(schema.clinicMembership).set({
-        role:nextRole,changedAt:new Date(),reason
+        role:nextRole,clinicianEnabled:nextRole==="dentist" || (nextRole==="manager"&&m.clinicianEnabled),changedAt:new Date(),reason
       }).where(and(eq(schema.clinicMembership.id,m.id),eq(schema.clinicMembership.role,m.role),
         eq(schema.clinicMembership.status,"active"))).returning({id:schema.clinicMembership.id});
       if(!changed.length)fail(409,"STALE_MEMBERSHIP");
@@ -172,6 +172,36 @@ export function staffManagementRouter(){
     res.json({member:await person(await memberById(clinicId,m.id)),
       sessionsRevoked:status!=="active"});
   }));
+  // Independent clinical affiliation: a licensed owner/manager can also maintain a
+  // professional dentist draft without relinquishing operational ownership/management.
+  router.post("/staff/:membershipId/clinician",work(async(req,res)=>{
+    const clinicId=cid(req),ctx=await permission(req,clinicId,"staff.manage",true);
+    if(ctx.role!=="owner")fail(403,"OWNER_ONLY");
+    const m=await memberById(clinicId,String(req.params.membershipId));
+    if(m.role!=="manager"&&m.role!=="owner")fail(409,"CLINICIAN_AFFILIATION_NOT_ELIGIBLE");
+    if(m.role==="owner"&&m.userId!==req.actor!.id)fail(403,"OWNER_PROTECTED");
+    if(m.status!=="active")fail(409,"MEMBERSHIP_INACTIVE");
+    if(typeof req.body?.enabled!=="boolean")fail(422,"INVALID_CLINICIAN_FLAG");
+    const enabled=req.body.enabled as boolean;
+    if(enabled===m.clinicianEnabled)fail(409,"AFFILIATION_UNCHANGED");
+    required(req.body?.reason,5,300,"REASON");
+    await db.transaction(async tx=>{
+      const changed=await tx.update(schema.clinicMembership).set({
+        clinicianEnabled:enabled,changedAt:new Date(),reason:req.body.reason
+      }).where(and(eq(schema.clinicMembership.id,m.id),
+        eq(schema.clinicMembership.clinicianEnabled,m.clinicianEnabled))).returning({id:schema.clinicMembership.id});
+      if(!changed.length)fail(409,"STALE_MEMBERSHIP");
+      if(enabled){
+        const u=await db.query.user.findFirst({where:eq(schema.user.id,m.userId)});
+        await tx.insert(schema.dentistDraft).values({
+          membershipId:m.id,clinicId,userId:m.userId,displayName:u?.name||"Dentist",updatedBy:req.actor!.id
+        }).onConflictDoNothing();
+      }
+      if(m.userId!==req.actor!.id)await revokeSessions(tx,m.userId);
+      await audit(tx,req.actor!.id,clinicId,enabled?"staff.clinician.enabled":"staff.clinician.disabled",m.id);
+    });
+    res.json({member:await person(await memberById(clinicId,m.id)),verified:false});
+  }));
   router.post("/staff/:membershipId/force-logout",work(async(req,res)=>{
     const clinicId=cid(req),ctx=await permission(req,clinicId,"staff.manage",true);
     const m=await memberById(clinicId,String(req.params.membershipId));
@@ -187,7 +217,7 @@ export function staffManagementRouter(){
   router.post("/staff/:membershipId/dentist",work(async(req,res)=>{
     const clinicId=cid(req),ctx=await scope(req,clinicId);
     const m=await memberById(clinicId,String(req.params.membershipId));
-    if(m.role!=="dentist"||m.status!=="active")fail(409,"NOT_ACTIVE_DENTIST");
+    if(!(m.role==="dentist"||m.clinicianEnabled||m.role==="owner"&&m.userId===req.actor!.id)||m.status!=="active")fail(409,"NOT_ACTIVE_DENTIST");
     const self=m.userId===req.actor!.id;
     if(!self && !capabilities[ctx.role].includes("dentist.edit"))
       await permission(req,clinicId,"dentist.edit");
@@ -200,7 +230,7 @@ export function staffManagementRouter(){
         .where(eq(schema.clinicMembership.id,m.id)).for("update");
       const latest=await tx.select().from(schema.clinicMembership)
         .where(eq(schema.clinicMembership.id,m.id));
-      if(latest[0]?.status!=="active"||latest[0]?.role!=="dentist")fail(409,"NOT_ACTIVE_DENTIST");
+      if(latest[0]?.status!=="active"||!(latest[0]?.role==="dentist"||latest[0]?.clinicianEnabled||latest[0]?.role==="owner"&&latest[0]?.userId===req.actor!.id))fail(409,"NOT_ACTIVE_DENTIST");
       if(existing){
         const changed=await tx.update(schema.dentistDraft).set({
           ...input,draftVersion:existing.draftVersion+1,
@@ -213,6 +243,10 @@ export function staffManagementRouter(){
         await tx.insert(schema.dentistDraft).values({
           membershipId:m.id,clinicId,userId:m.userId,...input,updatedBy:req.actor!.id
         });
+      }
+      if(m.role==="owner" && m.userId===req.actor!.id && !m.clinicianEnabled){
+        await tx.update(schema.clinicMembership).set({clinicianEnabled:true,changedAt:new Date()})
+          .where(eq(schema.clinicMembership.id,m.id));
       }
       await audit(tx,req.actor!.id,clinicId,"dentist.draft.updated",m.id);
     });
