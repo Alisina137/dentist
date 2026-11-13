@@ -196,12 +196,24 @@ export function staffManagementRouter(){
     const existing=await db.query.dentistDraft.findFirst({where:eq(schema.dentistDraft.membershipId,m.id)});
     if(existing && Number(req.body?.draftVersion)!==existing.draftVersion)fail(409,"STALE_DENTIST_DRAFT");
     await db.transaction(async tx=>{
-      await tx.insert(schema.dentistDraft).values({
-        membershipId:m.id,clinicId,userId:m.userId,...input,updatedBy:req.actor!.id
-      }).onConflictDoUpdate({target:schema.dentistDraft.membershipId,set:{
-        ...input,draftVersion:(existing?.draftVersion||0)+1,
-        updatedBy:req.actor!.id,updatedAt:new Date(),verificationState:"unverified"
-      }});
+      await tx.select({id:schema.clinicMembership.id}).from(schema.clinicMembership)
+        .where(eq(schema.clinicMembership.id,m.id)).for("update");
+      const latest=await tx.select().from(schema.clinicMembership)
+        .where(eq(schema.clinicMembership.id,m.id));
+      if(latest[0]?.status!=="active"||latest[0]?.role!=="dentist")fail(409,"NOT_ACTIVE_DENTIST");
+      if(existing){
+        const changed=await tx.update(schema.dentistDraft).set({
+          ...input,draftVersion:existing.draftVersion+1,
+          updatedBy:req.actor!.id,updatedAt:new Date(),verificationState:"unverified"
+        }).where(and(eq(schema.dentistDraft.membershipId,m.id),
+          eq(schema.dentistDraft.draftVersion,existing.draftVersion)))
+          .returning({id:schema.dentistDraft.membershipId});
+        if(!changed.length)fail(409,"STALE_DENTIST_DRAFT");
+      }else{
+        await tx.insert(schema.dentistDraft).values({
+          membershipId:m.id,clinicId,userId:m.userId,...input,updatedBy:req.actor!.id
+        });
+      }
       await audit(tx,req.actor!.id,clinicId,"dentist.draft.updated",m.id);
     });
     res.json({draft:await db.query.dentistDraft.findFirst({where:eq(schema.dentistDraft.membershipId,m.id)})});
