@@ -1,0 +1,28 @@
+{
+  "name": "dandanlink",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.27.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "concurrently -k -n API,CLINIC,ADMIN,PATIENT -c cyan,green,magenta,blue \"pnpm dev:api\" \"pnpm dev:clinic\" \"pnpm dev:admin\" \"pnpm dev:patient\"",
+    "dev:api": "pnpm --filter @dandanlink/api dev",
+    "dev:clinic": "pnpm --filter @dandanlink/clinic-web dev",
+    "dev:admin": "pnpm --filter @dandanlink/admin-web dev",
+    "dev:patient": "pnpm --filter @dandanlink/patient-web dev",
+    "db:migrate": "pnpm --filter @dandanlink/db migrate",
+    "db:generate": "pnpm --filter @dandanlink/db generate",
+    "admin:grant": "pnpm --filter @dandanlink/api grant:admin",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build",
+    "test": "node --test tests/*.test.mjs",
+    "check": "pnpm test && pnpm typecheck && pnpm build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.3",
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.6",
+    "drizzle-kit": "^0.31.5"
+  }
+}
