@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StatusBar,
+  ActivityIndicator, Pressable, RefreshControl, ScrollView, StatusBar,
   StyleSheet, Text, TextInput, View
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -228,7 +228,7 @@ function PatientApp(){
     <View style={styles.headerBadge}><Text style={styles.headerBadgeText}>AF</Text></View>
   </View>;
 
-  const Bottom=<View style={styles.bottomNav}>
+  const Bottom=<View style={[styles.bottomNav,{flexDirection:flow}]}>
     {([
       ["home","⌂"],["appointments","▤"],["saved","♡"],["account","◉"]
     ] as [Tab,string][]).map(([key,icon])=><Pressable key={key}
