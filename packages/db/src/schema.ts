@@ -411,3 +411,61 @@ export const clinicScheduleException=pgTable("clinic_schedule_exceptions",{
   createdBy:text("created_by").notNull().references(()=>user.id),
   createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
 },t=>[index("clinic_exception_date_idx").on(t.clinicId,t.startDate,t.endDate)]);
+
+/** PH06: persisted internal bookings; PostgreSQL migration owns exclusion constraints. */
+export const clinicAppointment = pgTable("clinic_appointments",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ serviceId:text("service_id").notNull().references(()=>clinicService.id),
+ serviceVersion:integer("service_version").notNull(),
+ serviceName:text("service_name").notNull(),
+ priceSnapshotAfn:integer("price_snapshot_afn").notNull(),
+ durationMinutes:integer("duration_minutes").notNull(),
+ bufferMinutes:integer("buffer_minutes").notNull(),
+ providerMembershipId:text("provider_membership_id").notNull().references(()=>clinicMembership.id),
+ resourceId:text("resource_id").references(()=>clinicResource.id),
+ startAt:timestamp("start_at",{withTimezone:true}).notNull(),
+ endAt:timestamp("end_at",{withTimezone:true}).notNull(),
+ status:text("status").notNull().default("confirmed"),
+ source:text("source").notNull(),adminNote:text("admin_note"),
+ revision:integer("revision").notNull().default(1),
+ checkedInAt:timestamp("checked_in_at",{withTimezone:true}),
+ treatmentStartedAt:timestamp("treatment_started_at",{withTimezone:true}),
+ completedAt:timestamp("completed_at",{withTimezone:true}),
+ cancelledAt:timestamp("cancelled_at",{withTimezone:true}),
+ cancellationReason:text("cancellation_reason"),
+ noShowAt:timestamp("no_show_at",{withTimezone:true}),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ updatedBy:text("updated_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ index("appointment_clinic_time_idx").on(t.clinicId,t.startAt,t.status),
+ index("appointment_patient_idx").on(t.clinicId,t.patientId,t.startAt),
+ index("appointment_provider_idx").on(t.clinicId,t.providerMembershipId,t.startAt)
+]);
+export const clinicAppointmentEvent=pgTable("clinic_appointment_events",{
+ id:text("id").primaryKey(),
+ appointmentId:text("appointment_id").notNull().references(()=>clinicAppointment.id),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ action:text("action").notNull(),fromStatus:text("from_status"),toStatus:text("to_status"),
+ reason:text("reason"),
+ previousStartAt:timestamp("previous_start_at",{withTimezone:true}),
+ previousEndAt:timestamp("previous_end_at",{withTimezone:true}),
+ nextStartAt:timestamp("next_start_at",{withTimezone:true}),
+ nextEndAt:timestamp("next_end_at",{withTimezone:true}),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("appointment_event_idx").on(t.clinicId,t.appointmentId,t.createdAt)]);
+export const clinicAppointmentIdempotency=pgTable("clinic_appointment_idempotency",{
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ requestKey:text("request_key").notNull(),
+ requestDigest:text("request_digest").notNull(),
+ appointmentId:text("appointment_id").notNull().references(()=>clinicAppointment.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("appointment_idempotency_key").on(t.clinicId,t.actorId,t.requestKey),
+ index("appointment_idempotency_lookup").on(t.clinicId,t.appointmentId)
+]);
