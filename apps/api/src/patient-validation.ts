@@ -5,9 +5,9 @@ export class PatientError extends Error {
     super(code);
   }
 }
-export const fail=(statusCode:number,code:string,extra?:Record<string,unknown>):never=>{
+export function fail(statusCode:number,code:string,extra?:Record<string,unknown>):never {
   throw new PatientError(statusCode,code,extra);
-};
+}
 export function str(value:unknown,min:number,max:number,code:string):string{
   if(typeof value!=="string"||value.trim().length<min||value.trim().length>max)
     fail(422,"INVALID_"+code);
