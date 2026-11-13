@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 /** Better Auth-owned tables. Do not accept roles from client signup payloads. */
 export const user = pgTable("auth_users", {
@@ -233,3 +233,86 @@ export const dentistDraft = pgTable("clinic_dentist_drafts", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, t => [index("dentist_drafts_clinic_idx").on(t.clinicId)]);
+
+
+/** PH05 clinic-local demographic registry; never expose in patient marketplace APIs. */
+export const clinicPatientCounter = pgTable("clinic_patient_counters", {
+  clinicId: text("clinic_id").primaryKey().references(()=>clinic.id),
+  nextNumber: integer("next_number").notNull().default(1)
+});
+
+export const clinicPatient = pgTable("clinic_patients", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(()=>clinic.id),
+  patientNumber: text("patient_number").notNull(),
+  preferredName: text("preferred_name").notNull(),
+  familyName: text("family_name"),
+  normalizedName: text("normalized_name").notNull(),
+  phone: text("phone"),
+  phoneVerified: boolean("phone_verified").notNull().default(false),
+  alternateContact: text("alternate_contact"),
+  dateOfBirth: date("date_of_birth",{mode:"string"}),
+  ageEstimate: integer("age_estimate"),
+  dobIsEstimated: boolean("dob_is_estimated").notNull().default(false),
+  province: text("province"),
+  city: text("city"),
+  address: text("address"),
+  emergencyContact: text("emergency_contact"),
+  importSourceId: text("import_source_id"),
+  status: text("status").notNull().default("active"),
+  noticeAcknowledged: boolean("notice_acknowledged").notNull().default(false),
+  noticeAcknowledgedAt: timestamp("notice_acknowledged_at",{withTimezone:true}),
+  intakeSource: text("intake_source").notNull().default("frontdesk"),
+  revision: integer("revision").notNull().default(1),
+  createdBy: text("created_by").notNull().references(()=>user.id),
+  updatedBy: text("updated_by").notNull().references(()=>user.id),
+  createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+  uniqueIndex("unique_clinic_patient_number").on(t.clinicId,t.patientNumber),
+  uniqueIndex("unique_clinic_import_source").on(t.clinicId,t.importSourceId),
+  index("clinic_patients_list_idx").on(t.clinicId,t.status,t.updatedAt,t.id),
+  index("clinic_patients_search_idx").on(t.clinicId,t.normalizedName,t.phone),
+  index("clinic_patients_phone_idx").on(t.clinicId,t.phone)
+]);
+
+/** Separate sensitive intake. Returned only to verified qualified clinical members. */
+export const clinicPatientIntake = pgTable("clinic_patient_intakes", {
+  patientId: text("patient_id").primaryKey().references(()=>clinicPatient.id),
+  clinicId: text("clinic_id").notNull().references(()=>clinic.id),
+  allergiesStatus: text("allergies_status").notNull().default("unknown"),
+  allergiesNotes: text("allergies_notes"),
+  medicationsStatus: text("medications_status").notNull().default("unknown"),
+  medicationsNotes: text("medications_notes"),
+  conditionsStatus: text("conditions_status").notNull().default("unknown"),
+  conditionsNotes: text("conditions_notes"),
+  sourceKind: text("source_kind").notNull().default("not_collected"),
+  sourceDate: date("source_date",{mode:"string"}),
+  revision: integer("revision").notNull().default(1),
+  recordedBy: text("recorded_by").references(()=>user.id),
+  updatedAt: timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_patient_intakes_clinic_idx").on(t.clinicId)]);
+
+export const clinicPatientImportJob = pgTable("clinic_patient_import_jobs", {
+  id: text("id").primaryKey(),
+  clinicId: text("clinic_id").notNull().references(()=>clinic.id),
+  createdBy: text("created_by").notNull().references(()=>user.id),
+  digest: text("digest").notNull(),
+  rowCount: integer("row_count").notNull(),
+  state: text("state").notNull().default("processing"),
+  created: integer("created").notNull().default(0),
+  skipped: integer("skipped").notNull().default(0),
+  needsReview: integer("needs_review").notNull().default(0),
+  failed: integer("failed").notNull().default(0),
+  createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at",{withTimezone:true}).notNull().defaultNow(),
+  completedAt: timestamp("completed_at",{withTimezone:true})
+},t=>[index("patient_import_jobs_clinic_idx").on(t.clinicId,t.createdAt)]);
+
+export const clinicPatientImportRow = pgTable("clinic_patient_import_rows", {
+  jobId: text("job_id").notNull().references(()=>clinicPatientImportJob.id),
+  rowNumber: integer("row_number").notNull(),
+  result: text("result").notNull(),
+  code: text("code").notNull(),
+  patientId: text("patient_id").references(()=>clinicPatient.id)
+},t=>[uniqueIndex("patient_import_row_unique").on(t.jobId,t.rowNumber)]);
