@@ -206,7 +206,7 @@ let view=expect(await req(root+"/availability/preview?"+params,
  "GET",undefined,reception.session),[200],"Saturday candidate slots");
 assert.equal(view.previewOnly,true);
 assert.equal(view.bookable,false);
-assert.equal(view.appointmentsImplemented,false);
+assert.equal(view.appointmentsImplemented,true,"PH06 now supports authenticated internal appointments");
 assert.equal(view.timezone,"Asia/Kabul");
 assert.equal(view.service.basePriceAfn,800);
 assert.equal(view.slots[0].start,"09:00");
