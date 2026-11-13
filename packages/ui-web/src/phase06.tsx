@@ -223,8 +223,12 @@ const addDays=(day:string,count:number)=>new Date(Date.parse(day+"T12:00:00Z")+c
 const satIndex=(day:string)=>(new Date(day+"T12:00:00Z").getUTCDay()+1)%7;
 const localTime=(value:unknown)=>new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
  hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(String(value)));
-const localDate=(value:unknown)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kabul",
- year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(String(value)));
+const localDate=(value:unknown)=>{
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(String(value)));
+ const date=Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));
+ return [date.year,date.month,date.day].join("-");
+};
 const statusNames=["confirmed","arrived","in_treatment","completed","cancelled","no_show"];
 const live=(s:string)=>["confirmed","arrived","in_treatment"].includes(s);
 function useData(path:string|null){
@@ -440,12 +444,12 @@ function Calendar({space}:{space:Space}){
          <i key={a.id} className={"ph06-dot-"+a.status}/>)}</span>
       </button>)}
      </div>}
-    <div className="ph06-agenda-heading">
+    <div className={"ph06-agenda-heading ph06-agenda-"+mode}>
      <div><h3>{t("agenda")} · {format(day+"T12:00:00+04:30")}</h3>
       <span>{selected.length} {t("count")}</span></div>
      <button className="btn btn-secondary" onClick={()=>{setMode("day");setDay(todayKabul());}}>{t("today")}</button>
     </div>
-    {selected.length?<div className="ph06-agenda-list">{selected.map(a=>
+    {selected.length?<div className={"ph06-agenda-list ph06-agenda-"+mode}>{selected.map(a=>
       <AppointmentCard key={a.id} booking={a} cid={space.clinicId} doctors={catalog.doctors}/>)}
      </div>:<EmptyState cid={space.clinicId} day={day}/>}
    </>}
@@ -479,7 +483,6 @@ function Queue({space}:{space:Space}){
  const base=url(space.clinicId);
  const query=new URLSearchParams({date,...(doctor!=="all"&&space.role!=="dentist"?{providerId:doctor}:{})});
  const {data,error,retry}=useData(base+"/queue?"+query);
- const {data:hourData}=useData(null);
  const [clinicians,setClinicians]=useState<Doctor[]>([]);
  const [saving,setSaving]=useState<string|null>(null),[problem,setProblem]=useState("");
  const [reason,setReason]=useState(""),[reasonId,setReasonId]=useState("");
@@ -810,7 +813,6 @@ function Details({space}:{space:Space}){
  const [mode,setMode]=useState<"view"|"move">("view");
  const [saving,setSaving]=useState(false),[reason,setReason]=useState("");
  const [action,setAction]=useState(""),[problem,setProblem]=useState(""),[success,setSuccess]=useState("");
- const {data:hours}=useData(base?null:null);
  const [doctors,setDoctors]=useState<Doctor[]>([]),[chairs,setChairs]=useState<Resource[]>([]);
  useEffect(()=>{Promise.all([ops(base+"/hours"),ops(base+"/resources")])
    .then(([h,c])=>{setDoctors(h.clinicians);setChairs(c.resources);}).catch(()=>{});},[base]);
