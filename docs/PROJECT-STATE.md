@@ -6,7 +6,7 @@ Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\d
 
 ## Current phase: PH08 interactive FDI dental chart and historical observations
 
-Status: **PH01–PH07 implemented with automated CI; PH08 implementation in development with acceptance/CI checks. Clinical, privacy, accessibility and legal acceptance remain separate production gates**.
+Status: **PH01–PH08 implemented; automated CI, typechecks, builds, and PostgreSQL-backed PH08 acceptance passed. Manual clinical review, accessibility, privacy/security and legal acceptance remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
