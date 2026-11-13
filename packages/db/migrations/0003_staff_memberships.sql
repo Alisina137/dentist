@@ -33,6 +33,7 @@ CREATE TABLE clinic_invitations (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   resolved_at timestamptz,
+  resolution_reason text,
   invited_by text NOT NULL REFERENCES auth_users(id),
   accepted_by text REFERENCES auth_users(id),
   resend_count integer NOT NULL DEFAULT 0 CHECK (resend_count BETWEEN 0 AND 25)
