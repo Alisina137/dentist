@@ -11,7 +11,7 @@
 - Migration `0007_clinical_encounters.sql`: encounter, append-only version history, signed-note immutability trigger, private bytea file storage with no public object URLs.
 
 ## Access and integrity
-- Dentist or explicitly clinician-enabled owner/manager can start their own unscheduled encounters and sign/amend their assigned encounters; active clinic membership is verified on every request.
+- Clinic owners/managers without clinician authorization can view **aggregate operational counts only**, not patient names, notes, or files.\n- Dentist or explicitly clinician-enabled owner/manager can start their own unscheduled encounters and sign/amend their assigned encounters; active clinic membership is verified on every request.
 - Assistant can create a draft for an arrived/in-treatment/completed appointment and edit **only own unsigned draft**; cannot sign, amend, or view another clinician's private notes. Receptionist/cashier/admin cannot read private clinical content.
 - Appointment association validates clinic and patient, prevents more than one encounter per appointment, and requires clinical readiness.
 - Note changes use optimistic revisions; signatures require an explicit confirmation token; signed base is immutable, amendments are append-only and reasoned. The encounter/version records are kept indefinitely until a later approved retention policy.
