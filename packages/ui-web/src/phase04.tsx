@@ -701,3 +701,190 @@ function ResourcesPanel({space,onChange}:{space:Space;onChange:()=>void}){
    close={()=>setEditing(undefined)} done={update}/>}
  </section>;
 }
+
+
+const weekdays=["daySat","daySun","dayMon","dayTue","dayWed","dayThu","dayFri"] as const;
+function suggestedWeek(source:Shift[],kind:"clinic"|"provider"|"resource"):Shift[]{
+ return weekdays.map((_,weekday)=>{
+  const saved=source.find(s=>s.weekday===weekday);
+  return saved?{...saved,breaks:saved.breaks||[]}:
+   {weekday,isOpen:kind==="clinic"?weekday!==6:kind==="provider"?weekday!==6:false,
+     startMinute:540,endMinute:1020,breaks:[],revision:0};
+ });
+}
+function WeekEditor({space,kind,target,existing,updated}:{space:Space;kind:"clinic"|"provider"|"resource";
+ target?:string;existing:Shift[];updated:()=>void}){
+ const {t}=useWords();
+ const [days,setDays]=useState<Shift[]>(()=>suggestedWeek(existing,kind));
+ const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[success,setSuccess]=useState("");
+ const [dirty,setDirty]=useState(false);
+ useEffect(()=>{setDays(suggestedWeek(existing,kind));setDirty(false);setProblem("");},[existing,kind]);
+ const hasSaved=existing.some(d=>d.isOpen||d.revision>0);
+ const allowed=canManage(space);
+ const amend=(weekday:number,change:Partial<Shift>)=>{
+  setDays(state=>state.map(d=>d.weekday===weekday?{...d,...change}:d));
+  setDirty(true);setSuccess("");setProblem("");
+ };
+ const addBreak=(d:Shift)=>{
+  const mid=Math.floor((d.startMinute+d.endMinute)/2/5)*5;
+  const start=Math.max(d.startMinute,mid-15);
+  const end=Math.min(d.endMinute,start+30);
+  amend(d.weekday,{breaks:[...d.breaks,{start,end}]});
+ };
+ const editBreak=(d:Shift,index:number,field:"start"|"end",value:number)=>{
+  amend(d.weekday,{breaks:d.breaks.map((b,i)=>i===index?{...b,[field]:value}:b)});
+ };
+ async function submit(event:FormEvent){
+  event.preventDefault();setProblem("");setSuccess("");
+  for(const d of days){
+   if(d.startMinute>=d.endMinute || d.endMinute>1440){
+    setProblem(t("timeError"));return;
+   }
+   const sorted=[...d.breaks].sort((a,b)=>a.start-b.start);
+   for(let i=0;i<sorted.length;i++){
+    const b=sorted[i];
+    if(b.start>=b.end||b.start<d.startMinute||b.end>d.endMinute||
+       i>0&&sorted[i-1].end>b.start){
+      setProblem(t("timeError"));return;
+    }
+   }
+  }
+  setBusy(true);
+  try{
+   const path=cPath(space.clinicId)+"/hours/"+(kind==="clinic"?"clinic":
+      kind==="provider"?"providers/"+encodeURIComponent(target||""):
+        "resources/"+encodeURIComponent(target||""));
+   await OpsApi(path,"PUT",{week:days.map(d=>({...d,breaks:d.isOpen?d.breaks:[]}))});
+   setSuccess(t("success"));setDirty(false);updated();
+  }catch(e:any){setProblem(e.message==="STALE_SCHEDULE_VERSION"?t("stale"):e.message);}
+  finally{setBusy(false);}
+ }
+ const helper=kind==="provider"?"providerShiftHelp":kind==="resource"?"resourceShiftHelp":"weekHint";
+ return <form onSubmit={submit} className="phase04-week-editor">
+  <div className="phase04-schedule-description">
+   <div><h3>{t(kind==="clinic"?"weekly":kind==="provider"?"providers":"chairs")}</h3>
+    <p>{t(helper)}</p></div>
+   <Pill active={hasSaved}>{t(hasSaved?"configured":"unsaved")}</Pill>
+  </div>
+  {!hasSaved&&<Alert kind="warning">{t("unsavedWeek")}</Alert>}
+  <div className="phase04-days">
+   {days.map(d=><article className={"phase04-day-row "+(!d.isOpen?"phase04-day-closed":"")} key={d.weekday}>
+    <div className="phase04-day-label">
+     <strong>{t(weekdays[d.weekday])}</strong>
+     <Switch checked={d.isOpen} disabled={!allowed}
+      onChange={v=>amend(d.weekday,{isOpen:v})} label={t(d.isOpen?"open":"closed")}/>
+    </div>
+    <div className="phase04-time-range">
+     <FormField label={t("from")} type="time" value={minuteTime(d.startMinute)}
+      disabled={!d.isOpen||!allowed} onChange={v=>amend(d.weekday,{startMinute:timeMinute(v)})}/>
+     <span className="phase04-time-separator" aria-hidden="true">—</span>
+     <FormField label={t("to")} type="time" value={minuteTime(d.endMinute)}
+      disabled={!d.isOpen||!allowed} onChange={v=>amend(d.weekday,{endMinute:timeMinute(v)})}/>
+    </div>
+    <div className="phase04-breaks">
+     {d.isOpen&&<div className="phase04-breaks-list">
+      {d.breaks.map((b,index)=><div className="phase04-break-chip" key={index}>
+       <span aria-hidden="true">◷</span>
+       <label><span className="visually-hidden">{t("breakStart")}</span>
+         <input type="time" value={minuteTime(b.start)} disabled={!allowed}
+          aria-label={t("breakStart")} onChange={e=>editBreak(d,index,"start",timeMinute(e.target.value))}/></label>
+       <span>–</span>
+       <label><span className="visually-hidden">{t("breakEnd")}</span>
+         <input type="time" value={minuteTime(b.end)} disabled={!allowed}
+          aria-label={t("breakEnd")} onChange={e=>editBreak(d,index,"end",timeMinute(e.target.value))}/></label>
+       {allowed&&<button type="button" className="phase04-mini-close" onClick={()=>amend(d.weekday,{
+        breaks:d.breaks.filter((_,i)=>i!==index)})} aria-label={t("remove")}>×</button>}
+      </div>)}
+     </div>}
+     {allowed&&d.isOpen&&d.breaks.length<5&&
+      <button type="button" className="phase04-add-break" onClick={()=>addBreak(d)}>+ {t("addBreak")}</button>}
+    </div>
+   </article>)}
+  </div>
+  {problem&&<Alert kind="error">{problem}</Alert>}
+  {success&&<Alert kind="success">{success}</Alert>}
+  <div className="phase04-schedule-footer">
+   <p className="muted">{t("hoursWarning")}</p>
+   {allowed&&<button className="btn btn-primary" disabled={busy||!dirty}>
+    {busy?t("saving"):t("saveWeek")}</button>}
+  </div>
+ </form>;
+}
+function HoursPanel({space,onChange}:{space:Space;onChange:()=>void}){
+ const {t}=useWords();
+ const [tab,setTab]=useState("weekly");
+ const [provider,setProvider]=useState<string>("");
+ const [resource,setResource]=useState<string>("");
+ useEffect(()=>{
+  const requested=new URLSearchParams(location.search).get("tab");
+  if(["weekly","providers","chairs","exceptions","preview"].includes(requested||""))
+   setTab(requested!);
+ },[]);
+ const base=cPath(space.clinicId);
+ const {data,error,reload}=useResource(base+"/hours");
+ const {data:services}=useResource(base+"/services");
+ const {data:resources}=useResource(base+"/resources");
+ const hours:HoursData|undefined=data;
+ const doctors=hours?.clinicians||[];
+ const activeResources:Resource[]=(resources?.resources||[]).filter((r:Resource)=>r.active&&r.kind==="chair");
+ useEffect(()=>{if(doctors.length&&!doctors.some(p=>p.membershipId===provider))setProvider(doctors[0].membershipId);},[data]);
+ useEffect(()=>{if(activeResources.length&&!activeResources.some(r=>r.id===resource))
+  setResource(activeResources[0].id);},[resources]);
+ const saved=()=>{reload();onChange();};
+ const nav=[
+  ["weekly","▤","weekly"],["providers","◎","providers"],["chairs","▦","chairs"],
+  ["exceptions","▧","exceptions"],["preview","◷","preview"]
+ ];
+ return <section className="phase04-panel card">
+  <div className="phase04-panel-head"><div><span className="phase04-eyebrow">03 · {t("hours")}</span>
+   <h2>{t("hours")}</h2><p>{t("hoursIntro")}</p></div>
+   <span className="phase04-timezone">◷ {t("timezone")}</span>
+  </div>
+  <nav className="phase04-inner-tabs phase04-scroll-tabs" aria-label={t("hours")}>
+   {nav.map(([key,icon,label])=><a key={key}
+     href={href(space.clinicId,"hours",key)} aria-current={tab===key?"page":undefined}
+     className={tab===key?"selected":""}>{icon} {t(label)}</a>)}
+  </nav>
+  {error?<ErrorBox error={error} retry={reload}/>:!hours?<Busy/>:tab==="weekly"?
+   <WeekEditor key={"clinic-"+hours.hours.map(x=>x.revision).join(".")}
+    kind="clinic" space={space} existing={hours.hours} updated={saved}/>:
+  tab==="providers"?<div className="phase04-schedule-pane">
+   {!doctors.length?<div className="phase04-empty"><div className="phase04-empty-icon">◎</div>
+    <h3>{t("noProviders")}</h3><p>{t("noProvidersHint")}</p>
+    <a href={"/clinic/staff?clinic="+space.clinicId} className="btn btn-primary">{t("staffLink")} ↗</a></div>:<>
+     <div className="phase04-selector-row">
+      <Select label={t("chooseProvider")} value={provider} onChange={setProvider}
+       options={doctors.map(d=>({value:d.membershipId,label:d.name+" · "+d.role}))}/>
+      <span className="phase04-timezone">{t("weekHint")}</span>
+     </div>
+     {provider&&<WeekEditor key={"provider-"+provider+"-"+hours.providers.map(h=>h.revision).join(".")}
+      kind="provider" target={provider} space={space}
+      existing={hours.providers.filter(x=>x.membershipId===provider)} updated={saved}/>}
+    </>}
+  </div>:tab==="chairs"?<div className="phase04-schedule-pane">
+   {!activeResources.length?<div className="phase04-empty">
+    <div className="phase04-empty-icon">▦</div><h3>{t("noChairs")}</h3>
+    <a href={href(space.clinicId,"resources")} className="btn btn-primary">
+     {t("addResource")} ↗</a></div>:<>
+    <div className="phase04-selector-row">
+     <Select label={t("chooseChair")} value={resource} onChange={setResource}
+      options={activeResources.map(r=>({value:r.id,label:r.label+" · "+r.code}))}/>
+     <span className="muted">{t("resourceShiftHelp")}</span>
+    </div>
+    {resource&&<div className="phase04-schedule-pane">
+     <WeekEditor key={"resource-"+resource+"-"+hours.resources.map(h=>h.revision).join(".")}
+      kind="resource" target={resource} space={space}
+      existing={hours.resources.filter(x=>x.resourceId===resource)} updated={saved}/>
+     {canManage(space)&&hours.resources.some(x=>x.resourceId===resource)&&
+      <button className="btn btn-secondary" onClick={async()=>{
+       if(!confirm(t("clearHelp")))return;
+       try{await OpsApi(base+"/hours/resources/"+resource,"DELETE",{reason:"Clear resource schedule"});
+        saved();}catch(e:any){alert(e.message);}
+      }}>{t("clearResourceHours")}</button>}
+    </div>}
+    </>}
+  </div>:tab==="exceptions"?<ExceptionPanel space={space} items={hours.exceptions} updated={saved}/>:
+  <PreviewPanel space={space} data={hours} services={services?.services||[]}
+    chairs={activeResources}/>}
+ </section>;
+}
