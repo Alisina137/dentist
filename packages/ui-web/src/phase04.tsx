@@ -93,10 +93,10 @@ const dict:Record<Language,Record<string,string>>={
   codeTaken:"That resource code or service name already exists in this clinic.",
   slotCost:"Estimated price",today:"Today",tomorrow:"Tomorrow",unknown:"Not scheduled",
   hoursWarning:"Saving hours changes candidate availability but does not cancel confirmed appointments.",
-  manualOnly:"Clinic-only configuration. Appointment scheduling ships in Phase 6.",
+  manualOnly:"Internal staff appointments are now available in Appointments. Public patient booking remains disabled.",
   status_ready:"Ready",status_clinic_closed:"Clinic closed",status_provider_unavailable:"Provider unavailable",
   status_chair_unavailable:"Chair unavailable",status_holiday_closed:"Holiday / closure",
-  noPublic:"Not a live marketplace listing",notConfigured:"Not configured",more:"More",
+  conflictBooked:"Future appointments use this service or resource. Reschedule or cancel them first.",scheduleBooked:"Changing these hours would invalidate future appointments; reschedule affected bookings first.",noPublic:"Not a live marketplace listing",notConfigured:"Not configured",more:"More",
   lastUpdated:"Last updated",staffLink:"Manage staff",openServices:"Open services",
   openResources:"Open resources",openHours:"Open hours",stepDone:"Complete",stepPending:"To do",
   createFirst:"Create your first service"
@@ -176,10 +176,10 @@ const dict:Record<Language,Record<string,string>>={
   deleteConfirm:"این استثنا حذف شود؟",codeTaken:"کود منبع یا نام خدمت قبلاً ثبت شده است.",
   slotCost:"قیمت تخمینی",today:"امروز",tomorrow:"فردا",unknown:"شیفت ندارد",
   hoursWarning:"تغییر ساعات، وقت‌های پیشنهادی را عوض می‌کند ولی رزروهای تأییدشده را لغو نمی‌کند.",
-  manualOnly:"فقط تنظیمات کلینیک؛ نوبت‌دهی در مرحله ۶ فعال می‌شود.",
+  manualOnly:"ثبت وقت توسط کارمندان اکنون در بخش ملاقات‌ها فعال است؛ رزرو عمومی مریضان هنوز غیرفعال می‌باشد.",
   status_ready:"آماده",status_clinic_closed:"کلینیک بسته",status_provider_unavailable:"داکتر در دسترس نیست",
   status_chair_unavailable:"چوکی در دسترس نیست",status_holiday_closed:"روز تعطیل",
-  noPublic:"فهرست عمومی فعال نیست",notConfigured:"تنظیم نشده",more:"بیشتر",
+  conflictBooked:"ملاقات‌های آینده از این خدمت یا منبع استفاده می‌کنند؛ نخست وقت‌ها را تغییر دهید یا لغو کنید.",scheduleBooked:"این تغییر ساعات با ملاقات‌های آینده تضاد دارد؛ ابتدا وقت‌های مربوط را جابه‌جا کنید.",noPublic:"فهرست عمومی فعال نیست",notConfigured:"تنظیم نشده",more:"بیشتر",
   lastUpdated:"آخرین تغییر",staffLink:"مدیریت کارمندان",openServices:"خدمات",
   openResources:"منابع",openHours:"ساعات",stepDone:"تکمیل",stepPending:"باقی",
   createFirst:"اولین خدمت را اضافه کنید"
@@ -265,10 +265,10 @@ const dict:Record<Language,Record<string,string>>={
   deleteConfirm:"دا استثنا لرې شي؟",codeTaken:"دا کوډ یا د خدمت نوم مخکې شته.",
   slotCost:"اټکلي بیه",today:"نن",tomorrow:"سبا",unknown:"شیفټ نشته",
   hoursWarning:"د ساعتونو بدلون وړاندیزي وختونه بدلوي خو تایید شوې رزرو نه لغوه کوي.",
-  manualOnly:"یوازې د کلینیک تنظیمات؛ وخت اخیستل په شپږم پړاو کې فعالېږي.",
+  manualOnly:"د کارکوونکو لیدنې اوس د ملاقاتونو په برخه کې فعالې دي؛ عامه بکینګ لا بند دی.",
   status_ready:"چمتو",status_clinic_closed:"کلینیک بند",
   status_provider_unavailable:"ډاکټر نشته",status_chair_unavailable:"څوکۍ نشته",
-  status_holiday_closed:"رخصتي",noPublic:"عامه لړلیک لا نه دی خپور",
+  status_holiday_closed:"رخصتي",conflictBooked:"راتلونکې لیدنې دا خدمت یا سرچینه کاروي؛ لومړی یې وخت بدل یا لغوه کړئ.",scheduleBooked:"د ساعتونو بدلون له راتلونکو لیدنو سره ټکر لري؛ لومړی اړوندې لیدنې بدل کړئ.",noPublic:"عامه لړلیک لا نه دی خپور",
   notConfigured:"نه دی ټاکل شوی",more:"نور",lastUpdated:"وروستی بدلون",
   staffLink:"کارکوونکي",openServices:"خدمتونه",openResources:"سرچینې",
   openHours:"وختونه",stepDone:"بشپړ",stepPending:"پاتې",
@@ -480,7 +480,8 @@ function ServiceEditor({space,service,close,done}:{space:Space;service:Service|n
     </div>
     <Alert>{t("neverRetroactive")} {t("publicHelp")}</Alert>
     {error&&<Alert kind="error">{error.includes("VERSION")?t("stale"):
-      error==="DUPLICATE_SERVICE_OR_RESOURCE"?t("codeTaken"):error}</Alert>}
+      error==="DUPLICATE_SERVICE_OR_RESOURCE"?t("codeTaken"):
+      error==="SERVICE_USED_BY_UPCOMING_APPOINTMENT"?t("conflictBooked"):error}</Alert>}
     <div className="phase04-drawer-footer">
      <button type="button" className="btn btn-secondary" onClick={close}>{t("cancel")}</button>
      <button className="btn btn-primary" disabled={busy}>{busy?t("saving"):t(service?"save":"create")}</button>
@@ -639,7 +640,8 @@ function ResourceEditor({space,resource,done,close}:{space:Space;resource:Resour
     <Alert kind="warning">{t("noDeletes")} {t("resourceUsed")}</Alert>
     {error&&<Alert kind="error">{error==="RESOURCE_USED_BY_SCHEDULE"?t("resourceUsed"):
       error==="DUPLICATE_SERVICE_OR_RESOURCE"?t("codeTaken"):
-      error==="STALE_RESOURCE_REVISION"?t("stale"):error}</Alert>}
+      error==="STALE_RESOURCE_REVISION"?t("stale"):
+      error==="RESOURCE_USED_BY_UPCOMING_APPOINTMENT"?t("conflictBooked"):error}</Alert>}
     <div className="phase04-drawer-footer">
      <button className="btn btn-secondary" onClick={close} type="button">{t("cancel")}</button>
      <button className="btn btn-primary" disabled={busy}>{busy?t("saving"):t(resource?"save":"create")}</button>
@@ -784,7 +786,8 @@ function WeekEditor({space,kind,target,existing,updated}:{space:Space;kind:"clin
         "resources/"+encodeURIComponent(target||""));
    await OpsApi(path,"PUT",{week:days.map(d=>({...d,breaks:d.isOpen?d.breaks:[]}))});
    setSuccess(t("success"));setDirty(false);updated();
-  }catch(e:any){setProblem(e.message==="STALE_SCHEDULE_VERSION"?t("stale"):e.message);}
+  }catch(e:any){setProblem(e.message==="STALE_SCHEDULE_VERSION"?t("stale"):
+      e.message==="SCHEDULE_CHANGE_CONFLICTS_WITH_APPOINTMENTS"?t("scheduleBooked"):e.message);}
   finally{setBusy(false);}
  }
  const helper=kind==="provider"?"providerShiftHelp":kind==="resource"?"resourceShiftHelp":"weekHint";
@@ -940,7 +943,7 @@ function ExceptionPanel({space,items,updated}:{space:Space;items:HoursData["exce
     endMinute:form.kind==="special_hours"?timeMinute(form.endMinute):null
    });
    setOk(t("success"));set("reason","");updated();
-  }catch(e:any){setProblem(e.message);}finally{setBusy(false);}
+  }catch(e:any){setProblem(e.message==="EXCEPTION_CONFLICTS_WITH_APPOINTMENTS"?t("scheduleBooked"):e.message);}finally{setBusy(false);}
  }
  async function remove(id:string){
   if(removeReason.trim().length<5)return;

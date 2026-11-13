@@ -1,9 +1,34 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
 import { db, schema } from "@dandanlink/db";
-import { fail, weekInput, exceptionData } from "./operations-validation.js";
+import { fail, weekInput, exceptionData, weekday, overlaps, availableIn, type Shift } from "./operations-validation.js";
 import { lockClinic, opsAudit } from "./operations-catalog.js";
 
+
+/** PH06 protects recorded future bookings against destructive schedule edits. */
+function wallClock(value:Date){
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"})
+  .formatToParts(value);
+ const p=Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));
+ return {date:p.year+"-"+p.month+"-"+p.day,minute:Number(p.hour)*60+Number(p.minute)};
+}
+async function futureBookings(tx:any,cid:string,provider?:string,resource?:string){
+ const conditions=[eq(schema.clinicAppointment.clinicId,cid),
+  gt(schema.clinicAppointment.endAt,new Date()),
+  inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"])];
+ if(provider)conditions.push(eq(schema.clinicAppointment.providerMembershipId,provider));
+ if(resource)conditions.push(eq(schema.clinicAppointment.resourceId,resource));
+ return tx.select({startAt:schema.clinicAppointment.startAt,endAt:schema.clinicAppointment.endAt})
+  .from(schema.clinicAppointment).where(and(...conditions));
+}
+function fitsShift(date:Date,end:Date,shift:Shift){
+ if(!shift.isOpen)return false;
+ const startTime=wallClock(date),endTime=wallClock(end);
+ if(startTime.date!==endTime.date)return false;
+ return availableIn({start:shift.startMinute,end:shift.endMinute},shift.breaks,
+  {start:startTime.minute,end:endTime.minute});
+}
 export async function clinicians(cid:string){
  const memberships=await db.select().from(schema.clinicMembership).where(and(
   eq(schema.clinicMembership.clinicId,cid),eq(schema.clinicMembership.status,"active")
@@ -57,6 +82,15 @@ export async function saveWeek(cid:string,actorId:string,kind:"clinic"|"provider
  }
  await db.transaction(async tx=>{
   await lockClinic(tx,cid);
+  const future=await futureBookings(tx,cid,
+    kind==="provider"?target||undefined:undefined,
+    kind==="resource"?target||undefined:undefined);
+  for(const reserved of future){
+   const local=wallClock(reserved.startAt),weekdayIndex=weekday(local.date);
+   const proposed=week.find(w=>w.weekday===weekdayIndex)!;
+   if(!fitsShift(reserved.startAt,reserved.endAt,proposed))
+    fail(409,"SCHEDULE_CHANGE_CONFLICTS_WITH_APPOINTMENTS");
+  }
   for(const day of week){
    // Ensure two editors cannot silently overwrite each other's saved clinic/shift rules.
    const row=Array.isArray(raw)?raw.find((x:any)=>x?.weekday===day.weekday):null;
@@ -122,6 +156,16 @@ export async function addException(cid:string,actorId:string,raw:unknown){
    gte(schema.clinicScheduleException.endDate,values.startDate)
   )).limit(1);
   if(overlapping.length)fail(409,"OVERLAPPING_EXCEPTION");
+  const reserved=await futureBookings(tx,cid);
+  const conflicting=reserved.some((a:{startAt:Date;endAt:Date})=>{
+   const local=wallClock(a.startAt);
+   if(local.date<values.startDate||local.date>values.endDate)return false;
+   if(values.kind==="closed")return true;
+   const end=wallClock(a.endAt);
+   return end.date!==local.date||local.minute<values.startMinute!||
+    end.minute>values.endMinute!;
+  });
+  if(conflicting)fail(409,"EXCEPTION_CONFLICTS_WITH_APPOINTMENTS");
   await tx.insert(schema.clinicScheduleException).values({
    id,clinicId:cid,...values,createdBy:actorId
   });

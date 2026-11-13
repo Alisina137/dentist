@@ -411,3 +411,66 @@ export const clinicScheduleException=pgTable("clinic_schedule_exceptions",{
   createdBy:text("created_by").notNull().references(()=>user.id),
   createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
 },t=>[index("clinic_exception_date_idx").on(t.clinicId,t.startDate,t.endDate)]);
+
+
+/** PH06 real clinic appointment calendar. Never expose in public or patient APIs. */
+export const clinicAppointment = pgTable("clinic_appointments",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ serviceId:text("service_id").notNull().references(()=>clinicService.id),
+ providerMembershipId:text("provider_membership_id").notNull().references(()=>clinicMembership.id),
+ resourceId:text("resource_id").references(()=>clinicResource.id),
+ serviceVersion:integer("service_version").notNull(),
+ serviceName:text("service_name").notNull(),
+ serviceCategory:text("service_category").notNull(),
+ servicePriceAfn:integer("service_price_afn").notNull(),
+ serviceDurationMinutes:integer("service_duration_minutes").notNull(),
+ preparationMinutes:integer("preparation_minutes").notNull(),
+ startAt:timestamp("start_at",{withTimezone:true}).notNull(),
+ endAt:timestamp("end_at",{withTimezone:true}).notNull(),
+ status:text("status").notNull().default("confirmed"),
+ source:text("source").notNull(),
+ administrativeNote:text("administrative_note"),
+ revision:integer("revision").notNull().default(1),
+ arrivedAt:timestamp("arrived_at",{withTimezone:true}),
+ startedAt:timestamp("started_at",{withTimezone:true}),
+ completedAt:timestamp("completed_at",{withTimezone:true}),
+ cancelledAt:timestamp("cancelled_at",{withTimezone:true}),
+ noShowAt:timestamp("no_show_at",{withTimezone:true}),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ updatedBy:text("updated_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ index("appointment_clinic_date_idx").on(t.clinicId,t.startAt),
+ index("appointment_clinic_status_date_idx").on(t.clinicId,t.status,t.startAt),
+ index("appointment_clinic_patient_idx").on(t.clinicId,t.patientId,t.startAt),
+ index("appointment_provider_date_idx").on(t.clinicId,t.providerMembershipId,t.startAt),
+ index("appointment_resource_date_idx").on(t.clinicId,t.resourceId,t.startAt)
+]);
+export const clinicAppointmentEvent = pgTable("clinic_appointment_events",{
+ id:text("id").primaryKey(),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ appointmentId:text("appointment_id").notNull().references(()=>clinicAppointment.id),
+ action:text("action").notNull(),
+ beforeStatus:text("before_status"),afterStatus:text("after_status").notNull(),
+ beforeStartAt:timestamp("before_start_at",{withTimezone:true}),
+ beforeEndAt:timestamp("before_end_at",{withTimezone:true}),
+ afterStartAt:timestamp("after_start_at",{withTimezone:true}).notNull(),
+ afterEndAt:timestamp("after_end_at",{withTimezone:true}).notNull(),
+ reason:text("reason"),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("appointment_event_timeline_idx").on(t.clinicId,t.appointmentId,t.createdAt,t.id)]);
+export const clinicAppointmentAction=pgTable("clinic_appointment_actions",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ actionKey:text("action_key").notNull(),operation:text("operation").notNull(),
+ requestDigest:text("request_digest").notNull(),
+ appointmentId:text("appointment_id").notNull().references(()=>clinicAppointment.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("clinic_appointment_actions_clinic_id_actor_id_action_key_key").on(t.clinicId,t.actorId,t.actionKey),
+ index("appointment_action_date_idx").on(t.clinicId,t.createdAt)
+]);
