@@ -484,7 +484,7 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
        <button className="btn btn-primary" type="button" onClick={()=>{setStageAction({stageId:s.id!,action:"complete"});setEncounterId("");}}>{t("complete")}</button>
        <button className="btn btn-secondary" type="button" onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
       </div>}
-      {stageAction?.stageId===s.id&&<div className="phase09-inline-form">
+      {stageAction&&stageAction.stageId===s.id&&<div className="phase09-inline-form">
        {stageAction.action==="complete"?<>
         <Notice kind="warning">{t("stageProof")}</Notice>
         {visits.error?<ErrorBox code={visits.error} retry={visits.refresh}/>:
