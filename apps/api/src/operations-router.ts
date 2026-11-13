@@ -130,7 +130,9 @@ export function operationsRouter(){
   const dbCode=(error as any)?.code||(error as any)?.cause?.code;
   if(dbCode==="23505"){res.status(409).json({code:"DUPLICATE_SERVICE_OR_RESOURCE"});return;}
   if(dbCode==="23514"){res.status(422).json({code:"INVALID_SCHEDULE_CONSTRAINT"});return;}
-  console.error("PH04 operations failure",error instanceof Error?error.name:"unknown");
+  console.error("PH04 operations failure",JSON.stringify({type:error instanceof Error?error.name:"unknown",
+    code:(error as any)?.code||(error as any)?.cause?.code||"unknown",
+    table:(error as any)?.table||"unknown",constraint:(error as any)?.constraint||"unknown"}));
   res.status(500).json({code:"OPERATIONS_INTERNAL_ERROR"});
  });
  return api;
