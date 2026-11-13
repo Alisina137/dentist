@@ -87,11 +87,11 @@ export function staffInvitationsRouter(){
         gt(schema.clinicInvitation.expiresAt,new Date()))).returning({id:schema.clinicInvitation.id});
       if(!reserved.length)fail(409,"INVITATION_UNAVAILABLE");
       if(prior){
-        await tx.update(schema.clinicMembership).set({role:i.role,status:"active",changedAt:new Date(),
+        await tx.update(schema.clinicMembership).set({role:i.role,status:"active",clinicianEnabled:i.role==="dentist",changedAt:new Date(),
           suspendedAt:null,revokedAt:null,reason:null,invitedBy:i.invitedBy})
           .where(eq(schema.clinicMembership.id,prior.id));
       }else await tx.insert(schema.clinicMembership).values({
-        id,clinicId:i.clinicId,userId:req.actor!.id,role:i.role,status:"active",invitedBy:i.invitedBy
+        id,clinicId:i.clinicId,userId:req.actor!.id,role:i.role,status:"active",clinicianEnabled:i.role==="dentist",invitedBy:i.invitedBy
       });
       if(i.role==="dentist")await tx.insert(schema.dentistDraft).values({
         membershipId:id,clinicId:i.clinicId,userId:req.actor!.id,displayName:req.actor!.name,
