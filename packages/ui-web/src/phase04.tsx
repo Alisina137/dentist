@@ -334,10 +334,10 @@ function Pill({active,children}:{active:boolean,children:ReactNode}){
 }
 function FormField({label,value,onChange,required=false,type="text",min,max,step,placeholder,disabled=false}:{
  label:string;value:string|number;onChange:(s:string)=>void;required?:boolean;type?:string;
- min?:number;max?:number;step?:number;placeholder?:string;disabled?:boolean}){
+ min?:number;max?:number;step?:number;maxLength?:number;placeholder?:string;disabled?:boolean}){
  return <label className="phase04-field"><span>{label}{required?" *":""}</span>
   <input type={type} value={value} onChange={e=>onChange(e.target.value)}
-   min={min} max={max} step={step} required={required} placeholder={placeholder} disabled={disabled}/></label>;
+   min={min} max={max} step={step} maxLength={maxLength} required={required} placeholder={placeholder} disabled={disabled}/></label>;
 }
 function Select({label,value,onChange,options,disabled=false}:{label:string;value:string;onChange:(s:string)=>void,
  options:{value:string,label:string}[];disabled?:boolean}){
@@ -448,7 +448,7 @@ function ServiceEditor({space,service,close,done}:{space:Space;service:Service|n
      <Pill active={service.active}>{activeLabel(t,service.active)}</Pill></div>}
     <div className="phase04-form-grid">
      <FormField label={t("serviceName")} value={form.name} required
-      onChange={v=>put("name",v)} max={100}/>
+      onChange={v=>put("name",v)} maxLength={100}/>
      <FormField label={t("category")} value={form.category} required
       onChange={v=>put("category",v)}/>
     </div>
@@ -609,8 +609,8 @@ function ResourceEditor({space,resource,done,close}:{space:Space;resource:Resour
     <Select label={t("kind")} value={form.kind} onChange={v=>set("kind",v)}
       options={[{value:"chair",label:t("chair")},{value:"room",label:t("room")}]}/>
     <div className="phase04-form-grid">
-     <FormField label={t("resourceName")} value={form.label} onChange={v=>set("label",v)} required/>
-     <FormField label={t("code")} value={form.code} onChange={v=>set("code",v)} required/>
+     <FormField label={t("resourceName")} value={form.label} onChange={v=>set("label",v)} maxLength={50} required/>
+     <FormField label={t("code")} value={form.code} onChange={v=>set("code",v)} maxLength={24} required/>
     </div>
     <p className="phase04-help">{t("resourceCodeHelp")}</p>
     <label className="phase04-field"><span>{t("equipment")}</span>
@@ -938,7 +938,7 @@ function ExceptionPanel({space,items,updated}:{space:Space;items:HoursData["exce
       <FormField label={t("to")} type="time" value={form.endMinute} onChange={v=>set("endMinute",v)}/>
      </>}
     </div>
-    <FormField label={t("reason")+" (5–200)"} value={form.reason}
+    <FormField label={t("reason")+" (5–200)"} maxLength={200} value={form.reason}
      onChange={v=>set("reason",v)} required/>
     <div className="phase04-schedule-footer"><p>{t("hoursWarning")}</p>
      <button className="btn btn-primary" disabled={busy||form.reason.trim().length<5}>
@@ -955,7 +955,7 @@ function ExceptionPanel({space,items,updated}:{space:Space;items:HoursData["exce
        <span>{item.kind==="special_hours"?minuteTime(item.startMinute!)+" – "+minuteTime(item.endMinute!):t("closed")}</span></div>
       <p><bdi dir="ltr">{item.startDate}</bdi> – <bdi dir="ltr">{item.endDate}</bdi> · {item.reason}</p>
       {removing===item.id&&<div className="phase04-remove-box">
-       <FormField label={t("removeReason")} value={removeReason}
+       <FormField label={t("removeReason")} maxLength={200} value={removeReason}
         onChange={setRemoveReason} required/>
        <div className="phase-actions"><button className="btn btn-secondary" onClick={()=>setRemoving("")}>
         {t("cancel")}</button><button className="btn btn-primary" onClick={()=>remove(item.id)}
