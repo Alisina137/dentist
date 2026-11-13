@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, ilike, inArray, or } from "drizzle-orm";
 import { db, schema } from "@dandanlink/db";
 import { authStaff, AccessFault, type StaffRequest } from "./staff-access.js";
 import { patientAccess, patientBrief, getPatient, privateDemographics,
@@ -110,7 +110,7 @@ export function patientRegistryRouter(){
    noCache(res);res.json({patient:privateDemographics(record,ctx.role),
      clinicalAvailable:ctx.role==="dentist"||ctx.membership.clinicianEnabled &&
        ["owner","manager"].includes(ctx.role),
-     appointmentsAvailable:false,financialAvailable:false});
+     appointmentsAvailable:true,financialAvailable:false});
  }));
  clinics.patch("/patients/:patientId",wrap(async(req,res)=>{
    const cid=clinicId(req);await patientAccess(req,cid,"write");
@@ -147,6 +147,16 @@ export function patientRegistryRouter(){
    if(!["active","inactive","archived"].includes(next))fail(422,"INVALID_STATUS");
    if(next===existing.status)fail(409,"STATUS_UNCHANGED");
    str(req.body?.reason,10,300,"REASON");
+   if(next!=="active"){
+    const upcoming=await db.select({id:schema.clinicAppointment.id})
+      .from(schema.clinicAppointment).where(and(
+       eq(schema.clinicAppointment.clinicId,cid),
+       eq(schema.clinicAppointment.patientId,existing.id),
+       gt(schema.clinicAppointment.endAt,new Date()),
+       inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"])
+      )).limit(1);
+    if(upcoming.length)fail(409,"PATIENT_HAS_FUTURE_APPOINTMENTS");
+   }
    await db.transaction(async tx=>{
      const changed=await tx.update(schema.clinicPatient).set({
        status:next,revision:existing.revision+1,updatedAt:new Date(),updatedBy:req.actor!.id
