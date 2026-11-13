@@ -247,10 +247,10 @@ function NavLinks({nav,active}:{nav:{title:string;href:string;key:string}[],acti
 }
 function useContextAndSpace(){
  const {data,error,reload}=useData("/context");
- const [requested,setRequested]=useState<string|null>(null);
+ const [requested,setRequested]=useState<string|null|undefined>(undefined);
  useEffect(()=>{setRequested(new URLSearchParams(location.search).get("clinic"));},[]);
  const spaces=(data as Context|undefined)?.clinics||[];
- const selected=requested?spaces.find(x=>x.clinicId===requested):spaces[0];
+ const selected=requested===undefined?undefined:requested?spaces.find(x=>x.clinicId===requested):spaces[0];
  return {ctx:data as Context|null,space:selected as Space|undefined,error,reload,requested};
 }
 function Guard({children}:{children:(ctx:Context,space:Space)=>ReactNode}){
@@ -258,7 +258,7 @@ function Guard({children}:{children:(ctx:Context,space:Space)=>ReactNode}){
  if(error==="AUTH_REQUIRED")return <div className="page-narrow"><Banner kind="warning">{t("login")}</Banner>
   <p><a className="btn btn-primary" href="/clinic/login">{t("login")}</a></p></div>;
  if(error)return <ErrorBox error={error} retry={reload}/>;
- if(!ctx)return <Busy/>;
+ if(!ctx||requested===undefined)return <Busy/>;
  if(!space){
   return <div className="page-narrow card panel">
     <Banner kind="warning">{requested?t("missingClinic"):t("noClinics")}</Banner>
@@ -274,7 +274,7 @@ export function ClinicWorkspace(){
  if(error==="AUTH_REQUIRED")return <div className="page-narrow"><Banner kind="warning">{t("login")}</Banner>
     <a className="btn btn-primary" href="/clinic/login">{t("login")}</a></div>;
  if(error)return <ErrorBox error={error} retry={reload}/>;
- if(!ctx)return <Busy/>;
+ if(!ctx||requested===undefined)return <Busy/>;
  // Owners keep the already functional PH02 onboarding/subscription workspace.
  if(!requested && !space)return <Phase02Portal audience="clinic" view="dashboard"/>;
  if(requested && !space)return <div className="page-narrow card panel"><Banner kind="error">{t("missingClinic")}</Banner>
@@ -415,7 +415,7 @@ function Invitations({space,ctx}:{space:Space,ctx:Context}){
    {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
     entries.length? <div className="phase-list">{entries.slice((page-1)*5,page*5).map((i:any)=>
      <article className="staff-invitation-row" key={i.id}>
-      <div><strong dir="ltr">{i.email}</strong><div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)}</div></div>
+      <div><strong dir="ltr">{i.email}</strong><div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)} {i.resolutionReason?" · "+i.resolutionReason:""}</div></div>
       <div className="staff-invite-actions"><Badge value={i.status}/>
        {(i.status==="pending"||i.status==="expired")&&
          <button className="btn btn-secondary" disabled={busy} onClick={()=>action(i.id,"resend")}>{t("resend")}</button>}
@@ -552,6 +552,7 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
     <p className="muted staff-small">{t("ownerSafe")} {t("suspendedInfo")}</p>
    </>}
   </section>}
+  {member.reason&&<Banner kind="warning">{t("reason")}: {member.reason}</Banner>}
   {member.role==="dentist"&&draft&&<section className="card panel">
    <h2>{t("profile")}</h2><Banner kind="warning">{t("notPublic")}</Banner>
    <form className="phase-form" onSubmit={e=>{e.preventDefault();
@@ -576,7 +577,7 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
 }
 export function InvitationAccept(){
  const {t,date}=useLang();
- const [raw,setRaw]=useState("");
+ const [raw,setRaw]=useState<string|null>(null);
  useEffect(()=>{setRaw(new URLSearchParams(location.search).get("token")||"");},[]);
  const {data,error,reload}=useData(raw?"/invitations/preview?token="+encodeURIComponent(raw):null);
  const {data:ctx,error:authError}=useData("/context");
@@ -588,6 +589,7 @@ export function InvitationAccept(){
    window.history.replaceState(null,"","/clinic/invite");
   }catch(e){setProblem((e as Error).message);}finally{setBusy(false);}
  }
+ if(raw===null)return <Busy/>;
  if(!raw)return <div className="page-narrow card panel"><Banner kind="error">{t("invalid")}</Banner></div>;
  if(error)return <div className="page-narrow card panel"><Banner kind="error">{t("invalid")}</Banner>
    <p className="muted">{error}</p></div>;
@@ -608,6 +610,7 @@ export function InvitationAccept(){
      authError==="AUTH_REQUIRED"?<div className="phase-actions">
       <a className="btn btn-primary" href={"/clinic/login?next="+encodeURIComponent(next)}>{t("login")}</a>
       <a className="btn btn-secondary" href={"/clinic/signup?next="+encodeURIComponent(next)}>{t("signup")}</a></div>:
+     authError?<ErrorBox error={authError} retry={()=>location.reload()}/>:
      !ctx?<Busy/>:
      <button className="btn btn-primary" onClick={accept} disabled={busy}>{busy?t("loading"):t("accept")}</button>}
    {problem&&<Banner kind="error">{t("rejected")}: {problem}</Banner>}
