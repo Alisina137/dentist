@@ -47,7 +47,7 @@ export function demographicInput(b:any,source:"frontdesk"|"import"="frontdesk"){
     ageEstimate=value;
   }
   if(dateOfBirth!==null&&ageEstimate!==null)fail(422,"DOB_AND_ESTIMATE_MUTUALLY_EXCLUSIVE");
-  if(b.noticeAcknowledged!==true)fail(422,"NOTICE_ACKNOWLEDGEMENT_REQUIRED");
+  if(source==="frontdesk"&&b.noticeAcknowledged!==true)fail(422,"NOTICE_ACKNOWLEDGEMENT_REQUIRED");
   return {
     preferredName,familyName,
     normalizedName:normalizedName([preferredName,familyName].filter(Boolean).join(" ")),
@@ -56,7 +56,7 @@ export function demographicInput(b:any,source:"frontdesk"|"import"="frontdesk"){
     province:maybe(b.province,80,"PROVINCE"),city:maybe(b.city,80,"CITY"),
     address:maybe(b.address,250,"ADDRESS"),emergencyContact:maybe(b.emergencyContact,160,"EMERGENCY_CONTACT"),
     importSourceId:source==="import"?maybe(b.importSourceId,80,"SOURCE_ID"):null,
-    noticeAcknowledged:true
+    noticeAcknowledged:source==="frontdesk"
   };
 }
 export function intakeInput(b:any){
