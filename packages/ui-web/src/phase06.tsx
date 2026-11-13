@@ -581,7 +581,12 @@ function Queue({space}:{space:Space}){
 function BookingEditor({space,existing,close,afterSave}:{
  space:Space;existing?:Booking;close?:()=>void;afterSave?:()=>void}){
  const {t,format}=useWords();const base=url(space.clinicId);
- const [patientQuery,setPatientQuery]=useState(""),[patientId,setPatientId]=useState(existing?.patientId||"");
+ const [patientQuery,setPatientQuery]=useState(""),[patientId,setPatientId]=useState(()=>{
+  if(existing)return existing.patientId;
+  if(typeof window!=="undefined")
+   return new URLSearchParams(window.location.search).get("patientId")||"";
+  return "";
+ });
  const [patients,setPatients]=useState<{id:string;preferredName:string;familyName:string|null;patientNumber:string}[]>([]);
  const [service,setService]=useState(existing?.serviceId||""),[provider,setProvider]=useState(existing?.providerMembershipId||"");
  const [resource,setResource]=useState(existing?.resourceId||""),[date,setDate]=useState(()=>{
