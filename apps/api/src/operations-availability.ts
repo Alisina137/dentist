@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lte, inArray, lt, gt } from "drizzle-orm";
 import { db, schema } from "@dandanlink/db";
 import { availableIn, clock, dateInput, fail, localToUtc, weekday,
   type Span } from "./operations-validation.js";
@@ -9,7 +9,7 @@ function blocks(value:unknown):Span[]{
  return value.filter((v:any)=>typeof v?.start==="number"&&typeof v?.end==="number");
 }
 type AvailabilityRequest={
- date:unknown;serviceId:unknown;providerId:unknown;resourceId?:unknown;
+ date:unknown;serviceId:unknown;providerId:unknown;resourceId?:unknown;ignoreAppointmentId?:string;
 };
 export async function availabilityPreview(cid:string,q:AvailabilityRequest){
  const date=dateInput(q.date);
@@ -89,16 +89,36 @@ export async function availabilityPreview(cid:string,q:AvailabilityRequest){
    }
   }
  }
+ // After PH06, account for reserved clinician/chair ranges before returning
+ // suggestions. Exclusion constraints remain the final concurrent authority.
+ const after=new Date(Date.parse(date+"T00:00:00Z")+86400000).toISOString().slice(0,10);
+ const existing=await db.select({
+  id:schema.clinicAppointment.id,
+  providerMembershipId:schema.clinicAppointment.providerMembershipId,
+  resourceId:schema.clinicAppointment.resourceId,
+  startAt:schema.clinicAppointment.startAt,endAt:schema.clinicAppointment.endAt
+ }).from(schema.clinicAppointment).where(and(
+  eq(schema.clinicAppointment.clinicId,cid),
+  inArray(schema.clinicAppointment.status,["confirmed","arrived","in_treatment"]),
+  lt(schema.clinicAppointment.startAt,new Date(localToUtc(after,0))),
+  gt(schema.clinicAppointment.endAt,new Date(localToUtc(date,0)))
+ ));
+ const available=candidates.filter(slot=>!existing.some(taken=>
+  taken.id!==q.ignoreAppointmentId&&
+  (taken.providerMembershipId===q.providerId||
+   slot.resourceId!==null&&taken.resourceId===slot.resourceId)&&
+  taken.startAt.getTime()<Date.parse(slot.endAt)&&
+  taken.endAt.getTime()>Date.parse(slot.startAt)));
  candidates.sort((a,b)=>a.startAt.localeCompare(b.startAt)||String(a.resourceId).localeCompare(String(b.resourceId)));
- if(reason==="ready"&&!candidates.length)
+ if(reason==="ready"&&!available.length)
   reason=service.requiresChair?"chair_unavailable":"provider_unavailable";
  return {
   clinicId:cid,service:{id:service.id,name:service.name,durationMinutes:service.durationMinutes,
    preparationMinutes:service.preparationMinutes,basePriceAfn:service.basePriceAfn,
    requiresChair:service.requiresChair,version:service.version},
   date,weekday:day,providerId:q.providerId,resourceId:resourceSelected,
-  timezone:"Asia/Kabul",status:reason,slots:candidates,
-  previewOnly:true,bookable:false,appointmentsImplemented:false,
-  explanation:"Candidate slots from saved rules only. No appointments, resource holds, public booking or availability guarantees exist until PH06 and PH15."
+  timezone:"Asia/Kabul",status:reason,slots:available,
+  previewOnly:true,bookable:false,appointmentsImplemented:true,
+  explanation:"Internal appointment candidates exclude existing active clinician/chair bookings. This preview is not a reservation or a public patient booking; final conflict checks run atomically on creation."
  };
 }
