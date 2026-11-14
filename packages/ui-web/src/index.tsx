@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import QRCode from "react-qr-code";
+import { CareIcon } from "./care-icons";
 import { createAuthClient } from "better-auth/client";
 import { twoFactorClient } from "better-auth/client/plugins";
 import { type Calendar, type Locale, type MessageKey, isCalendar, isLocale, languages, translate } from "@dandanlink/locales";
@@ -101,41 +102,72 @@ export function TodayLabel() {
   }).format(new Date());
   return <span>{formatted}</span>;
 }
-function PatientAccountNavLink(){
+function PatientAccountNavLink({active=false,closeMenu}:{active?:boolean;closeMenu?:()=>void}){
  const {t}=usePreferences();
- const [authenticated,setAuthenticated]=useState(false);
+ const [authenticated,setAuthenticated]=useState<boolean|null>(null);
  useEffect(()=>{let active=true;request<Me>("/v1/me").then(()=>{
   if(active)setAuthenticated(true)}).catch(()=>{if(active)setAuthenticated(false)});
   return ()=>{active=false};
  },[]);
- return <a className="nav-link" href={authenticated?"/account":"/login"}>
-  {t(authenticated?"patientAccountLink":"patientSignInLink")}</a>;
+ const label=authenticated?t("patientAccountLink"):t("patientSignInLink");
+ return <a className="header-account-link" href={authenticated?"/account":"/login"}
+  onClick={closeMenu} aria-current={active?"page":undefined}>
+  <CareIcon name="account" size={18}/><span>{label}</span>
+ </a>;
 }
 export function SiteLayout({ children, audience }: { children: ReactNode; audience: "clinic" | "admin" | "patient" }) {
-  const { t } = usePreferences();
-  const home = audience === "clinic" ? "/clinic" : audience === "admin" ? "/admin" : "/";
-  return <div className="shell">
-    <a className="skip-link" href="#main">{t("skipToContent")}</a>
-    <header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
-      <a href={home} className="brand" aria-label={t("brand") + " — " + t("home")}>
-        <span aria-hidden="true" className="brand-symbol">✦</span><span>{t("brand")}</span>
-      </a>
-      <div className="header-nav">
-        <nav aria-label={t("home")}>
-          <a className="nav-link" href={home}>{audience === "clinic" ? t("clinicPortal") : audience === "admin" ? t("adminPortal") : t("home")}</a>
-          {audience === "patient" && <><a className="nav-link" href="/search">{t("findCare")}</a><a className="nav-link" href="/about">{t("aboutDandanLink")}</a><PatientAccountNavLink/></>}
-          {audience === "clinic" && <a className="nav-link" href="/pricing">{t("pricing")}</a>}
-          {audience !== "patient" && <a className="nav-link" href="/privacy">{t("privacy")}</a>}
-        </nav>
-        <LocaleControls />
-      </div>
-    </header>
-    <main id="main" className="site-main">{children}</main>
-    <footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
-      <a href="/privacy" className="text-link">{t("privacy")}</a>
-      <a href="/terms" className="text-link">{t("terms")}</a>
-    </div></footer>
-  </div>;
+ const {t}=usePreferences();
+ const [open,setOpen]=useState(false);
+ const [path,setPath]=useState("");
+ const home=audience==="clinic"?"/clinic":audience==="admin"?"/admin":"/";
+ useEffect(()=>setPath(window.location.pathname),[]);
+ const active=(href:string)=>href===home
+  ? path===home || (home!=="/" && path===home+"/")
+  :path===href||(href!=="/"&&path.startsWith(href+"/"));
+ const closeMenu=()=>setOpen(false);
+ return <div className={"shell shell-"+audience}>
+  <a className="skip-link" href="#main">{t("skipToContent")}</a>
+  <header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
+   <div className="site-header-inner">
+    <a href={home} onClick={closeMenu} className="brand" aria-label={t("brand")+" — "+t("home")}>
+     <span aria-hidden="true" className="brand-symbol"><CareIcon name="sparkle" size={24}/></span>
+     <span className="brand-name">Dandan<span>Link</span></span>
+     <span className="brand-portal">{audience==="patient"?t("patientPortal"):
+       audience==="clinic"?t("clinicPortal"):t("adminPortal")}</span>
+    </a>
+    <button className="header-menu-toggle" type="button" aria-expanded={open}
+     aria-controls="primary-header-nav" aria-label={open?t("closeMenu"):t("openMenu")}
+     onClick={()=>setOpen(value=>!value)}>
+     <CareIcon name={open?"close":"menu"} size={23}/>
+    </button>
+    <div id="primary-header-nav" className={"header-nav"+(open?" header-nav-open":"")}>
+     <nav aria-label={t("home")}>
+      <a className="nav-link" href={home} aria-current={active(home)?"page":undefined}
+       onClick={closeMenu}><CareIcon name="home" size={17}/>
+       <span>{audience==="clinic"?t("clinicPortal"):audience==="admin"?t("adminPortal"):t("home")}</span></a>
+      {audience==="patient"&&<>
+       <a className="nav-link" href="/search" aria-current={active("/search")?"page":undefined}
+        onClick={closeMenu}><CareIcon name="search" size={17}/><span>{t("findCare")}</span></a>
+       <a className="nav-link" href="/about" aria-current={active("/about")?"page":undefined}
+        onClick={closeMenu}><CareIcon name="about" size={17}/><span>{t("aboutDandanLink")}</span></a>
+       <PatientAccountNavLink active={active("/account")} closeMenu={closeMenu}/>
+      </>}
+      {audience==="clinic"&&<a className="nav-link" href="/pricing"
+       aria-current={active("/pricing")?"page":undefined} onClick={closeMenu}>
+       <CareIcon name="file" size={17}/><span>{t("pricing")}</span></a>}
+      {audience!=="patient"&&<a className="nav-link" href="/privacy"
+       aria-current={active("/privacy")?"page":undefined} onClick={closeMenu}>
+       <CareIcon name="shield" size={17}/><span>{t("privacy")}</span></a>}
+     </nav>
+    </div>
+   </div>
+  </header>
+  <main id="main" className="site-main">{children}</main>
+  <footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
+    <a href="/privacy" className="text-link">{t("privacy")}</a>
+    <a href="/terms" className="text-link">{t("terms")}</a>
+  </div></footer>
+ </div>;
 }
 export function InlineAlert({ children, kind = "info" }: { children: ReactNode; kind?: "info" | "error" | "success" | "warning" }) {
   return <div role={kind === "error" ? "alert" : "status"} className={"notice" + (kind === "info" ? "" : " notice-" + kind)}>{children}</div>;
