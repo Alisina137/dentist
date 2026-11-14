@@ -115,6 +115,29 @@ function PatientAccountNavLink({active=false,closeMenu}:{active?:boolean;closeMe
   <CareIcon name="account" size={18}/><span>{label}</span>
  </a>;
 }
+/** Four meaningful mobile patient destinations; no fake Appointments/Bills/Reviews tabs. */
+function PatientBottomNav({path}:{path:string}){
+ const {t}=usePreferences();
+ if(!path||/\\/(login|signup|verify|forgot-password|reset-password)(\\/|$)/.test(path)||
+  path.startsWith("/account/onboarding"))return null;
+ const nav=[
+  {key:"home",href:"/",label:t("home"),icon:"home"},
+  {key:"find",href:"/search",label:t("findCare"),icon:"search"},
+  {key:"family",href:"/account/family",label:t("patientFamilyNav"),icon:"family"},
+  {key:"account",href:"/account",label:t("patientAccountLink"),icon:"account"}
+ ] as const;
+ return <nav className="patient-bottom-navigation" aria-label={t("patientPortal")}>
+  {nav.map(x=>{
+   const active=x.href==="/"?path==="/":path===x.href||
+    (x.href==="/account"&&path.startsWith("/account/")&&
+     !path.startsWith("/account/family"))||
+    (x.href==="/account/family"&&path.startsWith("/account/family"));
+   return <a key={x.key} href={x.href}
+    aria-current={active?"page":undefined}>
+    <CareIcon name={x.icon} size={22}/><span>{x.label}</span></a>;
+  })}
+ </nav>;
+}
 export function SiteLayout({ children, audience }: { children: ReactNode; audience: "clinic" | "admin" | "patient" }) {
  const {t}=usePreferences();
  const [open,setOpen]=useState(false);
@@ -168,6 +191,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
     <a href="/privacy" className="text-link">{t("privacy")}</a>
     <a href="/terms" className="text-link">{t("terms")}</a>
   </div></footer>
+  {audience==="patient"&&<PatientBottomNav path={path}/>}
  </div>;
 }
 export function InlineAlert({ children, kind = "info" }: { children: ReactNode; kind?: "info" | "error" | "success" | "warning" }) {
