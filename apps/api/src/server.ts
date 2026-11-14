@@ -18,6 +18,7 @@ import { chartRouter } from "./chart-router.js";
 import { treatmentRouter } from "./treatment-router.js";
 import { billingRouter } from "./billing-router.js";
 import { expenseRouter } from "./expense-router.js";
+import { listingRouter } from "./listing-router.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -40,6 +41,8 @@ app.all("/api/auth/*", toNodeHandler(auth));
 app.use("/v1/registry", express.json({limit:"1.5mb"}), patientRegistryRouter());
 // PH11 receipt uploads accept bounded base64 PDF/image evidence only on the private expense router.
 app.use("/v1/expenses", express.json({limit:"1.6mb"}), expenseRouter());
+// PH12 private credential/photo evidence is bounded independently of routine 16 KB API requests.
+app.use("/v1/listings",express.json({limit:"2.4mb"}),listingRouter());
 app.use(express.json({ limit: "16kb" }));
 app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
@@ -58,7 +61,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH11", marketplaceAvailable: false,
+  product: "DandanLink", release: "PH12", marketplaceAvailable: false,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));
 

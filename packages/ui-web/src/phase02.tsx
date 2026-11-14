@@ -2,6 +2,7 @@
 "use client";
 import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index";
+import { AdminModerationPortal } from "./phase12";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 async function send(path:string,method="GET",body?:unknown):Promise<any> {
@@ -16,6 +17,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
+  dentists:"Dentist Verification",listings:"Marketplace Listings",
   appointments:"Appointments",clinicQueue:"Patient queue",bookingToday:"Today’s bookings",bookingArrived:"Arrived",bookingActive:"In treatment",bookingCompleted:"Completed",bookingPreview:"Appointments are real and synchronized across the clinic calendar and queue.",newAppointment:"New appointment",operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
@@ -58,6 +60,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"Next action",privacyGate:"Patient records are private clinic data; live scheduling and clinical encounters are not released yet."
  },
  "fa-AF":{
+  dentists:"تأیید داکتران دندان",listings:"آگهی‌های کلینیک",
   appointments:"وقت‌های ملاقات",clinicQueue:"صف مریضان",bookingToday:"ملاقات‌های امروز",bookingArrived:"حاضر",bookingActive:"در تداوی",bookingCompleted:"تکمیل",bookingPreview:"ملاقات‌ها در تقویم و صف کلینیک ثبت و همزمان نشان داده می‌شوند.",newAppointment:"ثبت وقت جدید",operations:"عملیات",management:"مدیریت",workspace:"بخش اصلی",staffWorkspace:"کارمندان و منابع",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",opsReady:"آمادگی کلینیک",opsHint:"خدمات واقعی، منابع، ساعات کاری و شیفت داکتر را تنظیم کنید.",setupComplete:"تکمیل",setupMissing:"باقی",stepService:"خدمات",stepChair:"چوکی تداوی",stepHours:"ساعات کلینیک",stepDoctor:"شیفت داکتر",patients:"مریضان",search:"جستجوی کلینیک‌ها",filter:"جستجو",dashboard:"داشبورد",clinics:"کلینیک‌ها",clinic:"کلینیک",onboarding:"ثبت کلینیک",settings:"تنظیمات کلینیک",
   subscription:"اشتراک",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",overview:"نمای کلی",verification:"تأیید",
   newClinic:"ثبت کلینیک جدید",continue:"ادامه",save:"ذخیره پیش‌نویس",back:"بازگشت",submit:"ارسال برای بررسی",
@@ -99,6 +102,7 @@ const words:Record<string,Record<string,string>>={
   privacyGate:"معلومات مریضان خصوصی است؛ نوبت‌دهی و معاینات طبی در مراحل بعدی فعال می‌شوند."
  },
  "ps-AF":{
+  dentists:"د ډاکټرانو تایید",listings:"د کلینیک اعلانونه",
   appointments:"لیدنې",clinicQueue:"د ناروغانو کتار",bookingToday:"د نن لیدنې",bookingArrived:"راغلي",bookingActive:"درملنه",bookingCompleted:"بشپړ",bookingPreview:"رښتینې لیدنې په کلینیکي مهالوېش او کتار کې یو شان ښکاري.",newAppointment:"نوی وخت",operations:"عملیات",management:"مدیریت",workspace:"اصلي برخه",staffWorkspace:"کارکوونکي او سرچینې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",opsReady:"د کلینیک چمتووالی",opsHint:"خدمتونه، څوکۍ، ساعتونه او د ډاکټر شیفټونه تنظیم کړئ.",setupComplete:"بشپړ",setupMissing:"پاتې",stepService:"خدمتونه",stepChair:"څوکۍ",stepHours:"کاري ساعتونه",stepDoctor:"د ډاکټر شیفټ",patients:"ناروغان",search:"کلینیکونه ولټوئ",filter:"لټون",dashboard:"ډشبورډ",clinics:"کلینیکونه",clinic:"کلینیک",onboarding:"د کلینیک ثبت",settings:"د کلینیک تنظیمات",
   subscription:"ګډون",subscriptions:"ګډونونه",plans:"پلانونه",overview:"لنډیز",verification:"تایید",
   newClinic:"نوی کلینیک ثبت کړئ",continue:"دوام",save:"مسوده وساتئ",back:"شاته",submit:"د کتنې لپاره واستوئ",
@@ -143,7 +147,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"راتلونکی ګام",privacyGate:"د ناروغانو معلومات شخصي دي؛ رزرو او طبي لیدنې په راتلونکو پړاوونو کې فعالېږي."
  }
 };
-type View="dashboard"|"onboarding"|"settings"|"subscription"|"clinics"|"review"|"plans"|"subscriptions";
+type View="dashboard"|"onboarding"|"settings"|"subscription"|"clinics"|"review"|"plans"|"subscriptions"|"dentists"|"dentistReview"|"listings"|"listingReview";
 type Audience="clinic"|"admin";
 function useText() {
   const {locale}=usePreferences();
@@ -180,8 +184,8 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
     ["onboarding","/clinic/onboarding"],
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
-  ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
-  const active=view==="review"?"clinics":view;
+  ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["dentists","/admin/dentists"],["listings","/admin/listings"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
+  const active=view==="review"?"clinics":view==="dentistReview"?"dentists":view==="listingReview"?"listings":view;
   return <div className="work-layout phase-layout">
     <aside className="card side-panel">
       <div className="pill">{audience==="clinic"?l("clinic"):l("verification")}</div>
@@ -193,7 +197,7 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
          <span className="phase04-side-icon" aria-hidden="true">
           {({dashboard:"⌂",appointments:"▦",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
             onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",
-            clinics:"▤",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
+            clinics:"▤",dentists:"✚",listings:"◈",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
          <span>{l(key)}</span></a>
        </React.Fragment>)}
       </nav>
@@ -225,6 +229,8 @@ export function Phase02Portal({audience,view}:{audience:Audience,view:View}){
     {view==="dashboard"?<Dashboard audience={audience}/>:view==="onboarding"?<Onboarding/>:
       view==="settings"?<ClinicSettings/>:view==="subscription"?<ClinicSubscription/>:
       view==="clinics"?<AdminClinics/>:view==="review"?<AdminReview/>:
+      (view==="dentists"||view==="dentistReview"||view==="listings"||view==="listingReview")?
+       <AdminModerationPortal view={view}/>:
       view==="plans"?<AdminPlans/>:<AdminSubscriptions/>}
   </Frame>;
 }

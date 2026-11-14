@@ -780,3 +780,82 @@ export const clinicExpenseVersion=pgTable("clinic_expense_versions",{
  uniqueIndex("clinic_expense_versions_action_unique").on(t.clinicId,t.actorId,t.actionKey),
  index("clinic_expense_versions_hist_idx").on(t.clinicId,t.expenseId,t.version)
 ]);
+
+
+/** PH12 public-facing listing revisions remain independent of sensitive clinical data. */
+export const dentistCredentialCase=pgTable("clinic_dentist_credential_cases",{
+ membershipId:text("membership_id").primaryKey().references(()=>clinicMembership.id),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ status:text("status").notNull().default("unverified"),
+ currentSubmissionId:text("current_submission_id"),
+ approvedDraftVersion:integer("approved_draft_version"),
+ validUntil:date("valid_until",{mode:"string"}),
+ verifiedSnapshot:jsonb("verified_snapshot").$type<Record<string,unknown>>(),
+ reviewedBy:text("reviewed_by").references(()=>user.id),
+ reviewedAt:timestamp("reviewed_at",{withTimezone:true}),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("dentist_credential_cases_idx").on(t.clinicId,t.status)]);
+export const dentistCredentialSubmission=pgTable("clinic_dentist_credential_submissions",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ membershipId:text("membership_id").notNull().references(()=>clinicMembership.id),
+ draftVersion:integer("draft_version").notNull(),credentialType:text("credential_type").notNull(),
+ credentialNumber:text("credential_number").notNull(),
+ validUntil:date("valid_until",{mode:"string"}).notNull(),
+ fileName:text("file_name").notNull(),mimeType:text("mime_type").notNull(),
+ sizeBytes:integer("size_bytes").notNull(),sha256Hex:text("sha256_hex").notNull(),
+ submittedBy:text("submitted_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("dentist_credential_submission_idx").on(t.clinicId,t.membershipId,t.createdAt)]);
+export const dentistCredentialDecision=pgTable("clinic_dentist_credential_decisions",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ membershipId:text("membership_id").notNull().references(()=>clinicMembership.id),
+ submissionId:text("submission_id").references(()=>dentistCredentialSubmission.id),
+ decision:text("decision").notNull(),reason:text("reason").notNull(),
+ reviewBasis:text("review_basis"),actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("dentist_credential_decisions_idx").on(t.clinicId,t.membershipId,t.createdAt)]);
+export type ClinicListingProfile={
+ description:string;specialties:string[];photoIds:{id:string;caption:string}[];
+ dentistIds:string[];serviceIds:string[];bookingRules:{
+ approvalMode:"manual"|"auto";minNoticeHours:number;horizonDays:number;
+ cancellationHours:number;bufferMinutes:number};
+ latitude:number|null;longitude:number|null;contactNote:string|null;
+};
+export const clinicListingHead=pgTable("clinic_listing_heads",{
+ clinicId:text("clinic_id").primaryKey().references(()=>clinic.id),
+ revision:integer("revision").notNull().default(0),
+ draftVersion:integer("draft_version"),pendingVersion:integer("pending_version"),
+ approvedVersion:integer("approved_version"),hidden:boolean("hidden").notNull().default(false),
+ hiddenReason:text("hidden_reason"),hiddenBy:text("hidden_by").references(()=>user.id),
+ hiddenAt:timestamp("hidden_at",{withTimezone:true}),
+ publishedAt:timestamp("published_at",{withTimezone:true}),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+});
+export const clinicListingVersion=pgTable("clinic_listing_versions",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ version:integer("version").notNull(),status:text("status").notNull(),
+ profile:jsonb("profile").$type<ClinicListingProfile>().notNull(),
+ approvedDentists:jsonb("approved_dentists").$type<Record<string,unknown>[]>(),
+ approvedServices:jsonb("approved_services").$type<Record<string,unknown>[]>(),
+ submittedAt:timestamp("submitted_at",{withTimezone:true}),
+ reviewedAt:timestamp("reviewed_at",{withTimezone:true}),
+ reviewedBy:text("reviewed_by").references(()=>user.id),
+ decisionReason:text("decision_reason"),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[uniqueIndex("clinic_listing_versions_clinic_version").on(t.clinicId,t.version),
+ index("clinic_listing_versions_idx").on(t.clinicId,t.status,t.version)]);
+export const clinicListingPhoto=pgTable("clinic_listing_photos",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ mimeType:text("mime_type").notNull(),sizeBytes:integer("size_bytes").notNull(),
+ fileName:text("file_name").notNull(),sha256Hex:text("sha256_hex").notNull(),
+ rightsAttested:boolean("rights_attested").notNull().default(true),
+ uploadedBy:text("uploaded_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_listing_photos_idx").on(t.clinicId,t.createdAt)]);
+export const clinicListingEvent=pgTable("clinic_listing_events",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ version:integer("version"),action:text("action").notNull(),reason:text("reason"),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_listing_events_idx").on(t.clinicId,t.createdAt)]);
