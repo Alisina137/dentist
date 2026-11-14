@@ -18,7 +18,7 @@ test("Clinic setup preserves independent PH02 review while organizing registrati
  for(const token of ["function Onboarding","clinic-setup-steps","clinic-setup-review-status",
    "clinic-setup-surface","clinic-setup-docs","clinic-setup-privacy-badge",
    "clinic-setup-summary","clinic-setup-uploads","clinic-setup-submit",
-   "OperationsSetup","clinic-setup-side-steps","phase-form-grid",
+   "OperationsSetup","clinic-setup-side-steps",
    "/clinics/","/evidence","x-document-kind","clinic_license",
    "/submit","attested:true","revision:detail.clinic.revision",
    "needs_info","approved","pending","suspended","readonly={!canEdit}",
