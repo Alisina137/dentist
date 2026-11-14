@@ -19,7 +19,7 @@ async function processOne(){
     FROM patient_booking_notifications n
     JOIN patient_notification_preferences pref ON pref.user_id=n.user_id
     JOIN auth_users u ON u.id=n.user_id
-    WHERE n.status='pending' AND n.available_at<=now()
+    WHERE n.status IN ('pending','processing') AND n.available_at<=now()
     ORDER BY n.created_at ASC LIMIT 1 FOR UPDATE OF n SKIP LOCKED`;
   if(!candidates.length)return [];
   const item=candidates[0],opted=item.event_name==="requested"||item.event_name==="confirmed"||
@@ -32,7 +32,8 @@ async function processOne(){
   // Leave queue pending until an SMTP provider is actually configured.
   if(!mailAvailable())return [];
   await tx`UPDATE patient_booking_notifications SET status='processing',
-    attempt_count=attempt_count+1 WHERE id=${item.id}`;
+    attempt_count=attempt_count+1,available_at=now()+interval '2 minutes'
+    WHERE id=${item.id}`;
   return [item];
  });
  if(!jobs.length)return false;
