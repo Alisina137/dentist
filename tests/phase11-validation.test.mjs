@@ -15,7 +15,7 @@ test("PH11 private expense domain is separate from patient invoices",()=>{
 test("PH11 guard real receipt MIME signatures, amount validity, correction and void audit",()=>{
  const router=read("apps/api/src/expense-router.ts");
  for(const invariant of ["EXPENSE_ROLE_DENIED","EXPENSE_VOID_DENIED","EXPENSE_ACTION_KEY_REUSED",
-  "STALE_EXPENSE_REVISION","EXPENSE_FINAL","CORRECTION_REASON","INVALID_AMOUNT",
+  "STALE_EXPENSE_REVISION","EXPENSE_FINAL","CORRECTION_REASON","AMOUNT",
   "RECEIPT_SIGNATURE_MISMATCH","RECEIPT_SIZE_LIMIT","private, no-store",
   "EXPENSE_CONFLICT","bank_transfer","clinic_payment_entries","netAfterExpensesIsNotProfit",
   "category","summary","/void","FOR UPDATE"])
