@@ -21,6 +21,7 @@ import { expenseRouter } from "./expense-router.js";
 import { listingRouter } from "./listing-router.js";
 import { discoveryRouter } from "./discovery-router.js";
 import { patientAccountRouter } from "./patient-account-router.js";
+import { patientBookingsRouter } from "./patient-bookings-router.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -48,6 +49,7 @@ app.use("/v1/listings",express.json({limit:"2.4mb"}),listingRouter());
 app.use(express.json({ limit: "16kb" }));
 app.use("/v1/discovery", discoveryRouter());
 app.use("/v1/patients", patientAccountRouter());
+app.use("/v1/patient-bookings", patientBookingsRouter());
 app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
 // PH07 private clinical files have their own strictly bounded body parser.
