@@ -75,6 +75,8 @@ CREATE TABLE clinic_listing_versions (
  version integer NOT NULL CHECK(version>0),
  status text NOT NULL CHECK(status IN ('draft','pending','approved','rejected')),
  profile jsonb NOT NULL CHECK(jsonb_typeof(profile)='object'),
+ approved_dentists jsonb,
+ approved_services jsonb,
  submitted_at timestamptz,
  reviewed_at timestamptz,
  reviewed_by text REFERENCES auth_users(id),
@@ -141,6 +143,8 @@ CREATE OR REPLACE FUNCTION clinic_listing_version_guard() RETURNS trigger LANGUA
 BEGIN
  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.clinic_id IS DISTINCT FROM OLD.clinic_id OR
     NEW.version IS DISTINCT FROM OLD.version OR NEW.profile IS DISTINCT FROM OLD.profile OR
+    (OLD.status='approved' AND (NEW.approved_dentists IS DISTINCT FROM OLD.approved_dentists
+     OR NEW.approved_services IS DISTINCT FROM OLD.approved_services)) OR
     NEW.created_by IS DISTINCT FROM OLD.created_by OR NEW.created_at IS DISTINCT FROM OLD.created_at
  THEN RAISE EXCEPTION 'Listing snapshot content and ownership are immutable'; END IF;
  IF NOT((OLD.status='draft' AND NEW.status='pending') OR
