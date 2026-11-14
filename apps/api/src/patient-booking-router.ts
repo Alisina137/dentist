@@ -581,7 +581,11 @@ export function patientBookingRouter(){
   if(sqlError?.code==="23505"||sqlError?.cause?.code==="23505"){
    res.status(409).json({code:"DUPLICATE_REQUEST"});return;
   }
-  console.error("PH15 booking error",error instanceof Error?error.name:"unknown");
+  // Operational diagnostics use SQLSTATE and constraint only; never log request
+  // bodies, patient names, authentication tokens, or medical content.
+  console.error("PH15 booking error",error instanceof Error?error.name:"unknown",
+   sqlError?.code||sqlError?.cause?.code||"unclassified",
+   process.env.NODE_ENV==="test" ? (error as Error)?.message : "");
   res.status(500).json({code:"BOOKING_SERVICE_UNAVAILABLE"});
  });
  return api;
