@@ -107,8 +107,8 @@ async function event(tx:any,clinic:string,actor:string,appointment:any,action:st
  action,before_status,after_status,before_start_at,before_end_at,
  after_start_at,after_end_at,reason,actor_id)
  VALUES(${randomUUID()},${clinic},${appointment.id},${action},
- ${before?.status||null},${appointment.status},${before?.start_at||null},
- ${before?.end_at||null},${appointment.start_at},${appointment.end_at},
+ ${before?.status||null},${appointment.status},${before?.start_at?new Date(before.start_at).toISOString():null},
+ ${before?.end_at?new Date(before.end_at).toISOString():null},${new Date(appointment.start_at).toISOString()},${new Date(appointment.end_at).toISOString()},
  ${why},${actor})`;
  await tx`INSERT INTO audit_events(id,clinic_id,actor_id,action,subject_type,subject_id,outcome)
  VALUES(${randomUUID()},${clinic},${actor},${"booking."+action},'appointment',
@@ -407,7 +407,7 @@ export function patientBookingRouter(){
     VALUES(${appointmentId},${clinic},${patientId},${serviceId},${providerId},
     ${slot.resourceId},${service.version},${service.name},${service.category},
     ${service.basePriceAfn},${service.durationMinutes},${service.preparationMinutes},
-    ${new Date(slot.startAt)},${new Date(slot.endAt)},${status},'public',${user},${user})
+    ${slot.startAt},${slot.endAt},${status},'public',${user},${user})
     RETURNING *`;
    await tx`INSERT INTO patient_public_bookings(id,appointment_id,clinic_id,user_id,
     subject_type,dependent_id,subject_name,idempotency_key,request_digest,approval_mode,cancellation_hours)
@@ -482,8 +482,8 @@ export function patientBookingRouter(){
    // if a service changes, require clinic-managed reschedule rather than alter price silently.
    if(before.service_version!==listed.service.version||
       before.service_price_afn!==listed.service.priceAfn)fail(409,"SERVICE_PUBLICATION_CHANGED");
-   const updated=await tx`UPDATE clinic_appointments SET start_at=${new Date(slot.startAt)},
-    end_at=${new Date(slot.endAt)},resource_id=${slot.resourceId},
+   const updated=await tx`UPDATE clinic_appointments SET start_at=${slot.startAt},
+    end_at=${slot.endAt},resource_id=${slot.resourceId},
     revision=revision+1,updated_by=${user},updated_at=now()
     WHERE id=${before.id} AND revision=${before.revision} RETURNING *`;
    await event(tx,before.clinic_id,user,updated[0],"rescheduled",before,why);
