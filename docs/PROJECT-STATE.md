@@ -6,7 +6,7 @@ Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\d
 
 ## Current phase: PH11 operational expenses, correction history and cash-flow insights
 
-Status: **PH01–PH10 implemented and tested. PH11 clinic expenses implemented on a feature branch, pending all automated CI gates. Manual accountant reconciliation, accessibility, receipt retention, privacy/security and legal/tax review remain separate production gates**.
+Status: **PH01–PH11 implemented and tested; PH11 unit validation, strict TypeScript, web builds, Expo Android export and all PostgreSQL-backed phase integration tests passed. Manual accountant reconciliation, accessibility, receipt retention, privacy/security and legal/tax review remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
