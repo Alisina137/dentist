@@ -520,15 +520,6 @@ export function PatientSearchPage(){
  const [state,setState]=useState<Params>(initial),[initialized,setInitialized]=useState(false);
  const [locationPending,setLocationPending]=useState(false),[geoError,setGeoError]=useState("");
  useEffect(()=>{setState(urlParams());setInitialized(true)},[]);
- const url=useMemo(()=>{
-  if(!initialized)return null;
-  const params=new URLSearchParams();
-  for(const k of ["q","city","specialty","service","date","maxFee","sort",
-   "latitude","longitude"] as const)if(state[k])params.set(k,state[k]);
-  params.set("verified",String(state.verified));
-  params.set("page",String(state.page));params.set("limit","8");
-  return "/search?"+params;
- },[state,initialized]);
  const facets=usePublic<Facets>("/facets");
  // Query result always uses the URL, never unsaved in-form edits.
  const requestPath=useMemo(()=>{
@@ -538,6 +529,7 @@ export function PatientSearchPage(){
   for(const k of ["q","city","specialty","service","date","maxFee","sort",
    "latitude","longitude"] as const)if(u.get(k))query.set(k,u.get(k)!);
   if(u.has("verified"))query.set("verified",u.get("verified")!);
+  if(!u.has("city"))query.set("city","Kabul");
   query.set("page",String(Math.max(1,Number(u.get("page"))||1)));
   query.set("limit","8");return "/search?"+query;
  },[initialized]);
