@@ -291,7 +291,7 @@ export function patientBookingRouter(){
     WHERE id=${link} AND clinic_id=${clinic} AND state='approved'`;
   if(!linked)fail(404,"APPROVED_LINK_REQUIRED");
   const summaries=await sqlClient`SELECT e.id,e.signed_at,e.reason,
-    r.revoked_at IS NULL AS released
+    (r.id IS NOT NULL AND r.revoked_at IS NULL) AS released
     FROM clinic_encounters e
     LEFT JOIN patient_record_releases r ON r.link_id=${link} AND r.clinic_id=${clinic}
       AND r.resource_kind='signed_encounter_summary' AND r.resource_id=e.id
@@ -301,7 +301,7 @@ export function patientBookingRouter(){
     ORDER BY e.signed_at DESC LIMIT 80`;
   const receipts=ctx.role==="dentist"?[]:
    await sqlClient`SELECT i.id,i.invoice_number,i.issued_at,i.total_afn,
-    r.revoked_at IS NULL AS released
+    (r.id IS NOT NULL AND r.revoked_at IS NULL) AS released
     FROM clinic_invoices i
     LEFT JOIN patient_record_releases r ON r.link_id=${link} AND r.clinic_id=${clinic}
       AND r.resource_kind='issued_receipt' AND r.resource_id=i.id
