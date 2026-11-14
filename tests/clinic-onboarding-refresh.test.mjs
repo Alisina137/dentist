@@ -22,7 +22,7 @@ test("Clinic setup preserves independent PH02 review while organizing registrati
    "/clinics/","/evidence","x-document-kind","clinic_license",
    "/submit","attested:true","revision:detail.clinic.revision",
    "needs_info","approved","pending","suspended","readonly={!canEdit}",
-   "Professional qualifications and ID cards","doctorNotice"])
+   "professionalDetail","doctorNotice"])
   assert.ok(ui.includes(token),token);
  assert.ok(!ui.includes("PMDC"));
  assert.ok(!ui.includes("Elite Clinic"));
