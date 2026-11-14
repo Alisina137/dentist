@@ -92,7 +92,7 @@ assert.ok(incoming.requests.some(x=>x.id===created.id));
 const requestRow=incoming.requests.find(x=>x.id===created.id);
 ok(await request(root+"/clinics/"+clinic.id+"/requests/"+created.id+"/decision","POST",
  {action:"accept",revision:requestRow.revision},patient.session),
- [403],"patient may not impersonate clinic scheduler");
+ [404],"patient may not impersonate clinic scheduler or enumerate clinic membership");
 
 const approved=ok(await request(root+"/clinics/"+clinic.id+"/requests/"+created.id+"/decision",
  "POST",{action:"accept",revision:requestRow.revision},owner.session),
