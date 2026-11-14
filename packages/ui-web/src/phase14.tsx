@@ -12,7 +12,7 @@ type Account={
  profile:Profile|null;
  onboarding:{termsVersion:string;privacyVersion:string;requiresAdultAttestation:boolean;
  accountAndBookingFree:boolean};
- publicBookingsEnabled:false;clinicalRecordLinksEnabled:false};
+ publicBookingsEnabled:true;clinicalRecordLinksEnabled:true;nativeBookingsEnabled:false};
 type Profile={preferredName:string;city:string;phone:string|null;phoneVerified:false;
  legalVersion:string;privacyVersion:string;acceptedAt:string;revision:number;
  createdAt:string;updatedAt:string;avatar:{kind:string;initials:string}};
@@ -27,7 +27,7 @@ type Invitation={id:string;guardianName:string;createdAt:string;expiresAt:string
 type Delegation={id:string;guardianName:string;revision:number;createdAt:string};
 type Preferences={locale:Lang;calendar:"gregorian"|"solar_hijri";
  notifications:{emailBookings:boolean;emailUpdates:boolean;smsEnabled:false;pushEnabled:false;
- emailDeliveryConfigured:boolean;bookingNotificationsReleased:false;phase:"PH15"};
+ emailDeliveryConfigured:boolean;bookingNotificationsReleased:true;phase:"PH15"};
  privacy:{clinicalRecordsShared:false;linkedClinics:0;explanation:string};revision:number};
 type Session={id:string;createdAt:string;expiresAt:string;device:string;ipAddress:string|null};
 type ConsentEvent={subjectType:string;subjectId:string|null;consent:boolean;
@@ -63,7 +63,7 @@ const words:Record<Lang,Record<string,string>>={
  welcome:"Your care, organized around you.",welcomeSub:"Manage your own profile and authorized family members. Your clinic treatment records remain private until verified linking is released.",
  profileIntro:"Your personal details",editProfile:"Edit profile",manageFamily:"Manage family",
  managePreferences:"Change preferences",manageSecurity:"Manage security",
- noBook:"Online appointment booking is coming in Phase 15.",
+ noBook:"Online booking is available at participating verified clinics.",
  noShared:"No clinic treatment or billing records are linked to your account.",
  count:"Members",status:"Status",familyMembers:"Family members",
  publicOnly:"Your public clinic browsing does not require an account.",
