@@ -835,6 +835,8 @@ export const clinicListingVersion=pgTable("clinic_listing_versions",{
  id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
  version:integer("version").notNull(),status:text("status").notNull(),
  profile:jsonb("profile").$type<ClinicListingProfile>().notNull(),
+ approvedDentists:jsonb("approved_dentists").$type<Record<string,unknown>[]>(),
+ approvedServices:jsonb("approved_services").$type<Record<string,unknown>[]>(),
  submittedAt:timestamp("submitted_at",{withTimezone:true}),
  reviewedAt:timestamp("reviewed_at",{withTimezone:true}),
  reviewedBy:text("reviewed_by").references(()=>user.id),
