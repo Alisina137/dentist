@@ -2258,3 +2258,406 @@ a.phase-list-item:hover{background:#f5fbfe}
  .phase12-comparison dl>div{grid-template-columns:1fr}
  .phase12-moderation-photos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.phase12-workspace *, .phase12-stack *{animation-duration:.01ms!important;transition:none!important}}
+
+
+/* PH13 patient discovery — DandanLink Care. Calm care-oriented hierarchy, no fabricated content. */
+.p13-home,.p13-search-page,.p13-profile-page,.p13-about-page{--p13-teal:#087b88;
+ --p13-navy:#173e50;--p13-muted:#68818a;--p13-line:#dce9eb;
+ --p13-mint:#ebf6f5;--p13-paper:#fff;min-width:0;color:var(--p13-navy)}
+.p13-page-content{width:100%;max-width:1320px;margin-inline:auto}
+.p13-home{display:grid;gap:48px}
+.p13-home a,.p13-search-page a,.p13-profile-page a,.p13-about-page a{transition:color .16s ease}
+.p13-hero{display:grid;grid-template-columns:minmax(0,1.26fr) minmax(260px,.74fr);
+ align-items:center;position:relative;isolation:isolate;overflow:hidden;
+ background:linear-gradient(112deg,#f3faf8 0%,#e6f4f0 70%,#d7edee 100%);
+ border:1px solid #d6e8e8;border-radius:24px;padding:clamp(26px,4vw,55px);
+ gap:22px;min-height:475px}
+.p13-hero::after{content:"";position:absolute;inset-block-end:-80px;inset-inline-end:-80px;
+ width:260px;height:260px;border:1px solid #bededb;border-radius:50%;z-index:-1}
+.p13-hero-copy{position:relative;z-index:1;max-width:750px;min-width:0}
+.p13-eyebrow,.p13-kicker{display:inline-flex;align-items:center;gap:8px;
+ color:#16808a;font-size:11px;font-weight:850;letter-spacing:.02em}
+.p13-eyebrow{border:1px solid #c8e3e1;border-radius:30px;padding:8px 13px;background:#f8fdfb}
+.p13-eyebrow>span{font-size:17px}
+.p13-hero h1{font-weight:880;font-size:clamp(32px,3.55vw,51px);letter-spacing:-.045em;
+ line-height:1.13;margin:22px 0 15px;color:#143d4e;max-width:670px}
+.p13-hero-copy>p{font-size:14px;line-height:1.9;color:#547581;max-width:650px;margin:0 0 25px}
+.p13-home-search{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(145px,.8fr) auto;
+ align-items:stretch;gap:9px;padding:9px;background:#fff;border:1px solid #d3e7e6;
+ border-radius:16px;box-shadow:0 17px 34px rgba(26,90,95,.08)}
+.p13-search-term{display:grid;gap:5px;min-width:0;padding:6px 13px}
+.p13-field-label,.p13-home-search .p13-field>span{font-weight:800;color:#547683;font-size:10px}
+.p13-search-inner{display:flex;gap:8px;align-items:center;min-width:0}
+.p13-search-inner>span{font-size:23px;line-height:1;color:#208494}
+.p13-search-inner input{width:100%;min-width:0;border:0;outline:0;font:inherit;
+ padding:3px 0;color:#214c5a;font-size:13px;background:transparent}
+.p13-search-inner input::placeholder{color:#9aaeb2}
+.p13-home-search .p13-field{padding:6px 13px;border-inline-start:1px solid #e3edee;gap:3px}
+.p13-home-search .p13-field select{border:0;background:transparent;box-shadow:none;
+ min-height:34px;padding:4px 0}
+.p13-search-submit{border:0;border-radius:11px;padding:12px 18px;background:#0e7f89;
+ color:white;font:inherit;font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap;
+ display:flex;align-items:center;justify-content:center;gap:10px}
+.p13-search-submit:hover{background:#076b76}
+.p13-search-submit>span{font-size:16px}
+.p13-hero-footer{display:flex;align-items:center;gap:14px;justify-content:space-between;
+ margin-top:16px;flex-wrap:wrap;font-size:10px;color:#668991}
+.p13-hero-footer>span>span{color:#108d77;font-weight:900;margin-inline-end:5px}
+.p13-hero-footer a{color:#0d7c89;font-size:11px;font-weight:850}
+.p13-hero-art{position:relative;display:grid;place-items:center;min-height:350px;
+ max-height:420px;aspect-ratio:1}
+.p13-art-halo{position:absolute;width:86%;aspect-ratio:1;border:1px solid rgba(43,140,149,.22);
+ border-radius:50%;transform:rotate(-18deg);background:radial-gradient(circle,#f8fdf9 0%,rgba(230,247,244,.2) 75%)}
+.p13-halo-two{width:100%;border-style:dashed;border-color:rgba(48,143,149,.27);
+ transform:rotate(22deg)}
+.p13-art-center{display:flex;align-items:center;justify-content:center;flex-direction:column;
+ gap:8px;z-index:1;width:60%;aspect-ratio:1;background:#fff;border:1px solid #d0e8e3;
+ border-radius:40% 47% 43% 52%;box-shadow:0 22px 55px rgba(28,107,113,.12);
+ transform:rotate(-9deg)}
+.p13-art-center>*{transform:rotate(9deg)}
+.p13-art-center>span:not(.p13-art-symbol){font-size:11px;letter-spacing:.18em;
+ font-weight:850;color:#47898b}
+.p13-art-center>strong{font-size:30px;letter-spacing:.16em;color:#146b77}
+.p13-art-symbol{font-size:55px;color:#1194a0;line-height:1}
+.p13-art-tick{position:absolute;z-index:1;font-size:32px;color:#2b9a95;
+ opacity:.7;font-weight:300}.p13-art-tick-one{inset-block-start:13%;inset-inline-start:17%}
+.p13-art-tick-two{inset-block-end:18%;inset-inline-end:12%}
+.p13-home-discover{display:grid;gap:18px}
+.p13-section-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+ flex-wrap:wrap;margin-bottom:13px}
+.p13-section-title h1,.p13-section-title h2{color:#1c4a59;margin:7px 0;
+ letter-spacing:-.03em}
+.p13-section-title h1{font-size:clamp(26px,3.1vw,36px)}
+.p13-section-title h2{font-size:clamp(19px,2.3vw,28px)}
+.p13-section-title p{color:#68818a;font-size:12px;line-height:1.8;margin:4px 0}
+.p13-inline-link,.p13-section-title button{border:0;background:transparent;cursor:pointer;
+ color:#087e8c;font-weight:850;font-size:12px;text-decoration:none;white-space:nowrap;
+ align-self:center}
+.p13-inline-link:hover,.p13-section-title button:hover{text-decoration:underline}
+.p13-specialty-row,.p13-cities{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.p13-specialty-row>a,.p13-cities button{display:flex;align-items:center;gap:7px;
+ background:white;border:1px solid #daeaec;border-radius:100px;padding:10px 14px;
+ color:#315c69;text-decoration:none;font-weight:800;font-size:11px;cursor:pointer}
+.p13-specialty-row>a:hover,.p13-cities button:hover{background:#eff9f8;border-color:#9dd3d4}
+.p13-specialty-row>a>span{color:#0b9290;font-size:15px}
+.p13-specialty-row small,.p13-cities small{font-size:10px;color:#879a9f;font-weight:700}
+.p13-cities{margin-top:4px}.p13-cities button{border-radius:9px;background:#f7fbfb}
+.p13-home-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.p13-card{display:grid;grid-template-columns:minmax(220px,.72fr) minmax(0,1fr);
+ background:#fff;border:1px solid #dce8eb;border-radius:16px;overflow:hidden;
+ box-shadow:0 6px 28px rgba(20,81,89,.035);min-width:0}
+.p13-home-card-grid .p13-card{grid-template-columns:1fr;grid-template-rows:195px auto}
+.p13-card-image-link{display:block;position:relative;min-width:0;overflow:hidden;
+ background:#e6f3f2}
+.p13-photo,.p13-photo-placeholder{display:block;width:100%;height:100%;object-fit:cover;
+ min-height:210px;background:#ebf5f4}
+.p13-card-image-link .p13-photo,.p13-card-image-link .p13-photo-placeholder{height:100%;min-height:220px}
+.p13-home-card-grid .p13-card-image-link .p13-photo,
+.p13-home-card-grid .p13-card-image-link .p13-photo-placeholder{height:195px;min-height:195px}
+.p13-photo-placeholder{display:flex;align-items:center;justify-content:center;gap:10px;
+ flex-direction:column;background:linear-gradient(145deg,#d5eae9,#edf7f3);
+ color:#2d9295;text-align:center}
+.p13-photo-placeholder>span{font-size:65px;line-height:1}
+.p13-photo-placeholder>small{font-size:10px;letter-spacing:.22em;font-weight:900}
+.p13-photo-badge{position:absolute;inset-block-start:12px;inset-inline-start:12px;
+ background:#fff;color:#0b806b;padding:8px 11px;border-radius:8px;
+ font-size:10px;font-weight:900;box-shadow:0 5px 16px rgba(30,110,115,.14)}
+.p13-card-main{padding:19px 21px;display:grid;align-content:start;gap:12px;min-width:0}
+.p13-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.p13-verified-badge{display:inline-flex;align-items:center;gap:6px;
+ background:#e8f8f0;border:1px solid #ccefe0;border-radius:20px;
+ padding:5px 10px;color:#137b60;font-size:10px;font-weight:900;line-height:1.25}
+.p13-check-icon{display:grid;place-items:center;width:15px;height:15px;
+ background:#128d6a;border-radius:50%;font-weight:900;color:#fff;font-size:10px}
+.p13-card h3{font-size:18px;letter-spacing:-.025em;color:#1c4859;
+ margin:9px 0 7px;line-height:1.35}
+.p13-card h3 a{color:inherit;text-decoration:none}
+.p13-card h3 a:hover{color:#078692}
+.p13-card-location{font-size:11px;color:#748d97;margin:0;line-height:1.6}
+.p13-card-location span{color:#12838d;font-size:14px;margin-inline-end:5px}
+.p13-distance{display:grid;justify-items:end;gap:2px;white-space:nowrap}
+.p13-distance strong{font-size:11px;color:#1b7890}
+.p13-distance span{font-size:10px;color:#8b9aa1}
+.p13-card-description{font-size:11px;line-height:1.75;color:#66818c;
+ margin:0;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;
+ -webkit-line-clamp:2;line-clamp:2}
+.p13-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.p13-tags>span{background:#edf7f8;color:#347887;border:1px solid #d6e9eb;
+ border-radius:20px;font-size:10px;font-weight:800;padding:6px 9px}
+.p13-card-doctors{display:flex;flex-wrap:wrap;gap:5px;align-items:baseline;font-size:10px}
+.p13-card-doctors>span{color:#879aa1}.p13-card-doctors strong{color:#2b6775;font-weight:850}
+.p13-card-bottom{display:grid;grid-template-columns:1fr 1.2fr;gap:14px;
+ padding:11px 0;border-top:1px solid #edf2f3;border-bottom:1px solid #edf2f3}
+.p13-card-bottom>div{display:grid;align-content:start;gap:5px}
+.p13-card-bottom span{font-size:10px;color:#879ba4}
+.p13-card-bottom strong{font-size:12px;color:#1f6172;line-height:1.45;overflow-wrap:anywhere}
+.p13-card-bottom .p13-no-slot{color:#94a5ac;font-size:11px;font-weight:700}
+.p13-card-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p13-card-actions .btn{font-size:11px;padding:11px 13px}
+.p13-card-notice{font-size:10px;color:#98a8ad;line-height:1.5}
+.p13-confidence{display:grid;gap:10px;padding:24px;border:1px solid #dfeded;
+ border-radius:16px;background:#f6faf9;margin-block-end:10px}
+.p13-confidence-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.p13-confidence-card{display:grid;gap:9px;padding:21px;background:white;
+ border:1px solid #dfebeb;border-radius:13px;min-width:0}
+.p13-confidence-number{color:#1a9e9b;font-weight:900;font-size:13px}
+.p13-confidence-card h3{color:#25596a;font-size:16px;margin:0}
+.p13-confidence-card p{color:#728991;line-height:1.8;font-size:11px;margin:0}
+.p13-search-page{display:grid;gap:19px}
+.p13-breadcrumb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+ font-size:11px;color:#8799a1;padding:6px 0;margin-block-end:7px}
+.p13-breadcrumb a{color:#58818d;font-weight:750;text-decoration:none}
+.p13-breadcrumb strong{font-weight:850;color:#285c6c}
+.p13-search-layout{display:grid;grid-template-columns:minmax(228px,280px) minmax(0,1fr);
+ gap:24px;align-items:start}
+.p13-filter-panel{background:#fff;border:1px solid #dce9ea;border-radius:13px;
+ padding:19px;position:sticky;top:16px}
+.p13-filter-panel form{display:grid;gap:16px}
+.p13-filter-head{display:flex;justify-content:space-between;align-items:center;gap:9px}
+.p13-filter-head h2{font-size:16px;color:#244f5e;margin:0}
+.p13-filter-head a{font-size:10px;font-weight:850;color:#0c8491}
+.p13-field{display:grid;gap:8px;min-width:0;font-size:11px;font-weight:850;color:#60808a}
+.p13-field input,.p13-field select{width:100%;min-width:0;border:1px solid #d7e5e8;
+ border-radius:9px;padding:10px 11px;min-height:42px;background:#fff;font:inherit;
+ font-size:12px;font-weight:500;color:#285461}
+.p13-field small{font-weight:450;font-size:10px;line-height:1.6;color:#8297a1}
+.p13-verified-filter{display:flex;gap:9px;align-items:center;font-size:11px;
+ color:#2c6871;font-weight:850}
+.p13-verified-filter input{width:16px;height:16px;accent-color:#118a84}
+.p13-filter-hint{color:#8d9fa7;font-size:10px;line-height:1.7;margin:-8px 0 0}
+.p13-filter-submit{width:100%;justify-content:center}
+.p13-results{display:grid;gap:16px;min-width:0}
+.p13-results-toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+ padding:4px 0 15px;border-bottom:1px solid #dce9ed}
+.p13-results-toolbar h2{font-size:18px;color:#22566a;margin:0 0 6px}
+.p13-results-toolbar p{font-size:11px;color:#7a939d;margin:0}
+.p13-results-toolbar p strong{color:#136a7b}
+.p13-results-tools{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.p13-geolocate{background:#f0f8f7;color:#26798a;border:1px solid #c9e4e5;
+ border-radius:9px;font:inherit;font-size:11px;font-weight:850;
+ padding:10px 12px;min-height:40px;cursor:pointer}
+.p13-geolocate:hover{background:#e1f3f1}
+.p13-geolocate:disabled{opacity:.55;cursor:default}
+.p13-sort{display:flex;gap:8px;align-items:center;font-size:10px;font-weight:850;
+ color:#6f8a93}
+.p13-sort select{font:inherit;font-size:11px;color:#2c5968;border:1px solid #d4e4e7;
+ border-radius:8px;background:#fff;padding:10px;min-height:40px}
+.p13-result-stack{display:grid;gap:16px}
+.p13-result-stack .p13-card-image-link{min-height:255px}
+.p13-blank-state,.p13-failure{display:grid;justify-items:center;gap:12px;
+ background:#fbfdfd;border:1px dashed #d4e6e8;border-radius:13px;
+ padding:45px 24px;text-align:center;min-width:0}
+.p13-blank-state h3,.p13-failure h2{font-size:18px;color:#285d6d;margin:0}
+.p13-blank-state p,.p13-failure p{font-size:12px;line-height:1.8;color:#77909a;
+ max-width:460px;margin:0}
+.p13-empty-icon,.p13-failure-mark{display:grid;place-items:center;background:#e9f4f5;
+ border-radius:50%;color:#2a8594;width:54px;height:54px;font-size:28px}
+.p13-loading{display:flex;align-items:center;justify-content:center;gap:14px;
+ border:1px solid #e0eaec;border-radius:13px;padding:54px 24px;
+ color:#62808d;font-size:12px;min-height:150px}
+.p13-loading-small{min-height:90px;padding:22px}
+.p13-spinner{width:23px;height:23px;display:inline-block;border:3px solid #c7e5e5;
+ border-top-color:#167f8d;border-radius:50%;animation:p13spin .9s linear infinite}
+@keyframes p13spin{to{transform:rotate(360deg)}}
+.p13-pagination{display:flex;gap:11px;align-items:center;justify-content:center;padding:14px 0}
+.p13-pagination>*{font-size:11px;color:#507988}
+.p13-pagination a{display:inline-flex;padding:10px 15px;border:1px solid #d8e7e9;
+ border-radius:9px;text-decoration:none;font-weight:850;color:#177c89;background:#fff}
+.p13-pagination a.disabled{pointer-events:none;opacity:.42}
+.p13-search-disclaimer,.p13-muted{font-size:11px;line-height:1.8;color:#8a9ca3}
+.p13-profile-page{display:grid;gap:20px}
+.p13-profile-cover{display:grid;grid-template-columns:minmax(310px,.92fr) minmax(0,1.08fr);
+ gap:0;border:1px solid #e0e9ec;border-radius:17px;background:#fff;overflow:hidden}
+.p13-profile-image{display:grid;gap:0;min-height:290px;position:relative;background:#edf7f7}
+.p13-profile-image .p13-photo,.p13-profile-image .p13-photo-placeholder{
+ height:100%;max-height:385px;min-height:315px;object-fit:cover}
+.p13-gallery-picker{display:flex;gap:6px;overflow-x:auto;padding:9px 12px;background:#e9f3f2}
+.p13-gallery-picker button{border:2px solid transparent;background:transparent;
+ border-radius:8px;padding:0;flex:0 0 65px;height:49px;overflow:hidden;cursor:pointer}
+.p13-gallery-picker button.active{border-color:#1c8890}
+.p13-gallery-picker img{width:100%;height:100%;display:block;object-fit:cover}
+.p13-profile-intro{display:flex;flex-direction:column;align-items:flex-start;
+ gap:14px;padding:clamp(20px,3vw,34px);min-width:0}
+.p13-profile-intro h1,.p13-dentist-hero-main h1{font-size:clamp(23px,3.1vw,38px);
+ line-height:1.18;letter-spacing:-.03em;color:#184a5d;margin:0}
+.p13-profile-intro>p{line-height:1.75;font-size:11px;color:#708a94;margin:0}
+.p13-profile-address{color:#718995;font-size:12px;line-height:1.75}
+.p13-scheduled-indicator{display:inline-flex;align-items:center;gap:7px;
+ border:1px solid #cfe9e0;border-radius:30px;padding:7px 11px;
+ background:#f0faf5;color:#238269;font-weight:800;font-size:11px}
+.p13-scheduled-indicator span{font-size:15px}
+.p13-profile-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.p13-profile-actions .btn{font-size:11px;padding:11px 13px}
+.p13-profile-intro>small{font-size:10px;color:#9aabb1}
+.p13-toast{font-size:10px;color:#1b7f5f}
+.p13-profile-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.58fr);
+ gap:20px;align-items:start}
+.p13-profile-primary{min-width:0}
+.p13-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #dce8eb;
+ padding:0 0 10px;scrollbar-width:thin}
+.p13-tabs button{background:transparent;border:1px solid transparent;border-radius:9px;
+ color:#65828c;font:inherit;font-weight:850;font-size:11px;padding:12px 15px;cursor:pointer;white-space:nowrap}
+.p13-tabs button:hover{background:#f1f9f8}
+.p13-tabs button[aria-selected="true"]{background:#e6f6f4;color:#0f7886;border-color:#d0e8e9}
+.p13-tab-panel{padding-top:16px}
+.p13-info-stack{display:grid;gap:17px}
+.p13-panel{min-width:0;background:white;border:1px solid #dce9eb;border-radius:13px;
+ padding:clamp(16px,2.5vw,24px);color:#54727d;font-size:12px;line-height:1.8}
+.p13-panel h2{font-size:18px;letter-spacing:-.025em;margin:0 0 14px;color:#205467}
+.p13-panel p{font-size:12px;line-height:1.8;color:#607d86}
+.p13-prose{white-space:pre-line;overflow-wrap:anywhere}
+.p13-note{background:#f2f9f9;border-inline-start:3px solid #88cfc9;
+ border-radius:6px;padding:10px 12px;color:#406c76;font-size:11px}
+.p13-dentist-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.p13-professional-card{display:flex;align-items:center;gap:11px;padding:14px;
+ background:#fbfdfc;border:1px solid #dfebeb;border-radius:11px;text-decoration:none;min-width:0}
+.p13-professional-card:hover{border-color:#abd8d8;background:#f6fbfa}
+.p13-avatar{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;
+ border-radius:50%;background:#dff1ef;color:#168194;font-weight:900;font-size:23px}
+.p13-professional-card>div:not(.p13-avatar){display:grid;gap:5px;flex:1;min-width:0}
+.p13-professional-card strong{color:#295968;font-size:12px}
+.p13-professional-card small{font-size:10px;color:#899ea5}
+.p13-professional-card div>span{font-size:10px;font-weight:800;color:#1c8266}
+.p13-profile-arrow{font-size:16px;color:#138b94}
+.p13-service-line{display:flex;align-items:center;gap:13px;min-width:0;
+ padding:15px 0;border-bottom:1px solid #e6eef1}
+.p13-service-icon{background:#eff8f7;color:#19868b;border:1px solid #d8e8e7;
+ width:43px;height:43px;display:grid;place-items:center;border-radius:9px;
+ flex:0 0 43px;font-size:22px}
+.p13-service-line>div:nth-child(2){display:grid;gap:4px;flex:1;min-width:0}
+.p13-service-line>div:nth-child(2) strong{color:#305b6c;font-size:12px}
+.p13-service-line>div:nth-child(2) span{font-size:10px;color:#7e969d}
+.p13-service-line>strong{color:#1d7080;font-size:13px;white-space:nowrap}
+.p13-profile-aside{display:grid;gap:17px;min-width:0}
+.p13-contact-box{display:grid;gap:12px;border-radius:14px;padding:22px;
+ background:linear-gradient(150deg,#166877,#0d5465);color:#fff}
+.p13-contact-box .p13-kicker{color:#bcf4e6}
+.p13-contact-box h3{font-size:19px;line-height:1.3;margin:0;color:#fff}
+.p13-contact-box p{font-size:11px;line-height:1.8;color:#c8e1e4;margin:0}
+.p13-contact-box .btn{background:white;color:#115b66;border-color:#fff;
+ display:flex;justify-content:center;font-weight:850;font-size:12px}
+.p13-contact-box>strong{justify-self:center;color:#fff;letter-spacing:.04em}
+.p13-contact-box>span:last-child{font-size:10px;color:#c3dee1;line-height:1.7}
+.p13-aside-hours{background:#fff;border:1px solid #e1eaec;border-radius:14px;padding:19px}
+.p13-aside-hours h3{color:#255665;font-size:15px;margin:0 0 14px}
+.p13-hours{display:grid;gap:0}
+.p13-hours>div{display:flex;align-items:center;justify-content:space-between;gap:9px;
+ padding:10px 0;border-bottom:1px solid #ebf0f1}
+.p13-hours span{font-size:11px;color:#78909a}
+.p13-hours strong{font-size:11px;color:#396473;font-weight:800;white-space:nowrap}
+.p13-hours .p13-today{background:#f0f8f7;border-radius:7px;padding:10px}
+.p13-hours>small{font-size:10px;line-height:1.7;color:#94a5aa;margin-top:9px}
+.p13-public-facts{display:grid;gap:0;margin:0}
+.p13-public-facts>div{display:grid;grid-template-columns:145px minmax(0,1fr);
+ gap:11px;padding:13px 0;border-bottom:1px solid #e5eff0}
+.p13-public-facts dt{font-weight:750;font-size:11px;color:#708c95}
+.p13-public-facts dd{font-size:12px;color:#305e6d;margin:0;overflow-wrap:anywhere}
+.p13-public-facts a{color:#137d8d}
+.p13-availability-module{display:grid;gap:16px}
+.p13-availability-filters{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.p13-availability-filters .p13-field{flex:1;min-width:140px}
+.p13-availability-filters button{min-height:43px}
+.p13-slot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.p13-slot{display:grid;gap:7px;border:1px solid #d7e9e8;background:#f7fcfa;
+ border-radius:10px;padding:14px;text-align:center;min-width:0}
+.p13-slot>span{font-size:16px;font-weight:900;color:#0c7281}
+.p13-slot>small{font-size:10px;line-height:1.6;color:#7a949d}
+.p13-slot>strong{font-size:11px;color:#205f70}
+.p13-availability-disclaimer{display:flex;gap:8px;align-items:flex-start;
+ font-size:11px;line-height:1.8;color:#738f99;background:#f5faf9;
+ border-radius:9px;padding:11px 13px;margin:0}
+.p13-availability-disclaimer>span{color:#0c8092;font-size:15px}
+.p13-availability-empty{padding:25px}
+.p13-dentist-hero{display:flex;align-items:center;gap:25px;min-width:0;
+ padding:clamp(22px,4vw,45px);border:1px solid #dfeded;border-radius:16px;
+ background:linear-gradient(115deg,#f0f9f7,#e9f4f7)}
+.p13-big-avatar{display:grid;place-items:center;flex:0 0 clamp(120px,16vw,190px);
+ width:clamp(120px,16vw,190px);height:clamp(120px,16vw,190px);
+ border-radius:25%;background:linear-gradient(155deg,#d5eae7,#f9fcfc);
+ border:1px solid #cce5e1;color:#2c8990;font-size:clamp(50px,9vw,86px);font-weight:850}
+.p13-dentist-hero-main{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0}
+.p13-dentist-hero-main p{margin:0;color:#62818c;font-size:12px;line-height:1.7}
+.p13-dentist-hero-main>small{font-size:10px;color:#78949c}
+.p13-dentist-specialty{font-size:14px!important;color:#245e6d!important;font-weight:750}
+.p13-about-page{display:grid;gap:20px;max-width:1080px}
+.p13-about-hero{display:grid;justify-items:start;gap:16px;border-radius:17px;
+ background:linear-gradient(120deg,#e3f3f1,#f6faf9);border:1px solid #d6e8e9;padding:40px}
+.p13-about-hero h1{font-size:clamp(27px,3vw,41px);color:#1e4b5e;line-height:1.2;max-width:770px;margin:0}
+.p13-about-hero p{max-width:700px;color:#63828c;font-size:13px;line-height:1.9;margin:0}
+.p13-about-page>.p13-panel{display:grid;gap:14px}
+.p13-about-page .p13-confidence-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.p13-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p13-search-page button:focus-visible,.p13-search-page a:focus-visible,
+.p13-profile-page button:focus-visible,.p13-profile-page a:focus-visible,
+.p13-home a:focus-visible,.p13-home button:focus-visible,
+.p13-about-page a:focus-visible,.p13-about-page button:focus-visible,
+.p13-home input:focus-visible,.p13-home select:focus-visible,
+.p13-search-page input:focus-visible,.p13-search-page select:focus-visible,
+.p13-profile-page input:focus-visible,.p13-profile-page select:focus-visible{
+ outline:3px solid #058e9e;outline-offset:3px}
+@media(max-width:1050px){
+ .p13-hero{grid-template-columns:minmax(0,1.5fr) minmax(200px,.65fr)}
+ .p13-hero-art{min-height:270px}
+ .p13-search-layout{grid-template-columns:220px minmax(0,1fr);gap:15px}
+ .p13-card{grid-template-columns:minmax(165px,.65fr) minmax(0,1fr)}
+ .p13-card-main{padding:16px}
+ .p13-profile-grid{grid-template-columns:minmax(0,1.5fr) minmax(230px,.65fr)}
+ .p13-dentist-grid{grid-template-columns:1fr}
+ .p13-slot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:850px){
+ .p13-hero{grid-template-columns:1fr;padding:28px;min-height:0}
+ .p13-hero-art{display:none}
+ .p13-home{gap:30px}
+ .p13-home-card-grid{grid-template-columns:1fr}
+ .p13-home-card-grid .p13-card{grid-template-columns:minmax(185px,.65fr) minmax(0,1fr);
+  grid-template-rows:auto}
+ .p13-home-card-grid .p13-card-image-link .p13-photo,
+ .p13-home-card-grid .p13-card-image-link .p13-photo-placeholder{min-height:250px;height:100%}
+ .p13-search-layout{grid-template-columns:1fr}
+ .p13-filter-panel{position:relative;top:0}
+ .p13-filter-panel form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p13-filter-head,.p13-filter-hint,.p13-verified-filter,.p13-filter-submit{grid-column:1/-1}
+ .p13-profile-cover{grid-template-columns:1fr 1.1fr}
+ .p13-profile-grid{grid-template-columns:1fr}
+ .p13-profile-aside{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p13-dentist-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ .p13-home-search{grid-template-columns:1fr}
+ .p13-home-search .p13-field{border-inline-start:0;border-top:1px solid #e5eff0}
+ .p13-search-submit{min-height:47px}
+ .p13-hero{padding:22px;border-radius:15px}
+ .p13-hero h1{font-size:clamp(29px,8vw,38px)}
+ .p13-home-card-grid .p13-card,.p13-card{display:flex;flex-direction:column}
+ .p13-card-image-link .p13-photo,.p13-card-image-link .p13-photo-placeholder{
+  height:210px!important;min-height:210px!important}
+ .p13-confidence-grid,.p13-about-page .p13-confidence-grid{grid-template-columns:1fr}
+ .p13-filter-panel form{grid-template-columns:1fr}
+ .p13-filter-head,.p13-filter-hint,.p13-verified-filter,.p13-filter-submit{grid-column:1}
+ .p13-results-toolbar{align-items:start}
+ .p13-profile-cover{grid-template-columns:1fr}
+ .p13-profile-image .p13-photo,.p13-profile-image .p13-photo-placeholder{
+  max-height:270px;min-height:220px}
+ .p13-profile-aside{grid-template-columns:1fr}
+ .p13-dentist-grid{grid-template-columns:1fr}
+ .p13-availability-filters{display:grid;grid-template-columns:1fr 1fr}
+ .p13-availability-filters .p13-field{min-width:0}
+ .p13-availability-filters button{grid-column:1/-1}
+ .p13-slot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p13-dentist-hero{gap:14px;padding:20px;align-items:flex-start}
+ .p13-big-avatar{width:85px;height:85px;flex-basis:85px;font-size:38px}
+ .p13-profile-actions{align-items:stretch}
+ .p13-about-hero{padding:25px}
+ .p13-public-facts>div{grid-template-columns:110px minmax(0,1fr)}
+}
+@media(max-width:390px){
+ .p13-slot-grid{grid-template-columns:1fr}
+ .p13-dentist-hero{flex-direction:column}
+ .p13-card-bottom{grid-template-columns:1fr}
+ .p13-results-tools{gap:9px}
+ .p13-results-toolbar{display:grid}
+ .p13-profile-actions .btn{width:100%;justify-content:center}
+}
+@media(prefers-reduced-motion:reduce){.p13-home *, .p13-search-page *,
+ .p13-profile-page *, .p13-about-page *{animation-duration:.01ms!important;transition:none!important}}
