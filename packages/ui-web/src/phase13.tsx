@@ -28,13 +28,13 @@ type Hours={weekly:{weekday:number;isOpen:boolean;startMinute:number;endMinute:n
 type ClinicDetail={clinic:Clinic;profile:{description:string;specialties:string[];
  latitude:number;longitude:number;contactNote:string|null;photos:Photo[];
  dentists:Dentist[];services:Service[];bookingRules:BookingRules};version:number;
- verifiedClinic:true;hours:Hours;searchable:boolean;publicBookingsEnabled:false};
+ verifiedClinic:true;hours:Hours;searchable:boolean;publicBookingsEnabled:true};
 type DentistDetail={clinic:Clinic;dentist:Dentist&{biography:string|null;
  affiliationVerified:boolean;professionalVerificationSource:string};
  services:Service[];specialties:string[];photo:Photo|null;
- bookingRules:BookingRules;hours:Hours;publicBookingsEnabled:false};
+ bookingRules:BookingRules;hours:Hours;publicBookingsEnabled:true};
 type Availability={date:string;timezone:string;slots:Slot[];status:"available"|"no_slots";
- source:string;checkedAt:string;publicBookingsEnabled:false};
+ source:string;checkedAt:string;publicBookingsEnabled:true};
 type Params={q:string;city:string;specialty:string;service:string;date:string;
  maxFee:string;verified:boolean;sort:string;page:number;latitude:string;longitude:string};
 const initial:Params={q:"",city:"Kabul",specialty:"",service:"",date:"",maxFee:"",
@@ -97,7 +97,7 @@ const translations:Record<Language,Record<string,string>>={
  allListedServices:"All published services",checkTimes:"Check availability",
  scheduleAvailability:"Clinic schedule preview",noTimeDate:"No online times on this date. Contact the clinic for options.",
  timePreview:"This time is a preview, not a reservation.",
- bookingLater:"Online appointment booking launches in Phase 15.",
+ bookingLater:"Select Book appointment on a verified dentist to request an available time.",
  consultation:"Consultation",duration:"Duration",minutes:"minutes",
  verifiedSince:"Credential valid through",validTo:"Valid until",
  gallery:"Clinic gallery",galleryHelp:"Only clinic-approved public photos are shown. No fabricated before-and-after images.",noPublishedPhotos:"No published clinic photos yet",photo:"Photo",patientExperience:"Your dental care search",
@@ -184,7 +184,7 @@ const translations:Record<Language,Record<string,string>>={
  allListedServices:"تمام خدمات منتشرشده",checkTimes:"بررسی وقت‌ها",
  scheduleAvailability:"تقسیم اوقات کلینیک",noTimeDate:"در این تاریخ وقت آنلاین یافت نشد؛ با کلینیک تماس بگیرید.",
  timePreview:"این وقت صرف پیش‌نمایش است و رزرو نیست.",
- bookingLater:"رزرو آنلاین در مرحله ۱۵ فعال می‌شود.",
+ bookingLater:"برای گرفتن وقت نزد داکتر تأییدشده روی «رزرو وقت ملاقات» بزنید.",
  consultation:"مشوره",duration:"مدت",minutes:"دقیقه",
  verifiedSince:"اعتبار اسناد تا",validTo:"معتبر تا",
  gallery:"عکس‌های کلینیک",galleryHelp:"فقط عکس‌های تأییدشده و نشرشده کلینیک نمایش داده می‌شوند. عکس ساختگی وجود ندارد.",noPublishedPhotos:"هنوز عکس کلینیک نشر نشده است",photo:"عکس",patientExperience:"جستجوی خدمات دندان",
@@ -269,7 +269,7 @@ const translations:Record<Language,Record<string,string>>={
  allListedServices:"ټول خپاره شوي خدمتونه",checkTimes:"وختونه وګورئ",
  scheduleAvailability:"د کلینیک مهالویش",noTimeDate:"په دې نېټه خالي وخت نشته، کلینیک ته زنګ ووهئ.",
  timePreview:"دا یوازې مخکتنه ده، ثبت نه دی.",
- bookingLater:"آنلاین نوبت اخیستل په ۱۵ پړاو کې پیلېږي.",
+ bookingLater:"د تایید شوي ډاکټر په پاڼه کې د ملاقات وخت واخلئ.",
  consultation:"مشوره",duration:"وخت",minutes:"دقیقې",
  verifiedSince:"د سند اعتبار تر",validTo:"تر نېټې اعتبار لري",
  gallery:"د کلینیک انځورونه",galleryHelp:"یوازې د کلینیک منظور شوي عامه انځورونه ښودل کېږي؛ جعلي انځورونه نه لرو.",noPublishedPhotos:"د کلینیک انځورونه لا نه دي خپاره شوي",photo:"انځور",patientExperience:"د غاښونو د پاملرنې لټون",
