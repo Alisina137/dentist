@@ -20,7 +20,7 @@ test("PH12 review has independent admin MFA gate and never invents verified stat
  "PHOTO_RIGHTS_ATTESTATION_REQUIRED","REAL_AVAILABILITY_REQUIRED",
  "PUBLIC_LISTING_UNAVAILABLE","PUBLISH_NOT_READY_","CREDENTIAL_EXPIRED",
  "LISTING_REVIEW_IN_PROGRESS","LISTING_STAFF_FORBIDDEN","LISTING_CONFLICT",
- "publicBookingsEnabled:false","searchable:false"])
+ "publicBookingsEnabled:false","searchable:true"])
   assert.ok(src.includes(x),x);
  assert.match(src,/availabilityPreview/);
  assert.match(src,/clinic\.get\("\/preview"/);
