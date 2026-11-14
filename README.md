@@ -27,7 +27,7 @@ Open PowerShell inside your existing dentist folder (for example C:\projects\den
 7. pnpm db:migrate
 8. pnpm dev
 
-Open http://localhost:4000/ready to confirm the DB is reachable. `pnpm dev` starts API + both web dashboards, not Expo Go. Run `pnpm dev:mobile` in another terminal to show the Expo Go QR code. Alternatively run the web/backend components individually using `pnpm dev:api`, `pnpm dev:admin` and `pnpm dev:clinic`. The port mapping is **admin 3000, clinic 3001**.
+Open http://localhost:4000/ready to confirm the DB is reachable. `pnpm dev:api` starts the API **and** `ngrok http 4000`, then writes the public HTTPS URL into ignored `apps/mobile/.env` as `EXPO_PUBLIC_API_URL`. Install and authenticate the standalone ngrok CLI first; run `pnpm dev:api` before `pnpm dev:mobile`. `pnpm dev` starts API + ngrok + both web dashboards, not Expo Go. Run `pnpm dev:mobile` in another terminal to show the Expo Go QR code. Alternatively run the web/backend components individually using `pnpm dev:api`, `pnpm dev:admin` and `pnpm dev:clinic`. The port mapping is **admin 3000, clinic 3001**.
 
 ### Verification and password reset
 
