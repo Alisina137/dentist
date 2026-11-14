@@ -49,7 +49,7 @@ test("Native localization and page structure are truly RTL-aware",()=>{
 test("Patient website has functional mobile bottom nav, gallery, filters, schedule ribbon and signup confirm",()=>{
  const nav=read("packages/ui-web/src/index.tsx");
  assert.ok(nav.includes("function PatientBottomNav"));
- for(const route of ['href:"/"','href:"/search"','href:"/account/family"','href:"/account"'])
+ for(const route of ['href:"/"','href:"/search"','href:"/appointments"','href:"/account/family"','href:"/account"'])
   assert.ok(nav.includes(route),route);
  const discovery=read("packages/ui-web/src/phase13.tsx");
  for(const feature of ["p13-gallery-grid","p13-date-ribbon","p13-mobile-filter-toolbar",
