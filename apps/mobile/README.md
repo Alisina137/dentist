@@ -80,31 +80,19 @@ permissions. Native login and bookings are PH16 and PH15/16 respectively;
 the native app must not accept passwords, display clinic medical records,
 or claim an unbookable time was reserved.
 
-## Patient navigation
+## Patient navigation — PH16
 
-- **Home:** verified clinic recommendations for the selected Afghan city,
-  published specialties, genuine search, real availability status.
-- **Explore:** search approved clinics/dentists/treatments; city, specialty,
-  service and sort filters derived from actual public directory facets.
-- **Saved:** on-device, non-sensitive public clinic ID shortcuts (max 30)
-  stored in AsyncStorage; each opened clinic is checked against live
-  publication eligibility, so suspended or expired profiles cannot be shown.
-- **Account:** guest/secure website account link, language, calendar and city
-  preferences, network health and how verification works.
+- **Home:** verified published clinics in the selected Afghan city, real data and live schedule previews.
+- **Explore:** search clinics, dentists and treatments using published public facets.
+- **Appointments:** signed-in patient visits grouped as upcoming/past/cancelled; real PH15 booking records, clear manual approval status, cancellation and rescheduling with server-enforced policies.
+- **Saved:** authenticated, database-backed clinic **and dentist** favorites with server publication verification; legacy guest public clinic shortcuts remain on this device and can migrate after login. No private clinical data is stored in AsyncStorage.
+- **Account:** native verified login/signup, explicit patient onboarding consent, authorized family, profile, notification preferences, language/calendar/city and security. Bearer session is held in `expo-secure-store`, not in AsyncStorage.
 
-Tapping a verified clinic opens its genuine approved **profile,
-dentists, treatments, gallery, opening hours and time previews**. Dentist
-details include published qualifications and clinic affiliation. Preview
-times are **not bookable** until PH15; the user may call the clinic.
-There are **no fake reviews, stars, awards, promotions, clinic grades,
-rewards, invoices, or unauthorized medical records**.
+Clinic and dentist profiles have working **Book appointment** actions. The five-step native booking flow uses approved services, actual availability and the PH15 transaction API. Appointments are never fabricated; a request requiring clinic approval is displayed as **requested**, not confirmed. Private records remain clinic-controlled with explicit in-person proof and individual releases; the patient website can be opened for authorized records when its URL is configured.
 
-Language/calendar controls are **only in Account → Preferences**, never the
-header. Screens are scrollable, mobile-safe-area aware, and render right-to-left
-layout for Dari/Pashto without a global I18nManager restart.
+Dari/Pashto navigation is RTL-aware while English is LTR. Language/calendar options are in Account, not the global header. Expo phone screens support loading, empty, retry and offline states. Email notification delivery is based on existing opt-in preferences. No SMS or native push notifications without provider setup and consent. Reviews and unverified ratings are excluded.
 
-The app behaves honestly when the API is missing/offline, with loading,
-retry and empty states rather than placeholder provider records.
+Read `docs/PH16-ACCEPTANCE.md` for login/booking QA and production readiness limitations. Do not process real medical data until PH19 privacy/security gates have passed.
 
 ## Validation
 
@@ -114,4 +102,4 @@ pnpm --filter @dandanlink/mobile build
 ```
 
 GitHub CI additionally checks mobile source invariants and exports Android,
-then runs public PH13/secure PH14 HTTP regressions.
+then runs PH13–PH16 API integrations including secure native bearer sessions and account favorites.
