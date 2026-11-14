@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import {API,request,ok,admin,owner,dentist,clinic,date,p1} from "./phase07-fixture.mjs";
+// Build and verify the complete PH12 publication lifecycle in this same ESM fixture instance.
+// Each CLI invocation otherwise creates a separate nonce-scoped clinic.
+await import("./phase12-integration.mjs");
 const base="/v1/discovery",published="/v1/listings/public/clinics/"+clinic.id;
 const credentialPath="/v1/listings/clinics/"+clinic.id;
 const adminCredentials="/v1/listings/admin/dentists/";
