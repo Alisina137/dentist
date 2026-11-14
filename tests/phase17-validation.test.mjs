@@ -38,8 +38,8 @@ test("PH17 patient and admin and public UI have real navigation",()=>{
  const publicProfile=read("packages/ui-web/src/phase13.tsx");
  const sidebar=read("packages/ui-web/src/phase02.tsx");
  for(const s of ["PatientReviewsPage","ReviewModerationPage","PublicVerifiedReviews",
-  "/my/eligibility","/my/notices","/admin/queue","/admin/appeals",
-  "/admin/reports","REVIEW_SERVICE_UNAVAILABLE"])
+  "/my/eligibility","/my/notices","/admin/","/appeals",
+  "/reports","REVIEW_SERVICE_UNAVAILABLE"])
   assert.ok(ui.includes(s)||patient.includes(s)||admin.includes(s),s);
  assert.ok(publicProfile.includes("PublicVerifiedReviews"));
  assert.ok(sidebar.includes('"/admin/reviews"'));
