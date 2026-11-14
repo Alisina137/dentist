@@ -99,7 +99,7 @@ const translations:Record<Language,Record<string,string>>={
  bookingLater:"Online appointment booking launches in Phase 15.",
  consultation:"Consultation",duration:"Duration",minutes:"minutes",
  verifiedSince:"Credential valid through",validTo:"Valid until",
- gallery:"Clinic gallery",photo:"Photo",patientExperience:"Your dental care search",
+ gallery:"Clinic gallery",galleryHelp:"Only clinic-approved public photos are shown. No fabricated before-and-after images.",noPublishedPhotos:"No published clinic photos yet",photo:"Photo",patientExperience:"Your dental care search",
  trustTitle:"Only approved public information",trustDescription:
  "Profiles and fees are reviewed before appearing here. There are no sponsored rankings, invented ratings or fabricated opening times.",
  contactTitle:"Contact the clinic directly",contactText:"Contact details are those published by the verified clinic.",
@@ -269,7 +269,7 @@ const translations:Record<Language,Record<string,string>>={
  bookingLater:"آنلاین نوبت اخیستل په ۱۵ پړاو کې پیلېږي.",
  consultation:"مشوره",duration:"وخت",minutes:"دقیقې",
  verifiedSince:"د سند اعتبار تر",validTo:"تر نېټې اعتبار لري",
- gallery:"د کلینیک انځورونه",photo:"انځور",patientExperience:"د غاښونو د پاملرنې لټون",
+ gallery:"د کلینیک انځورونه",galleryHelp:"یوازې د کلینیک منظور شوي عامه انځورونه ښودل کېږي؛ جعلي انځورونه نه لرو.",noPublishedPhotos:"د کلینیک انځورونه لا نه دي خپاره شوي",photo:"انځور",patientExperience:"د غاښونو د پاملرنې لټون",
  trustTitle:"یوازې تایید شوي معلومات",trustDescription:"پېژندلیکونه او بیې مخکې له خپرولو کتل کېږي. پېسو ورکړل شوي ځایونه، جعلي نمرې او خیالي وختونه نشته.",
  contactTitle:"له کلینیک سره مخامخ اړیکه",contactText:"د تلیفون شمېره د کلینیک له خپور شوي پېژندلیک څخه ده.",
  clearDate:"هره نېټه",searchBack:"پایلو ته بېرته",profileUnavailable:"دا تایید شوی پېژندلیک اوس نشته.",
@@ -519,6 +519,7 @@ export function PatientSearchPage(){
  const {t}=useLanguage();
  const [state,setState]=useState<Params>(initial),[initialized,setInitialized]=useState(false);
  const [locationPending,setLocationPending]=useState(false),[geoError,setGeoError]=useState("");
+ const [mobileFilters,setMobileFilters]=useState(false);
  useEffect(()=>{setState(urlParams());setInitialized(true)},[]);
  const facets=usePublic<Facets>("/facets");
  // Query result always uses the URL, never unsaved in-form edits.
@@ -558,7 +559,15 @@ export function PatientSearchPage(){
   <div className="p13-section-title"><div><span className="p13-kicker">{t("eyebrow")}</span>
    <h1>{t("searchResults")}</h1><p>{t("searchHelp")}</p></div></div>
   <div className="p13-search-layout">
-   <aside className="p13-filter-panel">
+   <div className="p13-mobile-filter-toolbar">
+    <button type="button" aria-controls="p13-search-filters" aria-expanded={mobileFilters}
+     className="p13-mobile-filter-button" onClick={()=>setMobileFilters(x=>!x)}>
+     <span aria-hidden="true">☷</span> {t("filters")}
+     <span aria-hidden="true">{mobileFilters?"⌃":"⌄"}</span>
+    </button>
+    <a href="/search?city=">{t("clear")}</a>
+   </div>
+   <aside id="p13-search-filters" className={"p13-filter-panel"+(mobileFilters?" p13-filter-panel-open":"")}>
     <form role="search" onSubmit={submit}>
      <div className="p13-filter-head"><h2>{t("filters")}</h2>
       <a href="/search?city=">{t("clear")}</a></div>
@@ -675,7 +684,7 @@ function ProfessionalCard({clinicId,dentist}:{clinicId:string;dentist:Dentist}){
 function AvailabilityPanel({clinicId,services,dentists,doctorId,phone,horizon}:{
  clinicId:string;services:Service[];dentists:Dentist[];
  doctorId?:string;phone:string;horizon:number}){
- const {t,date,money}=useLanguage();
+ const {t,date,money,lang,calendar}=useLanguage();
  const [day,setDay]=useState(today()),[service,setService]=useState(""),
   [doctor,setDoctor]=useState(doctorId||"");
  useEffect(()=>{if(doctorId)setDoctor(doctorId)},[doctorId]);
@@ -691,6 +700,22 @@ function AvailabilityPanel({clinicId,services,dentists,doctorId,phone,horizon}:{
  return <div className="p13-availability-module">
   <div className="p13-section-title"><div><h2>{t("scheduleAvailability")}</h2>
    <p>{t("datesReal")}</p></div></div>
+  <div className="p13-date-ribbon" role="group" aria-label={t("chooseDate")}>
+   {Array.from({length:Math.min(7,Math.max(1,horizon))},(_,i)=>{
+    const current=new Date(today()+"T12:00:00Z");
+    current.setUTCDate(current.getUTCDate()+i);
+    const iso=current.toISOString().slice(0,10);
+    const format=new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",
+     weekday:"short",month:"short",day:"numeric",
+     calendar:calendar==="solar_hijri"?"persian":"gregory"});
+    return <button key={iso} type="button" className={day===iso?"p13-date-selected":""}
+     aria-pressed={day===iso} onClick={()=>setDay(iso)}>
+     <span>{format.formatToParts(current).find(x=>x.type==="weekday")?.value}</span>
+     <strong>{format.formatToParts(current).find(x=>x.type==="day")?.value}</strong>
+     <small>{format.formatToParts(current).find(x=>x.type==="month")?.value}</small>
+    </button>;
+   })}
+  </div>
   <div className="p13-availability-filters">
    <label className="p13-field"><span>{t("chooseDate")}</span>
     <input type="date" value={day} min={today()} max={maxDay}
@@ -736,7 +761,7 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
  if(info.error)return <div className="p13-page-content"><Failure code={info.error} retry={info.refresh}/></div>;
  if(info.loading||!info.data)return <Loading/>;
  const item=info.data,p=item.profile;
- const names=["description","dentists","services","availability","aboutClinic"];
+ const names=["description","dentists","services","gallery","availability","aboutClinic"];
  const directions="https://www.openstreetmap.org/?mlat="+p.latitude+
   "&mlon="+p.longitude+"#map=16/"+p.latitude+"/"+p.longitude;
  return <div className="p13-profile-page p13-page-content">
@@ -799,6 +824,20 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
      {tab==="services"&&<section className="p13-panel">
       <h2>{t("publicService")}</h2><p className="p13-muted">{t("trustDescription")}</p>
       {p.services.map(s=><ServiceRow key={s.id} service={s}/>)}</section>}
+     {tab==="gallery"&&<section className="p13-panel p13-gallery-panel">
+      <div className="p13-section-title"><div><h2>{t("gallery")}</h2>
+       <p className="p13-muted">{t("galleryHelp")}</p></div></div>
+      {p.photos.length?<div className="p13-gallery-grid">
+       {p.photos.map((x,i)=><figure key={x.id} className="p13-gallery-item">
+        <button type="button" onClick={()=>{setPhoto(i);window.scrollTo({top:0,behavior:"smooth"})}}
+         aria-label={t("photo")+" "+(i+1)+" · "+(x.caption||item.clinic.name)}>
+         <Picture src={x} label={item.clinic.name}/></button>
+        <figcaption>{x.caption||item.clinic.name}</figcaption>
+       </figure>)}</div>:
+       <div className="p13-blank-state p13-gallery-empty"><div className="p13-empty-icon"
+        aria-hidden="true">▧</div><h3>{t("noPublishedPhotos")}</h3>
+        <p>{t("galleryHelp")}</p></div>}
+     </section>}
      {tab==="availability"&&<section className="p13-panel"><AvailabilityPanel
       clinicId={clinicId} services={p.services} dentists={p.dentists}
       phone={item.clinic.phone} horizon={p.bookingRules.horizonDays}/></section>}
