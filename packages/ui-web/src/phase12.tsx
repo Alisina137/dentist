@@ -980,3 +980,70 @@ export function PublicListingPortal({clinicId}:{clinicId:string}){
    {t("publicPatient")} {t("noClaims")}</Banner></div>
  </div>;
 }
+
+
+/** Credential self-service intentionally doesn't expose the public listing editor to dentists. */
+export function DentistCredentialPortal(){
+ const {t}=useWords();const [ctx,setCtx]=useState<Context|null>(null),
+  [selected,setSelected]=useState<string|null|undefined>(undefined),[error,setError]=useState("");
+ useEffect(()=>{
+  setSelected(new URLSearchParams(location.search).get("clinic"));
+  fetch(API+"/v1/team/context",{credentials:"include",cache:"no-store"})
+   .then(async r=>{const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error(data.code||"AUTH_REQUIRED");return data;})
+   .then(setCtx).catch(e=>setError(e.message));
+ },[]);
+ if(error)return <ErrorPanel code={error}/>;
+ if(!ctx||selected===undefined)return <Busy/>;
+ const space=selected?ctx.clinics.find(c=>c.clinicId===selected):ctx.clinics[0];
+ if(!space||!(space.role==="dentist"||space.clinicianEnabled))
+  return <ErrorPanel code="CREDENTIAL_SELF_OR_OWNER_REQUIRED"/>;
+ return <DentistOwnCredential space={space} ctx={ctx} t={t}/>;
+}
+function DentistOwnCredential({space,ctx,t}:{space:Space;ctx:Context;
+ t:(key:string)=>string}){
+ const path="/v1/team/clinics/"+space.clinicId+"/staff/"+space.membershipId;
+ const [detail,setDetail]=useState<any>(null),[error,setError]=useState("");
+ const [refresh,setRefresh]=useState(0);
+ useEffect(()=>{let mounted=true;
+  fetch(API+path,{credentials:"include",cache:"no-store"}).then(async r=>{
+   const data=await r.json().catch(()=>({}));
+   if(!r.ok)throw Error(data.code||"STAFF_UNAVAILABLE");return data;
+  }).then(x=>{if(mounted)setDetail(x)}).catch(e=>{if(mounted)setError(e.message)});
+  return()=>{mounted=false};
+ },[path,refresh]);
+ const d=detail?.draft;
+ const doctor: Dentist|undefined=d?{
+  id:space.membershipId,display_name:d.displayName||ctx.name,
+  specialty:d.specialty,qualifications:d.qualifications,
+  professional_license:d.professionalLicense,draft_version:d.draftVersion,
+  affiliation_status:"active",verification_status:d.verificationState||"unverified",
+  currentlyVerified:false,valid_until:null
+ }:undefined;
+ return <Shell ctx={ctx} space={space} active="myVerification">
+  <div className="phase12-workspace">
+   <header className="phase12-header"><div><span className="phase12-kicker">
+     DANDANLINK · {t("privatePreview")}</span>
+    <h1>{t("adminDentists")}</h1><p>{t("confirmReview")}</p></div>
+    <a className="btn btn-secondary" href={"/clinic/staff/"+space.membershipId+
+     "?clinic="+encodeURIComponent(space.clinicId)}>{t("viewStaff")} ↗</a></header>
+   {error?<ErrorPanel code={error} retry={()=>setRefresh(x=>x+1)}/>:
+    !detail?<Busy/>:!doctor?<div className="card phase12-panel">
+     <Banner kind="warning">{t("profileIncomplete")}</Banner>
+     <a className="btn btn-primary" href={"/clinic/staff/"+space.membershipId+
+      "?clinic="+encodeURIComponent(space.clinicId)}>{t("viewStaff")}</a>
+    </div>:<section className="card phase12-panel">
+     <SectionTitle title={t("credentialSubmission")} desc={t("clinicalSafety")}/>
+     <div className="phase12-provider">
+      <div className="phase12-provider-info"><strong>{doctor.display_name}</strong>
+       <span>{doctor.specialty||"—"}</span>
+       <span>{t("qualifications")}: {doctor.qualifications||"—"}</span>
+       <span>{t("draftVersion")}: {doctor.draft_version}</span></div>
+      <CredentialForm dentist={doctor} space={space}
+       onSuccess={()=>setRefresh(x=>x+1)}/>
+     </div>
+     <Banner kind="info">{t("eligibility")} {t("publicPatient")}</Banner>
+    </section>}
+  </div>
+ </Shell>;
+}
