@@ -216,6 +216,36 @@ export function billingRouter(){
    ORDER BY preferred_name,patient_number LIMIT 40`;
   noStore(res);res.json({patients:rows});
  }));
+ api.get("/clinics/:clinicId/patients/:patientId/sources",task(async(req,res)=>{
+  await access(req);
+  const patient=await getPatient(cid(req),String(req.params.patientId));
+  // Finance-safe completed sources: no diagnoses, notes, findings or treatment descriptions.
+  const completed=await sqlClient`SELECT id,service_id,start_at FROM clinic_appointments
+   WHERE clinic_id=${cid(req)} AND patient_id=${patient.id} AND status='completed'
+   ORDER BY start_at DESC LIMIT 60`;
+  const signed=await sqlClient`SELECT e.id,e.signed_at,
+   (SELECT array_agg(DISTINCT p.item->>'serviceId') FILTER(WHERE p.item->>'serviceId' IS NOT NULL)
+    FROM jsonb_array_elements(e.performed_procedures) AS p(item)) AS services
+   FROM clinic_encounters e WHERE e.clinic_id=${cid(req)} AND e.patient_id=${patient.id}
+   AND e.status='signed' ORDER BY e.signed_at DESC LIMIT 60`;
+  const stages=await sqlClient`SELECT s.id,s.completed_at,
+    (SELECT array_agg(DISTINCT item->>'serviceId')
+     FROM jsonb_array_elements(v.items) AS item) AS services
+    FROM clinic_treatment_stages s JOIN clinic_treatment_versions v
+     ON v.plan_id=s.plan_id AND v.version=s.version
+    WHERE s.clinic_id=${cid(req)} AND s.patient_id=${patient.id}
+     AND s.status='completed' ORDER BY s.completed_at DESC LIMIT 60`;
+  const sources=[
+   ...completed.map(x=>({type:"appointment",id:x.id,date:x.start_at,
+    serviceIds:[x.service_id]})),
+   ...signed.filter(x=>x.services?.length).map(x=>({type:"encounter",id:x.id,
+    date:x.signed_at,serviceIds:x.services})),
+   ...stages.map(x=>({type:"treatment_stage",id:x.id,date:x.completed_at,
+    serviceIds:x.services||[]}))
+  ];
+  noStore(res);res.json({sources,patient:{id:patient.id,number:patient.patientNumber,
+   name:patient.preferredName+" "+(patient.familyName||"")},currency:"AFN"});
+ }));
  api.get("/clinics/:clinicId/overview",task(async(req,res)=>{
   await access(req,"overview");
   // No diagnosis/procedure text or patient contact is ever included in finance metrics.
