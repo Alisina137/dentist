@@ -74,7 +74,7 @@ const words:Record<Lang,Record<string,string>>={
  signInHeading:"Welcome back",signInText:"Sign in securely to manage your account and family permissions.",
  signupHeading:"Create your patient account",signupText:"Sign up with a verified email. Patient accounts are free and there is no payment required to browse.",
  name:"Full name",email:"Email address",password:"Password",newPassword:"New password",
- passwordPolicy:"Use at least 10 characters and keep your password private.",
+ passwordPolicy:"Use at least 10 characters and keep your password private.",confirmPassword:"Confirm password",passwordMismatch:"Your passwords do not match.",
  terms:"Terms of service",legalPrivacy:"Privacy notice",
  agree:"I have read and agree to the patient terms and privacy notice.",
  create:"Create account",creating:"Creating account…",
@@ -192,7 +192,7 @@ const words:Record<Lang,Record<string,string>>={
  signInHeading:"خوش آمدید",signInText:"برای مدیریت حساب و اجازه‌های خانواده با امنیت وارد شوید.",
  signupHeading:"حساب مریض خود را بسازید",signupText:"با ایمیل معتبر ثبت‌نام کنید. حساب رایگان است و برای جستجو پرداخت ضرورت نیست.",
  name:"نام کامل",email:"آدرس ایمیل",password:"رمز عبور",newPassword:"رمز عبور جدید",
- passwordPolicy:"حداقل ده نویسه انتخاب کنید و رمز را محفوظ نگه دارید.",
+ passwordPolicy:"حداقل ده نویسه انتخاب کنید و رمز را محفوظ نگه دارید.",confirmPassword:"تکرار رمز عبور",passwordMismatch:"رمزهای عبور مطابقت ندارند.",
  terms:"شرایط خدمات",legalPrivacy:"اطلاعیه حریم خصوصی",
  agree:"شرایط خدمات و حریم خصوصی را خوانده و می‌پذیرم.",
  create:"ساخت حساب",creating:"در حال ساخت حساب…",
@@ -308,7 +308,7 @@ const words:Record<Lang,Record<string,string>>={
  signInHeading:"بیا ښه راغلاست",signInText:"د خپل حساب او کورنۍ د اجازو اداره کولو لپاره ننوځئ.",
  signupHeading:"د ناروغ حساب جوړ کړئ",signupText:"په تایید شوي برېښنالیک ثبت شئ. حساب وړیا دی.",
  name:"بشپړ نوم",email:"برېښنالیک",password:"پټنوم",newPassword:"نوی پټنوم",
- passwordPolicy:"لږ تر لږه لس توري وکاروئ او پټنوم پټ وساتئ.",
+ passwordPolicy:"لږ تر لږه لس توري وکاروئ او پټنوم پټ وساتئ.",confirmPassword:"پټنوم بیا ولیکئ",passwordMismatch:"پټنومونه سره برابر نه دي.",
  terms:"د خدمت شرطونه",legalPrivacy:"د محرمیت خبرتیا",
  agree:"ما د خدمت شرطونه او د محرمیت خبرتیا لوستې او منلې ده.",
  create:"حساب جوړول",creating:"حساب جوړېږي…",
@@ -484,7 +484,7 @@ function AuthLinks({type}:{type:string}){
 export function PatientAuthPage({mode}:{mode:"login"|"signup"|"forgot"|"reset"|"verify"}){
  const {t}=useWords();
  const [name,setName]=useState(""),[email,setEmail]=useState(""),
-  [password,setPassword]=useState(""),[accepted,setAccepted]=useState(false),
+  [password,setPassword]=useState(""),[confirmation,setConfirmation]=useState(""),[accepted,setAccepted]=useState(false),
   [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
  const labels={login:"signInHeading",signup:"signupHeading",forgot:"forgotHeading",
  reset:"resetHeading",verify:"verificationTitle"};
@@ -497,6 +497,7 @@ export function PatientAuthPage({mode}:{mode:"login"|"signup"|"forgot"|"reset"|"
   try{
    if(mode==="signup"){
     if(!accepted)throw Error("consent");
+    if(password!==confirmation)throw Error("passwordMismatch");
     const r=await authClient.signUp.email({name:name.trim(),email:email.trim().toLowerCase(),
      password,callbackURL:window.location.origin+"/verify"});
     if(r.error)throw r.error;
@@ -518,7 +519,8 @@ export function PatientAuthPage({mode}:{mode:"login"|"signup"|"forgot"|"reset"|"
     if(r.error)throw r.error;
     setNotice(t("resetDone"));setPassword("");
    }
-  }catch{setError(mode==="login"?t("authProblem"):t("genericAuth"))}
+  }catch(e){setError(e instanceof Error&&e.message==="passwordMismatch"?t("passwordMismatch"):
+    mode==="login"?t("authProblem"):t("genericAuth"))}
   finally{setBusy(false)}
  }
  async function resend(){
@@ -563,6 +565,8 @@ export function PatientAuthPage({mode}:{mode:"login"|"signup"|"forgot"|"reset"|"
       {["login","signup","reset"].includes(mode)&&
        <F title={mode==="reset"?t("newPassword"):t("password")} hint={t("passwordPolicy")}>
         <PasswordInput value={password} onChange={setPassword}/></F>}
+      {mode==="signup"&&<F title={t("confirmPassword")}>
+        <PasswordInput value={confirmation} onChange={setConfirmation}/></F>}
       {mode==="signup"&&<label className="p14-check">
        <input type="checkbox" required checked={accepted} onChange={e=>setAccepted(e.target.checked)}/>
        <span>{t("agree")} <a href="/terms" target="_blank" rel="noopener noreferrer">
