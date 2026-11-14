@@ -826,7 +826,7 @@ function FamilyContent(){
  const family=usePatient<Family>("/family");
  const incoming=usePatient<{requests:Invitation[]}>("/family/requests");
  const delegations=usePatient<{delegations:Delegation[]}>("/family/delegations");
- const [panel,setPanel]=useState("members"),[form,setForm]=useState<FamilyMember|null|undefined>(undefined),
+ const [panel,setPanel]=useState(()=>typeof window!=="undefined"&&window.location.pathname.endsWith("/requests")?"requests":"members"),[form,setForm]=useState<FamilyMember|null|undefined>(undefined),
   [email,setEmail]=useState(""),[inviteBusy,setInviteBusy]=useState(false),
   [inviteNotice,setInviteNotice]=useState(""),[consenting,setConsenting]=useState<Record<string,boolean>>({}),
   [busy,setBusy]=useState(""),[message,setMessage]=useState(""),[fault,setFault]=useState("");
