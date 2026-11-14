@@ -26,9 +26,8 @@ async function loggedIn(req:UserRequest,res:Response,next:NextFunction){
  }catch(error){next(error)}
 }
 async function eligible(clinicId:string,dentistId:string|null){
- let item:Awaited<ReturnType<typeof publicListing>>;
- try{item=await publicListing(clinicId)}catch{fail(404,"PUBLIC_PROFILE_UNAVAILABLE")}
- if(dentistId&&!item.profile.dentists.some(x=>x.id===dentistId))fail(404,"VERIFIED_DENTIST_UNAVAILABLE");
+ const item=await publicListing(clinicId).catch(()=>fail(404,"PUBLIC_PROFILE_UNAVAILABLE"));
+ if(dentistId&&!item.profile.dentists.some((x:{id:string})=>x.id===dentistId))fail(404,"VERIFIED_DENTIST_UNAVAILABLE");
  return item;
 }
 export function patientFavoritesRouter(){
@@ -50,7 +49,7 @@ export function patientFavoritesRouter(){
     return {clinicId:row.clinic_id,clinicName:p.clinic.name,
      dentistId:row.dentist_id||null,
      dentistName:row.dentist_id?
-      p.profile.dentists.find(x=>x.id===row.dentist_id)?.displayName:null};
+      p.profile.dentists.find((x:{id:string;displayName:string})=>x.id===row.dentist_id)?.displayName:null};
    }catch{return null;}
   }));
   noStore(res);res.json({favorites:allowed.filter(Boolean),reviewedOnly:true});
