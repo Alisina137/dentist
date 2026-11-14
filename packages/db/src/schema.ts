@@ -1,4 +1,4 @@
-import { boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 /** Better Auth-owned tables. Do not accept roles from client signup payloads. */
 export const user = pgTable("auth_users", {
@@ -859,3 +859,18 @@ export const clinicListingEvent=pgTable("clinic_listing_events",{
  actorId:text("actor_id").notNull().references(()=>user.id),
  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
 },t=>[index("clinic_listing_events_idx").on(t.clinicId,t.createdAt)]);
+
+/** PH13 indexed, vetted directory copy only; no clinical or patient information. */
+export const clinicPublicSearchIndex=pgTable("clinic_public_search_index",{
+ clinicId:text("clinic_id").primaryKey().references(()=>clinic.id),
+ approvedVersion:integer("approved_version").notNull(),
+ clinicName:text("clinic_name").notNull(),city:text("city").notNull(),
+ province:text("province").notNull(),searchText:text("search_text").notNull(),
+ specialties:text("specialties").array().notNull(),
+ services:text("services").array().notNull(),
+ dentistNames:text("dentist_names").array().notNull(),
+ minFeeAfn:integer("min_fee_afn").notNull(),
+ latitude:doublePrecision("latitude").notNull(),
+ longitude:doublePrecision("longitude").notNull(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("public_search_fee_idx").on(t.minFeeAfn,t.clinicId)]);
