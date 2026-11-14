@@ -1105,30 +1105,45 @@ function PatientApp(){
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={checking}
     onRefresh={checkApi} tintColor={colors.blue}/>:undefined}>
-   {route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
-    isSaved={isSaved(route.clinicId)} onSave={()=>save(route.clinicId)}
-    onOpenDentist={dentistId=>openDentist(route.clinicId,dentistId)}/>:
+   {route?.kind==="booking"?<NativeBookingWizard locale={locale}
+    clinicId={route.clinicId} dentistId={route.dentistId} booking={route.booking}
+    onAccount={()=>select("account")} onDone={()=>select("appointments")}/>:
+    route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
+     isSaved={isSaved(route.clinicId)} onSave={()=>save(route.clinicId)} onBook={()=>book(route.clinicId)}
+     onOpenDentist={dentistId=>openDentist(route.clinicId,dentistId)}/>:
     route?.kind==="dentist"?<DentistScreen clinicId={route.clinicId}
-     dentistId={route.dentistId} ui={ui} onBackToClinic={()=>openClinic(route.clinicId)}/>:
+     dentistId={route.dentistId} ui={ui} onBackToClinic={()=>openClinic(route.clinicId)}
+     onBook={()=>book(route.clinicId,route.dentistId)}
+     isSaved={isSavedDentist(route.clinicId,route.dentistId)}
+     onSave={()=>saveDentist(route.clinicId,route.dentistId)}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
      onSearch={q=>{setSearchSeed(q);select("explore")}} onBrowse={()=>{setSearchSeed("");select("explore")}}
      onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
     tab==="explore"?<ExploreScreen ui={ui} city={city} onCity={setCity}
      seed={searchSeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
-    tab==="saved"?<SavedScreen ui={ui} ids={savedIds} onRemove={save}
-     onClinic={openClinic} onExplore={()=>select("explore")}/>:
-    <AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
-     onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
-     checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>}
+    tab==="appointments"?<NativeAppointments locale={locale}
+     onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}/>:
+    tab==="saved"?(native.account?.registered?<NativeSaved locale={locale}
+     onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}/>:
+     <SavedScreen ui={ui} ids={savedIds} onRemove={save}
+      onClinic={openClinic} onExplore={()=>select("explore")}/>):
+    <View style={s.sectionGap}>
+     <NativeAccountArea locale={locale} calendar={calendar} city={city}
+      onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>
+     <AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
+      signedIn={Boolean(native.account?.registered)}
+      onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
+      checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>
+    </View>}
   </ScrollView>
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
-   {([["home","⌂"],["explore","⌕"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
+   {([["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
-     accessibilityLabel={ui.t(value)} onPress={()=>select(value)} key={value}
+     accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
      style={[s.bottomNavItem,tab===value&&s.bottomNavItemActive]}>
      <Text style={[s.bottomNavIcon,tab===value&&s.bottomNavIconSelected]}>{icon}</Text>
      <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
-      {ui.t(value)}</Text>
+      {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
     </Pressable>)}
   </View>}
  </SafeAreaView>;
