@@ -70,6 +70,7 @@ CREATE TABLE clinic_payment_entries (
  reverses_entry_id text UNIQUE REFERENCES clinic_payment_entries(id),
  action_key text NOT NULL CHECK(length(action_key) BETWEEN 8 AND 100),
  request_digest text NOT NULL CHECK(length(request_digest)=64),
+ occurred_at timestamptz NOT NULL DEFAULT now(),
  created_by text NOT NULL REFERENCES auth_users(id),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(clinic_id,created_by,action_key),
