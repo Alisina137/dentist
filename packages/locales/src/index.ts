@@ -6,12 +6,13 @@ export const languages: { id: Locale; name: string; dir: "ltr" | "rtl" }[] = [
   { id: "en", name: "English", dir: "ltr" }
 ];
 const en = {
+  findCare:"Find care",aboutDandanLink:"About",skipToContent:"Skip to main content",
   brand: "DandanLink", clinicTitle: "Dental clinic workspace",
   adminTitle: "Platform administration", patientTitle: "Find a better way to dental care",
   tagline: "Trusted tools for dental practices. Easy access for patients.",
   clinicSummary: "Create an account and prepare your practice for digital operations.",
   adminSummary: "A restricted workspace for authorized platform administrators.",
-  patientSummary: "Explore how DandanLink will help you discover verified dentists and request appointments. Public listings are not live yet.",
+  patientSummary: "Explore how DandanLink will help you discover verified dentists and request appointments. Verified clinic profiles are available to browse; online appointment booking is not yet enabled.",
   clinicPortal: "Clinic portal", patientPortal: "Patient website", adminPortal: "Administration",
   login: "Sign in", signup: "Create clinic owner account", signout: "Sign out",
   name: "Full name", email: "Email address", password: "Password",
@@ -62,6 +63,7 @@ const en = {
 } as const;
 type Keys = keyof typeof en;
 const fa: Record<Keys, string> = {
+  findCare:"جستجوی کلینیک",aboutDandanLink:"درباره",skipToContent:"رفتن به محتوای اصلی",
   brand:"دندان‌لینک", clinicTitle:"پنل مدیریت کلینیک دندان", adminTitle:"مدیریت پلتفرم", patientTitle:"راه آسان‌تر برای مراقبت دندان",
   tagline:"ابزارهای مطمئن برای کلینیک‌ها، دسترسی آسان برای بیماران.",
   clinicSummary:"حساب بسازید و کلینیک خود را برای مدیریت دیجیتالی آماده کنید.",
@@ -116,6 +118,7 @@ const fa: Record<Keys, string> = {
 };
 const ps: Record<Keys, string> = {
   ...fa,
+  findCare:"د کلینیکونو لټون",aboutDandanLink:"زموږ په اړه",skipToContent:"اصلي منځپانګې ته ولاړ شئ",
   passwordResetEmail:"که دا برېښنالیک ثبت وي، د پټنوم د بیا ټاکنې لینک به ولېږل شي.",
   duplicateSafe:"که دا برېښنالیک د ثبت وړ وي، د تایید پیغام به واستول شي.",
   settingsHint:"کله چې حساب ته ننوتلي یاست، غوره توبونه مو له حساب سره همغږي کېږي.",
