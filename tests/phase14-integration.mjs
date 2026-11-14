@@ -153,8 +153,8 @@ ok(await request(root+"/family/invitations","GET",undefined,mine),[404],
  "outgoing pending invitations must not leak whether an email exists");
 const incoming=await get("/family/requests",yours);
 assert.equal(incoming.requests.length,1,"real target account sees private request");
-assert.equal(incoming.requests[0].guardianName,"Patient A",
- "guardian display name at email invitation time may differ from updated portal name");
+assert.equal(incoming.requests[0].guardianName,"Patient Updated",
+ "incoming request shows the guardian’s current consented portal display name");
 const invitation=incoming.requests[0].id;
 ok(await request(root+"/family/requests/"+invitation+"/decide","POST",{
  decision:"accept",adultConsent:true},mine),[409,404],
