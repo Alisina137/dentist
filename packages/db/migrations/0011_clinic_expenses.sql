@@ -65,7 +65,8 @@ CREATE TABLE clinic_expense_versions (
  payment_method text NOT NULL CHECK(payment_method IN ('cash','bank_transfer','other_manual')),
  reference text,
  attribution text,
- receipt_id text REFERENCES clinic_expense_receipts(id),
+ receipt_id text,
+ FOREIGN KEY(receipt_id,expense_id) REFERENCES clinic_expense_receipts(id,expense_id),
  correction_reason text,
  actor_id text NOT NULL REFERENCES auth_users(id),
  action_key text NOT NULL CHECK(length(action_key) BETWEEN 8 AND 100),
@@ -108,3 +109,25 @@ END;
 $$;
 CREATE TRIGGER clinic_expense_update_guard_trigger BEFORE UPDATE ON clinic_expenses
  FOR EACH ROW EXECUTE FUNCTION clinic_expense_update_guard();
+
+-- Deferred snapshot guard: a direct database edit cannot advance the live expense
+-- revision without a matching immutable historical version in the SAME transaction.
+CREATE OR REPLACE FUNCTION clinic_expense_snapshot_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM clinic_expense_versions v
+  WHERE v.expense_id=NEW.id AND v.clinic_id=NEW.clinic_id AND v.version=NEW.revision
+   AND v.expense_date=NEW.expense_date AND v.category=NEW.category
+   AND v.description=NEW.description AND v.amount_afn=NEW.amount_afn
+   AND v.payment_method=NEW.payment_method
+   AND v.reference IS NOT DISTINCT FROM NEW.reference
+   AND v.attribution IS NOT DISTINCT FROM NEW.attribution
+   AND ((NEW.status='void' AND v.action='voided') OR
+    (NEW.status='posted' AND v.action IN ('created','corrected')))
+ ) THEN RAISE EXCEPTION 'Live expense state requires a matching immutable version'; END IF;
+ RETURN NEW;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER clinic_expense_snapshot_consistency
+ AFTER INSERT OR UPDATE ON clinic_expenses DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW EXECUTE FUNCTION clinic_expense_snapshot_guard();
