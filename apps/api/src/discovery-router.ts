@@ -66,11 +66,6 @@ function publicHeader(res:Response){
  res.setHeader("Cache-Control","public, max-age=10, must-revalidate");
  res.setHeader("X-Content-Type-Options","nosniff");
 }
-function getTodaySlots(listing:ClinicProfile,day:string,slots:Slot[],serviceId?:string,dentistId?:string){
- // Thin metadata only; actual appointments are never included.
- return slots.filter(s=>(!serviceId||s.serviceId===serviceId)&&(!dentistId||s.dentistId===dentistId))
-  .sort((a,b)=>a.startAt.localeCompare(b.startAt)||a.dentistId.localeCompare(b.dentistId));
-}
 function publicServices(listing:ClinicProfile,service?:string){
  return listing.profile.services.filter(x=>!service||x.id===service);
 }
@@ -117,8 +112,26 @@ async function nextSlot(listing:ClinicProfile,day?:string,opts?:{serviceId?:stri
  if(cached&&Date.now()-cached.at<12000)return cached.result;
  const from=day||localDay(),days=day?1:Math.min(listing.profile.bookingRules.horizonDays,14);
  let candidate:Slot|null=null;
+ // Avoid a dozen multi-table appointment checks for weekdays that the clinic/provider
+ // has not configured. Special-hours exceptions remain eligible for live evaluation.
+ const [open,exceptions]=day?[[],[]]:await Promise.all([
+  sqlClient`SELECT DISTINCT w.weekday FROM clinic_weekly_hours w
+    JOIN clinic_provider_hours ph ON ph.clinic_id=w.clinic_id
+      AND ph.weekday=w.weekday
+    WHERE w.clinic_id=${listing.clinic.id} AND w.is_open=true AND ph.is_open=true
+    AND ph.membership_id IN(SELECT jsonb_array_elements_text(
+      ${JSON.stringify(listing.profile.dentists.map(x=>x.id))}::jsonb))`,
+  sqlClient`SELECT start_date,end_date FROM clinic_schedule_exceptions
+    WHERE clinic_id=${listing.clinic.id} AND kind='special_hours'
+      AND end_date>=${from}::date AND start_date<=${addDays(from,days)}::date`
+ ]);
+ const openDays=new Set(open.map(x=>Number(x.weekday)));
  for(let i=0;i<days&&!candidate;i++){
-  const found=await slotsForDate(listing,addDays(from,i),{
+  const candidateDay=addDays(from,i);
+  if(!day&&!openDays.has(new Date(candidateDay+"T12:00:00Z").getUTCDay())&&
+   !exceptions.some(x=>String(x.start_date)<=candidateDay&&String(x.end_date)>=candidateDay))
+   continue;
+  const found=await slotsForDate(listing,candidateDay,{
    serviceId:opts?.serviceId,dentistId:opts?.dentistId,maxSlots:1});
   candidate=found[0]||null;
  }
@@ -297,7 +310,7 @@ export function discoveryRouter(){
   const total=evaluateAll?cards.length:totalEligible;
   publicHeader(res);res.json({items:selected,pagination:{
    page:opts.page,limit:opts.limit,total,totalExact:!truncated,
-   hasNext:opts.page*opts.limit<total||truncated},filters:{
+   hasNext:opts.page*opts.limit<total},filters:{
     q:opts.q,city:opts.city,specialty:opts.specialty,service:opts.service,
     date:opts.date,maxFee:opts.maxFee,verifiedOnly:true,
     sort:opts.sort,latitude:opts.latitude,longitude:opts.longitude},
