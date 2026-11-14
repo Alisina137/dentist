@@ -515,7 +515,7 @@ function Workspace({ctx,space}:{ctx:Context;space:Space}){
     {tab==="photos"&&<section className="card phase12-panel">
      <SectionTitle title={t("photos")} desc={t("galleryHint")}/>
      {!readonly&&<PhotoUpload space={space} onUploaded={id=>{
-      update({photoIds:[...form.photoIds,{id,caption:""}]});refresh();
+      update({photoIds:[...form.photoIds,{id,caption:""}]});
      }}/>}
      {form.photoIds.length?<div className="phase12-photo-grid">{form.photoIds.map((photo,index)=>
       <figure className="phase12-photo" key={photo.id}>
