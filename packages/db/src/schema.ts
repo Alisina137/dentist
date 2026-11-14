@@ -874,3 +874,56 @@ export const clinicPublicSearchIndex=pgTable("clinic_public_search_index",{
  longitude:doublePrecision("longitude").notNull(),
  updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
 },t=>[index("public_search_fee_idx").on(t.minFeeAfn,t.clinicId)]);
+
+/** PH14 patient identity is separate from clinic-local patient records. */
+export const patientPortalProfile=pgTable("patient_profiles",{
+ userId:text("user_id").primaryKey().references(()=>user.id,{onDelete:"cascade"}),
+ preferredName:text("preferred_name").notNull(),city:text("city").notNull(),
+ phone:text("phone"),legalVersion:text("legal_version").notNull(),
+ privacyVersion:text("privacy_version").notNull(),
+ acceptedAt:timestamp("accepted_at",{withTimezone:true}).notNull(),
+ adultAttested:boolean("adult_attested").notNull().default(false),
+ revision:integer("revision").notNull().default(1),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+});
+export const patientPortalNotifications=pgTable("patient_notification_preferences",{
+ userId:text("user_id").primaryKey().references(()=>patientPortalProfile.userId,{onDelete:"cascade"}),
+ emailBooking:boolean("email_booking").notNull().default(false),
+ emailUpdates:boolean("email_updates").notNull().default(false),
+ revision:integer("revision").notNull().default(1),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+});
+export const patientPortalDependent=pgTable("patient_dependents",{
+ id:text("id").primaryKey(),
+ guardianUserId:text("guardian_user_id").notNull().references(()=>patientPortalProfile.userId,{onDelete:"cascade"}),
+ memberType:text("member_type").notNull(),displayName:text("display_name").notNull(),
+ relationship:text("relationship").notNull(),dateOfBirth:date("date_of_birth"),
+ adultUserId:text("adult_user_id").references(()=>user.id),
+ authorizationBasis:text("authorization_basis").notNull(),
+ guardianPolicyVersion:text("guardian_policy_version").notNull(),
+ status:text("status").notNull().default("active"),revision:integer("revision").notNull().default(1),
+ authorizedAt:timestamp("authorized_at",{withTimezone:true}).notNull().defaultNow(),
+ revokedAt:timestamp("revoked_at",{withTimezone:true}),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("patient_dependents_guardian_idx").on(t.guardianUserId,t.status,t.createdAt),
+ index("patient_dependents_adult_idx").on(t.adultUserId,t.status,t.createdAt)]);
+export const patientPortalFamilyInvitation=pgTable("patient_family_invitations",{
+ id:text("id").primaryKey(),
+ guardianUserId:text("guardian_user_id").notNull().references(()=>patientPortalProfile.userId,{onDelete:"cascade"}),
+ targetUserId:text("target_user_id").notNull().references(()=>user.id,{onDelete:"cascade"}),
+ relationship:text("relationship").notNull(),status:text("status").notNull().default("pending"),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ expiresAt:timestamp("expires_at",{withTimezone:true}).notNull(),
+ decidedAt:timestamp("decided_at",{withTimezone:true}),
+ dependentId:text("dependent_id").references(()=>patientPortalDependent.id)
+},t=>[index("patient_family_invitations_target_idx").on(t.targetUserId,t.status,t.expiresAt)]);
+export const patientPortalConsentEvent=pgTable("patient_consent_events",{
+ id:text("id").primaryKey(),
+ userId:text("user_id").notNull().references(()=>user.id,{onDelete:"cascade"}),
+ subjectType:text("subject_type").notNull(),subjectId:text("subject_id"),
+ consent:boolean("consent").notNull(),policyVersion:text("policy_version").notNull(),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("patient_consent_events_user_idx").on(t.userId,t.createdAt)]);

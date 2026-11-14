@@ -42,13 +42,13 @@ export const auth = betterAuth({
     }
   },
   rateLimit: {
-    enabled: true, window: 60, max: process.env.NODE_ENV === "test" ? 100 : 30,
+    enabled: true, window: 60, max: process.env.NODE_ENV === "test" ? 1000 : 30,
     customRules: {
-      "/sign-in/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 8 },
-      "/sign-up/email": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
-      "/request-password-reset": { window: 60, max: process.env.NODE_ENV === "test" ? 100 : 5 },
+      "/sign-in/email": { window: 60, max: process.env.NODE_ENV === "test" ? 1000 : 8 },
+      "/sign-up/email": { window: 60, max: process.env.NODE_ENV === "test" ? 1000 : 5 },
+      "/request-password-reset": { window: 60, max: process.env.NODE_ENV === "test" ? 1000 : 5 },
       ...(process.env.NODE_ENV === "test" ? {
-        "/two-factor/*": { window: 60, max: 100 }
+        "/two-factor/*": { window: 60, max: 1000 }
       } : {})
     }
   },

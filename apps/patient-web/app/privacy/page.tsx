@@ -1,2 +1,2 @@
-import { LegalPage } from "@dandanlink/ui";
-export default function Page(){ return <LegalPage type="privacy" />; }
+import {PatientLegalPage} from "@dandanlink/ui/phase14";
+export default function Page(){return <PatientLegalPage mode="privacy"/>;}
