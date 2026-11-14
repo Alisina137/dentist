@@ -67,6 +67,9 @@
  color:#1d6683;background:#eaf5fa;width:max-content;max-width:100%}
 .clinic-setup-surface form{min-width:0}
 .clinic-setup-form,.clinic-setup-form-sections{display:grid;gap:20px}
+.clinic-setup-form-sections{min-width:0;margin:0;padding:0;border:0}
+.clinic-setup-fields-readonly:disabled{opacity:.92}
+.clinic-setup-fields-readonly:disabled input,.clinic-setup-fields-readonly:disabled select{background:#f4f7fa;color:#6e7f91;cursor:not-allowed}
 .clinic-setup-field-section{display:grid;gap:16px}
 .clinic-setup-field-section+ .clinic-setup-field-section{border-top:1px solid #e9eff6;
  padding-top:23px}
