@@ -378,3 +378,133 @@ textarea:focus-visible{outline:3px solid #38a6b0;outline-offset:3px}
  .site-header *,.p14-account *,.p14-page *,.p14-auth-page *{
   scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important}
 }
+
+
+/* 2026-11-14: compact, readable shared header and patient workspace refresh.
+   Locale and calendar never occupy any global header slot. */
+.site-header,.p13-site-header{min-height:70px;background:#fff;
+ border-bottom:1px solid #e5ebee;box-shadow:0 3px 18px rgba(18,56,72,.03)}
+.site-header-inner{min-height:70px;gap:clamp(12px,2.5vw,28px)}
+.site-header .brand{gap:10px;min-width:0}
+.site-header .brand-symbol{width:39px;height:39px;flex-basis:39px;
+ border-radius:11px;box-shadow:0 4px 12px rgba(12,105,120,.1)}
+.site-header .brand-name{font-size:20px;letter-spacing:-.035em}
+.site-header .brand-portal{background:#f4f8fa;border-color:#e6edf0;
+ border-radius:7px;padding:5px 9px;font-size:10px;color:#708995}
+.site-header .header-nav{flex:1;justify-content:flex-end}
+.site-header .header-nav nav{gap:4px}
+.site-header .nav-link{font-size:13px;min-height:40px;
+ padding:9px 12px;border-radius:9px}
+.site-header .nav-link[aria-current="page"]{background:#eaf5f4;
+ border-color:#dbeae9}
+.header-account-link{min-height:40px;border-radius:9px;
+ padding:9px 15px;box-shadow:none}
+.site-header .preferences,.site-header .select-group,
+.site-header select[aria-label="Language"],
+.site-header select[aria-label="Calendar"]{display:none!important}
+.shell-patient .site-main{max-width:1320px;padding-block:27px 65px}
+.shell-patient .site-main,.shell-clinic .site-main,.shell-admin .site-main{min-width:0}
+.p14-account{max-width:1260px;gap:20px}
+.p14-account-header{padding:5px 0 2px}
+.p14-account-header .p14-eyebrow{font-size:10px;color:#6e91a0;letter-spacing:.05em}
+.p14-account-header h1{font-size:28px;margin-top:7px;letter-spacing:-.028em}
+.p14-account-grid{grid-template-columns:232px minmax(0,1fr);gap:21px}
+.p14-account-side{top:92px;border-radius:15px;
+ padding:13px;box-shadow:0 3px 14px rgba(31,67,85,.035)}
+.p14-account-identity{padding:13px 10px 17px;border-color:#e8edef}
+.p14-account-avatar{border-radius:14px}
+.p14-account-nav>a{min-height:46px;padding:10px 12px;
+ border-inline-start-width:2px;border-radius:9px;font-size:12px}
+.p14-account-nav>a[aria-current="page"]{background:#e9f5f4;border-color:#d8eae9;
+ color:#096c76}
+.p14-account-side-bottom button{font-size:12px}
+.p14-stack{gap:17px}
+.p14-surface{padding:clamp(20px,2.2vw,27px);
+ border:1px solid #e2ebee;border-radius:14px;
+ box-shadow:0 3px 18px rgba(19,53,71,.025)}
+.p14-page-title h1{font-size:27px}
+.p14-page-title p{font-size:13px;max-width:690px}
+.p14-welcome{min-height:210px;padding:30px 32px;border-radius:15px;
+ background:linear-gradient(115deg,#e4f4f0 0%,#eff8f5 67%,#f9fcfb 100%);
+ box-shadow:none}
+.p14-welcome h2{font-size:clamp(24px,2.8vw,32px);max-width:550px}
+.p14-welcome p{font-size:13px;max-width:560px}
+.p14-welcome-symbol{width:112px;height:112px;flex-basis:112px;border-radius:28px}
+.p14-welcome-symbol svg{height:65px;width:65px}
+.p14-stats{gap:12px}
+.p14-status-card{padding:17px 18px;border-radius:13px;box-shadow:none}
+.p14-status-card strong{font-size:20px}
+.p14-status-card small{font-size:11px}
+.p14-quick-grid{gap:10px}
+.p14-quick-card{min-height:81px;padding:14px 16px;border-radius:11px;gap:12px}
+.p14-quick-icon{width:42px;height:42px;flex-basis:42px;border-radius:11px}
+.p14-quick-card strong{font-size:13px}
+.p14-quick-card small{font-size:11px}
+.p14-info-panel{padding:16px 19px}
+.p14-auth-page{max-width:1080px;min-height:560px;
+ box-shadow:0 16px 50px rgba(21,63,77,.06);border-radius:17px}
+.p14-auth-visual{min-height:560px;padding:clamp(28px,4vw,50px)}
+.p14-auth-visual h2{font-size:clamp(26px,2.9vw,36px)}
+.p14-auth-visual p{font-size:13px}
+.p14-auth-card{max-width:430px}
+.p14-field input,.p14-field select,.p14-password input{border-color:#d8e5e8;
+ border-radius:10px;min-height:47px}
+.p14-field input:focus-visible,.p14-field select:focus-visible,
+.p14-password input:focus-visible{outline:2px solid #43abb3;outline-offset:1px}
+.p14-family-tabs>button{font-size:12px;padding:11px 15px}
+.p14-family-member{padding:15px 17px}
+.p14-section-head h2,.p14-surface h2{font-size:18px}
+.p14-empty{background:#fcfefe}
+.p14-profile-head{padding-block:23px}
+.p14-form{gap:16px}
+.p14-check{font-size:12px}
+.p14-field{font-size:12px}
+.p14-field small{font-size:11px}
+.p14-setup-grid{gap:20px}
+.p14-setup-aside{top:92px}
+.p13-hero{border-radius:16px;box-shadow:none}
+.p13-panel,.p13-professional-card,.p13-aside-hours{box-shadow:none;border-radius:13px}
+.p13-home{gap:27px}
+.p13-hero h1{font-size:clamp(30px,3.2vw,45px)}
+.p13-panel h2{font-size:19px}
+@media(max-width:980px){
+ .p14-account-grid{grid-template-columns:210px minmax(0,1fr);gap:14px}
+ .p14-account-side{padding:11px}
+ .site-header .brand-portal{display:none}
+}
+@media(max-width:900px){
+ .p14-account-grid{grid-template-columns:minmax(0,1fr);gap:15px}
+ .p14-account-side{position:static;top:auto;padding:12px}
+ .p14-account-nav{display:flex;overflow-x:auto;gap:6px;padding:5px 0 10px}
+ .p14-account-nav>a{flex:0 0 auto;white-space:nowrap;border-bottom:2px solid transparent}
+ .p14-account-nav>a[aria-current="page"]{border-bottom-color:#0d8793}
+ .p14-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p14-auth-page{grid-template-columns:1fr;min-height:0}
+ .p14-auth-visual{min-height:0;padding:23px 26px}
+ .p14-auth-form{padding:28px 22px}
+ .p14-setup-grid{grid-template-columns:1fr}
+ .p14-setup-aside{position:static}
+}
+@media(max-width:600px){
+ .site-header,.p13-site-header{min-height:66px}
+ .site-header-inner{min-height:66px}
+ .site-header .brand-symbol{width:37px;height:37px;flex-basis:37px}
+ .shell-patient .site-main{padding:20px 15px 44px}
+ .p14-account-header h1{font-size:25px}
+ .p14-welcome{padding:23px 20px;min-height:0}
+ .p14-welcome h2{font-size:25px}
+ .p14-welcome-symbol{display:none}
+ .p14-quick-grid{grid-template-columns:1fr}
+ .p14-surface{padding:18px 17px}
+ .p14-family-member{flex-wrap:wrap}
+ .p14-member-actions{width:100%}
+ .p14-form-two{grid-template-columns:1fr}
+ .p14-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p14-status-card:last-child{grid-column:1/-1}
+ .p14-auth-visual{padding:22px}
+}
+@media(max-width:410px){
+ .p14-stats{grid-template-columns:1fr}
+ .p14-status-card:last-child{grid-column:auto}
+ .site-header .brand-name{font-size:18px}
+}

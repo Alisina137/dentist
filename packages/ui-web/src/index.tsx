@@ -127,6 +127,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
  const closeMenu=()=>setOpen(false);
  return <div className={"shell shell-"+audience}>
   <a className="skip-link" href="#main">{t("skipToContent")}</a>
+  {/* Global header intentionally contains navigation only. Locale/calendar controls belong in workspace/account settings. */}
   <header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
    <div className="site-header-inner">
     <a href={home} onClick={closeMenu} className="brand" aria-label={t("brand")+" — "+t("home")}>
