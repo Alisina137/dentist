@@ -36,11 +36,13 @@ test("PH12 frontend has five complete owner tabs, two moderated admin queues and
   if(term!=="onSaved")assert.ok(ui.includes(term),term);
  const side=read("packages/ui-web/src/phase03.tsx");
  assert.match(side,/const listing=link\("listing","\/clinic\/listing"/);
+ assert.ok(side.includes('const myVerification=link("myVerification","/clinic/credentials"'));
  const parent=read("packages/ui-web/src/phase02.tsx");
  assert.match(parent,/\["dentists","\/admin\/dentists"\]/);
  assert.match(parent,/\["listings","\/admin\/listings"\]/);
  for(const page of [
  "apps/clinic-web/app/clinic/listing/page.tsx",
+ "apps/clinic-web/app/clinic/credentials/page.tsx",
  "apps/admin-web/app/admin/dentists/page.tsx",
  "apps/admin-web/app/admin/dentists/[membershipId]/page.tsx",
  "apps/admin-web/app/admin/listings/page.tsx",
