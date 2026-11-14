@@ -4,9 +4,19 @@ import {availabilityPreview} from "./operations-availability.js";
 import {publicListing} from "./listing-router.js";
 
 /** PH13 public search: no sessions, no tenant patient tables, no actual bookings. */
-type ClinicProfile=Awaited<ReturnType<typeof publicListing>>;
-type PublicDentist=ClinicProfile["profile"]["dentists"][number];
-type PublicService=ClinicProfile["profile"]["services"][number];
+type PublicDentist={id:string;displayName:string;specialty:string|null;
+ qualifications:string|null;validUntil:string;verified:boolean};
+type PublicService={id:string;name:string;category:string;priceAfn:number;
+ durationMinutes:number;version:number;requiresChair:boolean};
+type ClinicProfile={
+ clinic:{id:string;name:string;city:string;province:string;address:string;phone:string};
+ profile:{description:string;specialties:string[];latitude:number;longitude:number;
+ contactNote:string|null;photos:{id:string;caption:string;url:string}[];
+ dentists:PublicDentist[];services:PublicService[];bookingRules:{
+ approvalMode:"manual"|"auto";minNoticeHours:number;horizonDays:number;
+ cancellationHours:number;bufferMinutes:number}};
+ version:number;verifiedClinic:boolean;searchable:boolean;publicBookingsEnabled:false
+};
 type Slot={startAt:string;endAt:string;dentistId:string;serviceId:string;
  dentistName:string;serviceName:string;priceAfn:number;durationMinutes:number};
 type DiscoveryRequest=Request&{query:Request["query"]};
@@ -117,7 +127,7 @@ async function nextSlot(listing:ClinicProfile,day?:string,opts?:{serviceId?:stri
  return candidate;
 }
 async function load(id:string):Promise<ClinicProfile>{
- try{return await publicListing(id)}
+ try{return await publicListing(id) as unknown as ClinicProfile}
  catch(err){
   if((err as Error&{status?:number})?.status===404)fail(404,"CLINIC_UNAVAILABLE");
   throw err;
