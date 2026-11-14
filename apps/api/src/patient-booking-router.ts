@@ -69,15 +69,26 @@ async function eligibleSubject(tx:any,user:string,type:string,dependentId:unknow
  if(type==="minor"){
   if(d.member_type!=="minor"||d.authorization_basis!=="minor_guardian_attestation"||
    !d.date_of_birth)fail(403,"FAMILY_AUTHORIZATION_REQUIRED");
-  const [age]=await tx`SELECT (date_part('year',age(current_date,${d.date_of_birth}::date)))::int AS years`;
+  const [age]=await tx`SELECT (date_part('year',age((now() AT TIME ZONE 'Asia/Kabul')::date,${d.date_of_birth}::date)))::int AS years`;
   if(age.years>=18)fail(403,"MINOR_REQUIRES_ADULT_CONSENT");
  }else if(d.member_type!=="adult"||d.authorization_basis!=="adult_account_acceptance"||
   !d.email_verified)fail(403,"FAMILY_AUTHORIZATION_REQUIRED");
  return {type,dependentId:member,name:short(d.display_name)};
 }
-async function clinicPatient(tx:any,clinic:string,actor:string,name:string){
- // A new clinic-local registry identity, not a name/phone match to PH05 data.
- // Public booking NEVER creates a record-link grant to clinic clinical history.
+async function clinicPatient(tx:any,clinic:string,actor:string,name:string,
+ subjectType:string,dependentId:string|null){
+ // Reuse ONLY the portal-created clinic record for this same verified account
+ // and same authorized subject. Never join or guess an old PH05 patient
+ // by matching name/email/phone and never auto-grant clinical record access.
+ const [existing]=await tx`SELECT p.id FROM patient_public_bookings b
+ JOIN clinic_appointments a ON a.id=b.appointment_id AND a.clinic_id=b.clinic_id
+ JOIN clinic_patients p ON p.id=a.patient_id AND p.clinic_id=a.clinic_id
+ WHERE b.clinic_id=${clinic} AND b.user_id=${actor}
+ AND b.subject_type=${subjectType}
+ AND b.dependent_id IS NOT DISTINCT FROM ${dependentId}
+ AND p.intake_source='online' AND p.created_by=${actor}
+ AND p.status='active' ORDER BY b.created_at ASC LIMIT 1`;
+ if(existing)return existing.id;
  await tx`INSERT INTO clinic_patient_counters(clinic_id,next_number)
  VALUES(${clinic},1) ON CONFLICT (clinic_id) DO NOTHING`;
  const [seq]=await tx`UPDATE clinic_patient_counters
@@ -346,7 +357,7 @@ export function patientBookingRouter(){
    const {slot,service}=await slotFor(clinic,serviceId,providerId,startAt);
    if(service.version!==listing.service.version||service.basePriceAfn!==listing.service.priceAfn)
     fail(409,"SERVICE_PUBLICATION_CHANGED");
-   const patientId=await clinicPatient(tx,clinic,user,patient.name);
+   const patientId=await clinicPatient(tx,clinic,user,patient.name,patient.type,patient.dependentId);
    const appointmentId=randomUUID(),bookingId=randomUUID();
    const status=listing.rules.approvalMode==="auto"?"confirmed":"requested";
    const rows=await tx`INSERT INTO clinic_appointments(id,clinic_id,patient_id,service_id,
