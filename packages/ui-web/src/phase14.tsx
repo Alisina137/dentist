@@ -54,6 +54,7 @@ function safeNext(raw:string|null,fall="/account"){
 }
 const words:Record<Lang,Record<string,string>>={
  en:{
+ appointments:"My appointments",records:"Shared records",
  account:"My account",overview:"Overview",family:"Family",personal:"My profile",
  preferences:"Preferences",privacy:"Privacy",security:"Security",signin:"Sign in",
  signup:"Create free account",signout:"Sign out",find:"Find care",home:"Home",
@@ -172,6 +173,7 @@ const words:Record<Lang,Record<string,string>>={
  coming:"Coming soon"
  },
  "fa-AF":{
+ appointments:"وقت‌های ملاقات من",records:"اسناد شریک‌شده",
  account:"حساب من",overview:"نمای کلی",family:"خانواده",personal:"پروفایل من",
  preferences:"تنظیمات",privacy:"حریم خصوصی",security:"امنیت",signin:"ورود",
  signup:"ایجاد حساب رایگان",signout:"خروج",find:"جستجوی خدمات",home:"خانه",
@@ -288,6 +290,7 @@ const words:Record<Lang,Record<string,string>>={
  unsupported:"این کار هنوز در حساب مریض فعال نیست.",coming:"به‌زودی"
  },
  "ps-AF":{
+ appointments:"زما ملاقاتونه",records:"شریک شوي اسناد",
  account:"زما حساب",overview:"لنډیز",family:"کورنۍ",personal:"زما پېژندلیک",
  preferences:"غوره توبونه",privacy:"محرمیت",security:"امنیت",signin:"ننوتل",
  signup:"وړیا حساب جوړول",signout:"وتل",find:"خدمتونه لټول",home:"کور",
@@ -666,6 +669,8 @@ const nav=[
  {key:"overview",href:"/account",icon:"overview"},
  {key:"personal",href:"/account/profile",icon:"profile"},
  {key:"family",href:"/account/family",icon:"family"},
+ {key:"appointments",href:"/appointments",icon:"calendar"},
+ {key:"records",href:"/account/records",icon:"file"},
  {key:"preferences",href:"/account/preferences",icon:"settings"},
  {key:"privacy",href:"/account/privacy",icon:"privacy"},
  {key:"security",href:"/account/security",icon:"security"}
@@ -691,7 +696,7 @@ function AccountSpace({me,active,children}:{me:Account;active:string;children:Re
     <div className="p14-account-side-bottom">
      <button type="button" onClick={signout} disabled={signed}>
       <CareIcon name="logout" size={18}/>{t("signout")}</button>
-     <p>{t("noBook")}</p></div>
+     <p>{t("noShared")}</p></div>
    </aside>
    <main className="p14-account-body">{children}</main>
   </div>
@@ -731,6 +736,8 @@ function AccountHomeContent({me,t,displayDate}:{me:Account;t:(k:string)=>string;
    <div className="p14-quick-grid">
     {([["personal","editProfile","/account/profile","profile"],
        ["family","manageFamily","/account/family","family"],
+       ["appointments","appointments","/appointments","calendar"],
+       ["records","records","/account/records","file"],
        ["preferences","managePreferences","/account/preferences","settings"],
        ["privacy","managePrivacy","/account/privacy","privacy"],
        ["security","manageSecurity","/account/security","security"],
@@ -741,8 +748,9 @@ function AccountHomeContent({me,t,displayDate}:{me:Account;t:(k:string)=>string;
        </a>)}
    </div>
   </section>
-  <section className="p14-info-panel"><CareIcon name="about" size={22}/>
-   <div><strong>{t("upcoming")}</strong><p>{t("noBook")} {t("noShared")}</p></div></section>
+  <section className="p14-info-panel"><CareIcon name="shield" size={22}/>
+   <div><strong>{t("records")}</strong><p>{t("noShared")}</p>
+    <a href="/account/records" className="btn btn-secondary">{t("records")}</a></div></section>
  </div>;
 }
 export function PatientProfilePage(){const {t}=useWords();return <Shell active="personal">{me=>
