@@ -11,7 +11,7 @@ import {availabilityPreview} from "./operations-availability.js";
 /** PH12: no clinical records; no public search or booking until PH13/15. */
 type AdminRequest=Request&{reviewer?:{id:string;name:string}};
 class ListingFault extends Error{constructor(public status:number,public code:string){super(code);}}
-const fail=(status:number,code:string):never=>{throw new ListingFault(status,code)};
+function fail(status:number,code:string):never{throw new ListingFault(status,code);}
 const task=<T extends Request>(fn:(req:T,res:Response)=>Promise<void>)=>
  (req:T,res:Response,next:NextFunction)=>{fn(req,res).catch(next)};
 const cId=(r:Request)=>String(r.params.clinicId);
@@ -133,7 +133,7 @@ type Profile={description:string;specialties:string[];photoIds:{id:string;captio
  latitude:number|null;longitude:number|null;contactNote:string|null};
 function ids(v:unknown,max:number,name:string):string[]{
  if(!Array.isArray(v)||v.length>max)fail(422,"INVALID_"+name);
- const list=v.map(x=>string(x,8,100,name));
+ const list=v.map((x:unknown)=>string(x,8,100,name));
  if(new Set(list).size!==list.length)fail(422,"DUPLICATE_"+name);
  return list;
 }
@@ -143,7 +143,7 @@ function profile(v:any):Profile{
   string(x,2,70,"SPECIALTY")):[];
  if(specialties.length>8||new Set(specialties).size!==specialties.length)
   fail(422,"INVALID_SPECIALTIES");
- const photoIds=Array.isArray(v.photoIds)?v.photoIds.map((x:any)=>({
+ const photoIds:{id:string;caption:string}[]=Array.isArray(v.photoIds)?v.photoIds.map((x:any)=>({
   id:string(x?.id,8,100,"PHOTO_ID"),caption:opt(x?.caption,160,"CAPTION")||""
  })):[];
  if(photoIds.length>LIMIT||new Set(photoIds.map(x=>x.id)).size!==photoIds.length)
