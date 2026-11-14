@@ -126,7 +126,7 @@ const words:Record<Lang,Record<string,string>>={
   selectProvider:"Choose clinician",prevPeriod:"Previous period",nextPeriod:"Next period",
   moreInDay:"more",showAll:"Show all",noCases:"No clinical encounter available yet.",
   specificDate:"Go to date",firstVisit:"Scheduled clinic visit",
-  tabCalendar:"Calendar",tabQueue:"Queue",cancelBookingHelp:"Cancellation requires a reason and releases the held time.",
+  tabCalendar:"Calendar",tabRequests:"Online requests",tabQueue:"Queue",cancelBookingHelp:"Cancellation requires a reason and releases the held time.",
   limitReached:"Too many records for this view. Narrow your filters.",
   statusFilter:"Status",selectDay:"View day",checkinDone:"Patient checked in",
   treatmentStarted:"Treatment started",completedDone:"Visit completed",noShowDone:"Marked no-show",
@@ -232,7 +232,7 @@ const words:Record<Lang,Record<string,string>>={
   selectProvider:"انتخاب داکتر",prevPeriod:"دوره قبلی",nextPeriod:"دوره بعدی",
   moreInDay:"مورد بیشتر",showAll:"نمایش همه",noCases:"پرونده طبی هنوز فعال نیست.",
   specificDate:"انتخاب تاریخ",firstVisit:"ملاقات کلینیک",
-  tabCalendar:"تقویم",tabQueue:"صف",cancelBookingHelp:"لغو نیازمند دلیل است و وقت آزاد می‌شود.",
+  tabCalendar:"تقویم",tabRequests:"درخواست‌های آنلاین",tabQueue:"صف",cancelBookingHelp:"لغو نیازمند دلیل است و وقت آزاد می‌شود.",
   limitReached:"تعداد زیاد است؛ فیلتر را محدود کنید.",statusFilter:"وضعیت",
   selectDay:"نمایش روز",checkinDone:"حضور ثبت شد",treatmentStarted:"تداوی شروع شد",
   completedDone:"ملاقات تکمیل شد",noShowDone:"غیرحاضری ثبت شد",
@@ -338,7 +338,7 @@ const words:Record<Lang,Record<string,string>>={
   selectProvider:"ډاکټر غوره کړئ",prevPeriod:"مخکنۍ دوره",
   nextPeriod:"راتلونکې دوره",moreInDay:"نورې لیدنې",showAll:"ټول",
   noCases:"طبي ریکارډ لا نه دی فعال.",specificDate:"نېټه غوره کړئ",
-  firstVisit:"د کلینیک لیدنه",tabCalendar:"مهالوېش",tabQueue:"کتار",
+  firstVisit:"د کلینیک لیدنه",tabCalendar:"مهالوېش",tabRequests:"آنلاین غوښتنې",tabQueue:"کتار",
   cancelBookingHelp:"لغوه کول دلیل غواړي او وخت خوشې کوي.",
   limitReached:"ډېر ریکارډونه دي؛ فلټر محدود کړئ.",statusFilter:"حالت",
   selectDay:"ورځ وګورئ",checkinDone:"راتګ ثبت شو",
@@ -494,6 +494,9 @@ function MainTabs({space,view}:{space:Space;view:Page}){
    <span aria-hidden="true">▦</span> {t("tabCalendar")}</a>
   <a href={appHref(space.clinicId,"queue")} aria-current={view==="queue"?"page":undefined}>
    <span aria-hidden="true">▥</span> {t("tabQueue")}</a>
+  {["owner","manager","receptionist","dentist"].includes(space.role)&&
+   <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>
+    <span aria-hidden="true">◷</span> {t("tabRequests")}</a>}
   {view==="detail"&&<span className="phase06-main-tab-static">{t("detail")}</span>}
   {view==="new"&&<span className="phase06-main-tab-static">{t("newAppointment")}</span>}
  </nav>;
