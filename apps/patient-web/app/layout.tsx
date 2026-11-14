@@ -4,6 +4,7 @@ import "@dandanlink/ui/styles.css";
 import "@dandanlink/ui/polish.css";
 import "@dandanlink/ui/patient-experience.css";
 import "@dandanlink/ui/phase15.css";
+import "@dandanlink/ui/phase17.css";
 
 export const metadata: Metadata = {
   title: "DandanLink",
