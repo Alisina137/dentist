@@ -1649,3 +1649,228 @@ a.phase-list-item:hover{background:#f5fbfe}
  .phase09-detail-header h2{font-size:22px}
  .phase09-estimate-total strong{font-size:17px}}
 @media(prefers-reduced-motion:reduce){.phase09-workspace *{transition:none!important;scroll-behavior:auto!important}}
+
+
+/* PH10 — clinic-private finance. Unified DandanLink Care UI / tablet/RTL/print. */
+.phase10-workspace{display:grid;gap:20px;min-width:0;max-width:1540px;margin:0 auto}
+.phase10-stack{display:grid;gap:18px;min-width:0}
+.phase10-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:5px 0}
+.phase10-header h1{font-size:clamp(28px,3vw,37px);letter-spacing:-.035em;line-height:1.25;margin:8px 0}
+.phase10-header p,.phase10-title p{font-size:12px;line-height:1.8;color:var(--muted);margin:0}
+.phase10-head-actions,.phase10-heading-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.phase10-eyebrow,.phase10-kicker{font-size:10px;font-weight:900;color:#14788a;letter-spacing:.045em;text-transform:uppercase}
+.phase10-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #dce9ed;padding-bottom:10px;scrollbar-width:thin}
+.phase10-tabs button{font:inherit;white-space:nowrap;background:transparent;border:1px solid transparent;
+ border-radius:9px;color:#547681;font-size:12px;font-weight:850;padding:12px 19px;cursor:pointer}
+.phase10-tabs button:hover{background:#f2f8f9}
+.phase10-tabs button[aria-selected="true"]{background:#e6f4f6;color:#0a6376;border-color:#bcdde3}
+.phase10-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.phase10-kpi{display:grid;text-align:start;align-content:start;gap:9px;padding:21px 18px;
+ border:1px solid #dce9ec;border-radius:13px;background:#fff;cursor:pointer;min-width:0;
+ transition:transform .15s,border-color .15s,box-shadow .15s}
+.phase10-kpi:hover{transform:translateY(-2px);border-color:#b7dbe3;box-shadow:0 7px 20px #246b7614}
+.phase10-kpi-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:10px;
+ background:#e4f2f4;color:#177a8a;font-size:18px;font-weight:900}
+.phase10-kpi>span:not(.phase10-kpi-icon){font-size:11px;color:#617e88;font-weight:800}
+.phase10-kpi strong{font-size:clamp(18px,1.9vw,24px);white-space:nowrap;letter-spacing:-.03em;color:#1b5265}
+.phase10-kpi small{font-size:10px;font-weight:800;color:#18869c;margin-top:5px}
+.phase10-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,.7fr);gap:17px;align-items:start}
+.phase10-panel{padding:24px;border:1px solid #dfebee;border-radius:14px;min-width:0}
+.phase10-title{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.phase10-title h2{font-size:19px;letter-spacing:-.025em;margin:0 0 6px;color:#244858}
+.phase10-guidance{background:#f5fafb;display:grid;gap:11px}
+.phase10-guidance h2{font-size:25px;color:#245768;margin:0}
+.phase10-guidance p{margin:0;font-size:12px;line-height:1.8;color:#627d85}
+.phase10-guidance .btn{width:max-content}
+.phase10-muted{color:var(--muted);font-size:11px;line-height:1.7}
+.phase10-recent-list,.phase10-ledger-list,.phase10-events{display:grid;gap:0}
+.phase10-recent{display:flex;gap:13px;align-items:center;border-bottom:1px solid #e8eff0;padding:16px 0}
+.phase10-recent:last-child{border-bottom:0}
+.phase10-recent-icon{width:36px;height:36px;flex:0 0 36px;border-radius:10px;
+ background:#dff2e6;color:#15744b;display:grid;place-items:center;font-weight:900}
+.phase10-recent-icon.reversal{background:#ffebea;color:#a35d56}
+.phase10-recent>div{flex:1;min-width:0}
+.phase10-recent strong{font-size:13px;color:#365867}
+.phase10-recent p{font-size:11px;color:var(--muted);margin:6px 0 0;overflow-wrap:anywhere}
+.phase10-recent>span:last-child{font-size:13px;font-weight:900;white-space:nowrap;color:#28687a}
+.phase10-toolbar{display:grid;gap:15px;padding-bottom:17px;margin-bottom:8px;border-bottom:1px solid #e5eef0}
+.phase10-filter-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:15px}
+.phase10-filter-chips button{font:inherit;font-size:11px;font-weight:800;border:1px solid #dbe7eb;
+ padding:9px 12px;border-radius:8px;background:#fff;color:#5e7981;cursor:pointer}
+.phase10-filter-chips button[aria-pressed="true"]{background:#e4f3f6;border-color:#b6dce3;color:#09677f}
+.phase10-search,.phase10-field-search{display:flex;align-items:center;gap:8px;max-width:560px}
+.phase10-search input,.phase10-field-search input{min-height:42px;min-width:0;flex:1;
+ border:1px solid #c9dee4;border-radius:9px;font:inherit;font-size:12px;color:#24424c;padding:9px 11px}
+.phase10-table-scroll{width:100%;min-width:0;overflow-x:auto;scrollbar-width:thin}
+.phase10-table{width:100%;min-width:690px;border-collapse:collapse;border-spacing:0}
+.phase10-table th{background:#f5f9fa;color:#617983;line-height:1.5;font-size:10px;
+ font-weight:900;white-space:nowrap;text-align:start;padding:12px 13px;border-bottom:1px solid #dae7ec}
+.phase10-table td{padding:15px 13px;font-size:12px;line-height:1.6;color:#4e6973;
+ border-bottom:1px solid #e8f0f2;vertical-align:middle;white-space:nowrap}
+.phase10-table tbody tr:last-child td{border-bottom:0}
+.phase10-table tbody tr:hover{background:#fafcfd}
+.phase10-table td strong{color:#2e5564;font-size:12px}
+.phase10-table a,.phase10-inline-link{color:#0b7b93;text-decoration:none;font-weight:850}
+.phase10-table a:hover,.phase10-inline-link:hover{text-decoration:underline}
+.phase10-balance{color:#b05b3f;font-weight:900}
+.phase10-badge{display:inline-flex;align-items:center;white-space:nowrap;font-size:10px;font-weight:900;
+ padding:6px 9px;border:1px solid #d8e4e8;color:#436b74;background:#f1f6f8;border-radius:30px}
+.phase10-badge.status-draft{background:#f8f3e8;color:#916b20;border-color:#eadfb9}
+.phase10-badge.status-issued,.phase10-badge.status-partially_paid{background:#e9f0ff;color:#3a6098;border-color:#d2dffc}
+.phase10-badge.status-paid,.phase10-badge.status-recorded,.phase10-badge.status-payment{background:#e5f5eb;
+ border-color:#bce3ca;color:#16794a}
+.phase10-badge.status-overdue,.phase10-badge.status-void,.phase10-badge.status-reversed,
+.phase10-badge.status-reversal{background:#feeeee;color:#ad504a;border-color:#f1d0cc}
+.phase10-badge.status-credit{background:#fff0da;color:#916416;border-color:#f0d4ad}
+.phase10-empty{font-size:12px;text-align:center;border:1px dashed #d0e3e8;color:#778e96;
+ border-radius:11px;background:#fafcfd;line-height:1.8;padding:35px 18px}
+.phase10-pager{display:flex;align-items:center;justify-content:flex-end;gap:12px;font-size:11px;
+ font-weight:850;color:#648089;margin-top:15px;padding-top:17px;border-top:1px solid #e6edef}
+.phase10-busy,.phase10-error{padding:27px;border-radius:12px;min-height:92px;display:flex;
+ gap:12px;align-items:center;color:#647e87;font-size:12px}
+.phase10-error{display:grid;align-content:center;color:#a24c45;gap:10px}
+.phase10-error p{font-size:12px;margin:0;overflow-wrap:anywhere}
+.phase10-error .btn{width:max-content}
+.phase10-editor{display:grid;gap:17px;padding-top:6px}
+.phase10-field{display:grid;gap:7px;min-width:0;color:#5c7882;font-size:11px;font-weight:850}
+.phase10-field input,.phase10-field select,.phase10-field textarea{display:block;width:100%;max-width:100%;min-height:43px;
+ padding:10px 11px;border:1px solid #cadce3;border-radius:9px;background:#fff;
+ color:#274551;font:inherit;font-size:12px;font-weight:500;line-height:1.55}
+.phase10-field textarea{resize:vertical}
+.phase10-field :disabled{background:#f3f7f8;color:#9aabb1}
+.phase10-field-search .btn{min-height:42px}
+.phase10-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.phase10-wide{grid-column:1/-1}
+.phase10-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ flex-wrap:wrap;padding:13px 0;border-bottom:1px solid #e3ecf0}
+.phase10-section-title h3{font-size:15px;color:#365764;margin:0}
+.phase10-line-list{display:grid;gap:10px}
+.phase10-line-edit{display:grid;grid-template-columns:minmax(0,2fr) 75px 106px minmax(110px,.8fr) auto;
+ align-items:end;gap:10px;background:#fbfdfd;border:1px solid #deebee;border-radius:10px;padding:13px}
+.phase10-line-value{font-size:11px;color:#67848c;display:grid;gap:7px;align-self:center}
+.phase10-line-value strong{font-size:12px;color:#1a6677;white-space:nowrap}
+.phase10-remove,.phase10-text-btn{background:transparent;font:inherit;font-size:11px;font-weight:850;
+ padding:10px;border:0;cursor:pointer;color:#ac4f49;white-space:nowrap}
+.phase10-quote-total{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:17px 19px;border:1px solid #c9e3e9;background:#eaf5f7;border-radius:10px;
+ color:#316c7c;font-size:12px;font-weight:900}
+.phase10-quote-total strong{font-size:clamp(17px,2vw,22px);white-space:nowrap;color:#19546b}
+.phase10-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.phase10-invoice-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:17px;flex-wrap:wrap}
+.phase10-invoice-heading h2{font-size:clamp(25px,2.8vw,35px);font-weight:900;letter-spacing:.025em;margin:11px 0}
+.phase10-invoice-heading p{margin:0;font-size:12px;color:#617a84;line-height:1.8}
+.phase10-invoice-heading a:not(.phase10-back){color:#14758b;font-weight:900;text-decoration:none}
+.phase10-back{color:#197e91;font-size:12px;font-weight:900;text-decoration:none}
+.phase10-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:21px}
+.phase10-summary-grid>div{display:grid;gap:10px;background:#f7fafb;padding:16px;
+ border:1px solid #e1ebee;border-radius:11px;min-width:0}
+.phase10-summary-grid span:first-child{font-size:10px;color:#66818a;font-weight:850}
+.phase10-summary-grid strong{color:#275e70;font-size:clamp(14px,1.5vw,19px);overflow-wrap:anywhere}
+.phase10-summary-grid .phase10-due{background:#edf7f9;border-color:#c8e4e9}
+.phase10-summary-grid .phase10-due strong{color:#0b6c82}
+.phase10-print-head{display:flex;justify-content:space-between;gap:12px;align-items:center;
+ border-bottom:1px dashed #dbe8ed;padding-bottom:13px;margin-bottom:15px;font-size:12px;color:#597882}
+.phase10-print-head strong{font-size:17px;color:#255c6b}
+.phase10-print-note{font-size:11px;color:#6c8791;line-height:1.7;margin-top:13px}
+.phase10-payment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;align-items:start}
+.phase10-payment-form{display:grid;gap:16px}
+.phase10-amount-preview{display:flex;align-items:center;justify-content:space-between;gap:10px;
+ background:#f6fafb;padding:11px 15px;border-radius:10px;font-size:12px;color:#698089}
+.phase10-amount-preview>span:nth-child(2),.phase10-amount-preview>span:last-child{font-weight:900;color:#195d70}
+.phase10-ledger-row{display:flex;gap:12px;align-items:flex-start;padding:17px 0;border-bottom:1px solid #e4ecef}
+.phase10-ledger-row:last-child{border-bottom:0}
+.phase10-ledger-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;
+ background:#e3f1f5;border-radius:10px;color:#087186;font-size:19px;font-weight:800}
+.phase10-ledger-icon.kind-reversal{background:#ffeded;color:#a35d58}
+.phase10-ledger-icon.kind-credit{background:#fff4e1;color:#926c1a}
+.phase10-ledger-content{flex:1;min-width:0}
+.phase10-ledger-content strong{font-size:12px;color:#335a68}
+.phase10-ledger-content p{font-size:11px;color:#647f89;margin:6px 0 0;line-height:1.7;overflow-wrap:anywhere;white-space:pre-wrap}
+.phase10-ledger-tail{text-align:end;display:grid;gap:8px;white-space:nowrap}
+.phase10-ledger-tail>strong{font-size:13px;color:#235d70}
+.phase10-ledger-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px;align-items:center}
+.phase10-ledger-links a{font-size:11px;color:#107c91;font-weight:850;text-decoration:none}
+.phase10-ledger-links button{padding:4px}
+.phase10-reverse-panel{display:grid;gap:13px;background:#f9fcfc;border:1px solid #dce9ec;padding:17px;border-radius:11px;margin-top:18px}
+.phase10-reverse-panel>.phase10-actions{justify-content:flex-end}
+.phase10-events>div{display:flex;align-items:flex-start;gap:13px;border-bottom:1px solid #e7eff1;padding:13px 0}
+.phase10-events>div:last-child{border-bottom:0}
+.phase10-event-dot{width:13px;height:13px;background:#accfd8;flex:0 0 13px;border-radius:50%;border:3px solid #e9f5f6;margin-top:3px}
+.phase10-events>div>div{min-width:0}
+.phase10-events strong{font-size:12px;color:#3c6370}
+.phase10-events p{font-size:11px;line-height:1.7;color:#68808a;margin:5px 0 0;white-space:pre-wrap}
+.phase10-danger{display:grid;gap:13px;background:#fffdfc;border-color:#ead7d3}
+.phase10-danger .btn{justify-self:start}
+.phase10-patient-banner{display:flex;gap:14px;align-items:center;padding:16px 19px;
+ border-radius:12px;background:linear-gradient(110deg,#f2fafb,#fff);border:1px solid #d9eaee}
+.phase10-patient-avatar{display:grid;place-items:center;flex:0 0 49px;height:49px;
+ border-radius:11px;background:#d9eef2;color:#13738a;font-size:24px}
+.phase10-patient-banner>div:nth-child(2){flex:1;min-width:0}
+.phase10-patient-banner h2{font-size:19px;margin:5px 0;color:#1e566b}
+.phase10-patient-banner span{font-size:11px;color:#65818b}
+.phase10-statement{display:grid;gap:0}
+.phase10-statement-head{display:flex;gap:12px;align-items:center;justify-content:space-between;
+ padding:14px 0 20px;font-size:12px;color:#597680}
+.phase10-statement-head strong{font-size:17px;color:#2f606d}
+.phase10-statement-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:13px;
+ padding:14px 0;border-bottom:1px solid #e8eff0;font-size:12px;color:#4a6b74}
+.phase10-statement-row a{color:#15788e;font-weight:850;text-decoration:none}
+.phase10-statement-row strong{color:#245d6c}
+.phase10-receipt-paper{max-width:720px;width:100%;margin:0 auto;border:1px solid #d8e7eb;border-radius:14px;padding:35px}
+.phase10-receipt-paper>header{text-align:center;display:grid;gap:6px;border-bottom:1px dashed #bcd2d9;padding-bottom:19px}
+.phase10-receipt-paper h2{font-size:23px;margin:7px 0;color:#285e70}
+.phase10-receipt-paper header p{font-size:12px;color:#6a838d;margin:0}
+.phase10-receipt-amount{display:grid;place-items:center;gap:10px;padding:28px 15px;margin-top:23px;
+ background:#edf7f9;border-radius:12px;color:#2e6473;font-size:12px;font-weight:900}
+.phase10-receipt-amount strong{font-size:35px;color:#075f75}
+.phase10-receipt-facts{display:grid;gap:0;margin:22px 0}
+.phase10-receipt-facts>div{display:grid;grid-template-columns:160px 1fr;gap:13px;align-items:center;
+ border-bottom:1px solid #e8eef0;padding:14px 0}
+.phase10-receipt-facts dt{font-size:11px;color:#708993;font-weight:800}
+.phase10-receipt-facts dd{margin:0;font-size:12px;color:#365b66;font-weight:850;overflow-wrap:anywhere}
+.phase10-receipt-footer{text-align:center;font-size:11px;line-height:2;color:#728991;border-top:1px dashed #c6dce3;padding-top:19px}
+.phase10-footer{margin:1px 0 12px;padding:8px;color:#7b8f96;font-size:11px;line-height:1.8}
+.phase10-workspace button:focus-visible,.phase10-workspace a:focus-visible,
+.phase10-workspace input:focus-visible,.phase10-workspace select:focus-visible,
+.phase10-workspace textarea:focus-visible{outline:3px solid #127e91;outline-offset:3px}
+@media(max-width:1220px){.phase10-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .phase10-grid{grid-template-columns:minmax(0,1fr) minmax(220px,.65fr)}}
+@media(max-width:940px){.phase10-grid{grid-template-columns:1fr}
+ .phase10-line-edit{grid-template-columns:minmax(0,2fr) 100px 120px}
+ .phase10-line-value{grid-column:1/3}.phase10-payment-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.phase10-header{display:grid;gap:14px}.phase10-panel{padding:16px}
+ .phase10-kpi{padding:16px}.phase10-kpi strong{font-size:18px}
+ .phase10-tabs button{padding:10px 14px;font-size:11px}
+ .phase10-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .phase10-form-grid{grid-template-columns:1fr}.phase10-line-edit{grid-template-columns:1fr 1fr}
+ .phase10-line-edit .phase10-field:first-child{grid-column:1/-1}
+ .phase10-line-value{grid-column:auto}
+ .phase10-receipt-paper{padding:19px}
+ .phase10-receipt-facts>div{grid-template-columns:110px 1fr}
+ .phase10-statement-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .phase10-patient-banner{flex-wrap:wrap}.phase10-patient-banner .btn{width:100%}
+ .phase10-invoice-heading h2{font-size:24px}}
+@media(max-width:420px){.phase10-kpis{grid-template-columns:1fr}
+ .phase10-kpi{gap:7px}
+ .phase10-line-edit{grid-template-columns:1fr}
+ .phase10-line-edit .phase10-field:first-child{grid-column:auto}
+ .phase10-summary-grid{grid-template-columns:1fr 1fr}
+ .phase10-summary-grid strong{font-size:14px}
+ .phase10-patient-banner h2{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.phase10-workspace *{transition:none!important;animation-duration:.01ms!important}}
+@media print{
+ @page{size:A4;margin:15mm}
+ body,html{background:#fff!important}
+ body *{visibility:hidden!important}
+ .phase10-printable,.phase10-printable *{visibility:visible!important}
+ .phase10-printable{position:absolute!important;top:0;left:0;right:0;width:100%!important;
+  max-width:none!important;min-width:0!important;border:0!important;box-shadow:none!important;
+  margin:0!important;padding:0!important;background:#fff!important}
+ .phase10-printable button,.phase10-printable a.btn,.phase10-printable .phase10-no-print{display:none!important}
+ .phase10-printable .phase10-table{min-width:0!important}
+ .phase10-printable .phase10-table th,.phase10-printable .phase10-table td{
+  color:#111!important;font-size:10pt!important;padding:9px 7px!important}
+ .phase10-printable .phase10-table-scroll{overflow:visible!important}
+ .phase10-printable .phase10-quote-total,.phase10-printable .phase10-receipt-amount{
+  background:#fff!important;border:1px solid #999!important}
+}
