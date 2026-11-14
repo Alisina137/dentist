@@ -23,7 +23,7 @@ test("PH13 public search is real and read-only; private clinic records not expos
   "/clinics/:clinicId/availability","/clinics/:clinicId/dentists/:dentistId",
   "eligible_clinic_public_search","publicListing","slotsForDate",
   "availabilityPreview","DATE_OUT_OF_RANGE","LOCATION_CONSENT_REQUIRED",
-  "CLINIC_UNAVAILABLE","publicBookingsEnabled:false","source:","reviewedOnly:true",
+  "CLINIC_UNAVAILABLE","publicBookingsEnabled:true","source:","reviewedOnly:true",
   "totalExact:!truncated","nextSlot","verifiedClinic:true"]){
    assert.ok(api.includes(term),term);
  }

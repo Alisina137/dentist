@@ -20,7 +20,7 @@ const before=await get("/me");assert.equal(before.registered,false);
 assert.equal(before.user.email,person.email);
 assert.equal(before.user.emailVerified,true);
 assert.equal(before.onboarding.accountAndBookingFree,true);
-assert.equal(before.publicBookingsEnabled,false);
+assert.equal(before.publicBookingsEnabled,true);
 ok(await request(root+"/family","GET",undefined,mine),[403],
  "verified but not consented user cannot read private patient portal");
 ok(await request(root+"/onboard","POST",{
@@ -68,7 +68,7 @@ assert.equal(preferences.locale,"fa-AF");
 assert.equal(preferences.calendar,"solar_hijri");
 assert.equal(preferences.notifications.emailBookings,false);
 assert.equal(preferences.notifications.pushEnabled,false);
-assert.equal(preferences.notifications.bookingNotificationsReleased,false);
+assert.equal(preferences.notifications.bookingNotificationsReleased,true);
 const savePrefs=await put("/preferences",{
  locale:"ps-AF",calendar:"gregorian",
  emailBookings:true,emailUpdates:false,revision:preferences.revision

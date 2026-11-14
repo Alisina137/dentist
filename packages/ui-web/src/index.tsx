@@ -115,23 +115,23 @@ function PatientAccountNavLink({active=false,closeMenu}:{active?:boolean;closeMe
   <CareIcon name="account" size={18}/><span>{label}</span>
  </a>;
 }
-/** Four meaningful mobile patient destinations; no fake Appointments/Bills/Reviews tabs. */
+/** PH15: real web appointments replace the account-family shortcut in the 4-tab navigation. */
 function PatientBottomNav({path}:{path:string}){
- const {t}=usePreferences();
+ const {t,locale}=usePreferences();
+ const appointmentLabel=locale==="ps-AF"?"ملاقاتونه":locale==="fa-AF"?"ملاقات‌ها":"Appointments";
   if(!path||["login","signup","verify","forgot-password","reset-password"].some(x=>
    path==="/"+x||path.startsWith("/"+x+"/"))||path.startsWith("/account/onboarding"))return null;
  const nav=[
   {key:"home",href:"/",label:t("home"),icon:"home"},
   {key:"find",href:"/search",label:t("findCare"),icon:"search"},
-  {key:"family",href:"/account/family",label:t("patientFamilyNav"),icon:"family"},
+  {key:"appointments",href:"/appointments",label:appointmentLabel,icon:"calendar"},
   {key:"account",href:"/account",label:t("patientAccountLink"),icon:"account"}
  ] as const;
  return <nav className="patient-bottom-navigation" aria-label={t("patientPortal")}>
   {nav.map(x=>{
    const active=x.href==="/"?path==="/":path===x.href||
-    (x.href==="/account"&&path.startsWith("/account/")&&
-     !path.startsWith("/account/family"))||
-    (x.href==="/account/family"&&path.startsWith("/account/family"));
+    (x.href==="/account"&&path.startsWith("/account/"))||
+    (x.href==="/appointments"&&path.startsWith("/appointments/"));
    return <a key={x.key} href={x.href}
     aria-current={active?"page":undefined}>
     <CareIcon name={x.icon} size={22}/><span>{x.label}</span></a>;
@@ -139,7 +139,7 @@ function PatientBottomNav({path}:{path:string}){
  </nav>;
 }
 export function SiteLayout({ children, audience }: { children: ReactNode; audience: "clinic" | "admin" | "patient" }) {
- const {t}=usePreferences();
+ const {t,locale}=usePreferences();
  const [open,setOpen]=useState(false);
  const [path,setPath]=useState("");
  const home=audience==="clinic"?"/clinic":audience==="admin"?"/admin":"/";
@@ -172,6 +172,8 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
       {audience==="patient"&&<>
        <a className="nav-link" href="/search" aria-current={active("/search")?"page":undefined}
         onClick={closeMenu}><CareIcon name="search" size={17}/><span>{t("findCare")}</span></a>
+       <a className="nav-link" href="/appointments" aria-current={active("/appointments")?"page":undefined}
+        onClick={closeMenu}><CareIcon name="calendar" size={17}/><span>{locale==="ps-AF"?"ملاقاتونه":locale==="fa-AF"?"ملاقات‌ها":"Appointments"}</span></a>
        <a className="nav-link" href="/about" aria-current={active("/about")?"page":undefined}
         onClick={closeMenu}><CareIcon name="about" size={17}/><span>{t("aboutDandanLink")}</span></a>
        <PatientAccountNavLink active={active("/account")} closeMenu={closeMenu}/>

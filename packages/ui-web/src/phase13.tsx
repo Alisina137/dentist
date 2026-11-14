@@ -28,19 +28,20 @@ type Hours={weekly:{weekday:number;isOpen:boolean;startMinute:number;endMinute:n
 type ClinicDetail={clinic:Clinic;profile:{description:string;specialties:string[];
  latitude:number;longitude:number;contactNote:string|null;photos:Photo[];
  dentists:Dentist[];services:Service[];bookingRules:BookingRules};version:number;
- verifiedClinic:true;hours:Hours;searchable:boolean;publicBookingsEnabled:false};
+ verifiedClinic:true;hours:Hours;searchable:boolean;publicBookingsEnabled:true};
 type DentistDetail={clinic:Clinic;dentist:Dentist&{biography:string|null;
  affiliationVerified:boolean;professionalVerificationSource:string};
  services:Service[];specialties:string[];photo:Photo|null;
- bookingRules:BookingRules;hours:Hours;publicBookingsEnabled:false};
+ bookingRules:BookingRules;hours:Hours;publicBookingsEnabled:true};
 type Availability={date:string;timezone:string;slots:Slot[];status:"available"|"no_slots";
- source:string;checkedAt:string;publicBookingsEnabled:false};
+ source:string;checkedAt:string;publicBookingsEnabled:true};
 type Params={q:string;city:string;specialty:string;service:string;date:string;
  maxFee:string;verified:boolean;sort:string;page:number;latitude:string;longitude:string};
 const initial:Params={q:"",city:"Kabul",specialty:"",service:"",date:"",maxFee:"",
  verified:true,sort:"relevance",page:1,latitude:"",longitude:""};
 const translations:Record<Language,Record<string,string>>={
  en:{
+ bookNow:"Book appointment",
  home:"Home",find:"Find care",about:"About",clinic:"Clinic",dentist:"Dentist",
  hello:"Care starts with a good match",eyebrow:"Verified care · Real availability",
  heading:"Find the right dental care, closer to you.",subheading:
@@ -96,7 +97,7 @@ const translations:Record<Language,Record<string,string>>={
  allListedServices:"All published services",checkTimes:"Check availability",
  scheduleAvailability:"Clinic schedule preview",noTimeDate:"No online times on this date. Contact the clinic for options.",
  timePreview:"This time is a preview, not a reservation.",
- bookingLater:"Online appointment booking launches in Phase 15.",
+ bookingLater:"Select Book appointment on a verified dentist to request an available time.",
  consultation:"Consultation",duration:"Duration",minutes:"minutes",
  verifiedSince:"Credential valid through",validTo:"Valid until",
  gallery:"Clinic gallery",galleryHelp:"Only clinic-approved public photos are shown. No fabricated before-and-after images.",noPublishedPhotos:"No published clinic photos yet",photo:"Photo",patientExperience:"Your dental care search",
@@ -127,6 +128,7 @@ const translations:Record<Language,Record<string,string>>={
  readMore:"Explore this clinic",viewProfiles:"View dentists",searchAgain:"Search again"
  },
  "fa-AF":{
+ bookNow:"رزرو وقت ملاقات",
  home:"خانه",find:"جستجوی خدمات",about:"درباره",clinic:"کلینیک",dentist:"داکتر",
  hello:"مراقبت بهتر با انتخاب درست آغاز می‌شود",eyebrow:"خدمات تأییدشده · وقت‌های واقعی",
  heading:"داکتر دندان مناسب را در نزدیکی خود پیدا کنید.",
@@ -182,7 +184,7 @@ const translations:Record<Language,Record<string,string>>={
  allListedServices:"تمام خدمات منتشرشده",checkTimes:"بررسی وقت‌ها",
  scheduleAvailability:"تقسیم اوقات کلینیک",noTimeDate:"در این تاریخ وقت آنلاین یافت نشد؛ با کلینیک تماس بگیرید.",
  timePreview:"این وقت صرف پیش‌نمایش است و رزرو نیست.",
- bookingLater:"رزرو آنلاین در مرحله ۱۵ فعال می‌شود.",
+ bookingLater:"برای گرفتن وقت نزد داکتر تأییدشده روی «رزرو وقت ملاقات» بزنید.",
  consultation:"مشوره",duration:"مدت",minutes:"دقیقه",
  verifiedSince:"اعتبار اسناد تا",validTo:"معتبر تا",
  gallery:"عکس‌های کلینیک",galleryHelp:"فقط عکس‌های تأییدشده و نشرشده کلینیک نمایش داده می‌شوند. عکس ساختگی وجود ندارد.",noPublishedPhotos:"هنوز عکس کلینیک نشر نشده است",photo:"عکس",patientExperience:"جستجوی خدمات دندان",
@@ -210,6 +212,7 @@ const translations:Record<Language,Record<string,string>>={
  readMore:"مشاهده کلینیک",viewProfiles:"مشاهده داکتران",searchAgain:"جستجوی دوباره"
  },
  "ps-AF":{
+ bookNow:"د ملاقات وخت واخلئ",
  home:"کور",find:"روغتیايي خدمتونه",about:"زموږ په اړه",clinic:"کلینیک",dentist:"ډاکټر",
  hello:"ښه پاملرنه د سم انتخاب څخه پیلېږي",eyebrow:"تایید شوي خدمتونه · رښتیني وختونه",
  heading:"خپل نږدې د غاښونو ښه ډاکټر ومومئ.",
@@ -266,7 +269,7 @@ const translations:Record<Language,Record<string,string>>={
  allListedServices:"ټول خپاره شوي خدمتونه",checkTimes:"وختونه وګورئ",
  scheduleAvailability:"د کلینیک مهالویش",noTimeDate:"په دې نېټه خالي وخت نشته، کلینیک ته زنګ ووهئ.",
  timePreview:"دا یوازې مخکتنه ده، ثبت نه دی.",
- bookingLater:"آنلاین نوبت اخیستل په ۱۵ پړاو کې پیلېږي.",
+ bookingLater:"د تایید شوي ډاکټر په پاڼه کې د ملاقات وخت واخلئ.",
  consultation:"مشوره",duration:"وخت",minutes:"دقیقې",
  verifiedSince:"د سند اعتبار تر",validTo:"تر نېټې اعتبار لري",
  gallery:"د کلینیک انځورونه",galleryHelp:"یوازې د کلینیک منظور شوي عامه انځورونه ښودل کېږي؛ جعلي انځورونه نه لرو.",noPublishedPhotos:"د کلینیک انځورونه لا نه دي خپاره شوي",photo:"انځور",patientExperience:"د غاښونو د پاملرنې لټون",
@@ -786,14 +789,16 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
      {item.hours?.now.isWithinPublishedHours?t("openScheduled"):t("closedScheduled")}</span>
     <p>{t("holidayNote")}</p>
     <div className="p13-profile-actions">
-     <a className="btn btn-primary" href={"tel:"+item.clinic.phone}>
+     {p.dentists.length>0&&p.services.length>0&&<a className="btn btn-primary"
+      href={"/book/"+p.dentists[0].id+"?clinicId="+clinicId}>{t("bookNow")}</a>}
+     <a className="btn btn-secondary" href={"tel:"+item.clinic.phone}>
       {t("contactClinic")}</a>
      <a className="btn btn-secondary" target="_blank" rel="noopener noreferrer" href={directions}>
       {t("directions")} ↗</a>
      <button className="btn btn-secondary" onClick={()=>copyUrl(t,setToast)}>{t("share")}</button>
     </div>
     {toast&&<span className="p13-toast" role="status">{toast}</span>}
-    <small>{t("noBooking")}</small>
+
    </div>
   </section>
   <div className="p13-profile-grid">
@@ -863,7 +868,7 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
      <h3>{item.clinic.name}</h3><p>{t("contactText")}</p>
      <a className="btn btn-primary" href={"tel:"+item.clinic.phone}>{t("contactClinic")}</a>
      <strong dir="ltr">{item.clinic.phone}</strong>
-     <span>{t("bookingLater")}</span></div>
+     {p.dentists.length>0&&p.services.length>0&&<a className="btn btn-primary" href={"/book/"+p.dentists[0].id+"?clinicId="+clinicId}>{t("bookNow")}</a>}</div>
     <div className="p13-aside-hours"><h3>{t("hours")}</h3><HoursTable hours={item.hours}/></div>
    </aside>
   </div>
@@ -889,10 +894,11 @@ export function PatientDentistPage({clinicId,dentistId}:{clinicId:string;dentist
     <p className="p13-profile-address">⌖ {item.clinic.name} · {item.clinic.city},
      {item.clinic.province}</p>
     <div className="p13-profile-actions">
-     <a href={"tel:"+item.clinic.phone} className="btn btn-primary">{t("contactClinic")}</a>
+     {item.services.length>0&&<a className="btn btn-primary" href={"/book/"+dentistId+"?clinicId="+clinicId}>{t("bookNow")}</a>}
+     <a href={"tel:"+item.clinic.phone} className="btn btn-secondary">{t("contactClinic")}</a>
      <a href={"/clinics/"+clinicId} className="btn btn-secondary">{t("viewClinic")}</a>
     </div>
-    <small>{t("evidenceReviewed")}. {t("bookingLater")}</small>
+    <small>{t("evidenceReviewed")}.</small>
    </div>
   </section>
   <div className="p13-profile-grid">

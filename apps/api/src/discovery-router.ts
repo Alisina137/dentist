@@ -15,7 +15,7 @@ type ClinicProfile={
  dentists:PublicDentist[];services:PublicService[];bookingRules:{
  approvalMode:"manual"|"auto";minNoticeHours:number;horizonDays:number;
  cancellationHours:number;bufferMinutes:number}};
- version:number;verifiedClinic:boolean;searchable:boolean;publicBookingsEnabled:false
+ version:number;verifiedClinic:boolean;searchable:boolean;publicBookingsEnabled:true
 };
 type Slot={startAt:string;endAt:string;dentistId:string;serviceId:string;
  dentistName:string;serviceName:string;priceAfn:number;durationMinutes:number};
@@ -251,7 +251,7 @@ async function compactCard(row:any,opts:Query,calculateSlot:boolean){
   location:{latitude:listing.profile.latitude,longitude:listing.profile.longitude},
   distanceKm:opts.latitude!==null&&opts.longitude!==null?
     geoDistance(opts.latitude,opts.longitude,listing.profile.latitude,listing.profile.longitude):null,
-  verifiedClinic:true,verifiedDentistsOnly:true,publicBookingsEnabled:false,
+  verifiedClinic:true,verifiedDentistsOnly:true,publicBookingsEnabled:true,
   nextSlot:null as Slot|null
  };
  if(calculateSlot)result.nextSlot=await nextSlot(listing,opts.date||undefined);
@@ -271,7 +271,7 @@ export function discoveryRouter(){
   ]);
   publicHeader(res);res.json({cities,specialties,services,
    verifiedClinics:Number(total[0]?.total||0),defaultCity:"Kabul",
-   publicBookingsEnabled:false,searchRequiresAccount:false});
+   publicBookingsEnabled:true,searchRequiresAccount:false});
  }));
  api.get("/search",task(async(req,res)=>{
   const opts=parseQuery(req.query);
@@ -316,7 +316,7 @@ export function discoveryRouter(){
     sort:opts.sort,latitude:opts.latitude,longitude:opts.longitude},
    dateFilteredByLiveSlots:opts.date!==null,resultsTruncated:truncated,
    disclaimer:truncated?"Live availability evaluation is limited to 240 verified clinic candidates. Refine search or city.":null,
-   publicBookingsEnabled:false,reviewedOnly:true});
+   publicBookingsEnabled:true,reviewedOnly:true});
  }));
  api.get("/clinics/:clinicId",task(async(req,res)=>{
   const listing=await load(clinicId(req));
@@ -324,7 +324,7 @@ export function discoveryRouter(){
   publicHeader(res);
   res.json({...listing,searchable:true,hours,
    nextSlot:null,verifiedDentistsOnly:true,
-   discoverable:true,publicBookingsEnabled:false,onlineBookingReleased:false});
+   discoverable:true,publicBookingsEnabled:true,onlineBookingReleased:true});
  }));
  api.get("/clinics/:clinicId/availability",task(async(req,res)=>{
   const listing=await load(clinicId(req));
@@ -338,8 +338,8 @@ export function discoveryRouter(){
   publicHeader(res);res.json({clinicId:listing.clinic.id,date,timezone:"Asia/Kabul",
    serviceId:svc||null,dentistId:dent||null,slots,
    status:slots.length?"available":"no_slots",checkedAt:new Date().toISOString(),
-   source:"live_clinic_schedule",previewOnly:true,publicBookingsEnabled:false,
-   disclaimer:"Candidate times reflect live clinic capacity but cannot be reserved on this site until Phase 15."});
+   source:"live_clinic_schedule",previewOnly:true,publicBookingsEnabled:true,
+   disclaimer:"Candidate times reflect live capacity but do not hold a slot until you complete an authenticated booking."});
  }));
  api.get("/clinics/:clinicId/dentists/:dentistId",task(async(req,res)=>{
   const listing=await load(clinicId(req));
@@ -363,7 +363,7 @@ export function discoveryRouter(){
     category:x.category,durationMinutes:x.durationMinutes,priceAfn:x.priceAfn})),
    specialties:listing.profile.specialties,photo:listing.profile.photos[0]||null,
    bookingRules:listing.profile.bookingRules,hours,timezone:"Asia/Kabul",
-   publicBookingsEnabled:false,onlineBookingReleased:false});
+   publicBookingsEnabled:true,onlineBookingReleased:true});
  }));
  api.use((error:unknown,_req:Request,res:Response,_next:NextFunction)=>{
   if(error instanceof DiscoveryFault)return void res.status(error.status).json({code:error.code});

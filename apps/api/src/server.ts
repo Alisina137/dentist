@@ -21,6 +21,8 @@ import { expenseRouter } from "./expense-router.js";
 import { listingRouter } from "./listing-router.js";
 import { discoveryRouter } from "./discovery-router.js";
 import { patientAccountRouter } from "./patient-account-router.js";
+import { patientBookingRouter } from "./patient-booking-router.js";
+import { startBookingNotificationWorker } from "./booking-notifications.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -48,6 +50,7 @@ app.use("/v1/listings",express.json({limit:"2.4mb"}),listingRouter());
 app.use(express.json({ limit: "16kb" }));
 app.use("/v1/discovery", discoveryRouter());
 app.use("/v1/patients", patientAccountRouter());
+app.use("/v1/booking", patientBookingRouter());
 app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
 // PH07 private clinical files have their own strictly bounded body parser.
@@ -65,7 +68,8 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH14", marketplaceAvailable: true, patientAccountsEnabled: true,
+  product: "DandanLink", release: "PH15", marketplaceAvailable: true, patientAccountsEnabled: true,
+  patientWebBookingEnabled: true, nativeBookingEnabled: false,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));
 
@@ -172,7 +176,9 @@ const port = Number(process.env.PORT || "4000");
 const server = app.listen(port, "0.0.0.0", () => {
   console.info("DandanLink API listening on port " + port);
 });
+const stopBookingNotifications = startBookingNotificationWorker();
 const shutdown = async () => {
+  stopBookingNotifications();
   server.close();
   await sqlClient.end();
   process.exit(0);

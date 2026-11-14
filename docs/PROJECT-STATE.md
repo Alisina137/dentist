@@ -242,3 +242,27 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Patient web additionally has mobile bottom navigation to actual Home/Find Care/Family/Account routes, collapsible mobile search filters, gallery of reviewed clinic photos, scrollable 7-day schedule previews, updated blue styling, and confirm password for sign-up.
 - Booking, patient appointment history, bills, reviews, ratings, rewards, campaigns, medical record linking, unverified credentials and native password auth **not invented**. See docs/PATIENT-EXPERIENCE-REFRESH.md for per-screen 23-reference mapping and future PH15/16/17 scope.
 - No migrations or API behavior change required. Strict mobile/web TypeScript and Android Expo export tested in CI; public PH13 and secure PH14 regression checks retained.
+
+
+## PH15 — patient web booking and verified record release (14 November 2026)
+
+**Implementation:** Patient website now has an actual five-step booking wizard from
+approved dentist/clinic pages, self or authorized family subject, live Afghanistan-time
+slots, published fee/notice policy and confirmation receipt. `/appointments` supports
+upcoming/past/cancelled lists and private detail, cancellation and rescheduling. Clinic
+appointments include dedicated online requests (manual accept/reject; auto confirmation
+where configured), served from the existing PH06 exclusion-protected calendar.
+
+PostgreSQL migration `0015_patient_booking_links_notifications.sql` introduces
+booking ownership and idempotency, record-link proof workflow with in-person staff
+verification, individually permitted signed-care-summary/issued-receipt releases,
+and consent-aware booking notification queue. Clinic approved-record release controls,
+request queue, notifications delivery state, new patient account navigation, and
+localized RTL English/Dari/Pashto components are implemented.
+
+**Privacy/production:** Portal account association and patient supplied number do not
+grant old clinic records. Records appear only after explicit clinic match and individual
+release; owner can revoke. No native private patient booking/auth until PH16. SMS/push
+remain disabled; SMTP is opt-in, generic and durable. Human healthcare/legal review,
+testing on physical devices, privacy retention and threat-model gates remain PH19.
+See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.

@@ -50,7 +50,7 @@ const card=search.items.find(x=>x.clinic.id===clinic.id);
 assert.ok(card,JSON.stringify(search).slice(0,900));
 assert.equal(card.verifiedClinic,true);
 assert.equal(card.verifiedDentistsOnly,true);
-assert.equal(card.publicBookingsEnabled,false);
+assert.equal(card.publicBookingsEnabled,true);
 assert.equal(card.minFeeAfn,850);
 assert.equal(card.clinic.name,clinic.displayName);
 assert.ok(card.dentists.every(x=>x.verified));
@@ -108,7 +108,7 @@ assert.ok(sorted.items.some(x=>x.clinic.id===clinic.id));
 const detail=ok(await request(base+"/clinics/"+clinic.id,"GET"),[200],
  "patient clinic page receives only reviewed public content and published hours");
 assert.equal(detail.verifiedClinic,true);
-assert.equal(detail.publicBookingsEnabled,false);
+assert.equal(detail.publicBookingsEnabled,true);
 assert.ok(detail.hours.weekly.some(x=>x.isOpen));
 assert.ok(!JSON.stringify(detail).includes("PH13-RETURN-2017"));
 const dentistPublic=ok(await request(base+"/clinics/"+clinic.id+"/dentists/"+doctorId,"GET"),
@@ -124,7 +124,7 @@ const slots=ok(await request(base+"/clinics/"+clinic.id+"/availability?"+
  new URLSearchParams({date,serviceId,dentistId:doctorId}),"GET"),[200],
  "guest sees sanitized real appointment previews");
 assert.ok(slots.slots.length>0,JSON.stringify(slots));
-assert.equal(slots.publicBookingsEnabled,false);
+assert.equal(slots.publicBookingsEnabled,true);
 assert.equal(slots.source,"live_clinic_schedule");
 assert.ok(slots.slots.every(x=>Date.parse(x.startAt)>Date.now()));
 assert.ok(slots.slots.every(x=>x.serviceId===serviceId&&x.dentistId===doctorId));

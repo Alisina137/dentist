@@ -25,7 +25,7 @@ test("PH14 public patient account must be verified, consented and isolated",()=>
   "patient_profiles","patient_consent_events","patient_family_invitations",
   "profileGuard","/family/minors","/family/invite-adult","/family/requests",
   "/family/delegations","/privacy/export","/security/sessions",
-  "publicBookingsEnabled:false","clinicalRecordLinksEnabled:false"]){
+  "publicBookingsEnabled:true","clinicalRecordLinksEnabled:true"]){
    assert.ok(api.includes(token),token);
  }
  for(const forbidden of ["clinic_patients","clinic_encounters","clinic_invoices",

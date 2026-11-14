@@ -140,7 +140,8 @@ export function patientAccountRouter(){
     joinedAt:person[0].created_at},profile:profile[0]?profileView(profile[0]):null,
    onboarding:{termsVersion:TERMS,privacyVersion:PRIVACY,
     requiresAdultAttestation:true,accountAndBookingFree:true},
-   publicBookingsEnabled:false,clinicalRecordLinksEnabled:false});
+   publicBookingsEnabled:true,clinicalRecordLinksEnabled:true,
+   nativeBookingsEnabled:false});
  }));
  router.post("/onboard",route(async(req,res)=>{
   const body=req.body||{};
@@ -195,7 +196,7 @@ export function patientAccountRouter(){
     smsEnabled:false,pushEnabled:false,
     emailDeliveryConfigured:Boolean(process.env.SMTP_HOST&&process.env.SMTP_FROM&&
      process.env.SMTP_USER&&process.env.SMTP_PASSWORD),
-    bookingNotificationsReleased:false,phase:"PH15"},
+    bookingNotificationsReleased:true,phase:"PH15"},
    privacy:{clinicalRecordsShared:false,linkedClinics:0,
     explanation:"No clinic medical record may be linked merely by name, phone, or family declaration. Consent and explicit clinic verification arrive in PH15."},
    revision:preferences.revision});

@@ -246,8 +246,8 @@ async function check(tx:any,clinic:string,data:Profile,slots=false){
   }
   if(!found)issues.push("REAL_AVAILABILITY_REQUIRED");
  }
- return {ready:issues.length===0,issues,clinic:c,dentists,services,bookable:false,
-  publicBookingsEnabled:false};
+ return {ready:issues.length===0,issues,clinic:c,dentists,services,bookable:true,
+  publicBookingsEnabled:true};
 }
 function safeStatus(value:any){
  if(!value)return {status:"unverified",currentSubmissionId:null,validUntil:null};
@@ -288,7 +288,7 @@ export async function publicListing(clinic:string){
     url:"/v1/listings/public/clinics/"+clinic+"/photos/"+x.id})),
    dentists:v.approved_dentists,services:v.approved_services,bookingRules:data.bookingRules},
   version:h.approved_version,publishedAt:h.published_at,verifiedClinic:true,
-  publicBookingsEnabled:false,appointmentsNotReleasedUntil:"PH15",
+  publicBookingsEnabled:true,appointmentsReleasedIn:"PH15",
   searchable:true,reviewedContent:true};
 }
 export function listingRouter(){
@@ -499,7 +499,7 @@ export function listingRouter(){
   const checked=await check(sqlClient,cId(req),v.profile,false);
   const clinicInfo=checked.clinic;
   noStore(res);res.json({version:v.version,status:v.status,previewOnly:true,
-   publicBookingsEnabled:false,clinic:{name:clinicInfo.display_name,
+   publicBookingsEnabled:true,clinic:{name:clinicInfo.display_name,
     city:clinicInfo.city,province:clinicInfo.province,address:clinicInfo.address,
     phone:clinicInfo.phone},profile:v.profile,checklist:checked});
  }));
