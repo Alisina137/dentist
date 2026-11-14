@@ -3,6 +3,7 @@
 import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index";
 import { AdminModerationPortal } from "./phase12";
+import {ReviewModerationPage} from "./phase17";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 async function send(path:string,method="GET",body?:unknown):Promise<any> {
@@ -226,7 +227,7 @@ export function Phase02Portal({audience,view}:{audience:Audience,view:View}){
   if(audience==="clinic"&&me.isPlatformAdmin)return <InlineAlert kind="error">{l("errorAuth")}</InlineAlert>;
   if(audience==="admin"&&(!me.isPlatformAdmin||!me.adminMfaVerified))return <AccountStatus audience="admin"/>;
   return <Frame audience={audience} view={view} name={me.user.name}>
-    {view==="dashboard"?<Dashboard audience={audience}/>:view==="onboarding"?<Onboarding/>:
+    {view==="reviews"?<ReviewModerationPage/>:view==="dashboard"?<Dashboard audience={audience}/>:view==="onboarding"?<Onboarding/>:
       view==="settings"?<ClinicSettings/>:view==="subscription"?<ClinicSubscription/>:
       view==="clinics"?<AdminClinics/>:view==="review"?<AdminReview/>:
       (view==="dentists"||view==="dentistReview"||view==="listings"||view==="listingReview")?
