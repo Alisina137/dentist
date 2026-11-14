@@ -1,4 +1,4 @@
-import React,{useCallback,useEffect,useMemo,useState} from "react";
+import React,{useCallback,useEffect,useState} from "react";
 import {
  ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,
  StatusBar,StyleSheet,Text,TextInput,View
@@ -104,7 +104,7 @@ const en={
  webMissing:"Set EXPO_PUBLIC_PATIENT_WEB_URL to enable the secure patient account link on this device.",
  prefs:"App preferences",language:"Language",calendar:"Calendar",
  solar:"Solar Hijri",gregorian:"Gregorian",network:"Connection",
- connected:"Connected to verified clinic directory",notConfigured:"API not configured",
+ connected:"Connected to verified clinic directory",checking:"Checking connection…",notConfigured:"API not configured",
  offline:"Cannot reach the server",retry:"Retry",offlineHelp:"Configure EXPO_PUBLIC_API_URL with a reachable HTTPS API or your local LAN address.",
  refreshing:"Refreshing…",refresh:"Refresh",loading:"Loading verified clinics…",
  noMock:"The app never generates dentists, ratings, appointment bookings or fees.",
@@ -175,7 +175,7 @@ const fa:Record<keyof typeof en,string>={
  webMissing:"برای لینک حساب مصون، EXPO_PUBLIC_PATIENT_WEB_URL را تنظیم کنید.",
  prefs:"تنظیمات برنامه",language:"زبان",calendar:"تقویم",
  solar:"هجری شمسی",gregorian:"میلادی",network:"ارتباط",
- connected:"اتصال با فهرست کلینیک‌های تأییدشده برقرار است",
+ connected:"اتصال با فهرست کلینیک‌های تأییدشده برقرار است",checking:"در حال بررسی ارتباط…",
  notConfigured:"سرور تنظیم نشده",offline:"ارتباط با سرور برقرار نشد",
  retry:"دوباره کوشش",offlineHelp:"EXPO_PUBLIC_API_URL را به آدرس HTTPS یا آدرس قابل دسترس شبکه وصل کنید.",
  refreshing:"در حال تازه‌سازی…",refresh:"تازه‌سازی",loading:"کلینیک‌های تأییدشده دریافت می‌شود…",
@@ -252,7 +252,7 @@ const ps:Record<keyof typeof en,string>={
  webMissing:"د خوندي حساب لینک لپاره EXPO_PUBLIC_PATIENT_WEB_URL وټاکئ.",
  prefs:"د اپ غوره توبونه",language:"ژبه",calendar:"کلیز",
  solar:"هجري لمریز",gregorian:"میلادي",network:"اړیکه",
- connected:"د تایید شوو کلینیکونو سره اړیکه شته",
+ connected:"د تایید شوو کلینیکونو سره اړیکه شته",checking:"اړیکه کتل کېږي…",
  notConfigured:"API نه دی برابر شوی",offline:"له سرور سره اړیکه نشته",
  retry:"بیا هڅه",offlineHelp:"EXPO_PUBLIC_API_URL یو لاسرسي وړ HTTPS یا محلي شبکې پته وټاکئ.",
  refreshing:"تازه کېږي…",refresh:"تازه کول",loading:"تایید شوي کلینیکونه ترلاسه کېږي…",
@@ -1040,7 +1040,7 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={route?.kind+":"+(route?.clinicId||"")+":"+(route?.kind==="dentist"?route.dentistId:"")||tab}
+  <ScrollView key={route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):tab}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={checking}
@@ -1181,7 +1181,7 @@ const s=StyleSheet.create({
  chip:{borderWidth:1,borderColor:colors.line,backgroundColor:colors.white,
   paddingHorizontal:13,paddingVertical:10,borderRadius:24},
  chipActive:{backgroundColor:colors.blue,borderColor:colors.blue},
- chipText:{fontSize:12,fontWeight:"750",color:colors.ink},
+ chipText:{fontSize:12,fontWeight:"700",color:colors.ink},
  chipActiveText:{color:colors.white},
  filterTrigger:{borderColor:"#AFCBF9",backgroundColor:colors.pale},
  filtersPanel:{gap:10},
@@ -1219,7 +1219,7 @@ const s=StyleSheet.create({
   padding:16,borderWidth:1,borderColor:colors.line,alignItems:"center"},
  overviewStat:{flex:1,alignItems:"center",gap:5},
  overviewCount:{fontSize:24,fontWeight:"900",color:colors.blue},
- overviewLabel:{fontSize:11,color:colors.muted,fontWeight:"750",textAlign:"center"},
+ overviewLabel:{fontSize:11,color:colors.muted,fontWeight:"700",textAlign:"center"},
  overviewDivider:{width:1,height:38,backgroundColor:colors.line},
  doctorRow:{paddingVertical:14,alignItems:"center",gap:12,
   borderBottomWidth:1,borderColor:"#EDF2F6"},
@@ -1227,11 +1227,11 @@ const s=StyleSheet.create({
   alignItems:"center",justifyContent:"center"},
  doctorInitial:{fontSize:21,color:colors.blue,fontWeight:"900"},
  doctorName:{fontWeight:"900",fontSize:14,color:colors.navy},
- verifiedTiny:{color:colors.green,fontSize:11,fontWeight:"850",lineHeight:18},
+ verifiedTiny:{color:colors.green,fontSize:11,fontWeight:"800",lineHeight:18},
  forward:{fontSize:25,color:colors.blue},
  serviceRow:{borderBottomWidth:1,borderColor:"#ECF0F5",paddingVertical:15,
   gap:12,alignItems:"center"},
- serviceName:{fontSize:13,color:colors.navy,fontWeight:"850",lineHeight:21},
+ serviceName:{fontSize:13,color:colors.navy,fontWeight:"800",lineHeight:21},
  serviceSub:{fontSize:11,color:colors.muted,lineHeight:18,marginTop:3},
  serviceFee:{fontSize:12,fontWeight:"900",color:colors.blueDeep,maxWidth:100},
  simpleFact:{paddingVertical:13,borderBottomWidth:1,borderColor:colors.line,
@@ -1259,7 +1259,7 @@ const s=StyleSheet.create({
  scheduleEmpty:{padding:24,alignItems:"center",gap:11},
  notice:{backgroundColor:colors.amberSoft,borderRadius:12,padding:12,
   gap:9,marginTop:13,borderWidth:1,borderColor:"#F3E1B9"},
- noticeIcon:{fontSize:17,fontWeight:"850",color:colors.amber},
+ noticeIcon:{fontSize:17,fontWeight:"800",color:colors.amber},
  noticeText:{flex:1,fontSize:11,color:colors.amber,lineHeight:19},
  hoursLine:{minHeight:45,alignItems:"center",justifyContent:"space-between",
   borderBottomWidth:1,borderColor:colors.line,gap:10},
@@ -1283,5 +1283,5 @@ const s=StyleSheet.create({
  link:{fontSize:12,fontWeight:"900",color:colors.blue},
  pageButton:{paddingHorizontal:17,paddingVertical:12,borderRadius:12,
   backgroundColor:colors.pale},
- pageText:{fontSize:12,fontWeight:"850",color:colors.blue}
+ pageText:{fontSize:12,fontWeight:"800",color:colors.blue}
 });
