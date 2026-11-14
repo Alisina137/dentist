@@ -74,7 +74,8 @@ function originGuard(req:Request,res:Response,next:NextFunction){
  if(!["GET","HEAD","OPTIONS"].includes(req.method)){
   const origin=req.headers.origin;
   const allowed=[process.env.PATIENT_WEB_URL||"http://localhost:3002",
-   process.env.ADMIN_WEB_URL||"http://localhost:3000"];
+   process.env.ADMIN_WEB_URL||"http://localhost:3000",
+   process.env.CLINIC_WEB_URL||"http://localhost:3001"];
   if(origin&&!allowed.includes(origin)){res.status(403).json({code:"ORIGIN_DENIED"});return}
  }
  next();
