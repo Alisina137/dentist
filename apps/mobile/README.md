@@ -1,48 +1,81 @@
-# DandanLink Patient · Expo Go
+# DandanLink Patient — Expo Go
 
-The actual patient interface lives in this Expo SDK 57 / React Native application.
-The admin and clinic management interfaces are **web only**.
+The native patient experience is an actual Expo SDK 57 / React Native app.
+The clinic and admin management tools remain separate websites. The native
+interface is built specifically for Dari and Pashto RTL as well as English LTR.
 
-### Start on Windows PowerShell
+## Run on Windows
 
-From repository root:
+In `C:\projects\dentist`:
 
-\`\`\`powershell
+```powershell
 pnpm install --frozen-lockfile
+pnpm dev:api
+```
+
+In a second terminal:
+
+```powershell
+cd C:\projects\dentist
 pnpm dev:mobile
-\`\`\`
+```
 
-Expo prints a QR code (Android phone + Expo Go). It may ask to log in to
-Expo first; do so on the command line/app if requested. Select a compatible
-SDK 57 Expo Go version on https://expo.dev/go if you see SDK mismatch.
-Metro uses port 8081 and tunnel uses @expo/ngrok; both require connectivity.
+Open the Expo QR in Expo Go (compatible SDK 57).
 
-\`pnpm dev:api\` starts the separate Express backend at http://localhost:4000.
-Expo tunnel **does not** expose this API to the device.
+### Connect real patient content
 
-To use backend discovery/status from your phone, create \`apps/mobile/.env\`:
+Create `apps/mobile/.env` (local only):
 
-\`\`\`dotenv
+```dotenv
 EXPO_PUBLIC_API_URL=https://YOUR-PUBLIC-API-TUNNEL.example
-\`\`\`
+EXPO_PUBLIC_PATIENT_WEB_URL=https://YOUR-PATIENT-WEB.example
+```
 
-Alternatively use \`http://<your-PC-LAN-IP>:4000\` over the same accessible
-network and ensure Windows Firewall allows API port 4000. Insecure HTTP
-is for development only. Never commit credentials into EXPO_PUBLIC variables.
+`EXPO_PUBLIC_API_URL` is used for **real approved PH13 public clinic
+search**, live city/specialty/service facets, approved clinic/gallery/dentist
+profiles, hours, prices and **preview-only** candidate schedule slots.
+The device must actually reach this API. Expo's Metro tunnel (8081) **does
+not** tunnel the backend (4000). If desired, use a reachable LAN IP instead
+for local development. Never expose credentials using `EXPO_PUBLIC_` variables.
 
-The mobile interface works without an API configured: it shows honest
-unavailable states instead of fake clinics or simulated bookings.
-The API connectivity status can be checked under Account.
+`EXPO_PUBLIC_PATIENT_WEB_URL` enables opening the secure PH14 patient
+website in the external browser for verified account management and family
+permissions. Native login and bookings are PH16 and PH15/16 respectively;
+the native app must not accept passwords, display clinic medical records,
+or claim an unbookable time was reserved.
 
-Navigation: Home, Appointments, Saved and Account.
-Localization: Dari (default), Pashto and English with direction-aware
-layouts and persistent, non-sensitive preferences in AsyncStorage.
-Real patient login, dentist listings and bookings will be added in their
-respective product phases; no clinical records should be entered here.
+## Patient navigation
 
-For development-only validation run:
+- **Home:** verified clinic recommendations for the selected Afghan city,
+  published specialties, genuine search, real availability status.
+- **Explore:** search approved clinics/dentists/treatments; city, specialty,
+  service and sort filters derived from actual public directory facets.
+- **Saved:** on-device, non-sensitive public clinic ID shortcuts (max 30)
+  stored in AsyncStorage; each opened clinic is checked against live
+  publication eligibility, so suspended or expired profiles cannot be shown.
+- **Account:** guest/secure website account link, language, calendar and city
+  preferences, network health and how verification works.
 
-\`\`\`powershell
+Tapping a verified clinic opens its genuine approved **profile,
+dentists, treatments, gallery, opening hours and time previews**. Dentist
+details include published qualifications and clinic affiliation. Preview
+times are **not bookable** until PH15; the user may call the clinic.
+There are **no fake reviews, stars, awards, promotions, clinic grades,
+rewards, invoices, or unauthorized medical records**.
+
+Language/calendar controls are **only in Account → Preferences**, never the
+header. Screens are scrollable, mobile-safe-area aware, and render right-to-left
+layout for Dari/Pashto without a global I18nManager restart.
+
+The app behaves honestly when the API is missing/offline, with loading,
+retry and empty states rather than placeholder provider records.
+
+## Validation
+
+```powershell
 pnpm --filter @dandanlink/mobile typecheck
 pnpm --filter @dandanlink/mobile build
-\`\`\`
+```
+
+GitHub CI additionally checks mobile source invariants and exports Android,
+then runs public PH13/secure PH14 HTTP regressions.

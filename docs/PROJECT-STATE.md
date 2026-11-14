@@ -234,3 +234,11 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Adult grants only take effect when the verified adult consents through their own account. Invite response avoids email account enumeration and inviter cannot reveal existing email matches. Both guardian and adult may revoke the grant. A minor turning 18 loses effective guardian authority pending independent consent.
 - Future patient booking or clinical record access remains PH15; family consent in PH14 does not automatically grant access to PH05/PH07 clinic records. Account data export excludes all clinic PHI.
 - CI adds `tests/phase14-validation.test.mjs` and `tests/phase14-integration.mjs`; see `docs/PH14-ACCEPTANCE.md`.
+
+## Patient mobile/web experience refresh (23 reference screenshots, Nov 2026)
+
+- Expo mobile now has genuinely working PH13 public discovery in native UI: approved current clinic cards, treatments, city/specialty/service search and sorting, dentist profiles, published-only gallery, opening hours and PH06 live preview candidate slots. Homepage and result states use real API data rather than fake doctors or static 'coming soon' cards.
+- Native bottom navigation has **Home / Explore / Saved / Account**; saved uses non-sensitive public clinic IDs in AsyncStorage with live eligibility rechecks; logged-in PH14 identity/family management opens secured patient website only if configured. Locale/calendar are in Account, not header. Fully localized Dari/Pashto/English, responsive RTL/native safe-area.
+- Patient web additionally has mobile bottom navigation to actual Home/Find Care/Family/Account routes, collapsible mobile search filters, gallery of reviewed clinic photos, scrollable 7-day schedule previews, updated blue styling, and confirm password for sign-up.
+- Booking, patient appointment history, bills, reviews, ratings, rewards, campaigns, medical record linking, unverified credentials and native password auth **not invented**. See docs/PATIENT-EXPERIENCE-REFRESH.md for per-screen 23-reference mapping and future PH15/16/17 scope.
+- No migrations or API behavior change required. Strict mobile/web TypeScript and Android Expo export tested in CI; public PH13 and secure PH14 regression checks retained.
