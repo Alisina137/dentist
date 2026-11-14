@@ -994,6 +994,9 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
  </View>;
 }
 function PatientApp(){
+ const native=useNativeAuth();
+ const [favorites,setFavorites]=useState<Favorite[]>([]);
+ const [favoritesRefresh,setFavoritesRefresh]=useState(0);
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
@@ -1002,6 +1005,26 @@ function PatientApp(){
   API?"checking":"notConfigured");
  const [checking,setChecking]=useState(false);
  const ui=useUI(locale,calendar);
+ useEffect(()=>{
+  if(!native.account?.registered){setFavorites([]);return;}
+  let active=true;
+  void native.request<{favorites:Favorite[]}>("/v1/patient-favorites")
+   .then(async current=>{
+    if(!active)return;
+    if(ready&&savedIds.length){
+     const missing=savedIds.filter(clinicId=>
+      !current.favorites.some(f=>!f.dentistId&&f.clinicId===clinicId));
+     if(missing.length){
+      await Promise.allSettled(missing.map(clinicId=>native.request(
+       "/v1/patient-favorites","POST",{clinicId})));
+      const updated=await native.request<{favorites:Favorite[]}>("/v1/patient-favorites");
+      if(active)setFavorites(updated.favorites);return;
+     }
+    }
+    setFavorites(current.favorites);
+   }).catch(()=>{});
+  return()=>{active=false};
+ },[native.account?.user.id,ready,favoritesRefresh]);
  useEffect(()=>{
   let live=true;
   void Promise.all([AsyncStorage.getItem(PREF_KEY),AsyncStorage.getItem(SAVED_KEY)]).then(([prefs,saved])=>{
@@ -1033,14 +1056,32 @@ function PatientApp(){
  },[]);
  useEffect(()=>{void checkApi()},[checkApi]);
  function select(next:Tab){setRoute(null);setTab(next)}
+ function book(clinicId:string,dentistId?:string,booking?:Booking){setRoute({kind:"booking",clinicId,dentistId,booking})}
  function openClinic(clinicId:string){setRoute({kind:"clinic",clinicId})}
  function openDentist(clinicId:string,dentistId:string){setRoute({kind:"dentist",clinicId,dentistId})}
- function back(){if(route?.kind==="dentist")setRoute({kind:"clinic",clinicId:route.clinicId});
+ function back(){if(route?.kind==="dentist"||route?.kind==="booking")setRoute({kind:"clinic",clinicId:route.clinicId});
   else setRoute(null)}
- function save(id:string){setSavedIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):
-  [...ids,id].slice(-30))}
- const isSaved=(id:string)=>savedIds.includes(id);
- const screenTitle=route?.kind==="dentist"?ui.t("provider"):ui.t("profile");
+ function toggleFavorite(clinicId:string,dentistId?:string){
+  const exists=favorites.some(f=>f.clinicId===clinicId&&f.dentistId===(dentistId||null));
+  void native.request("/v1/patient-favorites",exists?"DELETE":"POST",
+   {clinicId,dentistId:dentistId||null})
+   .then(()=>setFavoritesRefresh(n=>n+1))
+   .catch(err=>Alert.alert("DandanLink",err instanceof Error?err.message:"SERVICE_UNAVAILABLE"));
+ }
+ function save(id:string){
+  if(native.account?.registered){toggleFavorite(id);return;}
+  setSavedIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id].slice(-30));
+ }
+ const isSaved=(id:string)=>native.account?.registered?
+  favorites.some(f=>f.clinicId===id&&f.dentistId===null):savedIds.includes(id);
+ function saveDentist(clinicId:string,dentistId:string){
+  if(!native.account?.registered){select("account");return;}
+  toggleFavorite(clinicId,dentistId);
+ }
+ const isSavedDentist=(clinicId:string,dentistId:string)=>favorites.some(f=>
+  f.clinicId===clinicId&&f.dentistId===dentistId);
+ const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
+  (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
  return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
   <StatusBar barStyle={route?"dark-content":"light-content"}
    backgroundColor={route?colors.white:colors.blue}/>
@@ -1092,7 +1133,7 @@ function PatientApp(){
   </View>}
  </SafeAreaView>;
 }
-export default function App(){return <SafeAreaProvider><PatientApp/></SafeAreaProvider>}
+export default function App(){return <SafeAreaProvider><NativeAuthProvider><PatientApp/></NativeAuthProvider></SafeAreaProvider>}
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:colors.soft},
