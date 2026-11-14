@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH10 patient invoicing, partial payments and auditable cash ledger
+## Current phase: PH11 operational expenses, correction history and cash-flow insights
 
-Status: **PH01–PH10 implemented and tested; PH10 automated static checks, TypeScript, builds, Expo bundle and real PostgreSQL-backed invoice/payment/reversal acceptance passed. Manual accounting reconciliation, accessibility, privacy/security, patient-data retention and legal invoice/tax review remain separate production gates**.
+Status: **PH01–PH10 implemented and tested. PH11 clinic expenses implemented on a feature branch, pending all automated CI gates. Manual accountant reconciliation, accessibility, receipt retention, privacy/security and legal/tax review remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -193,3 +193,15 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Migration: `0010_patient_billing_ledger.sql`. Tests: `tests/phase10-validation.test.mjs`, `tests/phase10-integration.mjs`, `tests/phase10-immutability.ts`.
 - Production gates: cashier and owner approval of finance reconciliation, bank transfer verification, tax requirements, legal invoices, external refund policy, privacy and accessibility sign-off.
 - Next PH11: expenses, unrelated to patient invoice balance. See `docs/PH10-ACCEPTANCE.md`.
+
+
+## PH11 — Operational expenses with auditable correction history (C18/C23, AC11)
+
+- Finance navigation now includes **Expenses** for owner, manager, cashier, integrated into the same responsive and localized workspace. Reception/clinical roles cannot see expense data.
+- Create an operational expense with required date, category, description, positive AFN amount, payment method and optional reference, attribution, verified private PDF/PNG/JPEG receipt.
+- Filter/search/paginate expenses and open detailed history. Correct with reason and immutable version snapshot; owner/manager can terminally void with reason; posted expense and receipt evidence cannot be deleted or silently overwritten.
+- Finance Overview compares real manual net PH10 cash collections with posted PH11 expenses by Kabul-local date range; category totals for owner/manager. This is a **cash-flow comparison, not certified accounting profit or tax revenue**. Noncash credits are excluded from cash collections; invoices remain entirely unchanged.
+- Tenant- and role-scoped API, unique action idempotency, transaction locks, auditable actor/timestamps, no patient-linked expense data; private no-store receipt download with MIME/header and digest verification.
+- Migration: `0011_clinic_expenses.sql`. CI integration: `tests/phase11-integration.mjs`; static: `tests/phase11-validation.test.mjs`; PostgreSQL immutable evidence: `tests/phase11-immutability.ts`.
+- Requires human owner/accountant approval, bank verification policy, legal receipt/retention handling, security and RTL/accessibility acceptance before using real data.
+- Next phase: PH12 moderated public clinic listings and professional verification. See `docs/PH11-ACCEPTANCE.md`.
