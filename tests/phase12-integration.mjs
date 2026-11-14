@@ -155,7 +155,7 @@ assert.equal(published.status,"published");
 const publicItem=ok(await request(publicRoute,"GET"),[200],
  "public direct-link projection shows only independently approved data");
 assert.equal(publicItem.verifiedClinic,true);
-assert.equal(publicItem.publicBookingsEnabled,false);
+assert.equal(publicItem.publicBookingsEnabled,true);
 assert.equal(publicItem.searchable,true);
 assert.equal(publicItem.profile.dentists[0].verified,true);
 assert.equal(publicItem.profile.services[0].priceAfn,850);
