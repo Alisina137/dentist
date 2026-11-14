@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH11 operational expenses, correction history and cash-flow insights
+## Current phase: PH12 verified clinic profiles, dentist credentials and independent publishing review
 
-Status: **PH01–PH11 implemented and tested; PH11 unit validation, strict TypeScript, web builds, Expo Android export and all PostgreSQL-backed phase integration tests passed. Manual accountant reconciliation, accessibility, receipt retention, privacy/security and legal/tax review remain separate production gates**.
+Status: **PH01–PH11 implemented and tested. PH12 clinician credentials and moderated listings implemented on a feature branch; CI and clinical verification acceptance must pass before merge. Human medical credential policy, publication rights, accessibility and privacy sign-offs remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -205,3 +205,14 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Migration: `0011_clinic_expenses.sql`. CI integration: `tests/phase11-integration.mjs`; static: `tests/phase11-validation.test.mjs`; PostgreSQL immutable evidence: `tests/phase11-immutability.ts`.
 - Requires human owner/accountant approval, bank verification policy, legal receipt/retention handling, security and RTL/accessibility acceptance before using real data.
 - Next phase: PH12 moderated public clinic listings and professional verification. See `docs/PH11-ACCEPTANCE.md`.
+
+
+## PH12 — Clinic listing, verified dentists and public-approved-only profiles (C28, A04–A05, A08)
+
+- Owner/manager **Clinic Listing** workspace includes Overview, Dentists, Photos, Booking Rules and patient-facing Preview; explicit readiness checklist validates verified affiliation, public services, media rights, location, real clinic/provider schedule and available slot; drafts are versioned and pending revisions locked for independent review.
+- Dentist credential submission accepts attested private PDF/PNG/JPEG evidence; MFA-gated platform admin verifies real clinic membership and unchanged dentist profile version, records manual review basis and permanent reason. No invented external registry verification.
+- Admin sidebar has Dentists (Pending/Verified/Rejected/Needs changes/Revoked with evidence review) and Marketplace Listings (Pending/Published/Hidden, side-by-side versions, approve/reject, emergency hide/reinstate and audit).
+- Approved clinic direct-link patient preview is public only after independent moderation. Public service price/version and dentist credential snapshot are approved/pinned; later loss of verification or clinic suspension removes public eligibility. No search until PH13 and no patient booking CTA until PH15.
+- PostgreSQL migration `0012_public_listings_credentials.sql`; UI `phase12.tsx`, API `listing-router.ts`, `tests/phase12-validation.test.mjs`, `tests/phase12-integration.mjs` and `tests/phase12-immutability.ts`.
+- Owner clinic approval, credential license checks, privacy/photo rights, safety, manual accessibility and media retention controls remain go-live gates.
+- See `docs/PH12-ACCEPTANCE.md`. Next PH13: fast patient public discovery and verified clinic search.
