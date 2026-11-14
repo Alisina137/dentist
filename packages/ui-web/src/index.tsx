@@ -105,14 +105,15 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
   const { t } = usePreferences();
   const home = audience === "clinic" ? "/clinic" : audience === "admin" ? "/admin" : "/";
   return <div className="shell">
-    <a className="skip-link" href="#main">{t("submit")}</a>
-    <header className="site-header">
+    <a className="skip-link" href="#main">{t("skipToContent")}</a>
+    <header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
       <a href={home} className="brand" aria-label={t("brand") + " — " + t("home")}>
         <span aria-hidden="true" className="brand-symbol">✦</span><span>{t("brand")}</span>
       </a>
       <div className="header-nav">
         <nav aria-label={t("home")}>
           <a className="nav-link" href={home}>{audience === "clinic" ? t("clinicPortal") : audience === "admin" ? t("adminPortal") : t("home")}</a>
+          {audience === "patient" && <><a className="nav-link" href="/search">{t("findCare")}</a><a className="nav-link" href="/about">{t("aboutDandanLink")}</a></>}
           {audience === "clinic" && <a className="nav-link" href="/pricing">{t("pricing")}</a>}
           {audience !== "patient" && <a className="nav-link" href="/privacy">{t("privacy")}</a>}
         </nav>

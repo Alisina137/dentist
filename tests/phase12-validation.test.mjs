@@ -20,7 +20,7 @@ test("PH12 review has independent admin MFA gate and never invents verified stat
  "PHOTO_RIGHTS_ATTESTATION_REQUIRED","REAL_AVAILABILITY_REQUIRED",
  "PUBLIC_LISTING_UNAVAILABLE","PUBLISH_NOT_READY_","CREDENTIAL_EXPIRED",
  "LISTING_REVIEW_IN_PROGRESS","LISTING_STAFF_FORBIDDEN","LISTING_CONFLICT",
- "publicBookingsEnabled:false","searchable:false"])
+ "publicBookingsEnabled:false","searchable:true"])
   assert.ok(src.includes(x),x);
  assert.match(src,/availabilityPreview/);
  assert.match(src,/clinic\.get\("\/preview"/);
@@ -48,5 +48,5 @@ test("PH12 frontend has five complete owner tabs, two moderated admin queues and
  "apps/admin-web/app/admin/listings/page.tsx",
  "apps/admin-web/app/admin/listings/[clinicId]/page.tsx",
  "apps/patient-web/app/clinics/[clinicId]/page.tsx"])
- assert.match(read(page),/phase12|phase02/);
+ assert.match(read(page),/phase12|phase02|phase13/);
 });

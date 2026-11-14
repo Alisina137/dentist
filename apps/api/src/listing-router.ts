@@ -255,7 +255,7 @@ function safeStatus(value:any){
   validUntil:value.valid_until,approvedDraftVersion:value.approved_draft_version,
   reviewedAt:value.reviewed_at};
 }
-async function publicListing(clinic:string){
+export async function publicListing(clinic:string){
  const [h]=await sqlClient`SELECT * FROM clinic_listing_heads WHERE clinic_id=${clinic}`;
  if(!h||h.hidden||h.approved_version==null)fail(404,"PUBLIC_LISTING_NOT_FOUND");
  const v=await version(sqlClient,clinic,h.approved_version);
@@ -289,7 +289,7 @@ async function publicListing(clinic:string){
    dentists:v.approved_dentists,services:v.approved_services,bookingRules:data.bookingRules},
   version:h.approved_version,publishedAt:h.published_at,verifiedClinic:true,
   publicBookingsEnabled:false,appointmentsNotReleasedUntil:"PH15",
-  searchable:false,reviewedContent:true};
+  searchable:true,reviewedContent:true};
 }
 export function listingRouter(){
  const api=Router();
