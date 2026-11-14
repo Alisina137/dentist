@@ -3,6 +3,7 @@ import { PreferencesProvider, SiteLayout } from "@dandanlink/ui";
 import "@dandanlink/ui/styles.css";
 import "@dandanlink/ui/polish.css";
 import "@dandanlink/ui/patient-experience.css";
+import "@dandanlink/ui/phase15.css";
 
 export const metadata: Metadata = {
   title: "DandanLink",
