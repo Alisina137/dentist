@@ -86,10 +86,9 @@ async function clinicPatient(tx:any,clinic:string,actor:string,name:string){
  if(!seq)fail(409,"PATIENT_COUNTER_UNAVAILABLE");
  const patientId=randomUUID(),number="DL-"+String(seq.n).padStart(6,"0");
  await tx`INSERT INTO clinic_patients(id,clinic_id,patient_number,
- preferred_name,normalized_name,notice_acknowledged,notice_acknowledged_at,
- intake_source,created_by,updated_by)
+ preferred_name,normalized_name,intake_source,created_by,updated_by)
  VALUES(${patientId},${clinic},${number},${name},${name.toLocaleLowerCase()},
- true,now(),'online',${actor},${actor})`;
+ 'online',${actor},${actor})`;
  return patientId;
 }
 async function event(tx:any,clinic:string,actor:string,appointment:any,action:string,before:any=null,why:string|null=null){
@@ -121,15 +120,12 @@ async function bookingView(row:any){
 }
 async function myBookings(user:string,bookingId?:string){
  const rows=await sqlClient`SELECT b.id AS booking_id,b.subject_name,b.subject_type,b.dependent_id,
- b.approval_mode,b.created_at,b.clinic_id,a.id AS appointment_id,a.start_at,a.end_at,
+ b.approval_mode,b.cancellation_hours,b.created_at,b.clinic_id,a.id AS appointment_id,a.start_at,a.end_at,
  a.provider_membership_id,a.service_id,a.service_name,a.service_price_afn,
- a.status,a.revision,c.display_name AS clinic_name,c.city,c.address,c.phone,
- COALESCE((lv.profile->'bookingRules'->>'cancellationHours')::int,24) AS cancellation_hours
+ a.status,a.revision,c.display_name AS clinic_name,c.city,c.address,c.phone
  FROM patient_public_bookings b
  JOIN clinic_appointments a ON a.id=b.appointment_id AND a.clinic_id=b.clinic_id
  JOIN clinics c ON c.id=b.clinic_id
- LEFT JOIN clinic_listing_heads lh ON lh.clinic_id=c.id
- LEFT JOIN clinic_listing_versions lv ON lv.clinic_id=c.id AND lv.version=lh.approved_version
  WHERE b.user_id=${user} AND (${bookingId||null}::text IS NULL OR b.id=${bookingId||null})
  ORDER BY a.start_at DESC,b.id LIMIT 150`;
  return Promise.all(rows.map(bookingView));
@@ -363,10 +359,10 @@ export function patientBookingRouter(){
     ${new Date(slot.startAt)},${new Date(slot.endAt)},${status},'public',${user},${user})
     RETURNING *`;
    await tx`INSERT INTO patient_public_bookings(id,appointment_id,clinic_id,user_id,
-    subject_type,dependent_id,subject_name,idempotency_key,request_digest,approval_mode)
+    subject_type,dependent_id,subject_name,idempotency_key,request_digest,approval_mode,cancellation_hours)
     VALUES(${bookingId},${appointmentId},${clinic},${user},${patient.type},
     ${patient.dependentId},${patient.name},${requestKey},${digest},
-    ${listing.rules.approvalMode})`;
+    ${listing.rules.approvalMode},${listing.rules.cancellationHours})`;
    await event(tx,clinic,user,rows[0],"created");
    await enqueue(tx,bookingId,user,status==="requested"?"requested":"confirmed");
    return {id:bookingId,replayed:false};
@@ -391,16 +387,13 @@ export function patientBookingRouter(){
     WHERE id=${booking} AND user_id=${user}`;
    if(!pointer)fail(404,"BOOKING_NOT_FOUND");
    await scheduleLock(tx,pointer.clinic_id);
-   const [before]=await tx`SELECT a.*,b.id AS booking_id,b.user_id
+   const [before]=await tx`SELECT a.*,b.id AS booking_id,b.user_id,b.cancellation_hours
     FROM patient_public_bookings b JOIN clinic_appointments a ON a.id=b.appointment_id
     WHERE b.id=${booking} AND b.user_id=${user} FOR UPDATE OF a`;
    if(!["requested","confirmed"].includes(before.status)||before.revision!==req.body.revision)
     fail(409,"BOOKING_CANNOT_CANCEL");
    if(before.status==="confirmed"){
-    const listed=await listedBooking(before.clinic_id,before.service_id,
-      before.provider_membership_id,new Date(before.start_at)).catch(()=>null);
-    const cancellationHours=listed?.rules?.cancellationHours??24;
-    if(Date.parse(before.start_at)-Date.now()<cancellationHours*3600000)
+    if(Date.parse(before.start_at)-Date.now()<Number(before.cancellation_hours)*3600000)
      fail(409,"CANCELLATION_DEADLINE_PASSED");
    }
    const updated=await tx`UPDATE clinic_appointments SET status='cancelled',
@@ -422,7 +415,7 @@ export function patientBookingRouter(){
     WHERE id=${booking} AND user_id=${user}`;
    if(!pointer)fail(404,"BOOKING_NOT_FOUND");
    await scheduleLock(tx,pointer.clinic_id);
-   const [before]=await tx`SELECT a.*,b.id AS booking_id,b.subject_type,b.dependent_id
+   const [before]=await tx`SELECT a.*,b.id AS booking_id,b.subject_type,b.dependent_id,b.cancellation_hours
     FROM patient_public_bookings b JOIN clinic_appointments a ON a.id=b.appointment_id
     WHERE b.id=${booking} AND b.user_id=${user} FOR UPDATE OF a`;
    if(!["requested","confirmed"].includes(before.status)||before.revision!==req.body.revision)
@@ -431,7 +424,7 @@ export function patientBookingRouter(){
    const listed=await listedBooking(before.clinic_id,before.service_id,
     before.provider_membership_id,startAt);
    if(before.status==="confirmed"&&Date.parse(before.start_at)-Date.now()<
-     listed.rules.cancellationHours*3600000)fail(409,"RESCHEDULE_DEADLINE_PASSED");
+     Number(before.cancellation_hours)*3600000)fail(409,"RESCHEDULE_DEADLINE_PASSED");
    const {slot}=await slotFor(before.clinic_id,before.service_id,
     before.provider_membership_id,startAt,before.id);
    // The paid estimate and duration are immutable after initial booking;
