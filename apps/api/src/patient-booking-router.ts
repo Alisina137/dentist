@@ -3,7 +3,7 @@ import {Router,type Request,type Response,type NextFunction} from "express";
 import {fromNodeHeaders} from "better-auth/node";
 import {sqlClient} from "@dandanlink/db";
 import {auth} from "./auth.js";
-import {authStaff,scope,type StaffRequest} from "./staff-access.js";
+import {authStaff,scope,AccessFault,type StaffRequest} from "./staff-access.js";
 import {publicListing} from "./listing-router.js";
 import {availabilityPreview} from "./operations-availability.js";
 
@@ -573,7 +573,7 @@ export function patientBookingRouter(){
     issuedAt:x.issued_at,dueDate:x.due_date})),releasedOnly:true});
  }));
  api.use((error:unknown,_req:Request,res:Response,_next:NextFunction)=>{
-  if(error instanceof Fault){res.status(error.status).json({code:error.code});return;}
+  if(error instanceof Fault||error instanceof AccessFault){res.status(error.status).json({code:error.code});return;}
   const sqlError=error as {code?:string;cause?:{code?:string}};
   if(sqlError?.code==="23P01"||sqlError?.cause?.code==="23P01"){
    res.status(409).json({code:"BOOKING_SLOT_CONFLICT"});return;
