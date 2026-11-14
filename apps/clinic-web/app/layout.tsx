@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PreferencesProvider, SiteLayout } from "@dandanlink/ui";
 import "@dandanlink/ui/styles.css";
+import "@dandanlink/ui/polish.css";
 
 export const metadata: Metadata = {
   title: "DandanLink Clinic",

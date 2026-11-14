@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,type FormEvent,type ReactNode} from "react";
 import {authClient,InlineAlert,LocaleControls,usePreferences} from "./index";
+import {CareIcon} from "./care-icons";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -532,9 +533,9 @@ export function PatientAuthPage({mode}:{mode:"login"|"signup"|"forgot"|"reset"|"
  return <div className="p14-auth-page">
   <section className="p14-auth-visual">
    <span className="p14-auth-kicker">DANDANLINK · PATIENT CARE</span>
-   <div className="p14-auth-symbol" aria-hidden="true">✦</div>
+   <div className="p14-auth-symbol" aria-hidden="true"><CareIcon name="heart" size={52}/></div>
    <h2>{t("welcome")}</h2><p>{t("welcomeSub")}</p>
-   <div className="p14-auth-visual-footer"><span aria-hidden="true">✓</span>{t("accountFree")}</div>
+   <div className="p14-auth-visual-footer"><CareIcon name="shield" size={18}/>{t("accountFree")}</div>
   </section>
   <section className="p14-auth-form">
    <div className="p14-auth-card">
@@ -649,7 +650,7 @@ function Onboard({me}:{me:Account}){
      {busy?t("activating"):t("finish")} →</button>
    </form>
    <aside className="p14-setup-aside p14-surface">
-    <div className="p14-account-symbol" aria-hidden="true">✦</div>
+    <div className="p14-account-symbol" aria-hidden="true"><CareIcon name="settings" size={29}/></div>
     <h2>{t("chooseLanguage")}</h2><LocaleControls/>
     <p>{t("accountFree")}</p><p>{t("noRecordAccess")}</p>
     <a href="/privacy" className="p14-inline">{t("privacyLink")} →</a>
@@ -658,12 +659,12 @@ function Onboard({me}:{me:Account}){
  </main>;
 }
 const nav=[
- {key:"overview",href:"/account",icon:"▦"},
- {key:"personal",href:"/account/profile",icon:"◌"},
- {key:"family",href:"/account/family",icon:"◇"},
- {key:"preferences",href:"/account/preferences",icon:"⚙"},
- {key:"privacy",href:"/account/privacy",icon:"▧"},
- {key:"security",href:"/account/security",icon:"♙"}
+ {key:"overview",href:"/account",icon:"overview"},
+ {key:"personal",href:"/account/profile",icon:"profile"},
+ {key:"family",href:"/account/family",icon:"family"},
+ {key:"preferences",href:"/account/preferences",icon:"settings"},
+ {key:"privacy",href:"/account/privacy",icon:"privacy"},
+ {key:"security",href:"/account/security",icon:"security"}
 ] as const;
 function AccountSpace({me,active,children}:{me:Account;active:string;children:ReactNode}){
  const {t}=useWords(),profile=me.profile!;
@@ -674,7 +675,7 @@ function AccountSpace({me,active,children}:{me:Account;active:string;children:Re
   <header className="p14-account-header">
    <div><span className="p14-eyebrow">DANDANLINK · {t("account")}</span>
     <h1>{t("account")}</h1></div>
-   <a className="btn btn-secondary" href="/search">{t("goSearch")} ↗</a></header>
+   <a className="btn btn-secondary p14-find-cta" href="/search"><CareIcon name="search" size={18}/>{t("goSearch")}</a></header>
   <div className="p14-account-grid">
    <aside className="p14-account-side">
     <div className="p14-account-identity"><span className="p14-account-avatar">
@@ -682,10 +683,10 @@ function AccountSpace({me,active,children}:{me:Account;active:string;children:Re
       <small>{t("verified")} ✓</small></div></div>
     <nav aria-label={t("account")} className="p14-account-nav">
      {nav.map(n=><a href={n.href} key={n.key} aria-current={n.key===active?"page":undefined}>
-      <span aria-hidden="true">{n.icon}</span>{t(n.key)}</a>)}</nav>
+      <span aria-hidden="true"><CareIcon name={n.icon} size={19}/></span><span>{t(n.key)}</span><CareIcon name="chevron" className="p14-nav-arrow" size={15}/></a>)}</nav>
     <div className="p14-account-side-bottom">
      <button type="button" onClick={signout} disabled={signed}>
-      <span aria-hidden="true">⇥</span>{t("signout")}</button>
+      <CareIcon name="logout" size={18}/>{t("signout")}</button>
      <p>{t("noBook")}</p></div>
    </aside>
    <main className="p14-account-body">{children}</main>
@@ -698,7 +699,7 @@ function Shell({active,children}:{active:string;children:(a:Account)=>ReactNode}
 }
 function StatusCard({label,value,sub,href}:{label:string;value:string|number;sub:string;href?:string}){
  return <div className="p14-status-card"><span>{label}</span><strong>{value}</strong>
- <small>{sub}</small>{href&&<a href={href} aria-label={label+" · "+sub}>→</a>}</div>;
+ <small>{sub}</small>{href&&<a href={href} aria-label={label+" · "+sub}><CareIcon name="arrow" size={17}/></a>}</div>;
 }
 export function PatientAccountHome(){
  const {t,displayDate}=useWords();
@@ -712,7 +713,7 @@ function AccountHomeContent({me,t,displayDate}:{me:Account;t:(k:string)=>string;
    {t("verifiedAccount")} ✓</span>
    <h2>{t("welcome")}</h2><p>{t("welcomeSub")}</p>
    <a className="btn btn-primary" href="/account/profile">{t("editProfile")} →</a>
-   </div><div className="p14-welcome-symbol" aria-hidden="true">✦</div>
+   </div><div className="p14-welcome-symbol" aria-hidden="true"><CareIcon name="heart" size={82}/></div>
   </section>
   <div className="p14-stats">
    <StatusCard label={t("status")} value={t("active")} sub={t("accountActive")} href="/account/profile"/>
@@ -724,19 +725,19 @@ function AccountHomeContent({me,t,displayDate}:{me:Account;t:(k:string)=>string;
   <section className="p14-surface"><div className="p14-section-head">
    <div><h2>{t("actions")}</h2><p>{t("realFeatures")}</p></div></div>
    <div className="p14-quick-grid">
-    {([["personal","editProfile","/account/profile","◌"],
-       ["family","manageFamily","/account/family","◇"],
-       ["preferences","managePreferences","/account/preferences","⚙"],
-       ["privacy","managePrivacy","/account/privacy","▧"],
-       ["security","manageSecurity","/account/security","♙"],
-       ["find","goSearch","/search","⌕"]] as const).map(([title,body,href,icon])=>
+    {([["personal","editProfile","/account/profile","profile"],
+       ["family","manageFamily","/account/family","family"],
+       ["preferences","managePreferences","/account/preferences","settings"],
+       ["privacy","managePrivacy","/account/privacy","privacy"],
+       ["security","manageSecurity","/account/security","security"],
+       ["find","goSearch","/search","search"]] as const).map(([title,body,href,icon])=>
        <a className="p14-quick-card" key={href} href={href}>
-        <span className="p14-quick-icon" aria-hidden="true">{icon}</span>
-        <span><strong>{t(title)}</strong><small>{t(body)}</small></span><b aria-hidden="true">→</b>
+        <span className="p14-quick-icon" aria-hidden="true"><CareIcon name={icon} size={20}/></span>
+        <span><strong>{t(title)}</strong><small>{t(body)}</small></span><b aria-hidden="true"><CareIcon name="arrow" size={18}/></b>
        </a>)}
    </div>
   </section>
-  <section className="p14-info-panel"><span aria-hidden="true">ⓘ</span>
+  <section className="p14-info-panel"><CareIcon name="about" size={22}/>
    <div><strong>{t("upcoming")}</strong><p>{t("noBook")} {t("noShared")}</p></div></section>
  </div>;
 }
@@ -876,13 +877,13 @@ function FamilyContent(){
     <div className="p14-section-head"><div><h2>{t("familyMembers")}</h2>
      <p>{t("noRecordAccess")}</p></div>
      {!child&&<button type="button" className="btn btn-primary" onClick={()=>setForm(null)}>
-      + {t("addChild")}</button>}</div>
+      <CareIcon name="plus" size={17}/>{t("addChild")}</button>}</div>
     {child&&<ChildForm existing={form||null} onCancel={()=>setForm(undefined)} onDone={done}/>}
     {family.error?<ErrorPanel error={family.error} retry={family.refresh}/>:family.loading?
      <Spinner/>:family.data?.members.length?
       <div className="p14-family-list">{family.data.members.map(x=>
        <article className="p14-family-member" key={x.id}>
-        <div className="p14-member-symbol" aria-hidden="true">{x.memberType==="minor"?"◇":"◉"}</div>
+        <div className="p14-member-symbol" aria-hidden="true"><CareIcon name={x.memberType==="minor"?"family":"account"} size={24}/></div>
         <div className="p14-member-main"><strong>{x.displayName}</strong>
          <small>{x.memberType==="minor"?t("child")+" · "+x.age+" "+t("years"):
           t("adult")}</small>
@@ -920,7 +921,7 @@ function FamilyContent(){
     incoming.loading?<Spinner/>:incoming.data?.requests.length?
      <div className="p14-family-list">{incoming.data.requests.map(x=>
       <article key={x.id} className="p14-family-member">
-       <div className="p14-member-symbol" aria-hidden="true">↔</div>
+       <div className="p14-member-symbol" aria-hidden="true"><CareIcon name="users" size={23}/></div>
        <div className="p14-member-main"><strong>{x.guardianName}</strong>
         <small>{t("expires")}: {displayDate(x.expiresAt)}</small>
         <label className="p14-check"><input type="checkbox" checked={!!consenting[x.id]}
@@ -939,14 +940,14 @@ function FamilyContent(){
     delegations.loading?<Spinner/>:delegations.data?.delegations.length?
      <div className="p14-family-list">{delegations.data.delegations.map(x=>
       <article className="p14-family-member" key={x.id}>
-       <div className="p14-member-symbol" aria-hidden="true">◉</div>
+       <div className="p14-member-symbol" aria-hidden="true"><CareIcon name="account" size={23}/></div>
        <div className="p14-member-main"><strong>{x.guardianName}</strong>
         <span className="p14-chip">✓ {t("adultAccepted")}</span></div>
        <button className="btn btn-secondary p14-danger" type="button"
         disabled={busy===x.id} onClick={()=>selfRevoke(x.id)}>{t("revocation")}</button>
       </article>)}</div>:<div className="p14-empty"><strong>{t("noDelegations")}</strong></div>}
   </section>}
-  <div className="p14-info-panel"><span aria-hidden="true">ⓘ</span>
+  <div className="p14-info-panel"><CareIcon name="about" size={22}/>
    <div><strong>{t("privacy")}</strong><p>{t("noRecordAccess")}</p></div></div>
  </div>;
 }
@@ -1049,7 +1050,7 @@ function PrivacyContent(){
     consent.loading?<Spinner/>:consent.data?.events.length?
      <div className="p14-history">{consent.data.events.map((row,i)=>
       <div className="p14-history-line" key={row.subjectType+row.createdAt+i}>
-       <span className="p14-history-dot" aria-hidden="true">✓</span>
+       <span className="p14-history-dot" aria-hidden="true"><CareIcon name="check" size={16}/></span>
        <div><strong>{t(eventTitles[row.subjectType]||"privacy")}</strong>
         <small>{displayDate(row.createdAt)} · {row.policyVersion}</small></div>
        <span className={row.consent?"p14-chip":"p14-chip p14-chip-warning"}>
@@ -1092,7 +1093,7 @@ function SecurityContent({me}:{me:Account}){
     <Spinner/>:data.data?.sessions.length?
      <div className="p14-session-list">{data.data.sessions.map(s=>
       <article key={s.id} className="p14-session">
-       <span className="p14-device-icon" aria-hidden="true">▣</span>
+       <span className="p14-device-icon" aria-hidden="true"><CareIcon name="security" size={22}/></span>
        <div><strong>{s.device}</strong>
         <small>{t("sessionDate")}: {displayDate(s.createdAt)} ·
          {t("expires")}: {displayDate(s.expiresAt)}</small>
