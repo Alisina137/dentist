@@ -6,7 +6,7 @@ export const languages: { id: Locale; name: string; dir: "ltr" | "rtl" }[] = [
   { id: "en", name: "English", dir: "ltr" }
 ];
 const en = {
-  findCare:"Find care",aboutDandanLink:"About",skipToContent:"Skip to main content",
+  findCare:"Find care",aboutDandanLink:"About",patientAccountLink:"My account",patientSignInLink:"Sign in",skipToContent:"Skip to main content",
   brand: "DandanLink", clinicTitle: "Dental clinic workspace",
   adminTitle: "Platform administration", patientTitle: "Find a better way to dental care",
   tagline: "Trusted tools for dental practices. Easy access for patients.",
@@ -63,7 +63,7 @@ const en = {
 } as const;
 type Keys = keyof typeof en;
 const fa: Record<Keys, string> = {
-  findCare:"جستجوی کلینیک",aboutDandanLink:"درباره",skipToContent:"رفتن به محتوای اصلی",
+  findCare:"جستجوی کلینیک",aboutDandanLink:"درباره",patientAccountLink:"حساب من",patientSignInLink:"ورود",skipToContent:"رفتن به محتوای اصلی",
   brand:"دندان‌لینک", clinicTitle:"پنل مدیریت کلینیک دندان", adminTitle:"مدیریت پلتفرم", patientTitle:"راه آسان‌تر برای مراقبت دندان",
   tagline:"ابزارهای مطمئن برای کلینیک‌ها، دسترسی آسان برای بیماران.",
   clinicSummary:"حساب بسازید و کلینیک خود را برای مدیریت دیجیتالی آماده کنید.",
@@ -118,7 +118,7 @@ const fa: Record<Keys, string> = {
 };
 const ps: Record<Keys, string> = {
   ...fa,
-  findCare:"د کلینیکونو لټون",aboutDandanLink:"زموږ په اړه",skipToContent:"اصلي منځپانګې ته ولاړ شئ",
+  findCare:"د کلینیکونو لټون",aboutDandanLink:"زموږ په اړه",patientAccountLink:"زما حساب",patientSignInLink:"ننوتل",skipToContent:"اصلي منځپانګې ته ولاړ شئ",
   passwordResetEmail:"که دا برېښنالیک ثبت وي، د پټنوم د بیا ټاکنې لینک به ولېږل شي.",
   duplicateSafe:"که دا برېښنالیک د ثبت وړ وي، د تایید پیغام به واستول شي.",
   settingsHint:"کله چې حساب ته ننوتلي یاست، غوره توبونه مو له حساب سره همغږي کېږي.",
