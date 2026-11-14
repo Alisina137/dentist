@@ -103,12 +103,6 @@ function adultView(row:any){
   eligibleForFutureBooking:row.status==="active",revision:row.revision,
   createdAt:row.created_at};
 }
-async function ownMember(user:string,memberId:string){
- const [row]=await sqlClient`SELECT * FROM patient_dependents WHERE id=${memberId}
- AND guardian_user_id=${user} AND status='active'`;
- if(!row)fail(404,"FAMILY_MEMBER_NOT_FOUND");
- return row;
-}
 const optionalPhone=(input:unknown)=>{
  const s=optional(input,"PHONE",22);
  if(s&&!/^\+?[0-9][0-9 ()-]{6,21}$/.test(s))fail(422,"INVALID_PHONE");
@@ -180,12 +174,14 @@ export function patientAccountRouter(){
   const preferredName=str(req.body?.preferredName,"PREFERRED_NAME",2,120);
   const city=str(req.body?.city,"CITY",2,90),phone=optionalPhone(req.body?.phone);
   const expected=revision(req.body?.revision),user=req.patientUserId!;
-  const [updated]=await sqlClient`UPDATE patient_profiles SET preferred_name=${preferredName},
-   city=${city},phone=${phone},revision=revision+1,updated_at=now()
-   WHERE user_id=${user} AND revision=${expected} RETURNING *`;
-  if(!updated)fail(409,"PATIENT_PROFILE_CONFLICT");
-  await sqlClient`INSERT INTO audit_events(id,actor_id,action,subject_type,subject_id,outcome)
-   VALUES(${randomUUID()},${user},'patient.profile.update','patient_portal',${user},'success')`;
+  const updated=await sqlClient.begin(async tx=>{
+   const [row]=await tx`UPDATE patient_profiles SET preferred_name=${preferredName},
+    city=${city},phone=${phone},revision=revision+1,updated_at=now()
+    WHERE user_id=${user} AND revision=${expected} RETURNING *`;
+   if(!row)fail(409,"PATIENT_PROFILE_CONFLICT");
+   await audit(tx,user,"patient.profile.update",user);
+   return row;
+  });
   res.json({profile:profileView(updated)});
  }));
  privateArea.get("/preferences",route(async(req,res)=>{
@@ -255,6 +251,7 @@ export function patientAccountRouter(){
    fail(422,"INVALID_RELATIONSHIP");
   const id=randomUUID();
   const result=await sqlClient.begin(async tx=>{
+   await tx`SELECT user_id FROM patient_profiles WHERE user_id=${user} FOR UPDATE`;
    const [count]=await tx`SELECT count(*)::integer AS n FROM patient_dependents
     WHERE guardian_user_id=${user} AND status='active'`;
    if(count.n>=20)fail(409,"FAMILY_CAP_REACHED");
@@ -281,22 +278,21 @@ export function patientAccountRouter(){
   if(!["child","legal_guardian"].includes(relationship))
    fail(422,"INVALID_RELATIONSHIP");
   const expected=revision(body.revision);
-  const [row]=await sqlClient`UPDATE patient_dependents
+  const row=await sqlClient.begin(async tx=>{
+   const [changed]=await tx`UPDATE patient_dependents
     SET display_name=${name},relationship=${relationship},date_of_birth=${dob}::date,
     revision=revision+1,updated_at=now()
     WHERE id=${memberId} AND guardian_user_id=${user} AND member_type='minor'
-      AND status='active' AND revision=${expected}
-    RETURNING *`;
-  if(!row)fail(409,"FAMILY_MEMBER_CONFLICT");
-  await sqlClient.begin(async tx=>{
+     AND status='active' AND revision=${expected} RETURNING *`;
+   if(!changed)fail(409,"FAMILY_MEMBER_CONFLICT");
    await event(tx,user,"family_minor",memberId,true,FAMILY);
    await audit(tx,user,"patient.family.minor.update",memberId);
+   return changed;
   });
   res.json({member:minorView(row)});
  }));
  privateArea.delete("/family/:memberId",route(async(req,res)=>{
   const user=req.patientUserId!,memberId=codeId(req.params.memberId);
-  const current=await ownMember(user,memberId);
   const expected=revision(req.body?.revision);
   const [row]=await sqlClient.begin(async tx=>{
    const changed=await tx`UPDATE patient_dependents SET status='revoked',
@@ -345,25 +341,6 @@ export function patientAccountRouter(){
    }
   }
   res.status(202).json({requested:true,message:"If a verified DandanLink account exists, an authorization invitation can be delivered to it. Adult permission is not active unless that account accepts."});
- }));
- privateArea.get("/family/invitations",route(async(req,res)=>{
-  const user=req.patientUserId!;
-  const rows=await sqlClient`SELECT inv.id,inv.created_at,inv.expires_at,inv.status,
-   target.name AS adult_name
-   FROM patient_family_invitations inv JOIN auth_users target ON target.id=inv.target_user_id
-   WHERE inv.guardian_user_id=${user} AND inv.status='pending'
-     AND inv.expires_at>now() ORDER BY inv.created_at DESC LIMIT 30`;
-  res.json({invitations:rows.map(x=>({id:x.id,adultName:x.adult_name,
-   createdAt:x.created_at,expiresAt:x.expires_at,status:x.status,
-   authorizationActive:false}))});
- }));
- privateArea.delete("/family/invitations/:invitationId",route(async(req,res)=>{
-  const user=req.patientUserId!,invitationId=codeId(req.params.invitationId);
-  const [row]=await sqlClient`UPDATE patient_family_invitations SET
-   status='cancelled',decided_at=now() WHERE id=${invitationId} AND
-   guardian_user_id=${user} AND status='pending' RETURNING id`;
-  if(!row)fail(404,"INVITATION_NOT_FOUND");
-  res.json({cancelled:true,id:row.id});
  }));
  privateArea.get("/family/requests",route(async(req,res)=>{
   const user=req.patientUserId!;
