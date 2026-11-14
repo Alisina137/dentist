@@ -31,7 +31,7 @@ function codeId(raw:unknown){
  return raw;
 }
 function revision(raw:unknown){
- if(!Number.isInteger(raw)||raw<1||raw>2000000000)fail(422,"REVISION_REQUIRED");
+ if(typeof raw!=="number"||!Number.isInteger(raw)||raw<1||raw>2000000000)fail(422,"REVISION_REQUIRED");
  return raw as number;
 }
 function dateOnly(raw:unknown){
