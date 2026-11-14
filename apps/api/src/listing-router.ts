@@ -355,9 +355,11 @@ export function listingRouter(){
   }))});
  }));
  clinic.get("/dentists/:membershipId/credential",task<StaffRequest>(async(req,res)=>{
-  await clinicAccess(req);
+  const ctx=await scope(req,cId(req));
   const id=String(req.params.membershipId);
-  await membership(sqlClient,cId(req),id);
+  const m=await membership(sqlClient,cId(req),id);
+  if(!["owner","manager"].includes(ctx.role)&&m.user_id!==req.actor!.id)
+   fail(403,"CREDENTIAL_SELF_OR_OWNER_REQUIRED");
   const [state]=await sqlClient`SELECT * FROM clinic_dentist_credential_cases
    WHERE membership_id=${id} AND clinic_id=${cId(req)}`;
   const history=await sqlClient`SELECT decision,reason,created_at,review_basis FROM
