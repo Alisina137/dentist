@@ -39,17 +39,22 @@ test("Expo Go patient app is a native workspace not a Next.js mobile shortcut",a
  assert.match(rootPackage.scripts["dev:mobile"],/expo start --tunnel --clear --go/);
  assert.equal(rootPackage.scripts["dev:patient"],"pnpm dev:mobile");
  assert.equal(config.expo.android.package,"com.dandanlink.patient");
- for(const name of ['"home"','"appointments"','"saved"','"account"']){
-   assert.ok(source.includes(name),"missing tab "+name);
+ // PH13 live directory and device-local Saved replace the pre-launch placeholder
+ // Appointments. Bookings get a tab only when PH15/PH16 has a real server.
+ for(const name of ['"home"','"explore"','"saved"','"account"']){
+   assert.ok(source.includes(name),"missing functional native tab "+name);
  }
  for(const language of ["fa-AF","ps-AF","en"]){
    assert.ok(source.includes('"'+language+'"'),"missing language "+language);
  }
  assert.match(source,/AsyncStorage\.setItem/);
  assert.match(source,/EXPO_PUBLIC_API_URL/);
- assert.match(source,/marketplaceAvailable/);
- assert.match(source,/notLaunched/);
- assert.match(source,/No real patient appointments/);
+ assert.match(source,/\/v1\/discovery/);
+ assert.match(source,/function ClinicScreen/);
+ assert.match(source,/function DentistScreen/);
+ assert.match(source,/function SavedScreen/);
+ assert.match(source,/publicBookingsEnabled:false/);
+ assert.doesNotMatch(source,/Book Appointment|Confirm Appointment/);
 });
 test("dev origin sync preserves existing secrets and rejects missing .env",async()=>{
  const directory=await mkdtemp(join(tmpdir(),"dandan-ports-"));
