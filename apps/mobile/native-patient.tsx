@@ -121,9 +121,9 @@ function Label({children}:{children:React.ReactNode}){return <Text style={p.labe
 function Field({value,onChangeText,label,secure=false,keyboardType="default"}:{value:string;
  onChangeText:(s:string)=>void;label:string;secure?:boolean;keyboardType?:"default"|"email-address"|"numeric"}){
  return <View style={{gap:6,marginTop:12}}><Label>{label}</Label><TextInput
-  value={value} onChangeText={onChangeText} autoCapitalize={keyboardType==="email-address"?"none":"sentences"}
+  value={value} onChangeText={onChangeText} autoCapitalize={secure||keyboardType==="email-address"?"none":"sentences"}
   autoCorrect={false} secureTextEntry={secure} keyboardType={keyboardType}
-  textAlign="auto" style={p.input}/></View>;
+  textAlign="left" style={p.input}/></View>;
 }
 function Button({title,onPress,secondary=false,disabled=false}:{title:string;onPress:()=>void;secondary?:boolean;disabled?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled}
@@ -520,7 +520,7 @@ const p=StyleSheet.create({
  secondaryText:{color:blue},
  errorBox:{backgroundColor:"#FFF0F0",padding:13,borderRadius:11},
  errorText:{color:"#9A2530",fontSize:13},
- success:{color:"#137655",fontWeight:"750"},
+ success:{color:"#137655",fontWeight:"700"},
  item:{paddingVertical:7,borderBottomWidth:1,borderBottomColor:"#F0F4FA",color:dark},
  check:{paddingVertical:10,minHeight:42},
  filters:{flexDirection:"row",gap:7},
