@@ -266,3 +266,14 @@ release; owner can revoke. No native private patient booking/auth until PH16. SM
 remain disabled; SMTP is opt-in, generic and durable. Human healthcare/legal review,
 testing on physical devices, privacy retention and threat-model gates remain PH19.
 See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
+
+
+## PH16 — Native patient application parity
+
+- Expo Go patient app now has Home, Explore, Appointments, Saved and Account with actual native booking and signed-in account workflows; profile and booking navigation remain RTL-aware for Dari/Pashto and LTR for English.
+- Better Auth adds signed bearer session support for native clients. Tokens are kept in Expo SecureStore, never in AsyncStorage; session restoration, explicit sign-out, verified patient onboarding, family, profile and notification preferences are native.
+- Patient booking is wired to PH15's existing verified clinic/dentist/service availability and transactional booking/cancellation/reschedule API. Manual approval remains a pending request, never a fabricated confirmed appointment. A booking or approval will appear in the PH06 clinic calendar.
+- `0016_native_favorites.sql` and `/v1/patient-favorites` persist account-scoped clinic/dentist favorites; list and writes recheck current public eligibility. Guest local clinic shortcuts can be migrated after login.
+- Native push/SMS are **not** advertised or enabled without provider and opt-in. Existing signed/shared records remain individually clinic-controlled; the optional patient web records link does not expose any unapproved data.
+- CI adds `tests/phase16-validation.test.mjs` and `tests/phase16-integration.mjs`; see `docs/PH16-ACCEPTANCE.md`.
+- Production clinical data, regulatory, retention and full physical-device Android/iOS acceptance still require PH19 human review.
