@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import {API,request,ok,signup,clinic,p1} from "./phase07-fixture.mjs";
 
-const root="/v1/patients",person=await signup("PH14-Patient"),
- adult=await signup("PH14-Adult"),stranger=await signup("PH14-Stranger");
+const root="/v1/patients",person=await signup("ph14-patient"),
+ adult=await signup("ph14-adult"),stranger=await signup("ph14-stranger");
 const mine=person.session,yours=adult.session,other=stranger.session;
 async function get(route,session=mine){return ok(await request(root+route,"GET",undefined,session),
  [200],"GET "+route)}
