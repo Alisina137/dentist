@@ -33,7 +33,7 @@ test("PH16 backend rechecks publication and authentication for clinic and dentis
  const api=read("apps/api/src/patient-favorites-router.ts");
  const auth=read("apps/api/src/auth.ts");
  const schema=read("packages/db/migrations/0016_native_favorites.sql");
- for(const x of ["auth.api.getSession","patient_profiles","publicListing","verified",
+ for(const x of ["auth.api.getSession","patient_profiles","publicListing","VERIFIED_DENTIST_UNAVAILABLE",
   'app.post("/")','app.get("/")','app.delete("/")',"no-store"])
   assert.ok(api.includes(x),x);
  assert.ok(auth.includes("bearer({requireSignature:true})"));
