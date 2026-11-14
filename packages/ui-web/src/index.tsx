@@ -313,12 +313,12 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
            <CareIcon name="clinic" size={19}/>{signupCopy.clinic}</button>
           <button type="button" className={signupRole==="dentist"?"is-selected":""}
            aria-pressed={signupRole==="dentist"} onClick={()=>setSignupRole("dentist")}>
-           <CareIcon name="dentist" size={19}/>{signupCopy.dentist}</button>
+           <CareIcon name="profile" size={19}/>{signupCopy.dentist}</button>
          </div>
          <div className="clinic-auth-explainer" role="note">
           <CareIcon name="shield" size={19}/>
           <p>{signupRole==="dentist"?signupCopy.staff:signupCopy.clinicHelp}
-           {signupRole==="dentist"&&<> <a href="/clinic/invite">{t("invite")||"Open invitation"}</a></>}</p>
+           {signupRole==="dentist"&&<> <a href="/clinic/invite">{signupCopy.dentist}</a></>}</p>
          </div>
         </div>}
         <form className="form-stack" onSubmit={submit}>
