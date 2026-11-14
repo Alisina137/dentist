@@ -25,6 +25,7 @@ CREATE TABLE patient_public_bookings (
  idempotency_key text NOT NULL CHECK(length(idempotency_key) BETWEEN 8 AND 100),
  request_digest text NOT NULL,
  approval_mode text NOT NULL CHECK(approval_mode IN ('manual','auto')),
+ cancellation_hours integer NOT NULL CHECK(cancellation_hours BETWEEN 0 AND 168),
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(user_id,idempotency_key),
