@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
+import {PublicVerifiedReviews} from "./phase17";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Language="en"|"fa-AF"|"ps-AF";
@@ -764,7 +765,7 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
  if(info.error)return <div className="p13-page-content"><Failure code={info.error} retry={info.refresh}/></div>;
  if(info.loading||!info.data)return <Loading/>;
  const item=info.data,p=item.profile;
- const names=["description","dentists","services","gallery","availability","aboutClinic"];
+ const names=["description","dentists","services","gallery","availability","reviews","aboutClinic"];
  const directions="https://www.openstreetmap.org/?mlat="+p.latitude+
   "&mlon="+p.longitude+"#map=16/"+p.latitude+"/"+p.longitude;
  return <div className="p13-profile-page p13-page-content">
@@ -805,7 +806,7 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
    <div className="p13-profile-primary">
     <nav className="p13-tabs" role="tablist" aria-label={t("clinicProfile")}>
      {names.map(x=><button role="tab" type="button" aria-selected={tab===x}
-      key={x} onClick={()=>setTab(x)}>{t(x)}</button>)}
+      key={x} onClick={()=>setTab(x)}>{x==="reviews"?"★ Reviews":t(x)}</button>)}
     </nav>
     <div className="p13-tab-panel" role="tabpanel">
      {tab==="description"&&<div className="p13-info-stack">
@@ -846,6 +847,7 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
      {tab==="availability"&&<section className="p13-panel"><AvailabilityPanel
       clinicId={clinicId} services={p.services} dentists={p.dentists}
       phone={item.clinic.phone} horizon={p.bookingRules.horizonDays}/></section>}
+     {tab==="reviews"&&<PublicVerifiedReviews clinicId={clinicId}/>}
      {tab==="aboutClinic"&&<div className="p13-info-stack">
       <section className="p13-panel"><h2>{t("information")}</h2>
        <dl className="p13-public-facts">
@@ -904,9 +906,9 @@ export function PatientDentistPage({clinicId,dentistId}:{clinicId:string;dentist
   <div className="p13-profile-grid">
    <div className="p13-profile-primary">
     <nav className="p13-tabs" role="tablist" aria-label={t("dentist")}>
-     {(["description","services","availability"] as const).map(x=>
+     {(["description","services","availability","reviews"] as const).map(x=>
       <button role="tab" type="button" key={x} aria-selected={tab===x}
-       onClick={()=>setTab(x)}>{t(x)}</button>)}</nav>
+       onClick={()=>setTab(x)}>{x==="reviews"?"★ Reviews":t(x)}</button>)}</nav>
     <div className="p13-tab-panel" role="tabpanel">
      {tab==="description"&&<div className="p13-info-stack">
       <section className="p13-panel"><h2>{t("aboutProfessional")}</h2>
@@ -927,6 +929,7 @@ export function PatientDentistPage({clinicId,dentistId}:{clinicId:string;dentist
       {item.services.map(s=><ServiceRow service={s} key={s.id}/>)}
       <p className="p13-muted">{t("feeFrom")} {t("notListed")}</p>
      </section>}
+     {tab==="reviews"&&<PublicVerifiedReviews clinicId={clinicId} dentistId={dentistId}/>}
      {tab==="availability"&&<section className="p13-panel">
       <AvailabilityPanel clinicId={clinicId} services={item.services}
        dentists={[d]} doctorId={dentistId} phone={item.clinic.phone}
