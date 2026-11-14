@@ -18,7 +18,7 @@ type Language="en"|"fa-AF"|"ps-AF";
 const labels:Record<Language,Record<string,string>>={
  en:{
  clinical:"Clinical",operational:"Operational progress · aggregate counts only",scheduled:"Scheduled today",arrived:"Checked in",inTreatment:"In treatment",completed:"Completed today",pendingCount:"Pending notes",signedCount:"Signed encounters",worklist:"Clinical worklist",today:"Today",pending:"Pending Notes",cases:"My Cases",
- date:"Date",refresh:"Refresh",visits:"Visits",files:"Files",overview:"Overview",
+ date:"Date",refresh:"Refresh",visits:"Visits",billing:"Billing",files:"Files",overview:"Overview",
  newVisit:"New visit",newVisitHint:"Open an unscheduled encounter or continue from an in-progress appointment.",
  complaint:"Presenting complaint",findings:"Clinical findings",assessment:"Clinical assessment",
  historySource:"History source",historyDate:"History date (Gregorian)",followUp:"Plan / follow-up",
@@ -57,7 +57,7 @@ const labels:Record<Language,Record<string,string>>={
  },
  "fa-AF":{
  clinical:"کلینیکی",operational:"پیشرفت عملیاتی · فقط آمار کلی",scheduled:"وقت‌های امروز",arrived:"پذیرش‌شده",inTreatment:"در حال تداوی",completed:"تکمیل‌شده امروز",pendingCount:"یادداشت‌های ناتمام",signedCount:"معاینات امضاشده",worklist:"فهرست کارهای کلینیکی",today:"امروز",pending:"یادداشت‌های ناتمام",cases:"موارد من",
- date:"تاریخ",refresh:"تازه‌سازی",visits:"معاینات",files:"فایل‌ها",overview:"نمای کلی",
+ date:"تاریخ",billing:"حساب مریض",refresh:"تازه‌سازی",visits:"معاینات",files:"فایل‌ها",overview:"نمای کلی",
  newVisit:"معاینه جدید",newVisitHint:"معاینه بدون نوبت بسازید یا از وقت ملاقات ادامه دهید.",
  complaint:"شکایت اصلی مریض",findings:"یافته‌های کلینیکی",assessment:"ارزیابی داکتر",
  historySource:"منبع سابقه صحی",historyDate:"تاریخ سابقه (میلادی)",followUp:"برنامه / پیگیری",
@@ -96,7 +96,7 @@ const labels:Record<Language,Record<string,string>>={
  },
  "ps-AF":{
  clinical:"کلینیکي",operational:"د چارو لنډیز · یوازې شمېرې",scheduled:"نن ټاکل شوې",arrived:"رارسېدلي",inTreatment:"تر درملنې لاندې",completed:"نن بشپړ شوي",pendingCount:"پاتې یادښتونه",signedCount:"لاسلیک شوې معاینې",worklist:"د کلینیکي کارونو لړلیک",today:"نن",pending:"نیمګړې یادښتونه",cases:"زما قضیې",
- date:"نېټه",refresh:"بیا تازه کول",visits:"معاینې",files:"فایلونه",overview:"لنډیز",
+ date:"نېټه",billing:"د ناروغ حساب",refresh:"بیا تازه کول",visits:"معاینې",files:"فایلونه",overview:"لنډیز",
  newVisit:"نوې معاینه",newVisitHint:"له نوبت پرته معاینه پیل کړئ یا ټاکلې لیدنه پرمخ یوسئ.",
  complaint:"د ناروغ اصلي شکایت",findings:"کلینیکي موندنې",assessment:"د ډاکټر ارزونه",
  historySource:"د طبي تاریخ سرچینه",historyDate:"د تاریخ نېټه (میلادي)",followUp:"پلان / څارنه",
@@ -192,6 +192,7 @@ function Tabs({space,patientId,current}:{space:Space;patientId:string;current:Vi
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
  <a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
+ {["owner","manager"].includes(space.role)&&<a href={"/clinic/patients/"+patientId+"/billing?clinic="+encodeURIComponent(space.clinicId)}>{t("billing")}</a>}
  <a aria-current={current==="files"?"page":undefined}
   href={link(space.clinicId,patientId,"files")}>{t("files")}</a>
  </nav>;
