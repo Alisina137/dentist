@@ -329,7 +329,7 @@ export function listingRouter(){
    db.query.clinic.findFirst({where:eq(schema.clinic.id,c)})
   ]);
   const selected=(draft||pending||approved)?.profile as Profile|undefined;
-  const checklist=selected?await check(sqlClient,c,selected,false):null;
+  const checklist=selected?await check(sqlClient,c,selected,true):null;
   noStore(res);res.json({head:h||{clinic_id:c,revision:0,draft_version:null,
    pending_version:null,approved_version:null,hidden:false},draft,pending,approved,
    photos:assets,events,checklist,clinic:{
@@ -647,7 +647,7 @@ export function listingRouter(){
    version(sqlClient,id,h.pending_version),version(sqlClient,id,h.approved_version),
    version(sqlClient,id,h.draft_version),listingEvents(sqlClient,id)]);
   let readiness=null;
-  if(pending)readiness=await check(sqlClient,id,pending.profile,false);
+  if(pending)readiness=await check(sqlClient,id,pending.profile,true);
   noStore(res);res.json({clinic:c,head:h,pending,approved,draft,events,readiness});
  }));
  admin.get("/listings/:clinicId/photos/:photoId",task<AdminRequest>(async(req,res)=>{
