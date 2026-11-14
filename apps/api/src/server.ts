@@ -17,6 +17,7 @@ import { clinicalRouter } from "./clinical-router.js";
 import { chartRouter } from "./chart-router.js";
 import { treatmentRouter } from "./treatment-router.js";
 import { billingRouter } from "./billing-router.js";
+import { expenseRouter } from "./expense-router.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -37,6 +38,8 @@ app.all("/api/auth/*", toNodeHandler(auth));
 // Only guarded registry imports accept CSV-sized JSON bodies.
 // All other endpoints keep the 16 KiB body limit.
 app.use("/v1/registry", express.json({limit:"1.5mb"}), patientRegistryRouter());
+// PH11 receipt uploads accept bounded base64 PDF/image evidence only on the private expense router.
+app.use("/v1/expenses", express.json({limit:"1.6mb"}), expenseRouter());
 app.use(express.json({ limit: "16kb" }));
 app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
@@ -55,7 +58,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH10", marketplaceAvailable: false,
+  product: "DandanLink", release: "PH11", marketplaceAvailable: false,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));
 
