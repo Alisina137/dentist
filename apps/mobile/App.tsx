@@ -1,4 +1,7 @@
 import React,{useCallback,useEffect,useState} from "react";
+import {Alert} from "react-native";
+import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
  ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,
  StatusBar,StyleSheet,Text,TextInput,View
@@ -17,8 +20,8 @@ declare const process:{readonly env:{
 }};
 type Language="fa-AF"|"ps-AF"|"en";
 type Calendar="solar_hijri"|"gregorian";
-type Tab="home"|"explore"|"saved"|"account";
-type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string};
+type Tab="home"|"explore"|"appointments"|"saved"|"account";
+type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string}|{kind:"booking";clinicId:string;dentistId?:string;booking?:Booking};
 type Remote<T>={loading:boolean;data:T|null;error:string|null;refresh:()=>void};
 type Clinic={id:string;name:string;city:string;province:string;address:string;phone:string};
 type Service={id:string;name:string;category:string;priceAfn:number;durationMinutes:number;version?:number};
@@ -565,8 +568,8 @@ function DentistCard({dentist,ui,onPress}:{dentist:Dentist;ui:UI;onPress:()=>voi
   </View><Text style={s.forward}>›</Text>
  </Pressable>;
 }
-function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave}:{clinicId:string;ui:UI;
- onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void}){
+function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicId:string;ui:UI;
+ onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void;onBook:()=>void}){
  const detail=usePublic<ClinicDetail>("/clinics/"+encodeURIComponent(clinicId));
  const [tab,setTab]=useState<"overview"|"dentists"|"services"|"gallery"|"hours"|"times">("overview");
  const [photo,setPhoto]=useState(0);
@@ -605,9 +608,11 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave}:{clinicId:strin
     ✓ {ui.t("updated")} · {hours.now.isWithinPublishedHours?
      ui.t("openScheduled"):ui.t("closedScheduled")}</TextLine>
    <View style={[s.row,{flexDirection:ui.flow,gap:9,marginTop:18}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={()=>{
-     void Linking.openURL("tel:"+clinic.phone)}}><Text style={s.cardButtonPrimaryText}>
-     ☎  {ui.t("call")}</Text></Pressable>
+    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
+     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book appointment":ui.locale==="ps-AF"?"د ملاقات وخت":"رزرو نوبت"}</Text></Pressable>
+    <Pressable style={s.cardButton} onPress={()=>{
+     void Linking.openURL("tel:"+clinic.phone)}}><Text style={s.cardButtonText}>
+     ☎ {ui.t("call")}</Text></Pressable>
     <Pressable style={s.cardButton} onPress={()=>{void Linking.openURL(mapUrl)}}>
      <Text style={s.cardButtonText}>⌖  {ui.t("directions")}</Text></Pressable>
    </View>
@@ -666,8 +671,8 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave}:{clinicId:strin
    {ui.t("noFake")} {ui.t("pending")}</TextLine></View>
  </View>;
 }
-function DentistScreen({clinicId,dentistId,ui,onBackToClinic}:{clinicId:string;
- dentistId:string;ui:UI;onBackToClinic:()=>void}){
+function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSave}:{clinicId:string;
+ dentistId:string;ui:UI;onBackToClinic:()=>void;onBook:()=>void;isSaved:boolean;onSave:()=>void}){
  const response=usePublic<DentistDetail>("/clinics/"+encodeURIComponent(clinicId)+
   "/dentists/"+encodeURIComponent(dentistId));
  const [tab,setTab]=useState<"overview"|"services"|"times">("overview");
@@ -683,11 +688,16 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic}:{clinicId:string;
      {d.displayName}</Text><TextLine ui={ui}>{d.specialty||ui.t("notListed")}</TextLine>
      <Tag label={ui.t("verify")} positive/></View>
    </View>
+   <Pressable accessibilityRole="button" onPress={onSave} style={[s.heart,{marginTop:10,alignSelf:"flex-start"}]}>
+    <Text style={[s.heartText,isSaved&&{color:colors.blue}]}>{isSaved?"♥":"♡"}</Text>
+   </Pressable>
    <Pressable onPress={onBackToClinic} style={[s.row,{flexDirection:ui.flow,gap:8,marginTop:17}]}>
     <Text style={[s.link,{textAlign:ui.align,flex:1}]}>{clinic.name} ›</Text></Pressable>
    <TextLine ui={ui} style={{marginTop:8}}>⌖ {cityLabel(clinic.city,ui.locale)}, {clinic.province}</TextLine>
    <View style={[s.row,{flexDirection:ui.flow,gap:10,marginTop:16}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={()=>{
+    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
+     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text></Pressable>
+    <Pressable style={s.cardButton} onPress={()=>{
      void Linking.openURL("tel:"+clinic.phone)}}>
      <Text style={s.cardButtonPrimaryText}>☎  {ui.t("call")}</Text></Pressable>
     <Pressable onPress={()=>setTab("times")} style={s.cardButton}>
@@ -925,19 +935,19 @@ function SavedScreen({ui,ids,onRemove,onClinic,onExplore}:{ui:UI;ids:string[];
  </View>;
 }
 function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,checkApi,
- connection,checking}:{ui:UI;locale:Language;calendar:Calendar;city:string;
+ connection,checking,signedIn}:{ui:UI;locale:Language;calendar:Calendar;city:string;
  onLocale:(x:Language)=>void;onCalendar:(x:Calendar)=>void;onCity:(x:string)=>void;
- checkApi:()=>void;connection:"connected"|"offline"|"notConfigured"|"checking";checking:boolean}){
+ checkApi:()=>void;connection:"connected"|"offline"|"notConfigured"|"checking";checking:boolean;signedIn:boolean}){
  const facets=usePublic<Facets>("/facets");
  const [showCities,setShowCities]=useState(false);
  return <View style={s.sectionGap}>
-  <SectionHead ui={ui} title={ui.t("accountTitle")} sub={ui.t("guestSub")}/>
-  <View style={s.guestCard}><Icon glyph="☺" filled/>
+  <SectionHead ui={ui} title={ui.t("accountTitle")} sub={signedIn?ui.t("prefs"):ui.t("guestSub")}/>
+  {!signedIn&&<View style={s.guestCard}><Icon glyph="☺" filled/>
    <View style={{flex:1}}><Text style={[s.guestName,{textAlign:ui.align}]}>{ui.t("guest")}</Text>
     <TextLine ui={ui} style={s.guestHint}>{ui.t("secureHelp")}</TextLine></View></View>
-  {PATIENT_WEB?<CTA label={ui.t("secureAccount")+"  ›"} onPress={()=>{
+  {!signedIn&&(PATIENT_WEB?<CTA label={ui.t("secureAccount")+"  ›"} onPress={()=>{
    void Linking.openURL(PATIENT_WEB+"/account")}}/>:
-   <TextLine ui={ui} style={s.footerNotice}>{ui.t("webMissing")}</TextLine>}
+   <TextLine ui={ui} style={s.footerNotice}>{ui.t("webMissing")}</TextLine>)}
   <CardShell><SectionHead ui={ui} title={ui.t("prefs")}
    sub={ui.t("updated")}/>
    <TextLine ui={ui} style={s.fieldLabel}>{ui.t("language")}</TextLine>
@@ -980,7 +990,7 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
      <View style={s.trustNumber}><Text style={s.trustNumberText}>{i+1}</Text></View>
      <TextLine ui={ui} style={{flex:1}}>{ui.t(key)}</TextLine></View>)}
   </CardShell>
-  <View style={s.notice}><TextLine ui={ui}>{ui.t("medical")} {ui.t("later")}</TextLine></View>
+  <View style={s.notice}><TextLine ui={ui}>{ui.t("medical")}</TextLine></View>
  </View>;
 }
 function PatientApp(){
