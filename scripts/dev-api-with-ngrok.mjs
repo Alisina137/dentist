@@ -160,6 +160,19 @@ async function chooseTunnel() {
     throw new Error("DANDANLINK_API_TUNNEL must be auto, ngrok, or cloudflare.");
   }
 
+  // Expo's --tunnel also relies on ngrok. Prefer a different provider for
+  // the API, even when the API command starts before Expo. Otherwise Expo
+  // may fail later with ERR_NGROK_334 on the account's single dev domain.
+  if (providerPreference === "auto" && commandExists("cloudflared")) {
+    try {
+      console.info("[api:dev] Using Cloudflare for API; reserving ngrok for Expo's --tunnel.");
+      return await startCloudflare();
+    } catch (error) {
+      console.warn("[cloudflare] " + error.message);
+      console.warn("[api:dev] Attempting ngrok API as fallback; Expo may require --lan.");
+    }
+  }
+
   if (providerPreference !== "cloudflare") {
     const current = await localTunnels();
     const reusable = findHttpsApiTunnel(current, 4000);
