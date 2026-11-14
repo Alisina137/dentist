@@ -55,6 +55,9 @@ const vocab:Record<Lang,Record<string,string>>={
  saving:"Saving…",linkPending:"Waiting for clinic identity verification",
  secure:"Only specifically approved, signed medical summaries and issued invoices are displayed.",
  clinicQueue:"Booking requests",pending:"Pending",processed:"Processed",
+ reviewRecords:"Review eligible clinic records",releaseRecord:"Release to verified patient",
+ withdrawRelease:"Withdraw record access",approveIndividual:"I explicitly approve sharing this individual document",
+ noReleasable:"No signed summaries or issued receipts eligible for release.",
  accept:"Accept request",reject:"Reject request",proof:"Clinic record identity checks",
  verify:"Verify identity in person",method:"Verification method",
  approveLink:"Approve verified link",rejectLink:"Reject link",selectedPatient:"Clinic patient ID",
@@ -95,6 +98,9 @@ const vocab:Record<Lang,Record<string,string>>={
  saving:"در حال ذخیره…",linkPending:"منتظر تأیید حضوری کلینیک",
  secure:"فقط خلاصه‌های امضاشده و رسیدهایی که جداگانه تأیید شده‌اند نمایش داده می‌شوند.",
  clinicQueue:"درخواست‌های رزرو",pending:"در انتظار",processed:"پردازش‌شده",
+ reviewRecords:"بررسی اسناد قابل اشتراک",releaseRecord:"اشتراک با مریض تأییدشده",
+ withdrawRelease:"لغو دسترسی سند",approveIndividual:"اشتراک این سند مشخص را به‌صورت جداگانه تأیید می‌کنم",
+ noReleasable:"خلاصه امضاشده یا رسید صادرشده قابل اشتراک موجود نیست.",
  accept:"تأیید درخواست",reject:"رد درخواست",proof:"بررسی هویت و اسناد کلینیک",
  verify:"تأیید هویت حضوری",method:"روش تأیید",
  approveLink:"تأیید اتصال",rejectLink:"رد اتصال",selectedPatient:"شناسه مریض در کلینیک",
@@ -135,6 +141,9 @@ const vocab:Record<Lang,Record<string,string>>={
  saving:"خوندي کېږي…",linkPending:"د کلینیک هویت تایید ته منتظر",
  secure:"یوازې ځانګړي تایید شوي او لاسلیک شوي اسناد ښودل کېږي.",
  clinicQueue:"د ملاقات غوښتنې",pending:"منتظر",processed:"پروسس شوي",
+ reviewRecords:"د شریکولو وړ ریکارډونه وڅېړئ",releaseRecord:"تایید شوي ناروغ سره شریک کړئ",
+ withdrawRelease:"لاسرسی بېرته واخلئ",approveIndividual:"د همدې سند شریکول په ځانګړي ډول تاییدوم",
+ noReleasable:"د شریکولو وړ لاسلیک شوی لنډیز یا صادر شوی رسید نشته.",
  accept:"غوښتنه ومنه",reject:"غوښتنه رد کړه",proof:"د کلینیک د اسنادو هویت",
  verify:"مخامخ هویت تایید کړه",method:"د تایید ډول",
  approveLink:"نښلول تایید کړه",rejectLink:"نښلول رد کړه",selectedPatient:"په کلینیک کې ناروغ پېژند",
@@ -470,7 +479,7 @@ export function PatientRecordsPage(){
 
 type StaffContext={name:string;email:string;clinics:{
  clinicId:string;clinicName:string;membershipId:string;role:string;clinicianEnabled:boolean}[]};
-function ClinicShell({title,children}:{title:string;children:(clinicId:string)=>React.ReactNode}){
+function ClinicShell({title,children}:{title:string;children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
  const {t}=useWords(),[ctx,setCtx]=useState<StaffContext|null>(null),[clinic,setClinic]=useState<string|null>(null);
  const [error,setError]=useState("");
  useEffect(()=>{
@@ -486,7 +495,7 @@ function ClinicShell({title,children}:{title:string;children:(clinicId:string)=>
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a></nav>
-   {children(space.clinicId)}
+   {children(space.clinicId,space.role,space.clinicianEnabled)}
   </Page>
  </Shell>;
 }
@@ -495,9 +504,9 @@ type StaffRequestRow={id:string;patientName:string;serviceName:string;startAt:st
 type LinkRequest={id:string;state:string;suppliedPatientNumber:string;
  requestedAt:string;patientId:string|null;method:string|null;applicantName:string};
 export function ClinicBookingRequestsPage(){
- return <ClinicShell title={vocab.en.clinicQueue}>{clinicId=><Requests cid={clinicId}/>}</ClinicShell>;
+ return <ClinicShell title={vocab.en.clinicQueue}>{(clinicId,role,clinicianEnabled)=><Requests cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
 }
-function Requests({cid}:{cid:string}){
+function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianEnabled:boolean}){
  const {t,fmt}=useWords(),[filter,setFilter]=useState("pending");
  const [rows,setRows]=useState<StaffRequestRow[]>([]),[links,setLinks]=useState<LinkRequest[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
@@ -560,9 +569,66 @@ function Requests({cid}:{cid:string}){
       <button className="p15-button p15-button-danger" disabled={busy||!verified[l.id]||
        (reasons[l.id]||"").trim().length<10} onClick={()=>void linkDecision(l,"reject")}>{t("rejectLink")}</button></div>
     </article>)}</div>
+   {links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
+     cid={cid} link={l} enabled={role==="dentist"||clinicianEnabled}/>) }
   </div>
  </>;
 }
+
+type ReleaseItem={id:string;released:boolean;title?:string;signedAt?:string;
+ invoiceNumber?:number;issuedAt?:string;totalAfn?:number};
+function ApprovedRecordReleases({cid,link,enabled}:{cid:string;link:LinkRequest;enabled:boolean}){
+ const {t,fmt}=useWords();
+ const [opened,setOpened]=useState(false),[approved,setApproved]=useState(false);
+ const [loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
+ const [problem,setProblem]=useState("");
+ const [items,setItems]=useState<{summaries:ReleaseItem[];receipts:ReleaseItem[]}|null>(null);
+ const refresh=async()=>{
+  setLoading(true);setProblem("");
+  try{const r=await api<{summaries:ReleaseItem[];receipts:ReleaseItem[]}>(
+   "/v1/booking/clinics/"+cid+"/record-links/"+link.id+"/releasable");setItems(r);}
+  catch(e:any){setProblem(e.message);}finally{setLoading(false);}
+ };
+ async function send(item:ReleaseItem,kind:string,operation:"release"|"revoke"){
+  if(!approved||busy)return;
+  setBusy(true);setProblem("");
+  try{await api("/v1/booking/clinics/"+cid+"/record-links/"+link.id+"/releases","POST",{
+   kind,resourceId:item.id,operation,patientApproved:true});
+   await refresh();
+  }catch(e:any){setProblem(e.message);}
+  finally{setBusy(false);}
+ }
+ if(!enabled)return null;
+ return <article className="p15-list-row" key={link.id}>
+  <div><strong>{link.applicantName}</strong><Badge status={link.state}/>
+   <p>{t("selectedPatient")}: <bdi dir="ltr">{link.patientId||"—"}</bdi></p></div>
+  <button type="button" className="p15-button p15-button-secondary"
+   onClick={()=>{setOpened(x=>!x);if(!opened)void refresh();}}>{t("reviewRecords")}</button>
+  {opened&&<div className="p15-record-review">
+   <ErrorNote message={problem}/>{loading?<Spinner/>:null}
+   <label className="p15-consent">
+    <input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/>
+    {t("approveIndividual")}</label>
+   {!loading&&items&&!(items.summaries.length+items.receipts.length)&&<p>{t("noReleasable")}</p>}
+   {items?.summaries.map(item=><div key={item.id} className="p15-list-row">
+    <div><strong>{t("summaries")} — {item.title}</strong><small>{fmt(item.signedAt,true)}</small>
+     <Badge status={item.released?"approved":"pending"}/></div>
+    <button type="button" className={"p15-button "+(item.released?"p15-button-danger":"")}
+     disabled={!approved||busy}
+     onClick={()=>void send(item,"signed_encounter_summary",item.released?"revoke":"release")}>
+      {t(item.released?"withdrawRelease":"releaseRecord")}</button></div>)}
+   {items?.receipts.map(item=><div key={item.id} className="p15-list-row">
+    <div><strong>{t("receipts")} #{item.invoiceNumber}</strong>
+     <small>{fmt(item.issuedAt,true)} · {item.totalAfn} AFN</small>
+     <Badge status={item.released?"approved":"pending"}/></div>
+    <button type="button" className={"p15-button "+(item.released?"p15-button-danger":"")}
+     disabled={!approved||busy}
+     onClick={()=>void send(item,"issued_receipt",item.released?"revoke":"release")}>
+      {t(item.released?"withdrawRelease":"releaseRecord")}</button></div>)}
+  </div>}
+ </article>;
+}
+
 export function ClinicNotificationsPage(){
  const {t,fmt}=useWords();
  return <ClinicShell title={t("settings")}>{cid=><Notifications cid={cid}/>}</ClinicShell>;
