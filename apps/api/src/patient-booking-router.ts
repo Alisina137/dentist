@@ -25,6 +25,11 @@ function short(v:unknown,max=120){if(typeof v!=="string"||v.trim().length<2||v.t
 function hash(v:unknown){return createHash("sha256").update(JSON.stringify(v)).digest("hex");}
 const route=(fn:(req:any,res:Response)=>Promise<void>)=>(req:any,res:Response,next:NextFunction)=>{fn(req,res).catch(next);};
 const privateResponse=(res:Response)=>{res.setHeader("Cache-Control","private, no-store");res.setHeader("Referrer-Policy","no-referrer");};
+function iso(value:unknown):string{
+ const d=new Date(String(value));
+ if(!Number.isFinite(d.getTime()))throw new Error("INVALID_STORED_TIMESTAMP");
+ return d.toISOString();
+}
 const dayInKabul=(at:Date)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kabul",
  year:"numeric",month:"2-digit",day:"2-digit"}).format(at);
 const clockInKabul=(at:Date)=>new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
@@ -122,11 +127,11 @@ async function bookingView(row:any){
  return {id:row.booking_id,clinicId:row.clinic_id,clinicName:row.clinic_name,
  clinicCity:row.city,clinicAddress:row.address,clinicPhone:row.phone,
  appointmentId:row.appointment_id,patientName:row.subject_name,
- subjectType:row.subject_type,startAt:row.start_at,endAt:row.end_at,
+ subjectType:row.subject_type,startAt:iso(row.start_at),endAt:iso(row.end_at),
  dentistId:row.provider_membership_id,serviceId:row.service_id,
  serviceName:row.service_name,priceAfn:row.service_price_afn,
  status:row.status,approvalMode:row.approval_mode,revision:row.revision,
- createdAt:row.created_at,timezone:"Asia/Kabul",
+ createdAt:iso(row.created_at),timezone:"Asia/Kabul",
  cancelUntil:new Date(new Date(row.start_at).getTime()-Number(row.cancellation_hours||0)*3600000).toISOString()};
 }
 async function myBookings(user:string,bookingId?:string){
@@ -201,7 +206,7 @@ export function patientBookingRouter(){
     x.provider_membership_id===ctx.membership.id).map(x=>({
     id:x.id,patientName:x.subject_name,createdAt:x.created_at,
     appointmentId:x.appointment_id,providerId:x.provider_membership_id,
-    serviceName:x.service_name,startAt:x.start_at,endAt:x.end_at,
+    serviceName:x.service_name,startAt:iso(x.start_at),endAt:iso(x.end_at),
     priceAfn:x.service_price_afn,status:x.status,revision:x.revision})),filter:state});
  }));
  staff.post("/requests/:bookingId/decision",route(async(req:StaffRequest,res)=>{
@@ -490,7 +495,7 @@ export function patientBookingRouter(){
    await enqueue(tx,booking,user,"rescheduled");
    return updated[0];
   });
-  res.json({status:result.status,revision:result.revision,startAt:result.start_at});
+  res.json({status:result.status,revision:result.revision,startAt:iso(result.start_at)});
  }));
  api.get("/notifications",route(async(req:PatientReq,res)=>{
   const rows=await sqlClient`SELECT event_name,status,attempt_count,created_at,sent_at
