@@ -172,7 +172,7 @@ async function head(tx:any,clinic:string){
 }
 async function version(tx:any,clinic:string,v:number|null){
  if(v==null)return null;
- const [r]=await tx`SELECT id,version,status,profile,submitted_at,reviewed_at,
+ const [r]=await tx`SELECT id,version,status,profile,approved_dentists,approved_services,submitted_at,reviewed_at,
   decision_reason,created_at FROM clinic_listing_versions
   WHERE clinic_id=${clinic} AND version=${v}`;
  return r||null;
@@ -213,7 +213,7 @@ async function check(tx:any,clinic:string,data:Profile,slots=false){
    WHERE clinic_id=${clinic} AND id=${id}`;
   if(!s||!s.active||!s.public_booking)issues.push("SERVICE_NOT_PUBLIC");
   else services.push({id:s.id,name:s.name,category:s.category,
-   durationMinutes:s.duration_minutes,priceAfn:s.base_price_afn,version:s.version});
+   requiresChair:s.requires_chair,durationMinutes:s.duration_minutes,priceAfn:s.base_price_afn,version:s.version});
  }
  for(const photo of data.photoIds){
   const [file]=await tx`SELECT id FROM clinic_listing_photos
@@ -263,6 +263,13 @@ async function publicListing(clinic:string){
  const data=v.profile as Profile;
  const c=await check(sqlClient,clinic,data,false);
  if(!c.ready)fail(404,"PUBLIC_LISTING_UNAVAILABLE");
+ if(!Array.isArray(v.approved_dentists)||!Array.isArray(v.approved_services))
+  fail(404,"PUBLIC_REVIEW_SNAPSHOT_MISSING");
+ if(c.services.some(s=>!v.approved_services.some((p:any)=>p.id===s.id&&
+    p.version===s.version&&p.priceAfn===s.priceAfn)))
+  fail(404,"PUBLIC_SERVICE_PRICE_CHANGED");
+ if(c.dentists.some(d=>!v.approved_dentists.some((p:any)=>p.id===d.id)))
+  fail(404,"PUBLIC_CREDENTIAL_CHANGED");
  const [sub]=await sqlClient`SELECT s.status,s.trial_ends_at,s.current_period_ends_at,
  p.grace_days FROM clinic_subscriptions s
  JOIN platform_plan_versions p ON p.id=s.plan_version_id
@@ -279,7 +286,7 @@ async function publicListing(clinic:string){
    latitude:data.latitude,longitude:data.longitude,contactNote:data.contactNote,
    photos:data.photoIds.map(x=>({id:x.id,caption:x.caption,
     url:"/v1/listings/public/clinics/"+clinic+"/photos/"+x.id})),
-   dentists:c.dentists,services:c.services,bookingRules:data.bookingRules},
+   dentists:v.approved_dentists,services:v.approved_services,bookingRules:data.bookingRules},
   version:h.approved_version,publishedAt:h.published_at,verifiedClinic:true,
   publicBookingsEnabled:false,appointmentsNotReleasedUntil:"PH15",
   searchable:false,reviewedContent:true};
@@ -683,6 +690,8 @@ export function listingRouter(){
      const checked=await check(tx,cId(req),v.profile,true);
      if(!checked.ready)fail(409,"PUBLISH_NOT_READY_"+checked.issues[0]);
      await tx`UPDATE clinic_listing_versions SET status='approved',
+      approved_dentists=${JSON.stringify(checked.dentists)}::jsonb,
+      approved_services=${JSON.stringify(checked.services)}::jsonb,
       reviewed_by=${req.reviewer!.id},reviewed_at=now(),decision_reason=${reason}
       WHERE clinic_id=${cId(req)} AND version=${v.version}`;
      await tx`UPDATE clinic_listing_heads SET approved_version=${v.version},
