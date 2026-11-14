@@ -67,4 +67,5 @@ jobs:
           node tests/phase07-integration.mjs
           node tests/phase08-integration.mjs
           node tests/phase09-integration.mjs
+          node tests/phase10-integration.mjs
           node tests/dev-no-email-integration.mjs

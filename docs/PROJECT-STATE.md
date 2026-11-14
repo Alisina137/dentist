@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH09 treatment proposals, clinical stages and consent
+## Current phase: PH10 patient invoicing, partial payments and auditable cash ledger
 
-Status: **PH01–PH09 implemented and tested. PH09 automated tests, typechecks, builds, Expo bundle and PostgreSQL-backed clinical acceptance passed. Manual clinical review, accessibility, privacy/security and legal consent verification remain separate production gates**.
+Status: **PH01–PH10 implemented and tested; PH10 automated static checks, TypeScript, builds, Expo bundle and real PostgreSQL-backed invoice/payment/reversal acceptance passed. Manual accounting reconciliation, accessibility, privacy/security, patient-data retention and legal invoice/tax review remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -180,3 +180,16 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - Tests: `tests/phase09-validation.test.mjs`, `tests/phase09-integration.mjs`, `tests/phase09-immutability.ts`.
 - Medical, legal consent, device accessibility, backup/retention and privacy sign-off remain required before real patient data; PH10 handles invoices and payment ledgers.
 - Next phase: PH10 patient billing and receipt ledger. See `docs/PH09-ACCEPTANCE.md`.
+
+
+## PH10 — Clinic patient invoices, ledger and finance screens (C16, C18–C22, AC10)
+
+- The clinic sidebar has a real **Finance** workspace for owner/manager/cashier/receptionist. Receptionist gets invoice handling but not clinic-wide overview/payments/balances. Dentists/assistants/platform admin have no clinical finance access.
+- Finance Overview shows true receipt and receivables KPIs; Invoices provides Draft/Issued/Partially Paid/Paid/Overdue/Void and full create/edit/issue/void flow; Payments offers an auditable ledger and CSV; Balances supports current/1–30/31–60/61+ aging.
+- Patient records get Billing with Invoices/Payments/Statement, true 3-way totals, invoice receipt print; cashier has no chart/clinical details link.
+- Billing requires a completed appointment, signed performed procedure, or completed treatment stage. Drafts snapshot the clinic service price or accepted treatment proposal price. Invoice source cannot be double-charged while nonvoid; issue never marks paid.
+- Cash/manual transfers allow idempotent partial payments with locked invoice totals. Owner can make reasoned compensating reversals and noncash credits; original ledger records remain immutable. AFN integers only; no online gateway or automatic refund.
+- Private print-friendly receipts, guarded API, correct clinic scope and low-privilege role restrictions, English/Dari/Pashto localization and responsive layout.
+- Migration: `0010_patient_billing_ledger.sql`. Tests: `tests/phase10-validation.test.mjs`, `tests/phase10-integration.mjs`, `tests/phase10-immutability.ts`.
+- Production gates: cashier and owner approval of finance reconciliation, bank transfer verification, tax requirements, legal invoices, external refund policy, privacy and accessibility sign-off.
+- Next PH11: expenses, unrelated to patient invoice balance. See `docs/PH10-ACCEPTANCE.md`.

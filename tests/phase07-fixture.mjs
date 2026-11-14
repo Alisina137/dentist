@@ -108,7 +108,7 @@ assert.equal(bootstrap.status,0,"admin bootstrap failed: "+bootstrap.stderr);
 await enableMfa(admin);
 const plan=ok(await request("/v1/admin/plans","POST",{
  planKey:"professional",billingPeriod:"monthly",label:"PH07 Booking",
- priceAfn:1400,staffLimit:6,branchLimit:1,trialDays:14,graceDays:7
+ priceAfn:1400,staffLimit:8,branchLimit:1,trialDays:14,graceDays:7
 },admin.session),[201],"plan").plan;
 const clinicBody={legalName:"PH07 Kabul Dental Clinic",displayName:"PH07 Dental",
  clinicType:"office",province:"Kabul",city:"Kabul",address:"Clinic pilot address in Kabul",

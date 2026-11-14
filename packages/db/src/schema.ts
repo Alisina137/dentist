@@ -655,3 +655,67 @@ export const clinicTreatmentEvent=pgTable("clinic_treatment_events",{
  actorId:text("actor_id").notNull().references(()=>user.id),
  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
 },t=>[index("clinic_treatment_events_history_idx").on(t.clinicId,t.patientId,t.planId,t.createdAt)]);
+
+
+/** PH10: patient billing ledger, entirely separate from platform subscription invoices. */
+export const clinicInvoiceCounter=pgTable("clinic_invoice_counters",{
+ clinicId:text("clinic_id").primaryKey().references(()=>clinic.id),
+ nextNumber:integer("next_number").notNull().default(1)
+});
+export const clinicInvoice=pgTable("clinic_invoices",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ invoiceNumber:integer("invoice_number").notNull(),status:text("status").notNull().default("draft"),
+ revision:integer("revision").notNull().default(1),version:integer("version").notNull().default(1),
+ sourceType:text("source_type").notNull(),sourceId:text("source_id").notNull(),
+ totalAfn:integer("total_afn").notNull(),dueDate:date("due_date",{mode:"string"}),
+ issuedAt:timestamp("issued_at",{withTimezone:true}),voidedAt:timestamp("voided_at",{withTimezone:true}),
+ voidReason:text("void_reason"),internalNote:text("internal_note"),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ issuedBy:text("issued_by").references(()=>user.id),voidedBy:text("voided_by").references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[uniqueIndex("clinic_invoices_clinic_number_unique").on(t.clinicId,t.invoiceNumber),
+ index("clinic_invoices_patient_idx").on(t.clinicId,t.patientId,t.createdAt),
+ index("clinic_invoices_status_idx").on(t.clinicId,t.status,t.dueDate,t.issuedAt)]);
+
+type ClinicInvoiceLine={serviceId:string;serviceVersion:number;name:string;quantity:number;
+ unitPriceAfn:number;discountAfn:number;totalAfn:number};
+/** Every draft revision creates a new immutable snapshot. Issued terms cannot change. */
+export const clinicInvoiceVersion=pgTable("clinic_invoice_versions",{
+ invoiceId:text("invoice_id").notNull().references(()=>clinicInvoice.id),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ version:integer("version").notNull(),
+ items:jsonb("items").$type<ClinicInvoiceLine[]>().notNull(),
+ totalAfn:integer("total_afn").notNull(),
+ note:text("note"),authorId:text("author_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[uniqueIndex("clinic_invoice_versions_unique").on(t.invoiceId,t.version),
+ index("clinic_invoice_versions_history_idx").on(t.clinicId,t.patientId,t.invoiceId,t.version)]);
+
+/** Append-only, idempotent payments and credits. Reversal is a compensating entry;
+ * manual reversal is NOT a funds transfer or refund. */
+export const clinicPaymentEntry=pgTable("clinic_payment_entries",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ invoiceId:text("invoice_id").notNull().references(()=>clinicInvoice.id),
+ kind:text("kind").notNull(),amountAfn:integer("amount_afn").notNull(),
+ method:text("method").notNull(),reference:text("reference"),note:text("note"),
+ reversesEntryId:text("reverses_entry_id"),
+ actionKey:text("action_key").notNull(),requestDigest:text("request_digest").notNull(),
+ occurredAt:timestamp("occurred_at",{withTimezone:true}).notNull().defaultNow(),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[uniqueIndex("clinic_payment_entries_action_unique").on(t.clinicId,t.createdBy,t.actionKey),
+ index("clinic_payment_entries_invoice_idx").on(t.clinicId,t.invoiceId,t.createdAt),
+ index("clinic_payment_entries_clinic_idx").on(t.clinicId,t.createdAt)]);
+
+export const clinicInvoiceEvent=pgTable("clinic_invoice_events",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ patientId:text("patient_id").notNull().references(()=>clinicPatient.id),
+ invoiceId:text("invoice_id").notNull().references(()=>clinicInvoice.id),
+ action:text("action").notNull(),version:integer("version").notNull(),reason:text("reason"),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[index("clinic_invoice_events_history_idx").on(t.clinicId,t.invoiceId,t.createdAt)]);
