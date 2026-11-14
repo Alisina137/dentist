@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH13 independently reviewed public clinic and dentist discovery
+## Current phase: PH14 verified patient identity, profile, consent and family authorization
 
-Status: **PH01–PH12 implemented and tested. PH13 clinic/dentist search, realtime availability, public profile navigation and indexed safety view implemented on a feature branch; independent CI and acceptance required before merge. Human professional credential policy, publication rights, clinical privacy/security, accessibility and localization signoffs remain production gates**.
+Status: **PH01–PH13 implemented and tested. PH14 verified patient login, explicit onboarding, private profiles, preferences, minor guardian consent and independent adult authorization implemented on a feature branch; CI validation and acceptance required before merge. Human clinical consent/guardian law, credential policy, accessibility, localization and privacy sign-offs remain production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -225,3 +225,12 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - User-facing CTAs lead to legitimate public clinic profile, contact phone or directions (external map link). No self-service booking until PH15, patient account until PH14, or reviews until PH17.
 - Tests: `tests/phase13-validation.test.mjs` and `tests/phase13-integration.mjs`; CI migration, complete prior-phase regressions, strict TypeScript, web builds and Expo Android bundle.
 - See `docs/PH13-ACCEPTANCE.md`. Next **PH14**: patient identity, profile preferences, consent and dependent permissions.
+
+## PH14 — Patient identity and consent-based family directory
+
+- Patient site adds complete sign-in, email verification, signup, recovery and optional existing-account MFA challenge; `/account/onboarding` captures verified adult/legal consent, terms and privacy version, name and selected city.
+- Protected `/account` dashboard has actual profile, family, notification/calendar/language, privacy (consent ledger, account-only export), and security (session list/revocation, recovery) pages, with localised English/Dari/Pashto and responsive mobile/RTL layout.
+- `/v1/patients` is an authenticated, explicit-consent and tenant-independent patient portal. Data migration `0014_patient_identity_family.sql` creates isolated patient portal profiles, default-off notification preferences, guardian-attested child identities under 18, independent adult acceptance invitations, active/revoked family delegates and immutable consent log. Medical/billing records remain clinic private and are never linked by matching names/emails/phone.
+- Adult grants only take effect when the verified adult consents through their own account. Invite response avoids email account enumeration and inviter cannot reveal existing email matches. Both guardian and adult may revoke the grant. A minor turning 18 loses effective guardian authority pending independent consent.
+- Future patient booking or clinical record access remains PH15; family consent in PH14 does not automatically grant access to PH05/PH07 clinic records. Account data export excludes all clinic PHI.
+- CI adds `tests/phase14-validation.test.mjs` and `tests/phase14-integration.mjs`; see `docs/PH14-ACCEPTANCE.md`.
