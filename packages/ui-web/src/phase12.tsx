@@ -704,3 +704,273 @@ export function ClinicListingPortal(){
  if(!space||!["owner","manager"].includes(space.role))return <ErrorPanel code="LISTING_STAFF_FORBIDDEN"/>;
  return <Workspace space={space} ctx={ctx}/>;
 }
+
+
+type AdminView="dentists"|"dentistReview"|"listings"|"listingReview";
+function AdminDentistQueue(){
+ const {t,date}=useWords();
+ const [status,setStatus]=useState("pending"),[q,setQ]=useState(""),[search,setSearch]=useState("");
+ const rows=load(adminPath("/dentists?")+new URLSearchParams({status,q:search}));
+ return <div className="phase12-stack">
+  <div className="phase12-section-title"><div><h1>{t("adminDentists")}</h1>
+   <p>{t("confirmReview")}</p></div></div>
+  <nav className="phase12-tabs" role="tablist" aria-label={t("adminDentists")}>
+   {(["pending","verified","rejected","needs_changes","revoked","all"]).map(x=>
+    <button key={x} type="button" role="tab" aria-selected={status===x}
+     onClick={()=>setStatus(x)}>{t(x)}</button>)}</nav>
+  <form className="phase12-filter-form" onSubmit={e=>{e.preventDefault();setSearch(q)}}>
+   <input maxLength={100} aria-label={t("search")} value={q}
+    placeholder={t("search")} onChange={e=>setQ(e.target.value)}/>
+   <button className="btn btn-secondary" type="submit">{t("search")}</button>
+  </form>
+  {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:
+   !rows.data?<Busy/>:!rows.data.dentists.length?<div className="card phase12-empty">{t("noData")}</div>:
+   <div className="card phase12-panel"><div className="phase12-table-wrap">
+    <table className="phase12-table"><thead><tr>
+     <th>{t("professional")}</th><th>{t("clinic")}</th>
+     <th>{t("credentialType")}</th><th>{t("submittedAt")}</th>
+     <th>{t("status")}</th><th>{t("action")}</th>
+    </tr></thead><tbody>{rows.data.dentists.map((x:any)=><tr key={x.membership_id}>
+     <td><strong>{x.display_name}</strong><small>{x.specialty||"—"}</small></td>
+     <td>{x.clinic_name}<small>{x.city}</small></td>
+     <td>{x.credential_type||"—"}</td><td>{date(x.submitted_at)}</td>
+     <td><Label value={x.status}/></td>
+     <td><a className="phase12-text-link" href={"/admin/dentists/"+x.membership_id}>
+      {t("review")} →</a></td>
+    </tr>)}</tbody></table></div></div>}
+ </div>;
+}
+function AdminDentistReview({id}:{id:string}){
+ const {t,date}=useWords();
+ const data=load(adminPath("/dentists/"+id));
+ const [action,setAction]=useState("approve"),[reason,setReason]=useState(""),
+  [basis,setBasis]=useState(""),[confirmation,setConfirmation]=useState(false),
+  [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ async function decision(e:FormEvent){
+  e.preventDefault();if(busy)return;
+  if(!confirm(t("confirmReview")))return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   await api(adminPath("/dentists/"+id+"/decision"),"POST",{
+    action,reason,reviewBasis:action==="approve"?basis:null,
+    confirmation:action==="approve"&&confirmation?"VERIFY":null});
+   setNotice(t("confirmed"));data.refresh();
+  }catch(e:any){setError(e.message)}finally{setBusy(false)}
+ }
+ if(data.error)return <ErrorPanel code={data.error} retry={data.refresh}/>;
+ if(!data.data)return <Busy/>;
+ const v=data.data.verification,canDecide=v.status==="pending",canRevoke=v.status==="verified";
+ const items=data.data.submissions||[];
+ return <div className="phase12-stack">
+  <a href="/admin/dentists" className="phase12-text-link">← {t("adminDentists")}</a>
+  <section className="card phase12-panel">
+   <div className="phase12-review-head">
+    <div><span className="phase12-kicker">{t("adminDentists")} / {v.clinic_name}</span>
+     <h1>{v.display_name}</h1><p>{v.specialty||"—"} · {v.professional_license||"—"}</p></div>
+    <Label value={v.status}/></div>
+   <div className="phase12-info-tiles">
+    <div><span>{t("clinic")}</span><strong>{v.clinic_name}</strong></div>
+    <div><span>{t("draftVersion")}</span><strong>{v.draft_version}</strong></div>
+    <div><span>{t("status")}</span><strong>{v.affiliation_status}</strong></div>
+    <div><span>{t("qualifications")}</span><strong>{v.qualifications||"—"}</strong></div></div>
+  </section>
+  <section className="card phase12-panel">
+   <SectionTitle title={t("evidence")} desc={t("confirmReview")}/>
+   {items.length?items.map((s:any)=><div className="phase12-evidence-row" key={s.id}>
+    <div><strong>{s.credential_type}</strong><p dir="ltr">{s.credential_number}</p>
+     <span>{t("validUntil")}: {s.valid_until} · {t("draftVersion")} {s.draft_version}</span>
+     <small>{s.file_name} · {s.size_bytes} bytes · {date(s.created_at)}</small></div>
+    <button type="button" className="btn btn-secondary" onClick={()=>privateFile(
+     adminPath("/dentists/"+id+"/evidence/"+s.id),"professional-proof-"+s.id.slice(0,8))}>
+     {t("viewEvidence")} ↗</button>
+   </div>):<div className="phase12-empty">{t("noData")}</div>}
+  </section>
+  {(canDecide||canRevoke)&&<section className="card phase12-panel">
+   <SectionTitle title={t("decision")} desc={t("reviewBasisHint")}/>
+   <form onSubmit={decision} className="phase12-decision-form">
+    <label className="phase12-field"><span>{t("decision")}</span>
+     <select value={action} onChange={e=>setAction(e.target.value)}>
+      {(canDecide?["approve","reject","needs_changes"]:["revoke"]).map(x=>
+       <option key={x} value={x}>{t(x==="approve"?"verify":x==="reject"?"rejectCredential":
+        x==="needs_changes"?"requestChanges":"revoke")}</option>)}</select></label>
+    <label className="phase12-field"><span>{t("reviewerReason")} *</span>
+     <textarea minLength={10} maxLength={700} required rows={3}
+      value={reason} onChange={e=>setReason(e.target.value)}/></label>
+    {action==="approve"&&<label className="phase12-field">
+     <span>{t("reviewBasis")} *</span><textarea required minLength={15} maxLength={700}
+      rows={3} placeholder={t("reviewBasisHint")} value={basis}
+      onChange={e=>setBasis(e.target.value)}/></label>}
+    {action==="approve"&&<label className="phase12-checkbox">
+     <input type="checkbox" checked={confirmation}
+      onChange={e=>setConfirmation(e.target.checked)} required/>
+     <span>{t("confirmVerify")} (<strong>VERIFY</strong>)</span></label>}
+    <button type="submit" className="btn btn-primary" disabled={busy||(action==="approve"&&!confirmation)}>
+     {busy?t("loading"):t("perform")}</button>
+   </form>
+   {error&&<ErrorPanel code={error}/>}
+   {notice&&<Banner kind="success">{notice}</Banner>}
+  </section>}
+  <section className="card phase12-panel"><SectionTitle title={t("reviewHistory")}/>
+   <Timeline rows={data.data.decisions||[]}/></section>
+ </div>;
+}
+function AdminListingQueue(){
+ const {t,date}=useWords();const [status,setStatus]=useState("pending"),
+  [q,setQ]=useState(""),[search,setSearch]=useState("");
+ const rows=load(adminPath("/listings?")+new URLSearchParams({status,q:search}));
+ return <div className="phase12-stack">
+  <div className="phase12-section-title"><div><h1>{t("adminListings")}</h1>
+   <p>{t("publicPatient")}</p></div></div>
+  <nav className="phase12-tabs" role="tablist" aria-label={t("adminListings")}>
+   {(["pending","published","hidden","all"] as const).map(x=><button type="button" key={x}
+    role="tab" aria-selected={status===x} onClick={()=>setStatus(x)}>
+    {t(x==="pending"?"pendingRevisions":x==="published"?"publishedListings":
+     x==="hidden"?"hiddenListings":"all")}</button>)}</nav>
+  <form className="phase12-filter-form" onSubmit={e=>{e.preventDefault();setSearch(q)}}>
+   <input maxLength={100} aria-label={t("search")} placeholder={t("search")}
+    value={q} onChange={e=>setQ(e.target.value)}/>
+   <button className="btn btn-secondary" type="submit">{t("search")}</button></form>
+  {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:!rows.data?<Busy/>:
+   !rows.data.listings.length?<div className="card phase12-empty">{t("noData")}</div>:
+   <div className="card phase12-panel"><div className="phase12-table-wrap">
+    <table className="phase12-table"><thead><tr>
+     <th>{t("clinic")}</th><th>{t("city")}</th><th>{t("changes")}</th>
+     <th>{t("submittedAt")}</th><th>{t("status")}</th><th>{t("action")}</th>
+    </tr></thead><tbody>{rows.data.listings.map((x:any)=><tr key={x.clinicId}>
+     <td><strong>{x.clinicName}</strong></td><td>{x.city}, {x.province}</td>
+     <td>{(x.changedFields||[]).map((s:string)=>s.replaceAll("_"," ")).join(", ")||"—"}</td>
+     <td>{date(x.submittedAt)}</td>
+     <td><Label value={x.hidden?"hidden":x.pendingVersion?"pending":"published"}/></td>
+     <td><a className="phase12-text-link" href={"/admin/listings/"+x.clinicId}>
+      {t("review")} →</a></td>
+    </tr>)}</tbody></table></div></div>}
+ </div>;
+}
+function Timeline({rows}:{rows:any[]}){
+ const {date,t}=useWords();return <div className="phase12-timeline">
+  {!rows.length?<div className="phase12-empty">{t("noData")}</div>:
+   rows.map((e:any,index)=><div className="phase12-event" key={index}>
+    <span className="phase12-event-icon" aria-hidden="true">◦</span>
+    <div><strong>{t(e.action||e.decision)} · {e.actor_name||e.reviewer_name||""}</strong>
+     <p>{date(e.created_at)}</p>{e.reason&&<blockquote>{e.reason}</blockquote>}
+     {e.review_basis&&<p>{t("reviewBasis")}: {e.review_basis}</p>}</div>
+   </div>)}</div>;
+}
+function VersionCompare({title,version,clinicId,clinic,readiness}:{title:string;
+ version:ListingVersion|null;clinicId:string;clinic:any;readiness:any}){
+ const {t}=useWords();if(!version)return <div className="phase12-comparison">
+  <h3>{title}</h3><p>{t("emptyPreview")}</p></div>;
+ const p=version.profile;
+ return <div className="phase12-comparison">
+  <div className="phase12-section-title"><div><h3>{title}</h3>
+   <span>{t("revision")} {version.version}</span></div><Label value={version.status}/></div>
+  <p className="phase12-comparison-description">{p.description}</p>
+  <dl><div><dt>{t("specialties")}</dt><dd>{p.specialties.join(", ")}</dd></div>
+   <div><dt>{t("location")}</dt><dd>{p.latitude}, {p.longitude}</dd></div>
+   <div><dt>{t("dentists")}</dt><dd>{p.dentistIds.length}</dd></div>
+   <div><dt>{t("services")}</dt><dd>{p.serviceIds.length}</dd></div>
+   <div><dt>{t("bookingRules")}</dt><dd>
+    {t(p.bookingRules.approvalMode)} · {t("minNotice")}: {p.bookingRules.minNoticeHours}h ·
+    {t("horizon")}: {p.bookingRules.horizonDays}d</dd></div>
+   <div><dt>{t("contactNote")}</dt><dd>{p.contactNote||"—"}</dd></div></dl>
+  {p.photoIds.length>0&&<div className="phase12-moderation-photos">
+   {p.photoIds.map(x=><figure key={x.id}>
+    <img src={API+route(adminPath("/listings/"+clinicId+"/photos/"+x.id))}
+     alt={x.caption||t("photos")}/><figcaption>{x.caption||"—"}</figcaption>
+   </figure>)}</div>}
+  {readiness&&<Readiness hasDraft issues={readiness.issues||[]} ready={Boolean(readiness.ready)}/>}
+  {version.decision_reason&&<Banner kind="warning">{version.decision_reason}</Banner>}
+ </div>;
+}
+function AdminListingReview({id}:{id:string}){
+ const {t}=useWords();const data=load(adminPath("/listings/"+id));
+ const [action,setAction]=useState("approve"),[reason,setReason]=useState(""),
+  [confirmation,setConfirmation]=useState(false),[busy,setBusy]=useState(false),
+  [fault,setFault]=useState(""),[notice,setNotice]=useState("");
+ useEffect(()=>{if(data.data){setAction(data.data.head.pending_version?"approve":
+  data.data.head.hidden?"restore":"hide")}},[data.data]);
+ async function apply(e:FormEvent){
+  e.preventDefault();if(busy)return;
+  const label=action==="approve"?"confirmApprove":action==="reject"?"confirmReject":
+   action==="hide"?"confirmHide":"confirmRestore";
+  if(!confirm(t(label)))return;setBusy(true);setFault("");setNotice("");
+  try{
+   await api(adminPath("/listings/"+id+"/decision"),"POST",{
+    action,revision:data.data.head.revision,reason,
+    confirmation:action==="approve"&&confirmation?"PUBLISH":null});
+   setNotice(t("confirmed"));data.refresh();
+  }catch(e:any){setFault(e.message)}finally{setBusy(false)}
+ }
+ if(data.error)return <ErrorPanel code={data.error} retry={data.refresh}/>;
+ if(!data.data)return <Busy/>;
+ const x=data.data,h=x.head as Head,hasPending=Boolean(h.pending_version),
+  canHide=Boolean(h.approved_version)&&!h.hidden,canRestore=Boolean(h.hidden&&h.approved_version);
+ const actions=[...(hasPending?["approve","reject"]:[]),...(canHide?["hide"]:[]),
+  ...(canRestore?["restore"]:[])];
+ return <div className="phase12-stack">
+  <a href="/admin/listings" className="phase12-text-link">← {t("adminListings")}</a>
+  <section className="card phase12-panel"><div className="phase12-review-head">
+   <div><span className="phase12-kicker">{t("adminListings")}</span>
+    <h1>{x.clinic.display_name}</h1><p>{x.clinic.city}, {x.clinic.province} · {x.clinic.address}</p></div>
+   <Label value={h.hidden?"hidden":hasPending?"pending":h.approved_version?"published":"drafts"}/>
+  </div>
+   <div className="phase12-info-tiles">
+    <div><span>{t("status")}</span><strong>{x.clinic.status}</strong></div>
+    <div><span>{t("published")}</span><strong>{h.approved_version||"—"}</strong></div>
+    <div><span>{t("pending")}</span><strong>{h.pending_version||"—"}</strong></div>
+    <div><span>{t("revision")}</span><strong>{h.revision}</strong></div></div>
+  </section>
+  <section className="card phase12-panel"><SectionTitle title={t("compare")} desc={t("publicPatient")}/>
+   <div className="phase12-comparison-grid">
+    <VersionCompare title={t("oldContent")} version={x.approved} clinicId={id}
+     clinic={x.clinic} readiness={null}/>
+    <VersionCompare title={t("proposedContent")} version={x.pending} clinicId={id}
+     clinic={x.clinic} readiness={x.readiness}/></div></section>
+  {actions.length>0&&<section className="card phase12-panel">
+   <SectionTitle title={t("decision")} desc={t("confirmReview")}/>
+   <form onSubmit={apply} className="phase12-decision-form">
+    <label className="phase12-field"><span>{t("decision")}</span>
+     <select value={actions.includes(action)?action:actions[0]}
+      onChange={e=>{setAction(e.target.value);setConfirmation(false)}}>
+      {actions.map(a=><option key={a} value={a}>{t(a==="approve"?"approve":
+       a==="reject"?"reject":a==="hide"?"hide":"restore")}</option>)}</select></label>
+    <label className="phase12-field"><span>{t("reviewerReason")} *</span>
+     <textarea rows={3} minLength={10} maxLength={500} required value={reason}
+      onChange={e=>setReason(e.target.value)}/></label>
+    {action==="approve"&&<label className="phase12-checkbox">
+     <input type="checkbox" checked={confirmation} required
+      onChange={e=>setConfirmation(e.target.checked)}/>
+     {t("confirmApprove")} <strong>PUBLISH</strong></label>}
+    <button className="btn btn-primary" type="submit" disabled={busy||(action==="approve"&&!confirmation)}>
+     {busy?t("loading"):t("perform")}</button>
+   </form>
+   {fault&&<ErrorPanel code={fault}/>}
+   {notice&&<Banner kind="success">{notice}</Banner>}
+  </section>}
+  <section className="card phase12-panel"><SectionTitle title={t("reviewHistory")}/>
+   <Timeline rows={x.events||[]}/></section>
+  {h.approved_version&&!h.hidden&&<a href={profileLink(id)}
+   className="btn btn-secondary" target="_blank" rel="noreferrer">
+   {t("publicPreview")} ↗</a>}
+ </div>;
+}
+export function AdminModerationPortal({view}:{view:AdminView}){
+ const bits=typeof location!=="undefined"?location.pathname.split("/").filter(Boolean):[];
+ const id=bits.at(-1)||"";
+ return view==="dentists"?<AdminDentistQueue/>:
+  view==="dentistReview"?<AdminDentistReview id={id}/>:
+  view==="listings"?<AdminListingQueue/>:<AdminListingReview id={id}/>;
+}
+export function PublicListingPortal({clinicId}:{clinicId:string}){
+ const {t}=useWords(),content=load("/public/clinics/"+clinicId);
+ if(content.error)return <div className="phase12-public-page"><ErrorPanel code={t("noPublic")}/></div>;
+ if(!content.data)return <Busy/>;
+ const data=content.data;
+ return <div className="phase12-public-page">
+  <header className="phase12-public-sitebar"><a href="/"><strong>DANDANLINK</strong></a>
+   <span>{t("publicUnlisted")}</span></header>
+  <PatientPreviewCard item={data as Card} badge="published"/>
+  <div className="phase12-public-notice"><Banner kind="info">{t("publicWarning")}
+   {t("publicPatient")} {t("noClaims")}</Banner></div>
+ </div>;
+}
