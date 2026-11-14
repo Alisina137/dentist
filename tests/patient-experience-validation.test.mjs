@@ -53,7 +53,7 @@ test("Patient website has functional mobile bottom nav, gallery, filters, schedu
   assert.ok(nav.includes(route),route);
  const discovery=read("packages/ui-web/src/phase13.tsx");
  for(const feature of ["p13-gallery-grid","p13-date-ribbon","p13-mobile-filter-toolbar",
-  "p13-filter-panel-open","setMobileFilters","tab==="gallery""])
+  "p13-filter-panel-open","setMobileFilters",'tab==="gallery"'])
   assert.ok(discovery.includes(feature),feature);
  const auth=read("packages/ui-web/src/phase14.tsx");
  for(const field of ["confirmPassword","passwordMismatch","confirmation","password!==confirmation"])
