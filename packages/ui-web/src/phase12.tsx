@@ -37,6 +37,7 @@ const defaults=():Profile=>({description:"",specialties:[],photoIds:[],dentistId
   bufferMinutes:10},latitude:null,longitude:null,contactNote:null});
 const labels:Record<Lang,Record<string,string>>={
  en:{
+ CLINIC_MUST_BE_APPROVED:"First approve the clinic license in Platform Admin.",CLINIC_CONTACT_LOCATION_REQUIRED:"Complete clinic contact and address.",MAP_COORDINATES_REQUIRED:"Provide both map coordinates.",VERIFIED_DENTIST_REQUIRED:"Select a verified dentist.",PUBLIC_SERVICE_REQUIRED:"Select a public service.",PRIMARY_PHOTO_REQUIRED:"Select a primary photo.",SPECIALTY_REQUIRED:"Choose a specialty.",DENTIST_VERIFICATION_INVALID:"Dentist verification is pending, expired or revoked.",SERVICE_NOT_PUBLIC:"Selected service is not active and public.",PHOTO_NOT_IN_CLINIC:"A gallery photo does not belong to this clinic.",CLINIC_HOURS_REQUIRED:"Configure clinic opening hours.",PROVIDER_HOURS_REQUIRED:"Configure dentist working hours.",ACTIVE_CHAIR_REQUIRED:"Add an active treatment chair.",REAL_AVAILABILITY_REQUIRED:"No real bookable time slot was available for the next eight days.",
  listing:"Clinic Listing",overview:"Overview",dentists:"Dentists",photos:"Photos",bookingRules:"Booking Rules",
  preview:"Preview",adminDentists:"Dentist Verification",adminListings:"Marketplace Listings",
  intro:"Build a verified, trustworthy public clinic profile before patients can discover it.",
@@ -119,6 +120,7 @@ const labels:Record<Lang,Record<string,string>>={
  validUntil:"Valid until",draftVersion:"Draft version",qualifications:"Qualifications"
  },
  "fa-AF":{
+ CLINIC_MUST_BE_APPROVED:"ابتدا جواز کلینیک در مدیریت تأیید شود.",CLINIC_CONTACT_LOCATION_REQUIRED:"آدرس و تماس کلینیک را تکمیل کنید.",MAP_COORDINATES_REQUIRED:"مختصات نقشه را وارد کنید.",VERIFIED_DENTIST_REQUIRED:"حداقل یک داکتر تأییدشده انتخاب کنید.",PUBLIC_SERVICE_REQUIRED:"حداقل یک خدمت عمومی انتخاب کنید.",PRIMARY_PHOTO_REQUIRED:"عکس اصلی را انتخاب کنید.",SPECIALTY_REQUIRED:"حداقل یک تخصص انتخاب کنید.",DENTIST_VERIFICATION_INVALID:"تأیید داکتر در انتظار، منقضی یا لغو شده است.",SERVICE_NOT_PUBLIC:"خدمت انتخاب‌شده فعال و عمومی نیست.",PHOTO_NOT_IN_CLINIC:"عکس به این کلینیک تعلق ندارد.",CLINIC_HOURS_REQUIRED:"ساعات کاری کلینیک را تنظیم کنید.",PROVIDER_HOURS_REQUIRED:"تقسیم اوقات داکتر را تنظیم کنید.",ACTIVE_CHAIR_REQUIRED:"چوکی فعال تداوی لازم است.",REAL_AVAILABILITY_REQUIRED:"در هشت روز آینده وقت واقعی مناسب یافت نشد.",
  listing:"نمایش کلینیک",overview:"نمای کلی",dentists:"داکتران دندان",photos:"عکس‌ها",bookingRules:"قواعد نوبت",
  preview:"پیش‌نمایش",adminDentists:"تأیید داکتران دندان",adminListings:"آگهی‌های کلینیک",
  intro:"پروفایل قابل اعتماد کلینیک را پیش از انتشار آماده کنید.",
@@ -201,6 +203,7 @@ const labels:Record<Lang,Record<string,string>>={
  qualifications:"اسناد تحصیلی"
  },
  "ps-AF":{
+ CLINIC_MUST_BE_APPROVED:"د کلینیک جواز لومړی تایید کړئ.",CLINIC_CONTACT_LOCATION_REQUIRED:"د کلینیک پته او اړیکه بشپړه کړئ.",MAP_COORDINATES_REQUIRED:"د نقشې دواړه کوارډیناتونه ورکړئ.",VERIFIED_DENTIST_REQUIRED:"یو تایید شوی ډاکټر وټاکئ.",PUBLIC_SERVICE_REQUIRED:"یو عامه خدمت وټاکئ.",PRIMARY_PHOTO_REQUIRED:"اصلي انځور وټاکئ.",SPECIALTY_REQUIRED:"یو تخصص وټاکئ.",DENTIST_VERIFICATION_INVALID:"د ډاکټر تایید نامکمل، ختم یا لغوه شوی.",SERVICE_NOT_PUBLIC:"ټاکل شوی خدمت فعال او عام نه دی.",PHOTO_NOT_IN_CLINIC:"انځور د دې کلینیک نه دی.",CLINIC_HOURS_REQUIRED:"د کلینیک کاري ساعتونه تنظیم کړئ.",PROVIDER_HOURS_REQUIRED:"د ډاکټر ساعتونه تنظیم کړئ.",ACTIVE_CHAIR_REQUIRED:"فعاله د غاښونو څوکۍ پکار ده.",REAL_AVAILABILITY_REQUIRED:"په راتلونکو اتو ورځو کې خالي وخت نشته.",
  listing:"د کلینیک پېژندنه",overview:"لنډیز",dentists:"د غاښونو ډاکټران",photos:"انځورونه",
  bookingRules:"د وخت اخیستنې اصول",preview:"مخکتنه",
  adminDentists:"د ډاکټرانو تایید",adminListings:"د کلینیک اعلانونه",
@@ -506,7 +509,7 @@ function Workspace({ctx,space}:{ctx:Context;space:Space}){
            onChange={e=>update({dentistIds:e.target.checked?
             [...form.dentistIds,d.id]:form.dentistIds.filter(x=>x!==d.id)})}/>
           {t("selected")}</label>
-         <CredentialForm space={space} dentist={d} onSuccess={()=>{doctors.refresh();refresh();}}/>
+         <CredentialForm space={space} dentist={d} onSuccess={()=>{doctors.refresh();}}/>
          <a className="phase12-text-link" href={"/clinic/staff/"+d.id+"?clinic="+encodeURIComponent(space.clinicId)}>
           {t("viewStaff")} ↗</a>
         </div>
@@ -615,7 +618,7 @@ function Readiness({issues,ready,hasDraft}:{issues:string[];ready:boolean;hasDra
   {ready?<Banner kind="success">{t("complete")}</Banner>:!hasDraft?
    <Banner kind="warning">{t("saveBefore")}</Banner>:
    <div className="phase12-check-grid">{issues.map((x,i)=><span key={i} className="phase12-check-missing">
-     <b aria-hidden="true">!</b>{x.replaceAll("_"," ")}</span>)}</div>}
+     <b aria-hidden="true">!</b>{t(x)}</span>)}</div>}
  </div>;
 }
 function CredentialForm({space,dentist,onSuccess}:{space:Space;dentist:Dentist;onSuccess:()=>void}){
@@ -746,6 +749,9 @@ function AdminDentistReview({id}:{id:string}){
  const [action,setAction]=useState("approve"),[reason,setReason]=useState(""),
   [basis,setBasis]=useState(""),[confirmation,setConfirmation]=useState(false),
   [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ useEffect(()=>{if(data.data?.verification?.status==="verified")setAction("revoke");
+  else if(data.data?.verification?.status==="pending")setAction("approve");
+ },[data.data?.verification?.status]);
  async function decision(e:FormEvent){
   e.preventDefault();if(busy)return;
   if(!confirm(t("confirmReview")))return;
