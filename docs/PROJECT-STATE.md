@@ -4,9 +4,9 @@ Product specification: DandanLink v1.0 (13 November 2026).
 Engineering process: Software Development Workflow V5.
 Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\dentist).
 
-## Current phase: PH12 verified clinic profiles, dentist credentials and independent publishing review
+## Current phase: PH13 independently reviewed public clinic and dentist discovery
 
-Status: **PH01–PH11 implemented and tested. PH12 clinician credentials and moderated listings implemented on a feature branch; CI and clinical verification acceptance must pass before merge. Human medical credential policy, publication rights, accessibility and privacy sign-offs remain separate production gates**.
+Status: **PH01–PH12 implemented and tested. PH13 clinic/dentist search, realtime availability, public profile navigation and indexed safety view implemented on a feature branch; independent CI and acceptance required before merge. Human professional credential policy, publication rights, clinical privacy/security, accessibility and localization signoffs remain production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
@@ -216,3 +216,12 @@ See docs/PH04-ACCEPTANCE.md and docs/PH05-ACCEPTANCE.md.
 - PostgreSQL migration `0012_public_listings_credentials.sql`; UI `phase12.tsx`, API `listing-router.ts`, `tests/phase12-validation.test.mjs`, `tests/phase12-integration.mjs` and `tests/phase12-immutability.ts`.
 - Owner clinic approval, credential license checks, privacy/photo rights, safety, manual accessibility and media retention controls remain go-live gates.
 - See `docs/PH12-ACCEPTANCE.md`. Next PH13: fast patient public discovery and verified clinic search.
+
+## PH13 — Fast patient public discovery and honest clinic/dentist profiles
+
+- A real **patient Home** at `/` replaces the no-listings placeholder. Public **Find Care** `/search` and **About** `/about` are linked from the site header. Clinic profiles `/clinics/:clinicId` and dentist profiles `/clinics/:clinicId/dentists/:dentistId` are fully functional; all with English/Dari/Pashto translations, RTL/LTR and local calendar display.
+- The search index contains approved/public clinic, dentist and real service text *only*. `0013_public_discovery_index.sql` adds trigram and city/fee/specialty/service indexes, refresh triggers on approved public revisions and clinic name/city, and a live verification/suspension/active-service/valid-subscription security gate. Clinic credential revocation immediately removes search visibility; no patient records indexed.
+- `GET /v1/discovery/{facets,search,clinics/:id,clinics/:id/availability,clinics/:id/dentists/:dentistId}` supports true city/name/service/specialty/fee/date filters, URL-persisted pagination, verified-only dentist cards, opt-in geolocation distance sort, real opening hours and live unbookable appointment candidates. Real slots come from existing PH04/06 schedule and bookings, never seeded or guessed.
+- User-facing CTAs lead to legitimate public clinic profile, contact phone or directions (external map link). No self-service booking until PH15, patient account until PH14, or reviews until PH17.
+- Tests: `tests/phase13-validation.test.mjs` and `tests/phase13-integration.mjs`; CI migration, complete prior-phase regressions, strict TypeScript, web builds and Expo Android bundle.
+- See `docs/PH13-ACCEPTANCE.md`. Next **PH14**: patient identity, profile preferences, consent and dependent permissions.
