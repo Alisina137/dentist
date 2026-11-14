@@ -10,7 +10,7 @@ In `C:\projects\dentist`:
 
 ```powershell
 pnpm install --frozen-lockfile
-pnpm dev:api
+pnpm dev:api # starts Express on 4000, ngrok http 4000, and updates apps/mobile/.env
 ```
 
 In a second terminal:
@@ -24,12 +24,30 @@ Open the Expo QR in Expo Go (compatible SDK 57).
 
 ### Connect real patient content
 
-Create `apps/mobile/.env` (local only):
+`pnpm dev:api` now starts **both** the local Express API on port 4000
+and `ngrok http 4000`. It waits for the ngrok HTTPS tunnel, then creates or
+updates **only** `EXPO_PUBLIC_API_URL` inside ignored
+`apps/mobile/.env`. Existing local settings are preserved, so you do not need
+to copy the rotating URL manually.
+
+Install the standalone ngrok command, sign in or configure its auth token
+(`ngrok config add-authtoken <YOUR_TOKEN>`), then run `pnpm dev:api` **before**
+`pnpm dev:mobile`. Keep both terminals open. If Expo/Metro was already running,
+restart `pnpm dev:mobile` after the API URL changes.
+
+Optionally configure your patient website URL separately in
+`apps/mobile/.env`:
 
 ```dotenv
-EXPO_PUBLIC_API_URL=https://YOUR-PUBLIC-API-TUNNEL.example
 EXPO_PUBLIC_PATIENT_WEB_URL=https://YOUR-PATIENT-WEB.example
 ```
+
+If `pnpm dev:api` cannot find a working ngrok HTTPS URL, it fails with a
+diagnostic instead of leaving the mobile app pointing at localhost.
+`http://localhost:4000/ready` must respond successfully for DB-backed
+discovery to work. A blue Expo Go startup screen can also indicate a Metro,
+SDK or bundling error, unrelated to API connectivity; check Metro output if
+the API tunnel is healthy.
 
 `EXPO_PUBLIC_API_URL` is used for **real approved PH13 public clinic
 search**, live city/specialty/service facets, approved clinic/gallery/dentist
