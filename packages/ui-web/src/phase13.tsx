@@ -185,7 +185,7 @@ const translations:Record<Language,Record<string,string>>={
  bookingLater:"رزرو آنلاین در مرحله ۱۵ فعال می‌شود.",
  consultation:"مشوره",duration:"مدت",minutes:"دقیقه",
  verifiedSince:"اعتبار اسناد تا",validTo:"معتبر تا",
- gallery:"عکس‌های کلینیک",photo:"عکس",patientExperience:"جستجوی خدمات دندان",
+ gallery:"عکس‌های کلینیک",galleryHelp:"فقط عکس‌های تأییدشده و نشرشده کلینیک نمایش داده می‌شوند. عکس ساختگی وجود ندارد.",noPublishedPhotos:"هنوز عکس کلینیک نشر نشده است",photo:"عکس",patientExperience:"جستجوی خدمات دندان",
  trustTitle:"فقط معلومات عمومی تأییدشده",trustDescription:"پروفایل‌ها و قیمت‌ها پیش از انتشار بررسی می‌شوند. رتبه‌بندی پولی، امتیاز ساختگی یا وقت خیالی وجود ندارد.",
  contactTitle:"مستقیماً با کلینیک تماس بگیرید",contactText:"شماره تماس همان شماره منتشرشده توسط کلینیک است.",
  clearDate:"هر تاریخ",searchBack:"بازگشت به نتایج",profileUnavailable:"این پروفایل فعلاً در دسترس نیست.",
