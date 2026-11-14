@@ -6,7 +6,7 @@ Repository: Alisina137/dentist. Local IDE folder: dentist (usually C:\projects\d
 
 ## Current phase: PH10 patient invoicing, partial payments and auditable cash ledger
 
-Status: **PH01–PH09 implemented and tested. PH10 clinic billing implementation in feature branch; CI/medical finance acceptance pending before merger. Manual accountant reconciliation, medical, accessibility, privacy/security and legal consent verification remain separate production gates**.
+Status: **PH01–PH10 implemented and tested; PH10 automated static checks, TypeScript, builds, Expo bundle and real PostgreSQL-backed invoice/payment/reversal acceptance passed. Manual accounting reconciliation, accessibility, privacy/security, patient-data retention and legal invoice/tax review remain separate production gates**.
 This is a foundational development release, not a medical records or production healthcare system.
 
 ### PH03 installed features
