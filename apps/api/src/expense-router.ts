@@ -79,7 +79,7 @@ function receipt(v:unknown):Receipt|null{
  if(!v||typeof v!=="object")fail(422,"INVALID_RECEIPT");
  const file=v as Record<string,unknown>;
  const name=str(file.fileName,3,120,"FILE_NAME");
- if(!/^[\w. ()-]+$/.test(name))fail(422,"INVALID_FILE_NAME");
+ if(/[\/\\\x00-\x1F\x7F]/u.test(name))fail(422,"INVALID_FILE_NAME");
  const mime=str(file.mimeType,7,40,"RECEIPT_MIME");
  if(!["application/pdf","image/png","image/jpeg"].includes(mime))fail(415,"RECEIPT_FILE_TYPE");
  const content=str(file.contentBase64,8,1400000,"RECEIPT_DATA");
@@ -342,7 +342,9 @@ export function expenseRouter(){
    fail(500,"RECEIPT_INTEGRITY_FAILED");
   privateResponse(res);res.setHeader("X-Content-Type-Options","nosniff");
   res.setHeader("Content-Type",file.mime_type);
-  res.setHeader("Content-Disposition","attachment; filename="+JSON.stringify(file.file_name));
+  // ASCII-only download header keeps filenames valid even when the uploaded name is Dari/Pashto.
+  const suffix=file.mime_type==="application/pdf"?".pdf":file.mime_type==="image/png"?".png":".jpg";
+  res.setHeader("Content-Disposition",'attachment; filename="expense-receipt'+suffix+'"');
   res.send(bytes);
  }));
  router.use((err:unknown,_req:Request,res:Response,_next:NextFunction)=>{
