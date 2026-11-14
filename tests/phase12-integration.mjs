@@ -156,7 +156,7 @@ const publicItem=ok(await request(publicRoute,"GET"),[200],
  "public direct-link projection shows only independently approved data");
 assert.equal(publicItem.verifiedClinic,true);
 assert.equal(publicItem.publicBookingsEnabled,false);
-assert.equal(publicItem.searchable,false);
+assert.equal(publicItem.searchable,true);
 assert.equal(publicItem.profile.dentists[0].verified,true);
 assert.equal(publicItem.profile.services[0].priceAfn,850);
 assert.equal(publicItem.profile.photos[0].id,image.id);
