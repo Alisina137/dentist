@@ -76,8 +76,8 @@ function readable(i:any){
  const total=Number(i.total_afn);
  const balance=i.status==="void"?0:i.status==="draft"?total:total-paid;
  const state=i.status==="void"?"void":i.status==="draft"?"draft":
- balance===0?"paid":paid>0?"partially_paid":
- i.due_date&&String(i.due_date).slice(0,10)<localDay()?"overdue":"issued";
+ balance===0?"paid":i.due_date&&String(i.due_date).slice(0,10)<localDay()?"overdue":
+ paid>0?"partially_paid":"issued";
  return {id:i.id,clinicId:i.clinic_id,patientId:i.patient_id,
   patientName:i.patient_name||null,patientNumber:i.patient_number||null,
   number:i.invoice_number,label:"INV-"+String(i.invoice_number).padStart(6,"0"),
@@ -371,7 +371,8 @@ export function billingRouter(){
   const occurredAt=req.body?.occurredAt?new Date(req.body.occurredAt):new Date();
   if(!Number.isFinite(occurredAt.getTime())||occurredAt.getTime()>Date.now()+60000||
    occurredAt.getTime()<Date.now()-366*86400000)fail(422,"INVALID_PAYMENT_DATE");
-  const payload={kind,id,total,method,reference,note,occurredAt:occurredAt.toISOString()};
+  // Digest user-submitted time, not a newly generated default time on replay.
+  const payload={kind,id,total,method,reference,note,occurredAt:req.body?.occurredAt??null};
   const hashed=digest(payload);
   let entry:any=null,replayed=false;
   await sqlClient.begin(async tx=>{
