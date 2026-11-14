@@ -41,6 +41,7 @@ const initial:Params={q:"",city:"Kabul",specialty:"",service:"",date:"",maxFee:"
  verified:true,sort:"relevance",page:1,latitude:"",longitude:""};
 const translations:Record<Language,Record<string,string>>={
  en:{
+ bookAppointment:"Book appointment",
  home:"Home",find:"Find care",about:"About",clinic:"Clinic",dentist:"Dentist",
  hello:"Care starts with a good match",eyebrow:"Verified care · Real availability",
  heading:"Find the right dental care, closer to you.",subheading:
@@ -127,6 +128,7 @@ const translations:Record<Language,Record<string,string>>={
  readMore:"Explore this clinic",viewProfiles:"View dentists",searchAgain:"Search again"
  },
  "fa-AF":{
+ bookAppointment:"رزرو نوبت",
  home:"خانه",find:"جستجوی خدمات",about:"درباره",clinic:"کلینیک",dentist:"داکتر",
  hello:"مراقبت بهتر با انتخاب درست آغاز می‌شود",eyebrow:"خدمات تأییدشده · وقت‌های واقعی",
  heading:"داکتر دندان مناسب را در نزدیکی خود پیدا کنید.",
@@ -210,6 +212,7 @@ const translations:Record<Language,Record<string,string>>={
  readMore:"مشاهده کلینیک",viewProfiles:"مشاهده داکتران",searchAgain:"جستجوی دوباره"
  },
  "ps-AF":{
+ bookAppointment:"د ملاقات وخت",
  home:"کور",find:"روغتیايي خدمتونه",about:"زموږ په اړه",clinic:"کلینیک",dentist:"ډاکټر",
  hello:"ښه پاملرنه د سم انتخاب څخه پیلېږي",eyebrow:"تایید شوي خدمتونه · رښتیني وختونه",
  heading:"خپل نږدې د غاښونو ښه ډاکټر ومومئ.",
@@ -786,14 +789,16 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
      {item.hours?.now.isWithinPublishedHours?t("openScheduled"):t("closedScheduled")}</span>
     <p>{t("holidayNote")}</p>
     <div className="p13-profile-actions">
-     <a className="btn btn-primary" href={"tel:"+item.clinic.phone}>
+     <a className="btn btn-primary" href={"/book/"+encodeURIComponent(clinicId)}>
+      {t("bookAppointment")}</a>
+     <a className="btn btn-secondary" href={"tel:"+item.clinic.phone}>
       {t("contactClinic")}</a>
      <a className="btn btn-secondary" target="_blank" rel="noopener noreferrer" href={directions}>
       {t("directions")} ↗</a>
      <button className="btn btn-secondary" onClick={()=>copyUrl(t,setToast)}>{t("share")}</button>
     </div>
     {toast&&<span className="p13-toast" role="status">{toast}</span>}
-    <small>{t("noBooking")}</small>
+    <small>{t("datesReal")}</small>
    </div>
   </section>
   <div className="p13-profile-grid">
@@ -863,7 +868,7 @@ export function PatientClinicPage({clinicId}:{clinicId:string}){
      <h3>{item.clinic.name}</h3><p>{t("contactText")}</p>
      <a className="btn btn-primary" href={"tel:"+item.clinic.phone}>{t("contactClinic")}</a>
      <strong dir="ltr">{item.clinic.phone}</strong>
-     <span>{t("bookingLater")}</span></div>
+     <a className="btn btn-primary" href={"/book/"+encodeURIComponent(clinicId)}>{t("bookAppointment")}</a></div>
     <div className="p13-aside-hours"><h3>{t("hours")}</h3><HoursTable hours={item.hours}/></div>
    </aside>
   </div>
@@ -889,10 +894,11 @@ export function PatientDentistPage({clinicId,dentistId}:{clinicId:string;dentist
     <p className="p13-profile-address">⌖ {item.clinic.name} · {item.clinic.city},
      {item.clinic.province}</p>
     <div className="p13-profile-actions">
-     <a href={"tel:"+item.clinic.phone} className="btn btn-primary">{t("contactClinic")}</a>
+     <a href={"/book/"+encodeURIComponent(clinicId)} className="btn btn-primary">{t("bookAppointment")}</a>
+     <a href={"tel:"+item.clinic.phone} className="btn btn-secondary">{t("contactClinic")}</a>
      <a href={"/clinics/"+clinicId} className="btn btn-secondary">{t("viewClinic")}</a>
     </div>
-    <small>{t("evidenceReviewed")}. {t("bookingLater")}</small>
+    <small>{t("evidenceReviewed")}. {t("datesReal")}</small>
    </div>
   </section>
   <div className="p13-profile-grid">
