@@ -49,7 +49,7 @@ type Preview={date:string;timezone:string;slots:Slot[];previewOnly:true;publicBo
 
 const API=(process.env.EXPO_PUBLIC_API_URL||"").trim().replace(/\/+$/,"");
 const PATIENT_WEB=(process.env.EXPO_PUBLIC_PATIENT_WEB_URL||"").trim().replace(/\/+$/,"");
-const PREF_KEY="dandanlink.patient.preferences.v2";
+const PREF_KEY="dandanlink.patient.preferences.v1";
 const SAVED_KEY="dandanlink.patient.savedPublicClinicIds.v1";
 const colors={
  blue:"#075BF2",blueDeep:"#1247BE",navy:"#11274A",ink:"#263854",muted:"#6A788D",
@@ -883,10 +883,19 @@ function SavedScreen({ui,ids,onRemove,onClinic,onExplore}:{ui:UI;ids:string[];
   let active=true;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
   setState(prev=>({...prev,loading:true,error:false}));
   void Promise.all(ids.slice(0,30).map(async id=>{
-   try{return await fetchPublic<ClinicDetail>("/clinics/"+encodeURIComponent(id),controller.signal)}
-   catch{return null}})).then(items=>{
-    if(active)setState({loading:false,clinics:items.filter((x):x is ClinicDetail=>Boolean(x)),
-     missing:items.filter(x=>!x).length,error:false});
+   try{return {kind:"found" as const,clinic:await fetchPublic<ClinicDetail>(
+    "/clinics/"+encodeURIComponent(id),controller.signal)}}
+   catch(error){
+    if(error instanceof Error&&error.message==="PROFILE_UNAVAILABLE")
+     return {kind:"removed" as const};
+    return {kind:"offline" as const};
+   }})).then(items=>{
+    if(!active)return;
+    const offline=items.some(x=>x.kind==="offline");
+    setState({loading:false,
+     clinics:offline?[]:items.filter((x):x is {kind:"found";clinic:ClinicDetail}=>
+      x.kind==="found").map(x=>x.clinic),
+     missing:items.filter(x=>x.kind==="removed").length,error:offline});
    }).catch(()=>{if(active)setState({loading:false,clinics:[],missing:0,error:true})})
    .finally(()=>clearTimeout(timer));
   return ()=>{active=false;controller.abort();clearTimeout(timer)};
