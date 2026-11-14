@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 
 /**
  * Session token is an opaque Better Auth bearer session, stored only in
- * iOS Keychain/Android Keystore-backed SecureStore. Never in AsyncStorage.
+ * iOS Keychain/Android Keystore-backed SecureStore. Never in unencrypted storage.
  * Every private API call checks the session on the server (PH14/PH15 rules).
  */
 declare const process:{readonly env:{readonly EXPO_PUBLIC_API_URL?:string}};
