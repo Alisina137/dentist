@@ -537,7 +537,7 @@ export function listingRouter(){
    valid_until,file_name,mime_type,size_bytes,created_at
    FROM clinic_dentist_credential_submissions WHERE membership_id=${id}
    AND clinic_id=${v.clinic_id} ORDER BY created_at DESC LIMIT 25`;
-  const decisions=await sqlClient`SELECT decision,reason,review_basis,created_at,
+  const decisions=await sqlClient`SELECT x.decision,x.reason,x.review_basis,x.created_at,
    u.name AS reviewer_name FROM clinic_dentist_credential_decisions x
    JOIN auth_users u ON u.id=x.actor_id WHERE x.membership_id=${id}
    ORDER BY x.created_at DESC LIMIT 60`;
