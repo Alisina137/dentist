@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { twoFactor } from "better-auth/plugins";
+import { twoFactor, bearer } from "better-auth/plugins";
 import { db, schema } from "@dandanlink/db";
 import { sendAccountMail } from "./mail.js";
 import { devEmailVerificationDisabled } from "./email-policy.js";
@@ -52,7 +52,7 @@ export const auth = betterAuth({
       } : {})
     }
   },
-  plugins: [twoFactor({ issuer: "DandanLink", totpOptions: { digits: 6, period: 30 } })],
+  plugins: [twoFactor({ issuer: "DandanLink", totpOptions: { digits: 6, period: 30 } }), bearer({requireSignature:true})],
   advanced: {
     defaultCookieAttributes: { sameSite: "lax", secure: process.env.NODE_ENV === "production", httpOnly: true }
   }

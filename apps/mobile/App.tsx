@@ -1,4 +1,7 @@
 import React,{useCallback,useEffect,useState} from "react";
+import {Alert} from "react-native";
+import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
  ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,
  StatusBar,StyleSheet,Text,TextInput,View
@@ -17,8 +20,8 @@ declare const process:{readonly env:{
 }};
 type Language="fa-AF"|"ps-AF"|"en";
 type Calendar="solar_hijri"|"gregorian";
-type Tab="home"|"explore"|"saved"|"account";
-type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string};
+type Tab="home"|"explore"|"appointments"|"saved"|"account";
+type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string}|{kind:"booking";clinicId:string;dentistId?:string;booking?:Booking};
 type Remote<T>={loading:boolean;data:T|null;error:string|null;refresh:()=>void};
 type Clinic={id:string;name:string;city:string;province:string;address:string;phone:string};
 type Service={id:string;name:string;category:string;priceAfn:number;durationMinutes:number;version?:number};
@@ -73,7 +76,7 @@ const en={
  allSpecialties:"All specialties",noResults:"No matching verified clinics",
  noResultsSub:"Try a different city, treatment or search phrase.",
  emptyDirectory:"No verified clinics are published for this city yet.",
- verify:"Verified",preview:"Schedule preview",notBooked:"Not reservable online yet",
+ verify:"Verified",preview:"Schedule preview",notBooked:"Select Book appointment to request this time",
  call:"Call clinic",website:"Website",directions:"Directions",details:"View profile",
  priceFrom:"From",afn:"AFN",dentists:"Dentists",treatments:"Treatments",times:"Availability",
  gallery:"Gallery",hours:"Opening hours",about:"About",overview:"Overview",
@@ -87,7 +90,7 @@ const en={
  licensed:"Credentials independently reviewed",noFake:"Ratings and awards are not displayed without verifiable evidence.",
  date:"Date",selectDate:"Choose a day",chooseService:"Choose treatment",
  allDentists:"All dentists",timePreview:"Real candidate time slots",
- timePreviewBody:"These times reflect the clinic's schedule, but online booking is not live. Contact the clinic to confirm.",
+ timePreviewBody:"Live schedule previews. Select Book appointment to confirm the current time with the clinic.",
  noSlots:"No candidate times available on this date.",slots:"available previews",
  pickDate:"Select a future date",minutes:"min",closed:"Closed",
  openScheduled:"Within published hours",closedScheduled:"Outside published hours",
@@ -97,10 +100,10 @@ const en={
  emptySaved:"Nothing saved yet",emptySavedSub:"Use the heart on a verified clinic to keep it here.",
  noLongerPublished:"Some previously saved clinics are no longer published and are not shown.",
  discover:"Discover clinics",notices:"Important",
- later:"Online appointments, patient history and clinical records will arrive in later phases.",
+ later:"Book and manage appointments in the Appointments tab. Clinic records require explicit, verified release.",
  accountTitle:"Patient account & preferences",guest:"Browsing as a guest",
  guestSub:"Public clinic discovery is available without signing in.",
- secureAccount:"Open secure patient account",secureHelp:"Sign in, edit your profile, manage family permissions and review privacy on the patient website.",
+ secureAccount:"Open secure patient account",secureHelp:"Sign in here to manage bookings, family permissions and profile settings.",
  webMissing:"Set EXPO_PUBLIC_PATIENT_WEB_URL to enable the secure patient account link on this device.",
  prefs:"App preferences",language:"Language",calendar:"Calendar",
  solar:"Solar Hijri",gregorian:"Gregorian",network:"Connection",
@@ -111,7 +114,7 @@ const en={
  info:"About DandanLink",howWorks:"How trust works",stepOne:"Only reviewed clinics are listed.",
  stepTwo:"Dentist credentials and affiliation must be current.",
  stepThree:"Price and hours are displayed from approved clinic records.",
- pending:"Online booking is not yet available. Please contact the clinic.",
+ pending:"A booking is only confirmed after submission or clinic approval.",
  support:"Support",yourCity:"Your selected city",changeCity:"Change city",
  tryAgain:"Try again",unavailable:"This verified profile is currently unavailable.",
  unavailableMore:"The clinic may have removed its listing or verification may have expired.",
@@ -140,7 +143,7 @@ const fa:Record<keyof typeof en,string>={
  allSpecialties:"تمام تخصص‌ها",noResults:"کلینیک مطابق جستجو پیدا نشد",
  noResultsSub:"شهر، تداوی یا متن جستجو را تغییر دهید.",
  emptyDirectory:"فعلاً کلینیک تأییدشده در این شهر نشر نشده است.",
- verify:"تأییدشده",preview:"نمایش تقسیم اوقات",notBooked:"رزرو آنلاین هنوز فعال نیست",
+ verify:"تأییدشده",preview:"نمایش تقسیم اوقات",notBooked:"برای ثبت این وقت گزینه رزرو نوبت را انتخاب کنید",
  call:"تماس با کلینیک",website:"وبسایت",directions:"مسیر",details:"مشاهده پروفایل",
  priceFrom:"شروع از",afn:"افغانی",dentists:"داکتران",treatments:"تداوی‌ها",
  times:"وقت‌های آزاد",gallery:"گالری",hours:"اوقات کاری",about:"درباره",
@@ -155,7 +158,7 @@ const fa:Record<keyof typeof en,string>={
  noFake:"امتیاز و جوایز بدون سند معتبر نمایش داده نمی‌شوند.",
  date:"تاریخ",selectDate:"یک روز انتخاب کنید",chooseService:"تداوی را انتخاب کنید",
  allDentists:"همه داکتران",timePreview:"وقت‌های احتمالی واقعی",
- timePreviewBody:"این وقت‌ها مطابق تقسیم اوقات کلینیک‌اند؛ رزرو آنلاین هنوز فعال نیست. برای تأیید تماس بگیرید.",
+ timePreviewBody:"وقت‌های واقعی کلینیک را ببینید و برای ثبت درخواست روی رزرو نوبت بزنید.",
  noSlots:"در این تاریخ وقت احتمالی موجود نیست.",slots:"وقت پیشنهادی",
  pickDate:"یک روز آینده انتخاب کنید",minutes:"دقیقه",closed:"بسته",
  openScheduled:"در ساعت کاری نشرشده",closedScheduled:"خارج از ساعت کاری نشرشده",
@@ -167,11 +170,11 @@ const fa:Record<keyof typeof en,string>={
  emptySaved:"هنوز چیزی ذخیره نشده",emptySavedSub:"برای ذخیره کلینیک از علامت قلب استفاده کنید.",
  noLongerPublished:"برخی کلینیک‌های ذخیره‌شده دیگر نشر نیستند و نمایش داده نمی‌شوند.",
  discover:"جستجوی کلینیک‌ها",notices:"مهم",
- later:"رزرو آنلاین، تاریخچه نوبت و اسناد صحی در مراحل آینده اضافه می‌شوند.",
+ later:"نوبت‌های خود را در بخش نوبت‌ها مدیریت کنید. اسناد صحی تنها با اجازه رسمی کلینیک قابل دسترس‌اند.",
  accountTitle:"حساب مریض و تنظیمات",guest:"به‌صورت مهمان هستید",
  guestSub:"برای جستجوی کلینیک به ورود ضرورت نیست.",
  secureAccount:"بازکردن حساب مصون مریض",
- secureHelp:"ورود، ویرایش پروفایل، مدیریت اجازه خانواده و حریم خصوصی در وبسایت مریض انجام می‌شود.",
+ secureHelp:"در همین برنامه وارد شوید و نوبت‌ها، پروفایل و اجازه خانواده را مدیریت کنید.",
  webMissing:"برای لینک حساب مصون، EXPO_PUBLIC_PATIENT_WEB_URL را تنظیم کنید.",
  prefs:"تنظیمات برنامه",language:"زبان",calendar:"تقویم",
  solar:"هجری شمسی",gregorian:"میلادی",network:"ارتباط",
@@ -184,7 +187,7 @@ const fa:Record<keyof typeof en,string>={
  stepOne:"فقط کلینیک‌های بررسی‌شده نمایش داده می‌شوند.",
  stepTwo:"اسناد حرفه‌ای و ارتباط داکتر باید معتبر باشند.",
  stepThree:"قیمت‌ها و ساعت‌ها از معلومات تأییدشده کلینیک می‌آیند.",
- pending:"رزرو آنلاین هنوز فعال نیست؛ با کلینیک تماس بگیرید.",
+ pending:"نوبت پس از ثبت درخواست یا تأیید کلینیک قطعی می‌شود.",
  support:"کمک",yourCity:"شهر انتخاب‌شده شما",changeCity:"تغییر شهر",
  tryAgain:"دوباره کوشش",unavailable:"پروفایل تأییدشده فعلاً در دسترس نیست.",
  unavailableMore:"ممکن است نشر کلینیک قطع شده یا تایید آن منقضی شده باشد.",
@@ -215,7 +218,7 @@ const ps:Record<keyof typeof en,string>={
  allServices:"ټول خدمتونه",allSpecialties:"ټول تخصصونه",
  noResults:"مطابق کلینیک ونه موندل شو",noResultsSub:"ښار، درملنه یا د لټون متن بدل کړئ.",
  emptyDirectory:"په دې ښار کې تایید شوي کلینیکونه لا نه دي خپاره شوي.",
- verify:"تایید شوی",preview:"د وختونو کتنه",notBooked:"آنلاین وخت اخیستل لا نه دي فعال",
+ verify:"تایید شوی",preview:"د وختونو کتنه",notBooked:"د ملاقات ثبتولو لپاره د وخت اخیستل وټاکئ",
  call:"کلینیک ته زنګ",website:"وېبپاڼه",directions:"لارښوونې",details:"پېژندلیک وګورئ",
  priceFrom:"له",afn:"افغانۍ",dentists:"ډاکټران",treatments:"درملنې",
  times:"خالي وختونه",gallery:"انځورونه",hours:"کاري ساعتونه",about:"په اړه",
@@ -230,7 +233,7 @@ const ps:Record<keyof typeof en,string>={
  noFake:"بې له معتبر سنده نمرې او انعامونه نه ښودل کېږي.",
  date:"نېټه",selectDate:"ورځ وټاکئ",chooseService:"درملنه وټاکئ",
  allDentists:"ټول ډاکټران",timePreview:"د ممکنه وختونو کتنه",
- timePreviewBody:"دا د کلینیک د مهال‌وېش وختونه دي؛ آنلاین نوبت لا نشته. د تایید لپاره زنګ ووهئ.",
+ timePreviewBody:"د کلینیک رښتیني وختونه وګورئ او د ملاقات غوښتنه ثبت کړئ.",
  noSlots:"په دې نېټه ممکن وخت نشته.",slots:"ممکن وختونه",
  pickDate:"راتلونکې ورځ وټاکئ",minutes:"دقیقې",closed:"تړلی",
  openScheduled:"په خپرو شوو کاري ساعتونو کې",
@@ -244,11 +247,11 @@ const ps:Record<keyof typeof en,string>={
  emptySavedSub:"د تایید شوي کلینیک د ساتلو لپاره پر زړه ټک وکړئ.",
  noLongerPublished:"ځینې مخکې ساتل شوي کلینیکونه نور نه خپرېږي او نه ښکاري.",
  discover:"کلینیکونه ولټوئ",notices:"مهم",
- later:"آنلاین نوبتونه، تاریخچه او طبي اسناد په راتلونکو پړاوونو کې راځي.",
+ later:"ملاقاتونه په اپ کې سمبال کړئ. طبي اسناد یوازې د کلینیک له ښکاره اجازې سره ښکاري.",
  accountTitle:"د ناروغ حساب او غوره توبونه",guest:"د مېلمه په توګه ګورئ",
  guestSub:"د کلینیکونو د لټون لپاره ننوتل نه دي پکار.",
  secureAccount:"د ناروغ خوندي حساب پرانیزئ",
- secureHelp:"ننوتل، د پروفایل سمول، د کورنۍ اجازې او محرمیت د ناروغ په وېبپاڼه کې دي.",
+ secureHelp:"دلته ننوځئ او ملاقاتونه، کورنۍ او د حساب تنظیمات سمبال کړئ.",
  webMissing:"د خوندي حساب لینک لپاره EXPO_PUBLIC_PATIENT_WEB_URL وټاکئ.",
  prefs:"د اپ غوره توبونه",language:"ژبه",calendar:"کلیز",
  solar:"هجري لمریز",gregorian:"میلادي",network:"اړیکه",
@@ -261,7 +264,7 @@ const ps:Record<keyof typeof en,string>={
  stepOne:"یوازې کتل شوي کلینیکونه ښودل کېږي.",
  stepTwo:"د ډاکټر اسناد او تړاو باید اوس هم معتبر وي.",
  stepThree:"بیې او کاري ساعتونه له تایید شوو کلینیکونو اخیستل کېږي.",
- pending:"آنلاین نوبت لا نشته؛ کلینیک ته زنګ ووهئ.",
+ pending:"ملاقات له ثبت یا د کلینیک له تایید وروسته قطعي کېږي.",
  support:"مرسته",yourCity:"ستاسو غوره شوی ښار",changeCity:"ښار بدلول",
  tryAgain:"بیا هڅه",unavailable:"دا تایید شوی پروفایل اوس نه ښکاري.",
  unavailableMore:"ښايي کلینیک خپرونه بنده کړې وي یا تایید یې پای ته رسېدلی وي.",
@@ -565,8 +568,8 @@ function DentistCard({dentist,ui,onPress}:{dentist:Dentist;ui:UI;onPress:()=>voi
   </View><Text style={s.forward}>›</Text>
  </Pressable>;
 }
-function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave}:{clinicId:string;ui:UI;
- onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void}){
+function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicId:string;ui:UI;
+ onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void;onBook:()=>void}){
  const detail=usePublic<ClinicDetail>("/clinics/"+encodeURIComponent(clinicId));
  const [tab,setTab]=useState<"overview"|"dentists"|"services"|"gallery"|"hours"|"times">("overview");
  const [photo,setPhoto]=useState(0);
@@ -605,9 +608,11 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave}:{clinicId:strin
     ✓ {ui.t("updated")} · {hours.now.isWithinPublishedHours?
      ui.t("openScheduled"):ui.t("closedScheduled")}</TextLine>
    <View style={[s.row,{flexDirection:ui.flow,gap:9,marginTop:18}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={()=>{
-     void Linking.openURL("tel:"+clinic.phone)}}><Text style={s.cardButtonPrimaryText}>
-     ☎  {ui.t("call")}</Text></Pressable>
+    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
+     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book appointment":ui.locale==="ps-AF"?"د ملاقات وخت":"رزرو نوبت"}</Text></Pressable>
+    <Pressable style={s.cardButton} onPress={()=>{
+     void Linking.openURL("tel:"+clinic.phone)}}><Text style={s.cardButtonText}>
+     ☎ {ui.t("call")}</Text></Pressable>
     <Pressable style={s.cardButton} onPress={()=>{void Linking.openURL(mapUrl)}}>
      <Text style={s.cardButtonText}>⌖  {ui.t("directions")}</Text></Pressable>
    </View>
@@ -666,8 +671,8 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave}:{clinicId:strin
    {ui.t("noFake")} {ui.t("pending")}</TextLine></View>
  </View>;
 }
-function DentistScreen({clinicId,dentistId,ui,onBackToClinic}:{clinicId:string;
- dentistId:string;ui:UI;onBackToClinic:()=>void}){
+function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSave}:{clinicId:string;
+ dentistId:string;ui:UI;onBackToClinic:()=>void;onBook:()=>void;isSaved:boolean;onSave:()=>void}){
  const response=usePublic<DentistDetail>("/clinics/"+encodeURIComponent(clinicId)+
   "/dentists/"+encodeURIComponent(dentistId));
  const [tab,setTab]=useState<"overview"|"services"|"times">("overview");
@@ -683,11 +688,16 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic}:{clinicId:string;
      {d.displayName}</Text><TextLine ui={ui}>{d.specialty||ui.t("notListed")}</TextLine>
      <Tag label={ui.t("verify")} positive/></View>
    </View>
+   <Pressable accessibilityRole="button" onPress={onSave} style={[s.heart,{marginTop:10,alignSelf:"flex-start"}]}>
+    <Text style={[s.heartText,isSaved&&{color:colors.blue}]}>{isSaved?"♥":"♡"}</Text>
+   </Pressable>
    <Pressable onPress={onBackToClinic} style={[s.row,{flexDirection:ui.flow,gap:8,marginTop:17}]}>
     <Text style={[s.link,{textAlign:ui.align,flex:1}]}>{clinic.name} ›</Text></Pressable>
    <TextLine ui={ui} style={{marginTop:8}}>⌖ {cityLabel(clinic.city,ui.locale)}, {clinic.province}</TextLine>
    <View style={[s.row,{flexDirection:ui.flow,gap:10,marginTop:16}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={()=>{
+    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
+     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text></Pressable>
+    <Pressable style={s.cardButton} onPress={()=>{
      void Linking.openURL("tel:"+clinic.phone)}}>
      <Text style={s.cardButtonPrimaryText}>☎  {ui.t("call")}</Text></Pressable>
     <Pressable onPress={()=>setTab("times")} style={s.cardButton}>
@@ -925,19 +935,19 @@ function SavedScreen({ui,ids,onRemove,onClinic,onExplore}:{ui:UI;ids:string[];
  </View>;
 }
 function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,checkApi,
- connection,checking}:{ui:UI;locale:Language;calendar:Calendar;city:string;
+ connection,checking,signedIn}:{ui:UI;locale:Language;calendar:Calendar;city:string;
  onLocale:(x:Language)=>void;onCalendar:(x:Calendar)=>void;onCity:(x:string)=>void;
- checkApi:()=>void;connection:"connected"|"offline"|"notConfigured"|"checking";checking:boolean}){
+ checkApi:()=>void;connection:"connected"|"offline"|"notConfigured"|"checking";checking:boolean;signedIn:boolean}){
  const facets=usePublic<Facets>("/facets");
  const [showCities,setShowCities]=useState(false);
  return <View style={s.sectionGap}>
-  <SectionHead ui={ui} title={ui.t("accountTitle")} sub={ui.t("guestSub")}/>
-  <View style={s.guestCard}><Icon glyph="☺" filled/>
+  <SectionHead ui={ui} title={ui.t("accountTitle")} sub={signedIn?ui.t("prefs"):ui.t("guestSub")}/>
+  {!signedIn&&<View style={s.guestCard}><Icon glyph="☺" filled/>
    <View style={{flex:1}}><Text style={[s.guestName,{textAlign:ui.align}]}>{ui.t("guest")}</Text>
-    <TextLine ui={ui} style={s.guestHint}>{ui.t("secureHelp")}</TextLine></View></View>
-  {PATIENT_WEB?<CTA label={ui.t("secureAccount")+"  ›"} onPress={()=>{
+    <TextLine ui={ui} style={s.guestHint}>{ui.t("secureHelp")}</TextLine></View></View>}
+  {!signedIn&&(PATIENT_WEB?<CTA label={ui.t("secureAccount")+"  ›"} onPress={()=>{
    void Linking.openURL(PATIENT_WEB+"/account")}}/>:
-   <TextLine ui={ui} style={s.footerNotice}>{ui.t("webMissing")}</TextLine>}
+   <TextLine ui={ui} style={s.footerNotice}>{ui.t("webMissing")}</TextLine>)}
   <CardShell><SectionHead ui={ui} title={ui.t("prefs")}
    sub={ui.t("updated")}/>
    <TextLine ui={ui} style={s.fieldLabel}>{ui.t("language")}</TextLine>
@@ -980,10 +990,13 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
      <View style={s.trustNumber}><Text style={s.trustNumberText}>{i+1}</Text></View>
      <TextLine ui={ui} style={{flex:1}}>{ui.t(key)}</TextLine></View>)}
   </CardShell>
-  <View style={s.notice}><TextLine ui={ui}>{ui.t("medical")} {ui.t("later")}</TextLine></View>
+  <View style={s.notice}><TextLine ui={ui}>{ui.t("medical")}</TextLine></View>
  </View>;
 }
 function PatientApp(){
+ const native=useNativeAuth();
+ const [favorites,setFavorites]=useState<Favorite[]>([]);
+ const [favoritesRefresh,setFavoritesRefresh]=useState(0);
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
@@ -992,6 +1005,26 @@ function PatientApp(){
   API?"checking":"notConfigured");
  const [checking,setChecking]=useState(false);
  const ui=useUI(locale,calendar);
+ useEffect(()=>{
+  if(!native.account?.registered){setFavorites([]);return;}
+  let active=true;
+  void native.request<{favorites:Favorite[]}>("/v1/patient-favorites")
+   .then(async current=>{
+    if(!active)return;
+    if(ready&&savedIds.length){
+     const missing=savedIds.filter(clinicId=>
+      !current.favorites.some(f=>!f.dentistId&&f.clinicId===clinicId));
+     if(missing.length){
+      await Promise.allSettled(missing.map(clinicId=>native.request(
+       "/v1/patient-favorites","POST",{clinicId})));
+      const updated=await native.request<{favorites:Favorite[]}>("/v1/patient-favorites");
+      if(active)setFavorites(updated.favorites);return;
+     }
+    }
+    setFavorites(current.favorites);
+   }).catch(()=>{});
+  return()=>{active=false};
+ },[native.account?.user.id,ready,favoritesRefresh]);
  useEffect(()=>{
   let live=true;
   void Promise.all([AsyncStorage.getItem(PREF_KEY),AsyncStorage.getItem(SAVED_KEY)]).then(([prefs,saved])=>{
@@ -1023,14 +1056,32 @@ function PatientApp(){
  },[]);
  useEffect(()=>{void checkApi()},[checkApi]);
  function select(next:Tab){setRoute(null);setTab(next)}
+ function book(clinicId:string,dentistId?:string,booking?:Booking){setRoute({kind:"booking",clinicId,dentistId,booking})}
  function openClinic(clinicId:string){setRoute({kind:"clinic",clinicId})}
  function openDentist(clinicId:string,dentistId:string){setRoute({kind:"dentist",clinicId,dentistId})}
- function back(){if(route?.kind==="dentist")setRoute({kind:"clinic",clinicId:route.clinicId});
+ function back(){if(route?.kind==="dentist"||route?.kind==="booking")setRoute({kind:"clinic",clinicId:route.clinicId});
   else setRoute(null)}
- function save(id:string){setSavedIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):
-  [...ids,id].slice(-30))}
- const isSaved=(id:string)=>savedIds.includes(id);
- const screenTitle=route?.kind==="dentist"?ui.t("provider"):ui.t("profile");
+ function toggleFavorite(clinicId:string,dentistId?:string){
+  const exists=favorites.some(f=>f.clinicId===clinicId&&f.dentistId===(dentistId||null));
+  void native.request("/v1/patient-favorites",exists?"DELETE":"POST",
+   {clinicId,dentistId:dentistId||null})
+   .then(()=>setFavoritesRefresh(n=>n+1))
+   .catch(err=>Alert.alert("DandanLink",err instanceof Error?err.message:"SERVICE_UNAVAILABLE"));
+ }
+ function save(id:string){
+  if(native.account?.registered){toggleFavorite(id);return;}
+  setSavedIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id].slice(-30));
+ }
+ const isSaved=(id:string)=>native.account?.registered?
+  favorites.some(f=>f.clinicId===id&&f.dentistId===null):savedIds.includes(id);
+ function saveDentist(clinicId:string,dentistId:string){
+  if(!native.account?.registered){select("account");return;}
+  toggleFavorite(clinicId,dentistId);
+ }
+ const isSavedDentist=(clinicId:string,dentistId:string)=>favorites.some(f=>
+  f.clinicId===clinicId&&f.dentistId===dentistId);
+ const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
+  (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
  return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
   <StatusBar barStyle={route?"dark-content":"light-content"}
    backgroundColor={route?colors.white:colors.blue}/>
@@ -1054,35 +1105,50 @@ function PatientApp(){
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={checking}
     onRefresh={checkApi} tintColor={colors.blue}/>:undefined}>
-   {route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
-    isSaved={isSaved(route.clinicId)} onSave={()=>save(route.clinicId)}
-    onOpenDentist={dentistId=>openDentist(route.clinicId,dentistId)}/>:
+   {route?.kind==="booking"?<NativeBookingWizard locale={locale}
+    clinicId={route.clinicId} dentistId={route.dentistId} booking={route.booking}
+    onAccount={()=>select("account")} onDone={()=>select("appointments")}/>:
+    route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
+     isSaved={isSaved(route.clinicId)} onSave={()=>save(route.clinicId)} onBook={()=>book(route.clinicId)}
+     onOpenDentist={dentistId=>openDentist(route.clinicId,dentistId)}/>:
     route?.kind==="dentist"?<DentistScreen clinicId={route.clinicId}
-     dentistId={route.dentistId} ui={ui} onBackToClinic={()=>openClinic(route.clinicId)}/>:
+     dentistId={route.dentistId} ui={ui} onBackToClinic={()=>openClinic(route.clinicId)}
+     onBook={()=>book(route.clinicId,route.dentistId)}
+     isSaved={isSavedDentist(route.clinicId,route.dentistId)}
+     onSave={()=>saveDentist(route.clinicId,route.dentistId)}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
      onSearch={q=>{setSearchSeed(q);select("explore")}} onBrowse={()=>{setSearchSeed("");select("explore")}}
      onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
     tab==="explore"?<ExploreScreen ui={ui} city={city} onCity={setCity}
      seed={searchSeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
-    tab==="saved"?<SavedScreen ui={ui} ids={savedIds} onRemove={save}
-     onClinic={openClinic} onExplore={()=>select("explore")}/>:
-    <AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
-     onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
-     checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>}
+    tab==="appointments"?<NativeAppointments locale={locale}
+     onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}/>:
+    tab==="saved"?(native.account?.registered?<NativeSaved locale={locale}
+     onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}/>:
+     <SavedScreen ui={ui} ids={savedIds} onRemove={save}
+      onClinic={openClinic} onExplore={()=>select("explore")}/>):
+    <View style={s.sectionGap}>
+     <NativeAccountArea locale={locale} calendar={calendar} city={city}
+      onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>
+     <AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
+      signedIn={Boolean(native.account?.registered)}
+      onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
+      checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>
+    </View>}
   </ScrollView>
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
-   {([["home","⌂"],["explore","⌕"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
+   {([["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
-     accessibilityLabel={ui.t(value)} onPress={()=>select(value)} key={value}
+     accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
      style={[s.bottomNavItem,tab===value&&s.bottomNavItemActive]}>
      <Text style={[s.bottomNavIcon,tab===value&&s.bottomNavIconSelected]}>{icon}</Text>
      <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
-      {ui.t(value)}</Text>
+      {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
     </Pressable>)}
   </View>}
  </SafeAreaView>;
 }
-export default function App(){return <SafeAreaProvider><PatientApp/></SafeAreaProvider>}
+export default function App(){return <SafeAreaProvider><NativeAuthProvider><PatientApp/></NativeAuthProvider></SafeAreaProvider>}
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:colors.soft},

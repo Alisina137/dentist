@@ -26,14 +26,17 @@ test("Native patient UX shows real public approved search, profile and live prev
  assert.ok(!pkg.dependencies["expo-location"],"location permission not requested silently");
 });
 
-test("Mobile reference design uses four working navigation tabs, not fake unfinished features",()=>{
+test("Mobile reference design uses five working navigation tabs, no fake unfinished features",()=>{
  const app=read("apps/mobile/App.tsx");
- assert.ok(app.includes('[["home","⌂"],["explore","⌕"],["saved","♡"],["account","☺"]]'));
- assert.ok(!app.includes('["appointments","'));
+ assert.ok(app.includes('[["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]]'));
+ assert.ok(app.includes('["appointments","▦"]'));
  assert.ok(!app.includes('["rewards","'));
  assert.ok(!app.includes('["reviews","'));
  assert.ok(!app.includes('["bills","'));
- assert.ok(app.includes('PATIENT_WEB+"/account"'));
+ assert.ok(app.includes("NativeAccountArea"));
+ assert.ok(app.includes("NativeBookingWizard"));
+ assert.ok(app.includes("NativeAppointments"));
+ assert.ok(app.includes("NativeSaved"));
  assert.ok(app.includes("EXPO_PUBLIC_PATIENT_WEB_URL"));
  assert.ok(app.includes("window")===false,"native screen never assumes browser window globals");
 });
