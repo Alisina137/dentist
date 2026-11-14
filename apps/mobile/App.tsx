@@ -944,7 +944,7 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
   <SectionHead ui={ui} title={ui.t("accountTitle")} sub={signedIn?ui.t("prefs"):ui.t("guestSub")}/>
   {!signedIn&&<View style={s.guestCard}><Icon glyph="☺" filled/>
    <View style={{flex:1}}><Text style={[s.guestName,{textAlign:ui.align}]}>{ui.t("guest")}</Text>
-    <TextLine ui={ui} style={s.guestHint}>{ui.t("secureHelp")}</TextLine></View></View>
+    <TextLine ui={ui} style={s.guestHint}>{ui.t("secureHelp")}</TextLine></View></View>}
   {!signedIn&&(PATIENT_WEB?<CTA label={ui.t("secureAccount")+"  ›"} onPress={()=>{
    void Linking.openURL(PATIENT_WEB+"/account")}}/>:
    <TextLine ui={ui} style={s.footerNotice}>{ui.t("webMissing")}</TextLine>)}
