@@ -1,0 +1,380 @@
+/*
+ * DandanLink UI refinement — shared chrome and patient account/discovery.
+ * Loaded AFTER styles.css. No API or permission changes.
+ * Language and calendar are deliberately not in the global header:
+ * patient: Account → Preferences; clinic/admin: existing workspace settings.
+ */
+:root{
+ --brand:#10778b;
+ --brand-hover:#09576b;
+ --brand-pale:#e9f5f6;
+ --ink:#18394d;
+ --muted:#657b87;
+ --line:#dfe9ee;
+ --canvas:#f5f8fa;
+ --shadow:0 2px 14px rgba(19,55,75,.035),0 14px 38px rgba(19,55,75,.025);
+}
+body{color:var(--ink);background:var(--canvas);-webkit-font-smoothing:antialiased}
+.site-header{position:sticky;top:0;z-index:90;min-height:76px;padding:0 clamp(14px,3vw,38px);
+ background:rgba(255,255,255,.975);border-bottom:1px solid #e5edf1;
+ box-shadow:0 2px 12px rgba(26,64,85,.035);backdrop-filter:blur(16px);
+ flex-wrap:nowrap}
+.site-header-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;
+ width:100%;max-width:1450px;margin-inline:auto;min-height:76px;min-width:0}
+.site-header .brand{display:inline-flex;align-items:center;gap:11px;min-width:0;
+ font-size:21px;font-weight:900;letter-spacing:-.045em;color:#133e52;flex:0 0 auto}
+.site-header .brand-symbol,.p13-site-header .brand-symbol{width:43px;height:43px;
+ flex:0 0 43px;background:linear-gradient(135deg,#0e8796,#136072);
+ color:#fff;border-radius:14px;display:grid;place-items:center;
+ box-shadow:0 5px 12px rgba(8,100,114,.13)}
+.site-header .brand-symbol svg{width:25px;height:25px}
+.site-header .brand-name{white-space:nowrap;line-height:1.1}
+.site-header .brand-name>span{color:#128798}
+.site-header .brand-portal{margin-inline-start:3px;padding:6px 11px;
+ border-radius:7px;background:#edf5f7;border:1px solid #dfedf1;
+ font-size:11px;font-weight:800;color:#527784;letter-spacing:0;white-space:nowrap}
+.site-header .header-nav{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;width:auto;
+ justify-content:flex-end;min-width:0}
+.site-header .header-nav nav,
+.p13-site-header .header-nav nav{display:flex;align-items:center;justify-content:flex-end;
+ flex-wrap:nowrap;gap:5px;min-width:0}
+.site-header .nav-link,.p13-site-header .header-nav .nav-link{
+ display:inline-flex;align-items:center;justify-content:center;gap:9px;
+ min-height:41px;padding:10px 14px;border:1px solid transparent;
+ border-radius:10px;font-size:13px;font-weight:700;
+ color:#56717e;white-space:nowrap;line-height:1.4;transition:background .15s,border .15s,color .15s}
+.site-header .nav-link svg{color:#748f9d;flex:0 0 auto}
+.site-header .nav-link:hover,.p13-site-header .header-nav .nav-link:hover{
+ color:#0a6c80;background:#f1f8f9;border-color:#e6f1f2}
+.site-header .nav-link[aria-current="page"]{
+ background:#e8f5f6;color:#06687e;border-color:#d4e9ec;font-weight:900}
+.site-header .nav-link[aria-current="page"] svg{color:#077c8a}
+.header-account-link{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+ margin-inline-start:10px;white-space:nowrap;min-height:43px;
+ padding:10px 17px;border-radius:11px;border:1px solid #0c7181;
+ background:#0d7485;color:#fff;font-size:13px;font-weight:850;
+ box-shadow:0 3px 9px rgba(3,97,111,.12);transition:background .15s,transform .15s}
+.header-account-link svg{flex:0 0 auto}
+.header-account-link:hover,.header-account-link[aria-current="page"]{
+ background:#0a5566;border-color:#0a5566;color:#fff}
+.header-account-link:active{transform:translateY(1px)}
+.header-menu-toggle{display:none;width:43px;height:43px;align-items:center;
+ justify-content:center;background:#f5f9fa;border:1px solid #dae6eb;
+ border-radius:11px;color:#205466}
+.header-menu-toggle:hover{background:#eaf4f5;border-color:#c9e1e7}
+.site-main{width:min(100%,1480px);padding:clamp(24px,3.2vw,46px);
+ flex:1;min-width:0}
+.shell-patient .site-main{padding-block:clamp(20px,3vw,42px) clamp(45px,5vw,72px)}
+.footer{min-height:77px;padding:22px clamp(18px,3vw,52px);
+ background:#fff;border-top:1px solid #e2ebef;font-size:12px;color:#728894}
+.footer-links{gap:25px}
+.footer a:hover{text-decoration:underline}
+.btn{border-radius:11px;min-height:45px;font-weight:800}
+.btn-primary{background:#0e7588;border-color:#0e7588;
+ box-shadow:0 2px 7px rgba(11,105,121,.1)}
+.btn-primary:hover:not(:disabled){background:#095b6d;border-color:#095b6d}
+.btn-secondary{background:#fff;color:#315a6c;border-color:#d8e5e9}
+.btn-secondary:hover:not(:disabled){background:#f0f8f8;border-color:#bcdbdf}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible{outline:3px solid #38a6b0;outline-offset:3px}
+.card{border:1px solid #e1eaee;border-radius:16px;box-shadow:var(--shadow)}
+.site-main .panel{border-radius:15px}
+:where(.work-layout,.phase-layout,.phase-workspace) .side-panel{
+ border:1px solid #e3ebef;border-radius:16px;box-shadow:var(--shadow)}
+:where(.phase-workspace,.work-layout,.phase-layout) .side-nav a[aria-current="page"]{
+ color:#0b7588;background:#e9f6f6}
+[dir="rtl"] .site-header .brand{letter-spacing:0}
+[dir="rtl"] .site-header .brand-name{letter-spacing:-.04em}
+[dir="rtl"] .brand-portal{letter-spacing:0}
+
+/* Patient-facing discovery uses a single coherent type scale and visual rhythm. */
+.p13-home,.p13-search-page,.p13-profile-page,.p13-about-page{
+ --p13-teal:#0f7388;--p13-navy:#203f50;--p13-muted:#687f8c;--p13-line:#e0e9ed;
+ font-size:14px;color:#264958}
+.p13-home{gap:34px}
+.p13-hero{border-radius:20px;border-color:#d7e9e9;
+ background:linear-gradient(120deg,#f5fbfa 0%,#eaf7f5 55%,#dceff1 100%);
+ box-shadow:0 20px 52px rgba(20,91,101,.055)}
+.p13-hero h1{font-size:clamp(33px,3.6vw,50px);line-height:1.2;color:#123d4d}
+.p13-hero-copy>p{font-size:15px;line-height:1.85}
+.p13-home-search{border-radius:15px;box-shadow:0 8px 23px rgba(20,80,90,.065)}
+.p13-panel,.p13-professional-card,.p13-aside-hours{border-color:#e2ebee;border-radius:14px;
+ box-shadow:0 3px 11px rgba(21,59,76,.027)}
+.p13-panel{font-size:14px;line-height:1.85}
+.p13-panel p,.p13-prose{font-size:13px;line-height:1.85}
+.p13-panel h2{font-size:20px}
+.p13-tabs button{font-size:12px;min-height:44px}
+.p13-professional-card strong,.p13-service-line>div:nth-child(2) strong{font-size:13px}
+.p13-professional-card small,.p13-service-line>div:nth-child(2) span{font-size:11px}
+
+/* Patient identity + family workspace: readable, consistent spacing and focus. */
+.p14-page,.p14-account,.p14-auth-page{
+ --p14-ink:#244a5b;--p14-teal:#117c8c;--p14-line:#dce7eb;
+ --p14-muted:#6b818b;--p14-bg:#f5f8fa;--p14-light:#edf8f7;
+ font-size:14px;line-height:1.6;color:var(--p14-ink)}
+.p14-account{max-width:1320px;gap:26px}
+.p14-account-header{padding:0 1px 0;gap:18px}
+.p14-account-header h1{font-size:30px;line-height:1.18;margin:7px 0 0;
+ color:#173f52;font-weight:900}
+.p14-account-header .p14-eyebrow{font-size:11px;font-weight:850}
+.p14-account-header .p14-find-cta{gap:9px;display:inline-flex;
+ font-size:12px;padding:11px 16px}
+.p14-account-grid{grid-template-columns:minmax(226px,253px) minmax(0,1fr);
+ gap:24px;align-items:start}
+.p14-account-side{top:100px;border:1px solid #e0eaee;border-radius:17px;
+ padding:15px;background:#fff;gap:20px;
+ box-shadow:0 8px 30px rgba(24,66,88,.035)}
+.p14-account-identity{padding:15px 10px 22px;gap:13px}
+.p14-account-avatar{width:56px;height:56px;flex-basis:56px;
+ border-radius:15px;font-size:19px;background:linear-gradient(145deg,#127e8e,#16576c)}
+.p14-account-identity strong{font-size:15px;line-height:1.5}
+.p14-account-identity small{font-size:11px}
+.p14-account-nav{gap:5px}
+.p14-account-nav>a{display:flex;align-items:center;gap:12px;min-height:49px;
+ padding:12px 13px;border:1px solid transparent;border-inline-start:3px solid transparent;
+ border-radius:11px;font-size:13px;color:#547281;font-weight:700}
+.p14-account-nav>a:hover{color:#0b7084;background:#f3f9f9}
+.p14-account-nav>a>span:first-child{display:flex;align-items:center;justify-content:center;
+ color:#718d99;min-width:22px}
+.p14-account-nav>a>span:first-child svg{width:19px;height:19px}
+.p14-account-nav>a[aria-current="page"]{background:#eaf6f6;border-color:#d7ecee;
+ border-inline-start-color:#128399;color:#075e73;font-weight:850}
+.p14-account-nav>a[aria-current="page"]>span:first-child{color:#12798a}
+.p14-nav-arrow{margin-inline-start:auto;color:#a6c0c4;opacity:0}
+.p14-account-nav>a:hover .p14-nav-arrow,.p14-account-nav>a[aria-current="page"] .p14-nav-arrow{
+ opacity:1}
+[dir="rtl"] .p14-nav-arrow{transform:scaleX(-1)}
+.p14-account-side-bottom{margin-top:1px;padding-top:13px;gap:11px}
+.p14-account-side-bottom button{font-size:13px;font-weight:800;min-height:43px}
+.p14-account-side-bottom p{font-size:11px;line-height:1.7}
+.p14-account-body{min-width:0}
+.p14-stack{gap:22px}
+.p14-page-title{gap:8px;padding-bottom:1px}
+.p14-page-title h1{font-size:27px;font-weight:900;line-height:1.3;color:#194459}
+.p14-page-title p{font-size:13px;line-height:1.8;max-width:730px;color:#6e8591}
+.p14-surface{background:#fff;border-color:#e1e9ed;border-radius:16px;
+ padding:clamp(20px,2.6vw,29px);box-shadow:0 5px 21px rgba(34,68,85,.035)}
+.p14-surface h2{font-size:20px;line-height:1.35;color:#254b5e;font-weight:850}
+.p14-surface h3{font-size:16px;font-weight:850;color:#285367}
+.p14-surface>p{font-size:13px;line-height:1.9}
+.p14-welcome{padding:clamp(25px,3.3vw,40px);
+ background:linear-gradient(122deg,#e3f6f3 0%,#edf8f8 65%,#f9fcfa 100%);
+ border:1px solid #d0e6e4;border-radius:18px;
+ box-shadow:0 12px 32px rgba(35,109,112,.045);min-height:238px}
+.p14-welcome>div:first-child{gap:17px}
+.p14-welcome h2{font-size:clamp(25px,3.15vw,35px);line-height:1.25;
+ font-weight:900;color:#17485a}
+.p14-welcome p{font-size:14px;color:#547987;max-width:580px;line-height:1.85}
+.p14-welcome .btn{font-size:12px;padding:12px 18px}
+.p14-welcome-symbol{border:1px solid #cae4e5;
+ border-radius:30px;flex-basis:132px;height:132px;width:132px;
+ background:linear-gradient(135deg,#fff,#effaf8);color:#168898;
+ box-shadow:0 12px 33px rgba(20,112,120,.08)}
+.p14-welcome-symbol svg{width:78px;height:78px}
+.p14-eyebrow{color:#138394;font-size:11px;letter-spacing:.025em}
+.p14-status-card{border:1px solid #e1eaee;border-radius:15px;
+ padding:20px 20px 18px;gap:10px;box-shadow:0 4px 18px rgba(23,72,90,.028)}
+.p14-status-card>span{font-size:12px;color:#728996}
+.p14-status-card strong{font-size:21px;line-height:1.35;color:#205368}
+.p14-status-card small{font-size:11px;line-height:1.7;color:#7b939b}
+.p14-status-card a{display:grid;place-items:center;width:32px;height:32px;
+ inset-block-start:14px;inset-inline-end:14px;background:#f0f8f8;border-radius:9px}
+.p14-status-card a:hover{background:#dff1f2}
+[dir="rtl"] .p14-status-card a svg{transform:scaleX(-1)}
+.p14-quick-grid{gap:12px}
+.p14-quick-card{padding:17px;border-color:#e0eaec;border-radius:13px;
+ background:#fbfdfd;min-height:91px;gap:14px;transition:background .16s,border-color .16s,box-shadow .16s}
+.p14-quick-card:hover{border-color:#bddfdf;background:#f3faf9;
+ box-shadow:0 4px 14px rgba(18,96,102,.04)}
+.p14-quick-icon{background:#e5f3f3;color:#11798c;
+ border:1px solid #d8e9e9;border-radius:12px;flex-basis:45px;
+ width:45px;height:45px}
+.p14-quick-card strong{font-size:14px;line-height:1.4;color:#25566a}
+.p14-quick-card small{font-size:11px;color:#78949e;line-height:1.6}
+.p14-quick-card>b{color:#168392}
+[dir="rtl"] .p14-quick-card>b svg{transform:scaleX(-1)}
+.p14-section-head h2{font-size:20px;font-weight:850}
+.p14-section-head p{font-size:12px}
+.p14-info-panel{border-radius:13px;padding:19px 21px;align-items:flex-start;
+ background:#edf7f8;border-color:#d6e8eb;gap:15px}
+.p14-info-panel>svg{color:#167e91;flex:0 0 22px;margin-top:2px}
+.p14-info-panel strong{font-size:14px}
+.p14-info-panel p{font-size:12px;line-height:1.8}
+.p14-profile-head{gap:23px;padding-block:27px}
+.p14-profile-head h2{font-size:22px}
+.p14-profile-head p{font-size:12px}
+.p14-big-avatar{height:80px;width:80px;flex-basis:80px;font-size:28px}
+.p14-form{gap:19px}
+.p14-form h2{margin-bottom:4px}
+.p14-form .p14-field{gap:9px}
+.p14-field{font-size:13px;font-weight:750;color:#426676}
+.p14-field input,.p14-field select,.p14-password input{
+ border:1px solid #d3e2e6;border-radius:11px;
+ min-height:49px;padding:12px 15px;font-size:14px;
+ background:#fff;color:#244c60}
+.p14-field input::placeholder,.p14-password input::placeholder{color:#a4b2ba}
+.p14-field input:focus-visible,.p14-field select:focus-visible,
+.p14-password input:focus-visible{outline:2px solid #64b9c2;outline-offset:1px}
+.p14-field small{font-size:12px;color:#7f939d;line-height:1.75}
+.p14-muted{font-size:13px;line-height:1.85;color:#6e8490}
+.p14-form .btn{justify-self:start;font-size:13px;min-height:46px}
+.p14-form .p14-wide{justify-self:stretch}
+.p14-check{font-size:13px;line-height:1.8;gap:11px;color:#526f7d}
+.p14-check input{width:19px;height:19px;flex-basis:19px}
+.p14-family-tabs{padding-bottom:10px;gap:7px}
+.p14-family-tabs>button{font-size:13px;min-height:44px;
+ padding:12px 16px;border-radius:10px}
+.p14-family-tabs>button[aria-selected="true"]{color:#0a6c80;
+ background:#eaf6f6;border-color:#cfe8ea}
+.p14-family-member{padding:18px;gap:14px;border-radius:13px;background:#fff}
+.p14-member-symbol{height:49px;width:49px;flex-basis:49px;border-radius:12px}
+.p14-member-symbol svg{width:24px;height:24px}
+.p14-member-main{gap:7px}
+.p14-member-main>strong{font-size:14px;color:#285469}
+.p14-member-main>small{font-size:12px;line-height:1.6}
+.p14-member-actions .btn,.p14-family-member>.btn{font-size:12px;min-height:41px}
+.p14-family-form{padding:21px;background:#f6fbfb;border-radius:13px}
+.p14-empty{padding:39px 24px;border-radius:13px;gap:12px}
+.p14-empty strong{font-size:15px}
+.p14-empty p{font-size:13px}
+.p14-toggle{padding:18px 0}
+.p14-toggle strong{font-size:14px}
+.p14-toggle small{font-size:12px}
+.p14-history-line{padding:16px 0}
+.p14-history-line>div strong{font-size:13px}
+.p14-history-line>div small{font-size:11px}
+.p14-session{padding:19px 0}
+.p14-session strong{font-size:13px}
+.p14-session small{font-size:11px}
+.p14-setup-grid{gap:24px}
+.p14-onboarding{gap:27px}
+.p14-step-header{gap:12px}
+.p14-step-header p{font-size:14px}
+.p14-setup-aside{top:100px}
+.p14-setup-aside .preferences{gap:14px}
+.p14-setup-aside .select-group{gap:9px}
+.p14-setup-aside .select-group select{width:100%;max-width:210px}
+.p14-setup-aside p{font-size:13px}
+.p14-auth-page{max-width:1170px;min-height:590px;margin:10px auto;
+ grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);
+ border:1px solid #dce9eb;border-radius:20px;
+ box-shadow:0 22px 70px rgba(23,66,83,.08)}
+.p14-auth-visual{min-height:590px;
+ background:linear-gradient(145deg,#0c7185 0%,#10576c 55%,#193f56 100%);
+ padding:clamp(34px,5vw,66px);gap:22px}
+.p14-auth-visual::before{border-color:rgba(255,255,255,.12)}
+.p14-auth-visual h2{font-size:clamp(28px,3vw,40px);line-height:1.3;font-weight:900}
+.p14-auth-visual p{font-size:14px;line-height:1.9;color:#dbedf0}
+.p14-auth-symbol{border-radius:23px;background:rgba(255,255,255,.12);
+ width:92px;height:92px;color:#e0fbf7}
+.p14-auth-symbol svg{height:52px;width:52px}
+.p14-auth-visual-footer{font-size:13px;line-height:1.7}
+.p14-auth-form{padding:clamp(25px,4vw,56px)}
+.p14-auth-card{max-width:485px;gap:18px}
+.p14-auth-card h1{font-size:clamp(28px,3vw,35px);font-weight:900}
+.p14-auth-card>.p14-muted{font-size:14px}
+.p14-auth-links a{font-size:13px}
+.p14-auth-bottom{font-size:12px}
+.p14-auth-bottom a{font-size:12px}
+.p14-chip{font-size:11px;padding:6px 10px}
+.p14-loading{font-size:13px}
+
+/* Small mobile headers are truly navigable, without wrap/overflow or settings controls. */
+@media(max-width:1000px){
+ .site-header .brand-portal{display:none}
+ .site-header .nav-link,.p13-site-header .header-nav .nav-link{padding:9px 10px;font-size:12px}
+ .site-header .header-nav nav{gap:1px}
+ .header-account-link{margin-inline-start:5px}
+ .p14-account-grid{grid-template-columns:218px minmax(0,1fr);gap:17px}
+ .p14-welcome-symbol{flex-basis:105px;width:105px;height:105px}
+ .p14-welcome-symbol svg{width:65px;height:65px}
+}
+@media(max-width:760px){
+ .site-header,.p13-site-header{padding:0 16px;min-height:68px;
+  flex-wrap:nowrap;position:sticky;top:0}
+ .site-header-inner{min-height:68px;gap:10px}
+ .site-header .brand{font-size:19px}
+ .site-header .brand-symbol,.p13-site-header .brand-symbol{
+  height:38px;width:38px;flex-basis:38px;border-radius:12px}
+ .site-header .brand-symbol svg{height:23px;width:23px}
+ .site-header .header-nav,.p13-site-header .header-nav{
+  display:none;position:absolute;top:calc(100% + 1px);inset-inline:12px;width:auto;
+  padding:10px;background:#fff;border:1px solid #dbe8ed;border-radius:15px;
+  box-shadow:0 19px 48px rgba(21,62,81,.14);z-index:91;
+  justify-content:stretch;flex-wrap:nowrap}
+ .site-header .header-nav.header-nav-open,
+ .p13-site-header .header-nav.header-nav-open{display:block}
+ .site-header .header-nav nav,.p13-site-header .header-nav nav{
+  display:grid;grid-template-columns:1fr;width:100%;gap:4px;justify-content:stretch}
+ .site-header .nav-link,.p13-site-header .header-nav .nav-link{
+  justify-content:flex-start;min-height:47px;padding:12px 14px;font-size:14px!important;
+  width:100%;gap:12px;border-radius:9px}
+ .header-account-link{display:flex;width:100%;margin:5px 0 0;min-height:46px;
+  justify-content:flex-start;padding-inline:14px;font-size:13px}
+ .header-menu-toggle{display:inline-flex;flex:0 0 43px;margin-inline-start:auto}
+ .site-main{padding:22px 17px 42px}
+ .shell-patient .site-main{padding:20px 17px 45px}
+ .p14-account-grid{grid-template-columns:minmax(0,1fr);gap:17px}
+ .p14-account-side{position:static;top:auto;gap:10px;padding:13px}
+ .p14-account-identity{padding:8px 8px 13px}
+ .p14-account-nav{display:flex;overflow-x:auto;gap:6px;padding:5px 0 10px}
+ .p14-account-nav>a{white-space:nowrap;flex:0 0 auto;padding:10px 12px;
+  border-inline-start:1px solid #dae8eb;border-bottom:2px solid transparent;min-height:43px}
+ .p14-account-nav>a[aria-current="page"]{border-inline-start-color:#d4e9ec;
+  border-bottom-color:#0e8698}
+ .p14-nav-arrow{display:none}
+ .p14-account-side-bottom{display:flex;justify-content:flex-end}
+ .p14-account-side-bottom p{display:none}
+ .p14-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p14-setup-grid{grid-template-columns:minmax(0,1fr)}
+ .p14-setup-aside{position:static}
+ .p14-auth-page{grid-template-columns:minmax(0,1fr);margin:0 auto;min-height:0}
+ .p14-auth-visual{min-height:0;padding:26px 28px;gap:12px}
+ .p14-auth-visual .p14-auth-symbol{display:none}
+ .p14-auth-visual h2{font-size:25px;max-width:640px}
+ .p14-auth-visual p{font-size:12px}
+ .p14-auth-visual-footer{margin-top:6px;padding-top:12px}
+ .p14-auth-form{padding:32px 24px}
+ .p14-auth-card{max-width:550px}
+ .p13-hero{min-height:0}
+}
+@media(max-width:600px){
+ .p14-account{gap:15px}
+ .p14-account-header h1{font-size:25px}
+ .p14-account-header .p14-find-cta{font-size:11px;padding:10px 12px}
+ .p14-account-header .p14-find-cta svg{width:17px;height:17px}
+ .p14-welcome{padding:24px 22px;min-height:0}
+ .p14-welcome h2{font-size:27px}
+ .p14-welcome p{font-size:13px}
+ .p14-welcome-symbol{display:none}
+ .p14-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p14-status-card:last-child{grid-column:1/-1}
+ .p14-quick-grid{grid-template-columns:1fr}
+ .p14-surface{padding:20px 18px}
+ .p14-family-member{flex-wrap:wrap}
+ .p14-member-actions{width:100%}
+ .p14-form-two{grid-template-columns:1fr}
+ .p14-page-title h1{font-size:25px}
+ .p14-auth-page{border-radius:14px}
+ .p14-auth-visual{padding:22px}
+ .p14-auth-form{padding:26px 19px}
+ .p14-setup-aside .preferences{display:grid;gap:14px}
+ .p14-setup-aside .select-group{width:100%;justify-content:space-between}
+ .p14-setup-aside .select-group select{width:55%;max-width:210px}
+ .p13-panel{font-size:13px}
+}
+@media(max-width:410px){
+ .site-header .brand{font-size:18px;gap:8px}
+ .site-header .brand-symbol{height:36px;width:36px;flex-basis:36px}
+ .p14-stats{grid-template-columns:1fr}
+ .p14-status-card:last-child{grid-column:auto}
+ .p14-account-header .p14-find-cta{max-width:45px;overflow:hidden;white-space:nowrap;
+  padding-inline:13px;font-size:0;gap:0}
+ .p14-account-header .p14-find-cta svg{height:19px;width:19px;flex:0 0 19px}
+ .p14-family-tabs>button{padding:10px 11px;font-size:12px}
+ .p14-auth-visual h2{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){
+ .site-header *,.p14-account *,.p14-page *,.p14-auth-page *{
+  scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important}
+}
