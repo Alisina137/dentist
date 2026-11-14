@@ -172,6 +172,8 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
       {audience==="patient"&&<>
        <a className="nav-link" href="/search" aria-current={active("/search")?"page":undefined}
         onClick={closeMenu}><CareIcon name="search" size={17}/><span>{t("findCare")}</span></a>
+       <a className="nav-link" href="/reviews" aria-current={active("/reviews")?"page":undefined}
+        onClick={closeMenu}><span>★</span><span>{locale==="ps-AF"?"نظرونه":locale==="fa-AF"?"نظرات":"Reviews"}</span></a>
        <a className="nav-link" href="/appointments" aria-current={active("/appointments")?"page":undefined}
         onClick={closeMenu}><CareIcon name="calendar" size={17}/><span>{locale==="ps-AF"?"ملاقاتونه":locale==="fa-AF"?"ملاقات‌ها":"Appointments"}</span></a>
        <a className="nav-link" href="/about" aria-current={active("/about")?"page":undefined}

@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useState} from "react";
 import {Alert} from "react-native";
 import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
  ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,
@@ -1000,6 +1001,7 @@ function PatientApp(){
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
+ const [accountSection,setAccountSection]=useState<"profile"|"reviews">("profile");
  const [searchSeed,setSearchSeed]=useState(""),[savedIds,setSavedIds]=useState<string[]>([]);
  const [connection,setConnection]=useState<"connected"|"offline"|"notConfigured"|"checking">(
   API?"checking":"notConfigured");
@@ -1055,7 +1057,7 @@ function PatientApp(){
   }catch{setConnection("offline")}finally{clearTimeout(timer);setChecking(false)}
  },[]);
  useEffect(()=>{void checkApi()},[checkApi]);
- function select(next:Tab){setRoute(null);setTab(next)}
+ function select(next:Tab){setRoute(null);setTab(next);setAccountSection("profile")}
  function book(clinicId:string,dentistId?:string,booking?:Booking){setRoute({kind:"booking",clinicId,dentistId,booking})}
  function openClinic(clinicId:string){setRoute({kind:"clinic",clinicId})}
  function openDentist(clinicId:string,dentistId:string){setRoute({kind:"dentist",clinicId,dentistId})}
@@ -1128,12 +1130,26 @@ function PatientApp(){
      <SavedScreen ui={ui} ids={savedIds} onRemove={save}
       onClinic={openClinic} onExplore={()=>select("explore")}/>):
     <View style={s.sectionGap}>
+     <View style={[s.row,{flexDirection:ui.flow,gap:10}]}>
+      <Pressable style={[s.cardButton,accountSection==="profile"&&s.cardButtonPrimary]}
+       accessibilityRole="tab" accessibilityState={{selected:accountSection==="profile"}}
+       onPress={()=>setAccountSection("profile")}>
+       <Text style={[s.cardButtonText,accountSection==="profile"&&s.cardButtonPrimaryText]}>
+        {locale==="en"?"Profile":locale==="ps-AF"?"پروفایل":"پروفایل"}</Text></Pressable>
+      <Pressable style={[s.cardButton,accountSection==="reviews"&&s.cardButtonPrimary]}
+       accessibilityRole="tab" accessibilityState={{selected:accountSection==="reviews"}}
+       onPress={()=>setAccountSection("reviews")}>
+       <Text style={[s.cardButtonText,accountSection==="reviews"&&s.cardButtonPrimaryText]}>
+        {locale==="en"?"Reviews":locale==="ps-AF"?"نظرونه":"نظرات"}</Text></Pressable>
+     </View>
+     {accountSection==="reviews"?<NativeReviews locale={locale}/>:<>
      <NativeAccountArea locale={locale} calendar={calendar} city={city}
       onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>
      <AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
       signedIn={Boolean(native.account?.registered)}
       onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
       checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>
+     </>}
     </View>}
   </ScrollView>
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>

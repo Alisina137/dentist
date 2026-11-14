@@ -3,6 +3,7 @@
 import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index";
 import { AdminModerationPortal } from "./phase12";
+import {ReviewModerationPage} from "./phase17";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 async function send(path:string,method="GET",body?:unknown):Promise<any> {
@@ -17,7 +18,7 @@ async function send(path:string,method="GET",body?:unknown):Promise<any> {
 }
 const words:Record<string,Record<string,string>>={
  en:{
-  dentists:"Dentist Verification",listings:"Marketplace Listings",
+  dentists:"Dentist Verification",listings:"Marketplace Listings",reviews:"Patient Reviews",
   appointments:"Appointments",clinicQueue:"Patient queue",bookingToday:"Today’s bookings",bookingArrived:"Arrived",bookingActive:"In treatment",bookingCompleted:"Completed",bookingPreview:"Appointments are real and synchronized across the clinic calendar and queue.",newAppointment:"New appointment",operations:"Operations",management:"Management",workspace:"Workspace",staffWorkspace:"Staff & Resources",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",opsReady:"Operational readiness",opsHint:"Configure real services, clinic resources, provider hours and test candidate slots.",setupComplete:"Complete",setupMissing:"Needs setup",stepService:"Service catalog",stepChair:"Treatment chair",stepHours:"Opening hours",stepDoctor:"Dentist shifts",patients:"Patients",search:"Search clinics",filter:"Search",dashboard:"Dashboard",clinics:"Clinics",clinic:"Clinic",onboarding:"Clinic setup",settings:"Clinic settings",
   subscription:"Subscription",subscriptions:"Subscriptions",plans:"Plans",overview:"Overview",verification:"Verification",
   newClinic:"Register a clinic",continue:"Continue",save:"Save draft",back:"Back",submit:"Submit for review",
@@ -147,7 +148,7 @@ const words:Record<string,Record<string,string>>={
   nextAction:"راتلونکی ګام",privacyGate:"د ناروغانو معلومات شخصي دي؛ رزرو او طبي لیدنې په راتلونکو پړاوونو کې فعالېږي."
  }
 };
-type View="dashboard"|"onboarding"|"settings"|"subscription"|"clinics"|"review"|"plans"|"subscriptions"|"dentists"|"dentistReview"|"listings"|"listingReview";
+type View="reviews"|"dashboard"|"onboarding"|"settings"|"subscription"|"clinics"|"review"|"plans"|"subscriptions"|"dentists"|"dentistReview"|"listings"|"listingReview";
 type Audience="clinic"|"admin";
 function useText() {
   const {locale}=usePreferences();
@@ -184,7 +185,7 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
     ["onboarding","/clinic/onboarding"],
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
-  ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["dentists","/admin/dentists"],["listings","/admin/listings"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
+  ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["dentists","/admin/dentists"],["listings","/admin/listings"],["reviews","/admin/reviews"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
   const active=view==="review"?"clinics":view==="dentistReview"?"dentists":view==="listingReview"?"listings":view;
   return <div className="work-layout phase-layout">
     <aside className="card side-panel">
@@ -197,7 +198,7 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
          <span className="phase04-side-icon" aria-hidden="true">
           {({dashboard:"⌂",appointments:"▦",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
             onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",
-            clinics:"▤",dentists:"✚",listings:"◈",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
+            clinics:"▤",dentists:"✚",listings:"◈",reviews:"★",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
          <span>{l(key)}</span></a>
        </React.Fragment>)}
       </nav>
@@ -226,7 +227,7 @@ export function Phase02Portal({audience,view}:{audience:Audience,view:View}){
   if(audience==="clinic"&&me.isPlatformAdmin)return <InlineAlert kind="error">{l("errorAuth")}</InlineAlert>;
   if(audience==="admin"&&(!me.isPlatformAdmin||!me.adminMfaVerified))return <AccountStatus audience="admin"/>;
   return <Frame audience={audience} view={view} name={me.user.name}>
-    {view==="dashboard"?<Dashboard audience={audience}/>:view==="onboarding"?<Onboarding/>:
+    {view==="reviews"?<ReviewModerationPage/>:view==="dashboard"?<Dashboard audience={audience}/>:view==="onboarding"?<Onboarding/>:
       view==="settings"?<ClinicSettings/>:view==="subscription"?<ClinicSubscription/>:
       view==="clinics"?<AdminClinics/>:view==="review"?<AdminReview/>:
       (view==="dentists"||view==="dentistReview"||view==="listings"||view==="listingReview")?
