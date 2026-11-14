@@ -2,6 +2,7 @@
 import React,{useEffect,useMemo,useState,type ReactNode,type FormEvent} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {Shell} from "./phase03";
+import {ExpensePanel,CashFlowInsights} from "./phase11";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
@@ -24,7 +25,7 @@ type Patient={id:string;patient_number:string;preferred_name:string;family_name:
 type Source={type:"appointment"|"encounter"|"treatment_stage";id:string;date:string;serviceIds:string[]};
 const L:Record<Lang,Record<string,string>>={
  en:{
- finance:"Finance",tag:"Clinic receivables · manual payments · auditable ledger",
+ finance:"Finance",expenses:"Expenses",tag:"Clinic receivables · manual payments · auditable ledger",
  overview:"Overview",invoices:"Invoices",payments:"Payments",balances:"Balances",patientBilling:"Patient billing",
  statement:"Statement",invoice:"Invoice",receipt:"Receipt",newInvoice:"New invoice",
  recordPayment:"Record payment",createDraft:"Create draft",draft:"Draft",issued:"Issued",
@@ -87,7 +88,7 @@ const L:Record<Lang,Record<string,string>>={
  invoiceState:"Invoice status",clinic:"Clinic"
  },
  "fa-AF":{
- finance:"مالی",tag:"حساب‌های کلینیک · پرداخت دستی · دفتر ثبت قابل بررسی",
+ finance:"مالی",expenses:"مصارف",tag:"حساب‌های کلینیک · پرداخت دستی · دفتر ثبت قابل بررسی",
  overview:"نمای کلی",invoices:"بل‌ها",payments:"پرداخت‌ها",balances:"باقی‌مانده‌ها",patientBilling:"حساب مریض",
  statement:"صورت‌حساب",invoice:"بل",receipt:"رسید",newInvoice:"بل جدید",
  recordPayment:"ثبت پرداخت",createDraft:"ایجاد پیش‌نویس",draft:"پیش‌نویس",issued:"صادرشده",
@@ -148,7 +149,7 @@ const L:Record<Lang,Record<string,string>>={
  paidRecords:"پرداخت‌های ثبت‌شده",invoiceState:"حالت بل",clinic:"کلینیک"
  },
  "ps-AF":{
- finance:"مالي چارې",tag:"د کلینیک پورونه · لاسي ورکړې · د حساب کتاب تاریخ",
+ finance:"مالي چارې",expenses:"لګښتونه",tag:"د کلینیک پورونه · لاسي ورکړې · د حساب کتاب تاریخ",
  overview:"لنډیز",invoices:"بیلونه",payments:"تادیې",balances:"پاتې پورونه",patientBilling:"د ناروغ حساب",
  statement:"حسابپاڼه",invoice:"بیل",receipt:"رسید",newInvoice:"نوی بیل",
  recordPayment:"تادیه ثبت کړئ",createDraft:"مسوده جوړول",draft:"مسوده",issued:"صادر شوی",
@@ -327,12 +328,12 @@ function FinanceHome({space}:{space:Space}){
  const canOverview=["owner","manager","cashier"].includes(space.role);
  const [tab,setTab]=useState<string>(()=>{
   const x=new URLSearchParams(location.search).get("tab");
-  return x&&["overview","invoices","payments","balances"].includes(x)&&(canOverview||x==="invoices")?
+  return x&&["overview","invoices","payments","balances","expenses"].includes(x)&&(canOverview||x==="invoices")?
    x:canOverview?"overview":"invoices";
  });
  return <div className="phase10-stack">
   <nav className="phase10-tabs" role="tablist" aria-label={t("finance")}>
-   {(canOverview?["overview","invoices","payments","balances"]:["invoices"]).map(x=>
+   {(canOverview?["overview","invoices","payments","balances","expenses"]:["invoices"]).map(x=>
     <button type="button" key={x} role="tab" aria-selected={tab===x}
      onClick={()=>{setTab(x);history.replaceState(null,"",financeHref(space.clinicId,x));}}>
      {t(x)}</button>)}
@@ -340,6 +341,7 @@ function FinanceHome({space}:{space:Space}){
   {tab==="overview"&&canOverview?<Overview space={space} go={setTab}/>:
    tab==="payments"&&canOverview?<Payments space={space}/>:
    tab==="balances"&&canOverview?<Balances space={space}/>:
+   tab==="expenses"&&canOverview?<ExpensePanel space={space}/>:
    <Invoices space={space}/>}
  </div>;
 }
@@ -376,9 +378,10 @@ function Overview({space,go}:{space:Space;go:(x:string)=>void}){
     <h2>{s.open_count} {t("openCount")}</h2>
     <p>{t("issuedNotPaid")}</p><p>{t("taxNote")}</p>
     <button className="btn btn-primary" onClick={()=>go("balances")}>{t("aging")} →</button>
-    <p className="phase10-muted">{t("notReady")}</p>
+    <button className="btn btn-secondary" onClick={()=>go("expenses")}>{t("expenses")} →</button>
    </aside>
   </div>
+  <CashFlowInsights space={space}/>
  </div>;
 }
 function Invoices({space,patientId}:{space:Space;patientId?:string}){
