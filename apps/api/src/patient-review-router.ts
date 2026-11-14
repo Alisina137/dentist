@@ -19,7 +19,7 @@ const id=(v:unknown)=>{
 };
 const note=(v:unknown,min=10,max=500)=>{
  if(typeof v!=="string"||v.trim().length<min||v.trim().length>max)fail(422,"INVALID_NOTE");
- return v.trim();
+ return (v as string).trim();
 };
 const policyCategories=["personal_data","clinical_details","harassment","spam","unrelated"] as const;
 const checkCategory=(v:unknown)=>{
