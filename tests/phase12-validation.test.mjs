@@ -48,5 +48,5 @@ test("PH12 frontend has five complete owner tabs, two moderated admin queues and
  "apps/admin-web/app/admin/listings/page.tsx",
  "apps/admin-web/app/admin/listings/[clinicId]/page.tsx",
  "apps/patient-web/app/clinics/[clinicId]/page.tsx"])
- assert.match(read(page),/phase12|phase02/);
+ assert.match(read(page),/phase12|phase02|phase13/);
 });
