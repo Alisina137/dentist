@@ -219,7 +219,8 @@ export function PatientBookPage({dentistId}:{dentistId:string}){
     const first=c.profile.services[0];if(first)setServiceId(first.id);
    }).catch(e=>setError(e.message)).finally(()=>setLoading(false));
  },[dentistId]);
- useEffect(()=>{setSelected(null);setSlots([]);setIdempotency(crypto.randomUUID());},[serviceId,day,subject]);
+ useEffect(()=>{setSelected(null);setSlots([]);setIdempotency(crypto.randomUUID());},[serviceId,day]);
+ useEffect(()=>{setIdempotency(crypto.randomUUID());},[subject]);
  useEffect(()=>{
   if(!clinicId||!serviceId||!day)return;
   let active=true;setLoadingSlots(true);setError("");setSelected(null);
