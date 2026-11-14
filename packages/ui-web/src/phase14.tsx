@@ -49,7 +49,8 @@ function safeNext(raw:string|null,fall="/account"){
   raw.includes("\n")||raw.includes("\r"))return fall;
  const url=raw.split(/[?#]/)[0];
  if(url==="/account"||url.startsWith("/account/")||url==="/search"||
-  url.startsWith("/clinics/")||url==="/about"||url==="/")return raw;
+  url.startsWith("/clinics/")||url.startsWith("/book/")||url==="/appointments"||
+  url.startsWith("/appointments/")||url==="/about"||url==="/")return raw;
  return fall;
 }
 const words:Record<Lang,Record<string,string>>={
