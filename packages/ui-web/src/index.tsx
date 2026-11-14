@@ -208,11 +208,39 @@ function Field({ title, type = "text", value, onChange, autoComplete, hint }: {
   </label>;
 }
 export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forgot" | "reset" | "verify"; audience: "clinic" | "admin" }) {
-  const { t } = usePreferences();
+  const { t, locale } = usePreferences();
+  const signupCopy={
+   en:{clinic:"Clinic owner",dentist:"Dentist / invited staff",confirm:"Confirm password",
+    mismatch:"Passwords do not match.",different:"Create an account to manage your clinic or accept a verified clinic invitation.",
+    staff:"A dentist must be invited by a verified clinic. Signup does not grant clinical privileges or publish credentials.",
+    clinicHelp:"Register a clinic after confirming your email. Clinic approval and dentist credential review are separate.",
+    legal:"Review the Terms & Conditions and Privacy Notice before registering.",terms:"Terms",privacy:"Privacy notice",
+    return:"Return to clinic setup after verified sign-in."},
+   "fa-AF":{clinic:"صاحب کلینیک",dentist:"داکتر / کارمند دعوت‌شده",confirm:"تکرار رمز عبور",
+    mismatch:"رمزهای عبور مطابقت ندارند.",different:"برای مدیریت کلینیک یا قبول دعوت معتبر کلینیک حساب بسازید.",
+    staff:"داکتر باید توسط کلینیک تأییدشده دعوت شود. ساخت حساب به‌تنهایی صلاحیت طبی یا نشر اسناد نمی‌دهد.",
+    clinicHelp:"پس از تأیید ایمیل، کلینیک را ثبت کنید. تأیید کلینیک و اسناد داکتر جداگانه بررسی می‌شوند.",
+    legal:"پیش از ثبت‌نام شرایط خدمات و حریم خصوصی را بخوانید.",terms:"شرایط خدمات",privacy:"حریم خصوصی",
+    return:"پس از ورود با ایمیل تأییدشده تنظیم کلینیک را ادامه دهید."},
+   "ps-AF":{clinic:"د کلینیک خاوند",dentist:"ډاکټر / بلل شوی کارکوونکی",confirm:"پټنوم بیا ولیکئ",
+    mismatch:"پټنومونه سره برابر نه دي.",different:"د کلینیک د سمبالولو یا د تایید شوې بلنې منلو لپاره حساب جوړ کړئ.",
+    staff:"ډاکټر باید د تایید شوي کلینیک له خوا وبلل شي. یوازې حساب جوړول طبي واک یا د اسنادو خپرول نه شي کولای.",
+    clinicHelp:"د برېښنالیک له تایید وروسته کلینیک ثبت کړئ. د کلینیک او ډاکټر سندونه بېل کتل کېږي.",
+    legal:"له نوم‌لیکنې مخکې شرطونه او محرمیت ولولئ.",terms:"شرطونه",privacy:"د محرمیت خبرتیا",
+    return:"له تایید شوي ننوتلو وروسته د کلینیک تنظیم ته ورشئ."}
+  }[locale]||{
+    clinic:"Clinic owner",dentist:"Dentist / invited staff",confirm:"Confirm password",
+    mismatch:"Passwords do not match.",different:"Create an account to manage your clinic or accept a verified clinic invitation.",
+    staff:"A dentist must be invited by a verified clinic. Signup does not grant clinical privileges or publish credentials.",
+    clinicHelp:"Register a clinic after confirming your email. Clinic approval and dentist credential review are separate.",
+    legal:"Review the Terms & Conditions and Privacy Notice before registering.",terms:"Terms",privacy:"Privacy notice",
+    return:"Return to clinic setup after verified sign-in."};
   const base = audience === "clinic" ? "/clinic" : "/admin";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmation,setConfirmation]=useState("");
+  const [signupRole,setSignupRole]=useState<"owner"|"dentist">("owner");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -229,6 +257,7 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
     event.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
       if (mode === "signup") {
+        if(audience==="clinic"&&password!==confirmation){setError(signupCopy.mismatch);return;}
         const result = await authClient.signUp.email({
           name: name.trim(), email: email.trim().toLowerCase(), password,
           callbackURL: window.location.origin + base + "/verify" +
@@ -276,12 +305,35 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
             ? "?next=" + encodeURIComponent(new URLSearchParams(window.location.search).get("next") || "") : "")}>{t("login")}</a></p>
       </> : <>
         <p className="muted">{audience === "admin" ? t("adminSummary") : t("clinicSummary")}</p>
+        {mode==="signup"&&audience==="clinic"&&<div className="clinic-auth-choice">
+         <p className="clinic-auth-choice-caption">{signupCopy.different}</p>
+         <div className="clinic-auth-choice-buttons" role="group" aria-label={signupCopy.different}>
+          <button type="button" className={signupRole==="owner"?"is-selected":""}
+           aria-pressed={signupRole==="owner"} onClick={()=>setSignupRole("owner")}>
+           <CareIcon name="clinic" size={19}/>{signupCopy.clinic}</button>
+          <button type="button" className={signupRole==="dentist"?"is-selected":""}
+           aria-pressed={signupRole==="dentist"} onClick={()=>setSignupRole("dentist")}>
+           <CareIcon name="profile" size={19}/>{signupCopy.dentist}</button>
+         </div>
+         <div className="clinic-auth-explainer" role="note">
+          <CareIcon name="shield" size={19}/>
+          <p>{signupRole==="dentist"?signupCopy.staff:signupCopy.clinicHelp}
+           {signupRole==="dentist"&&<> <a href="/clinic/invite">{signupCopy.dentist}</a></>}</p>
+         </div>
+        </div>}
         <form className="form-stack" onSubmit={submit}>
           {mode === "signup" && <Field title={t("name")} value={name} onChange={setName} autoComplete="name" />}
           {mode !== "reset" && <Field title={t("email")} type="email" value={email} onChange={setEmail} autoComplete="email" hint={devNoEmail ? t("devEmailHelp") : t("emailHelp")} />}
           {(mode === "login" || mode === "signup" || mode === "reset") &&
             <Field title={t("password")} type="password" value={password} onChange={setPassword}
               autoComplete={mode === "login" ? "current-password" : "new-password"} hint={t("passwordHint")} />}
+          {mode==="signup"&&audience==="clinic"&&<Field title={signupCopy.confirm}
+            type="password" value={confirmation} onChange={setConfirmation}
+            autoComplete="new-password"/>}
+          {mode==="signup"&&audience==="clinic"&&<p className="clinic-auth-policy">
+           {signupCopy.legal} <a href="/terms" target="_blank" rel="noopener noreferrer">{signupCopy.terms}</a>
+            {" · "} <a href="/privacy" target="_blank" rel="noopener noreferrer">{signupCopy.privacy}</a>
+          </p>}
           <button disabled={busy} className="btn btn-primary btn-wide" type="submit">
             {busy ? t("loading") : title}
           </button>

@@ -350,22 +350,60 @@ const emptyClinic={
   legalName:"",displayName:"",clinicType:"office",province:"Kabul",city:"Kabul",
   district:"",address:"",phone:"",email:"",licenseNumber:""
 };
-function OrganizationFields({form,setForm}:{form:any,setForm:(x:any)=>void}){
-  const l=useText();
-  const change=(key:string)=>(v:string)=>setForm((s:any)=>({...s,[key]:v}));
-  return <div className="phase-form-grid">
-    <Input title={l("legalName")} value={form.legalName} change={change("legalName")} required/>
+function OrganizationFields({form,setForm,readonly=false}:{form:any,setForm:(x:any)=>void,readonly?:boolean}){
+ const l=useText();const {locale}=usePreferences();
+ const words={
+  en:{identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
+   location:"Location and contacts",sub:"Enter accurate clinic information; published data requires separate approval.",
+   license:"Registration number is optional here. The actual clinic license document is reviewed in the verification step.",
+   clinical:"Professional qualifications and ID cards belong in the dentist credential workflow, not clinic registration."},
+  "fa-AF":{identity:"هویت کلینیک",public:"عمومی پس از تأیید",private:"خصوصی برای بررسی‌کنندگان",
+   location:"موقعیت و تماس‌ها",sub:"معلومات دقیق کلینیک را درج کنید؛ نشر عمومی نیازمند تأیید جداگانه است.",
+   license:"شماره ثبت اینجا اختیاری است؛ سند اصلی جواز در مرحله تأیید بررسی می‌شود.",
+   clinical:"اسناد حرفه‌ای و کارت هویت داکتر مربوط روند تأیید داکتر است، نه ثبت کلینیک."},
+  "ps-AF":{identity:"د کلینیک پېژندنه",public:"له تایید وروسته عام",private:"د کتونکو لپاره محرم",
+   location:"ځای او اړیکې",sub:"د کلینیک دقیق معلومات ولیکئ؛ عامه خپرول بېل تایید غواړي.",
+   license:"د ثبت شمېره دلته اختیاري ده؛ اصلي جواز په تایید پړاو کې کتل کېږي.",
+   clinical:"د ډاکټر مسلکي اسناد او پېژندپاڼې د ډاکټر تایید پورې تړلې دي، نه د کلینیک ثبت پورې."}
+ }[locale]||{
+  identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
+  location:"Location and contacts",sub:"Enter accurate clinic information.",
+  license:"Clinic license proof is reviewed separately.",
+  clinical:"Doctor ID and professional documents use the separate credential workflow."};
+ const change=(key:string)=>(v:string)=>setForm((x:any)=>({...x,[key]:v}));
+ return <fieldset className="clinic-setup-form-sections clinic-setup-fields-readonly" disabled={readonly}>
+  <section className="clinic-setup-field-section">
+   <header className="clinic-setup-field-section-head">
+    <span aria-hidden="true" className="clinic-setup-field-icon">▤</span>
+    <div><h3>{words.identity}</h3><p>{words.sub}</p></div>
+   </header>
+   <div className="phase-form-grid">
     <Input title={l("displayName")} value={form.displayName} change={change("displayName")} required/>
+    <Input title={l("legalName")} value={form.legalName} change={change("legalName")} required/>
     <Select title={l("clinicType")} value={form.clinicType} change={change("clinicType")}
-      options={["solo","office","specialty"].map(id=>({id,label:l(id)}))}/>
+     options={["solo","office","specialty"].map(id=>({id,label:l(id)}))}/>
+    <Input title={l("license")} value={form.licenseNumber} change={change("licenseNumber")}/>
+   </div>
+   <div className="clinic-setup-data-note">
+    <span className="clinic-setup-privacy-badge">⛨ {words.private}</span>
+    <p>{words.license}</p></div>
+  </section>
+  <section className="clinic-setup-field-section">
+   <header className="clinic-setup-field-section-head">
+    <span aria-hidden="true" className="clinic-setup-field-icon is-location">⌖</span>
+    <div><h3>{words.location}</h3><p>{words.public}</p></div>
+   </header>
+   <div className="phase-form-grid">
     <Input title={l("province")} value={form.province} change={change("province")} required/>
     <Input title={l("city")} value={form.city} change={change("city")} required/>
     <Input title={l("district")} value={form.district} change={change("district")}/>
     <Input title={l("address")} value={form.address} change={change("address")} required/>
     <Input title={l("phone")} value={form.phone} change={change("phone")} type="tel" required/>
     <Input title={l("email")} value={form.email} change={change("email")} type="email" required/>
-    <Input title={l("license")} value={form.licenseNumber} change={change("licenseNumber")}/>
-  </div>;
+   </div>
+  </section>
+  <p className="clinic-setup-hint">⛨ {words.clinical}</p>
+ </fieldset>;
 }
 function PlanCards({plans,selected,onSelect,readonly=false}:{plans:any[],selected:string,onSelect:(s:string)=>void,readonly?:boolean}){
   const l=useText();
@@ -378,122 +416,359 @@ function PlanCards({plans,selected,onSelect,readonly=false}:{plans:any[],selecte
     <small>{l("features")}</small>
   </label>)}</div>;
 }
+/** Visual hierarchy derived from mobile clinic onboarding references, without
+ * copying unsupported PMDC registration, point-based grades or unreviewed claims.
+ * All writes still use the existing audited PH02 clinic lifecycle and PH04
+ * persisted readiness/operations endpoints. */
 function Onboarding(){
-  const l=useText();
-  const {data:list,error:listError,refresh:listRefresh}=useResource("/clinics");
-  const {data:published}=useResource("/public/plans");
-  const [selected,setSelected]=useState("");
-  const [detail,setDetail]=useState<any>(null);
-  const [form,setForm]=useState<any>(emptyClinic);
-  const [plan,setPlan]=useState("");
-  const [stage,setStage]=useState(0);
-  const [attested,setAttested]=useState(false);
-  const [file,setFile]=useState<File|null>(null);
-  const [busy,setBusy]=useState(false);
-  const [error,setError]=useState("");
-  const [good,setGood]=useState("");
-  useEffect(()=>{
-    const query=new URLSearchParams(window.location.search).get("clinic");
-    if(query)setSelected(query);
-  },[]);
-  useEffect(()=>{
-    if(!selected){setDetail(null);setForm(emptyClinic);setPlan("");setStage(0);return;}
-    send("/clinics/"+selected).then(d=>{setDetail(d);setForm(d.clinic);setPlan(d.clinic.selectedPlanId||"");})
-      .catch(e=>setError(e.message));
-  },[selected]);
-  const reload=async(id:string)=>{const d=await send("/clinics/"+id);setDetail(d);setForm(d.clinic);setPlan(d.clinic.selectedPlanId||"");listRefresh();};
-  const canEdit=!detail||["draft","needs_info","rejected"].includes(detail.clinic.status);
-  async function save(ev:FormEvent){
-    ev.preventDefault();setBusy(true);setError("");setGood("");
-    try{
-      if(!plan)throw new Error("PLAN_REQUIRED");
-      const payload={...form,selectedPlanId:plan};
-      const result=selected?await send("/clinics/"+selected,"PATCH",{...payload,revision:detail.clinic.revision}):
-        await send("/clinics","POST",payload);
-      const id=result.clinic.id;setSelected(id);await reload(id);setGood(l("success"));setStage(3);
-      window.history.replaceState(null,"","/clinic/onboarding?clinic="+id);
-    }catch(e){setError((e as Error).message);}finally{setBusy(false);}
+ const l=useText();
+ const {locale}=usePreferences();
+ const words={
+  en:{
+   introduction:"Set up your clinic with confidence",
+   sub:"Complete the clinic details, choose a plan, and submit verified documents for independent review.",
+   profile:"Clinic registration",private:"Private · authorized reviewers only",
+   public:"Public after approval",contact:"Location & contact",
+   statusPending:"Application under review",statusPendingDetail:"A platform reviewer will examine the submitted clinic license. Approval is not automatic, and a decision may require more information.",
+   statusApproved:"Clinic approved",statusApprovedDetail:"Your clinic registration has been approved. Finish real services, chairs and working schedules to operate the clinic.",
+   statusNeeds:"Action needed",statusNeedsDetail:"Review the decision history and correct the requested information before submitting again.",
+   statusDraft:"Save and submit the clinic details to begin independent review.",
+   docs:"Registration evidence",docsDetail:"Only approved verification staff can access these files. Never add patient records here.",
+   planDetail:"Only genuine published plan prices, capacity and terms are selectable.",
+   summary:"Review your submission",summaryDetail:"Check the details, save a draft, upload a clinic license, then explicitly submit for review.",
+   setup:"Clinic operational readiness",setupDetail:"Real services, treatment chairs and working hours are configured separately after clinic registration.",
+   professional:"Dentist verification is separate",
+   professionalDetail:"Dentists join through an authorized clinic invitation and submit their own registration evidence. Creating a clinic does not verify its dentists.",
+   doctorLink:"Invite your team",completed:"Completed",upcoming:"After verification",
+   doctorNotice:"Do not upload a dentist's private ID card here. Dentist credentials use their own secure verification workflow.",
+   saveFirst:"Save your clinic details before uploading verification evidence.",
+   selectFile:"Choose document",fileSize:"The file must be PDF, PNG or JPEG and 2 MB or smaller.",
+   change:"Change details",current:"Current clinic",all:"Application steps",
+   goDashboard:"Return to dashboard",underReview:"Your draft and review status are preserved.",
+   verifiedDisclaimer:"Facility quality rankings, awards and points are not used without a verified assessment policy.",
+   next:"Continue",done:"View readiness",uploadAction:"Upload private document",
+   reviewCopy:"Review is performed by a platform administrator. No automatic approval is promised."
+  },
+  "fa-AF":{
+   introduction:"کلینیک خود را با اطمینان ثبت کنید",
+   sub:"معلومات کلینیک، پلن و اسناد معتبر را تکمیل و برای بررسی مستقل ارسال کنید.",
+   profile:"ثبت کلینیک",private:"خصوصی · فقط برای بررسی‌کنندگان مجاز",
+   public:"عمومی پس از تأیید",contact:"موقعیت و تماس",
+   statusPending:"در انتظار بررسی",statusPendingDetail:"مدیر سیستم جواز کلینیک را بررسی می‌کند. تأیید خودکار نیست و ممکن است معلومات بیشتر بخواهد.",
+   statusApproved:"کلینیک تأیید شده",statusApprovedDetail:"ثبت کلینیک تأیید شده است. حالا خدمات، چوکی‌ها و تقسیم اوقات واقعی را تنظیم کنید.",
+   statusNeeds:"اقدام ضروری",statusNeedsDetail:"دلیل تصمیم را در تاریخچه ببینید و پیش از ارسال مجدد معلومات را اصلاح کنید.",
+   statusDraft:"معلومات کلینیک را ذخیره و برای آغاز بررسی مستقل ارسال کنید.",
+   docs:"اسناد ثبت",docsDetail:"تنها بررسی‌کنندگان مجاز به این اسناد دسترسی دارند. اسناد مریضان را اینجا آپلود نکنید.",
+   planDetail:"فقط قیمت‌ها، ظرفیت‌ها و شرایط پلن‌های منتشرشده انتخاب می‌شوند.",
+   summary:"بررسی معلومات",summaryDetail:"معلومات را بررسی، پیش‌نویس را ذخیره، جواز را آپلود و سپس برای بررسی ارسال کنید.",
+   setup:"آمادگی عملیاتی کلینیک",setupDetail:"خدمات، چوکی‌های تداوی و تقسیم اوقات واقعی جداگانه تنظیم می‌شوند.",
+   professional:"تأیید داکتر جداگانه است",
+   professionalDetail:"داکتر توسط کلینیک دعوت می‌شود و اسناد حرفه‌ای خود را جداگانه ارائه می‌کند. ثبت کلینیک به‌معنی تأیید داکتر نیست.",
+   doctorLink:"دعوت کارمندان",completed:"تکمیل",upcoming:"بعد از تأیید",
+   doctorNotice:"کارت هویت خصوصی داکتر را اینجا آپلود نکنید. برای اسناد داکتر مسیر مصون جداگانه وجود دارد.",
+   saveFirst:"پیش از آپلود اسناد، معلومات کلینیک را ذخیره کنید.",
+   selectFile:"انتخاب سند",fileSize:"سند باید PDF، PNG یا JPEG و حداکثر ۲ مگابایت باشد.",
+   change:"تغییر معلومات",current:"کلینیک انتخاب‌شده",all:"مراحل ثبت",
+   goDashboard:"بازگشت به داشبورد",underReview:"پیش‌نویس و وضعیت بررسی محفوظ می‌مانند.",
+   verifiedDisclaimer:"بدون ارزیابی معتبر، درجه، امتیاز یا جایزه کیفیت کلینیک نمایش داده نمی‌شود.",
+   next:"ادامه",done:"مشاهده آمادگی",uploadAction:"آپلود سند خصوصی",
+   reviewCopy:"بررسی توسط مدیر سیستم انجام می‌شود؛ تأیید خودکار وعده داده نمی‌شود."
+  },
+  "ps-AF":{
+   introduction:"خپل کلینیک په ډاډ ثبت کړئ",
+   sub:"د کلینیک معلومات، پلان او اسناد بشپړ کړئ او خپلواکې کتنې ته یې واستوئ.",
+   profile:"د کلینیک ثبت",private:"محرم · یوازې مجاز کتونکو ته",
+   public:"له تایید وروسته عام",contact:"ځای او اړیکه",
+   statusPending:"د تایید په تمه",statusPendingDetail:"اداره د کلینیک جواز ګوري؛ تایید اتومات نه دی او نور معلومات غوښتل کېدای شي.",
+   statusApproved:"کلینیک تایید شو",statusApprovedDetail:"ثبت تایید شوی؛ اوس رښتینې خدمتونه، څوکۍ او وختونه بشپړ کړئ.",
+   statusNeeds:"اقدام ته اړتیا",statusNeedsDetail:"د پرېکړې تاریخچه وګورئ او مخکې له بیا لېږلو معلومات سم کړئ.",
+   statusDraft:"د خپلواکې کتنې لپاره د کلینیک معلومات خوندي او واستوئ.",
+   docs:"د ثبت اسناد",docsDetail:"یوازې مجاز کتونکو ته د لاسرسي اجازه شته؛ د ناروغانو اسناد دلته مه پورته کوئ.",
+   planDetail:"یوازې خپاره شوي اصلي پلانونه او بیې ټاکل کېږي.",
+   summary:"د معلوماتو بیاکتنه",summaryDetail:"معلومات وګورئ، مسوده وساتئ، جواز پورته کړئ او بیا کتنې ته واستوئ.",
+   setup:"د کلینیک عملیاتي چمتووالی",setupDetail:"خدمتونه، څوکۍ او رښتیني مهالوېش بېل تنظیمېږي.",
+   professional:"د ډاکټر تایید بېل دی",
+   professionalDetail:"ډاکټر د کلینیک په بلنه ورګډېږي او خپل مسلکي اسناد وړاندې کوي. د کلینیک ثبت د ډاکټر تایید نه دی.",
+   doctorLink:"کارکوونکي راوبلئ",completed:"بشپړ",upcoming:"له تایید وروسته",
+   doctorNotice:"د ډاکټر شخصي پېژندپاڼه دلته مه پورته کوئ؛ د ډاکټر اسنادو لپاره خوندي جلا لاره شته.",
+   saveFirst:"له سند پورته کولو مخکې د کلینیک معلومات وساتئ.",
+   selectFile:"سند غوره کړئ",fileSize:"PDF، PNG یا JPEG تر ۲ مېګابایټه.",
+   change:"معلومات بدل کړئ",current:"ټاکل شوی کلینیک",all:"د ثبت پړاوونه",
+   goDashboard:"ډشبورډ ته ستنېدل",underReview:"د مسودې او بیاکتنې حالت خوندي دی.",
+   verifiedDisclaimer:"له رښتینې ارزونې پرته د کلینیک درجه او نمرې نه ښودل کېږي.",
+   next:"دوام",done:"چمتووالی وګورئ",uploadAction:"محرم سند پورته کړئ",
+   reviewCopy:"د ادارې له خوا ارزول کېږي؛ د اتومات تایید ژمنه نشته."
   }
-  async function upload(){
-    if(!file||!selected)return;
-    setBusy(true);setError("");setGood("");
-    try{
-      const result=await fetch(API+"/v1/clinics/"+selected+"/evidence",{
-        method:"POST",credentials:"include",
-        headers:{"content-type":"application/octet-stream","x-document-kind":"clinic_license","x-file-name":file.name},
-        body:file
-      });
-      const response=await result.json();
-      if(!result.ok)throw new Error(response.code||"UPLOAD_FAILED");
-      setFile(null);await reload(selected);setGood(l("success"));
-    }catch(e){setError((e as Error).message);}finally{setBusy(false);}
-  }
-  async function submit(){
-    if(!selected)return;
-    setBusy(true);setError("");setGood("");
-    try{await send("/clinics/"+selected+"/submit","POST",{attested});
-      await reload(selected);setGood(l("success"));}
-    catch(e){setError((e as Error).message);}finally{setBusy(false);}
-  }
-  const allPlans=published?.plans||[];
-  return <div><div className="phase-row"><div><h1 className="phase-title">{l("onboarding")}</h1>
-    <p className="muted">{l("operational")}</p></div>
-    {list?.clinics?.length>0&&<Select title={l("chooseClinic")} value={selected} change={setSelected}
-      options={list.clinics.map((c:any)=>({id:c.id,label:c.displayName}))}/>}</div>
-    {listError&&<DataError message={listError} retry={listRefresh}/>}
-    {detail&&<div className="phase-status-strip"><Status value={detail.clinic.status} l={l}/>
-      <span>{detail.plan?.label||""} · {l("subscription")}: {l(detail.effectiveStatus)}</span></div>}
-    <div className="phase-stepper" role="tablist" aria-label={l("onboarding")}>
-      {["organization","choosePlan","review","operations"].map((key,i)=><button key={key} type="button"
-        className={stage===i?"current":""} aria-selected={stage===i}
-        role="tab" onClick={()=>setStage(i)}>{i+1}. {l(key)}</button>)}
-    </div>
-    {!canEdit&&<InlineAlert kind="info">{l("awaitingReview")}</InlineAlert>}
-    {stage===3&&<section className="phase04-setup-step-panel">
-      {selected?<OperationsSetup clinicId={selected}/>:
-        <InlineAlert kind="warning">{l("noSetup")}</InlineAlert>}
-      <div className="phase-actions">
-       <button className="btn btn-secondary" onClick={()=>setStage(2)}>{l("back")}</button>
+ }[locale]||{
+  introduction:"Set up your clinic with confidence",sub:"Complete the clinic details, choose a plan and submit verified documents.",
+  profile:"Clinic registration",private:"Private to reviewers",public:"Public after approval",
+  contact:"Location & contact",statusPending:"Application under review",
+  statusPendingDetail:"A platform reviewer will examine the submitted clinic license.",
+  statusApproved:"Clinic approved",statusApprovedDetail:"Finish operational setup.",
+  statusNeeds:"Action needed",statusNeedsDetail:"Please review the decision.",
+  statusDraft:"Save clinic details to begin review.",docs:"Registration evidence",
+  docsDetail:"Files are private to reviewers.",planDetail:"Select published plans.",
+  summary:"Review your submission",summaryDetail:"Save, upload license and submit.",
+  setup:"Operational readiness",setupDetail:"Configure actual services and hours.",
+  professional:"Dentist verification is separate",professionalDetail:"Dentists are invited and reviewed separately.",
+  doctorLink:"Invite your team",completed:"Completed",upcoming:"After verification",
+  doctorNotice:"Do not upload dentist ID documents to clinic license verification.",
+  saveFirst:"Save the clinic before uploading documents.",selectFile:"Choose document",
+  fileSize:"PDF, PNG, JPEG up to 2 MB",change:"Change details",current:"Current clinic",
+  all:"Application steps",goDashboard:"Return to dashboard",underReview:"Your progress is preserved.",
+  verifiedDisclaimer:"Unsupported grading is not displayed.",next:"Continue",done:"View readiness",
+  uploadAction:"Upload private document",reviewCopy:"Manual review is required."};
+ const {data:list,error:listError,refresh:listRefresh}=useResource("/clinics");
+ const {data:published}=useResource("/public/plans");
+ const [selected,setSelected]=useState("");
+ const [detail,setDetail]=useState<any>(null);
+ const [form,setForm]=useState<any>(emptyClinic);
+ const [plan,setPlan]=useState("");
+ const [stage,setStage]=useState(0);
+ const [attested,setAttested]=useState(false);
+ const [file,setFile]=useState<File|null>(null);
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState("");
+ const [good,setGood]=useState("");
+ useEffect(()=>{
+  const query=new URLSearchParams(window.location.search).get("clinic");
+  if(query)setSelected(query);
+ },[]);
+ useEffect(()=>{
+  if(!selected){setDetail(null);setForm(emptyClinic);setPlan("");setStage(0);setFile(null);setAttested(false);return;}
+  let active=true;
+  send("/clinics/"+selected).then(d=>{if(active){
+    setDetail(d);setForm(d.clinic);setPlan(d.clinic.selectedPlanId||"");
+    setError("");
+    if(["pending","approved","suspended"].includes(d.clinic.status))setStage(2);
+  }}).catch(e=>{if(active)setError(e.message)});
+  return ()=>{active=false};
+ },[selected]);
+ const reload=async(id:string)=>{
+  const d=await send("/clinics/"+id);setDetail(d);
+  setForm(d.clinic);setPlan(d.clinic.selectedPlanId||"");listRefresh();
+ };
+ const canEdit=!detail||["draft","needs_info","rejected"].includes(detail.clinic.status);
+ const status=detail?.clinic?.status||"draft";
+ const isSubmitted=["pending","approved","suspended"].includes(status);
+ const allPlans=published?.plans||[];
+ const chosen=allPlans.find((p:any)=>p.id===plan);
+ const savedLicense=Boolean(detail?.documents?.some((d:any)=>d.kind==="clinic_license"));
+ const isReady=Boolean(selected&&detail);
+ const docValid=Boolean(file&&file.size<=2*1024*1024&&
+  ["application/pdf","image/png","image/jpeg"].includes(file.type));
+ const stageLabels=[l("organization"),l("choosePlan"),l("review"),l("operations")];
+ const stageCount=isSubmitted?3:stage;
+ async function save(ev:FormEvent){
+  ev.preventDefault();setBusy(true);setError("");setGood("");
+  try{
+   if(!plan)throw new Error("PLAN_REQUIRED");
+   const payload={...form,selectedPlanId:plan};
+   const result=selected?await send("/clinics/"+selected,"PATCH",
+      {...payload,revision:detail.clinic.revision}):
+    await send("/clinics","POST",payload);
+   const id=result.clinic.id;setSelected(id);await reload(id);
+   setGood(l("success"));setStage(2);
+   window.history.replaceState(null,"","/clinic/onboarding?clinic="+encodeURIComponent(id));
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
+ }
+ async function upload(){
+  if(!docValid||!selected||!file)return;
+  setBusy(true);setError("");setGood("");
+  try{
+   const response=await fetch(API+"/v1/clinics/"+selected+"/evidence",{
+    method:"POST",credentials:"include",headers:{"content-type":"application/octet-stream",
+     "x-document-kind":"clinic_license","x-file-name":file.name},body:file});
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(result.code||"UPLOAD_FAILED");
+   setFile(null);await reload(selected);setGood(l("success"));
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
+ }
+ async function submit(){
+  if(!selected||!savedLicense||!attested)return;
+  setBusy(true);setError("");setGood("");
+  try{
+   await send("/clinics/"+selected+"/submit","POST",{attested:true});
+   await reload(selected);setGood(l("success"));setStage(2);
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
+ }
+ const go=(to:number)=>{
+  if(to===1&&(!form.displayName?.trim()||!form.legalName?.trim()||
+     !form.phone?.trim()||!form.address?.trim()||!form.city?.trim()||
+     !form.province?.trim()||!form.email?.trim()))return;
+  if(to===2&&!isReady&&!plan)return;
+  if(to===3&&!isReady)return;
+  setStage(to);setError("");setGood("");
+ };
+ return <div className="clinic-setup">
+  <header className="clinic-setup-top">
+   <a href="/clinic" className="clinic-setup-back">← {words.goDashboard}</a>
+   <div className="clinic-setup-heading">
+    <span className="clinic-setup-overline">DANDANLINK · {l("onboarding")}</span>
+    <h1>{words.introduction}</h1><p>{words.sub}</p>
+   </div>
+   {list?.clinics?.length>0&&<Select title={words.current} value={selected}
+     change={setSelected} options={[
+      {id:"",label:l("newClinic")},
+      ...list.clinics.map((c:any)=>({id:c.id,label:c.displayName}))
+     ]}/>}
+  </header>
+  {listError&&<DataError message={listError} retry={listRefresh}/>}
+  <div className="clinic-setup-layout">
+   <div className="clinic-setup-main">
+    <nav className="clinic-setup-steps" aria-label={words.all}>
+     {stageLabels.map((label,i)=><button type="button" key={i}
+      aria-current={stage===i?"step":undefined}
+      className={stage===i?"is-current":i<stageCount?"is-complete":""}
+      disabled={(i===2&&!isReady&&!plan)||(i===3&&!isReady)}
+      onClick={()=>go(i)}>
+       <span className="clinic-setup-step-num">{i<stageCount?"✓":i+1}</span>
+       <span>{label}</span>
+      </button>)}
+    </nav>
+    {isSubmitted&&<section className={"clinic-setup-review-status "+
+     (status==="approved"?"is-approved":"is-pending")} role="status">
+     <span className="clinic-setup-review-icon" aria-hidden="true">
+      {status==="approved"?"✓":"⌛"}</span>
+     <div><h2>{status==="approved"?words.statusApproved:words.statusPending}</h2>
+      <p>{status==="approved"?words.statusApprovedDetail:words.statusPendingDetail}</p>
+      <span className="clinic-setup-status-value"><Status value={status} l={l}/></span>
+     </div>
+    </section>}
+    {["needs_info","rejected"].includes(status)&&<section className="clinic-setup-review-status is-action">
+      <span aria-hidden="true" className="clinic-setup-review-icon">!</span>
+      <div><h2>{words.statusNeeds}</h2><p>{words.statusNeedsDetail}</p></div>
+    </section>}
+    {stage===0&&<section className="clinic-setup-surface">
+     <div className="clinic-setup-section-head"><span className="clinic-setup-section-icon" aria-hidden="true">▤</span>
+      <div><h2>{words.profile}</h2><span className="clinic-setup-privacy-badge">⌁ {words.private}</span></div>
+     </div>
+     <form className="clinic-setup-form" onSubmit={e=>{e.preventDefault();go(1)}}>
+      <OrganizationFields form={form} setForm={setForm} readonly={!canEdit}/>
+      <div className="clinic-setup-actions">
+       <button className="btn btn-primary" type="submit" disabled={!canEdit}>
+        {words.next} →</button></div>
+     </form>
+    </section>}
+    {stage===1&&<section className="clinic-setup-surface">
+     <div className="clinic-setup-section-head"><span className="clinic-setup-section-icon" aria-hidden="true">◈</span>
+      <div><h2>{l("choosePlan")}</h2><p>{words.planDetail}</p></div>
+     </div>
+     <PlanCards plans={allPlans.filter((p:any)=>!detail||detail.clinic.status==="draft"||p.id===plan)}
+      selected={plan} onSelect={setPlan} readonly={!canEdit}/>
+     <div className="clinic-setup-actions">
+      <button type="button" className="btn btn-secondary" onClick={()=>go(0)}>{l("back")}</button>
+      <button type="button" className="btn btn-primary" disabled={!plan} onClick={()=>go(2)}>
+       {words.next} →</button>
+     </div>
+    </section>}
+    {stage===2&&<div className="clinic-setup-blocks">
+     <section className="clinic-setup-surface">
+      <div className="clinic-setup-section-head">
+       <span className="clinic-setup-section-icon" aria-hidden="true">✓</span>
+       <div><h2>{words.summary}</h2><p>{words.summaryDetail}</p></div>
       </div>
+      <div className="clinic-setup-summary">
+       <div><span>{l("displayName")}</span><strong>{form.displayName||"—"}</strong></div>
+       <div><span>{l("city")}</span><strong>{form.city||"—"} · {form.province||"—"}</strong></div>
+       <div><span>{l("plan")}</span><strong>{chosen?.label||detail?.plan?.label||"—"}
+        {chosen?(" · "+currency(chosen.priceAfn)):""}</strong></div>
+       <div><span>{l("phone")}</span><strong dir="ltr">{form.phone||"—"}</strong></div>
+      </div>
+      {canEdit&&<form onSubmit={save} className="clinic-setup-actions">
+       <button className="btn btn-secondary" type="button" onClick={()=>go(0)}>{words.change}</button>
+       <button disabled={busy||!plan} className="btn btn-primary">
+        {busy?l("loading"):l("save")}</button>
+      </form>}
+      {!canEdit&&<p className="clinic-setup-hint">{words.underReview}</p>}
+     </section>
+     <section className="clinic-setup-surface">
+      <div className="clinic-setup-section-head">
+       <span className="clinic-setup-section-icon is-private" aria-hidden="true">♙</span>
+       <div><h2>{words.docs}</h2><span className="clinic-setup-privacy-badge">⌁ {words.private}</span>
+        <p>{words.docsDetail}</p></div>
+      </div>
+      {isReady?<div className="clinic-setup-docs">
+       <div className="clinic-setup-upload">
+        <label className="clinic-setup-upload-picker">
+         <span className="clinic-setup-upload-symbol" aria-hidden="true">⇧</span>
+         <span><strong>{file?.name||words.selectFile}</strong>
+          <small>{l("fileHint")}</small></span>
+         <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+          disabled={!canEdit||busy} onChange={e=>setFile(e.currentTarget.files?.[0]||null)}/>
+        </label>
+        {file&&!docValid&&<InlineAlert kind="warning">{words.fileSize}</InlineAlert>}
+        <button className="btn btn-secondary" type="button" onClick={upload}
+         disabled={!docValid||busy||!canEdit}>
+         {busy?l("loading"):words.uploadAction}</button>
+       </div>
+       {detail?.documents?.length>0&&<div className="clinic-setup-uploads">
+        <strong>{l("uploaded")}</strong>
+        {detail.documents.map((d:any)=><div key={d.id} className="clinic-setup-uploaded">
+         <span aria-hidden="true">✓</span><span>{d.fileName}</span>
+         <small>{Math.round(d.sizeBytes/1024)} KB</small></div>)}
+       </div>}
+       {canEdit&&<div className="clinic-setup-attestation">
+        <label className="clinic-setup-check"><input type="checkbox" checked={attested}
+         onChange={e=>setAttested(e.target.checked)}/><span>{l("attest")}</span></label>
+        <button className="btn btn-primary clinic-setup-submit" type="button" onClick={submit}
+         disabled={!attested||!savedLicense||busy}>
+         {busy?l("loading"):l("submit")} →</button>
+       </div>}
+       <p className="clinic-setup-hint">⛨ {words.doctorNotice}</p>
+       <p className="clinic-setup-hint">{words.reviewCopy}</p>
+      </div>:<InlineAlert kind="info">{words.saveFirst}</InlineAlert>}
+     </section>
+    </div>}
+    {stage===3&&<div className="clinic-setup-blocks">
+     <section className="clinic-setup-surface">
+      <div className="clinic-setup-section-head">
+       <span className="clinic-setup-section-icon" aria-hidden="true">✦</span>
+       <div><h2>{words.setup}</h2><p>{words.setupDetail}</p></div></div>
+      {isReady?<OperationsSetup clinicId={selected}/>:
+       <InlineAlert kind="info">{l("noSetup")}</InlineAlert>}
+      <p className="clinic-setup-hint">{words.verifiedDisclaimer}</p>
+     </section>
+     <section className="clinic-setup-surface">
+      <div className="clinic-setup-section-head">
+       <span className="clinic-setup-section-icon" aria-hidden="true">⛨</span>
+       <div><h2>{words.professional}</h2><p>{words.professionalDetail}</p></div></div>
+      {isReady&&<a className="btn btn-secondary" href={"/clinic/staff?clinic="+encodeURIComponent(selected)+"&tab=invitations"}>
+       {words.doctorLink} ↗</a>}
+     </section>
+    </div>}
+    {error&&<div className="clinic-setup-alert"><Alert message={l("failed")+": "+error}/></div>}
+    {good&&<div className="clinic-setup-alert"><Alert message={good} ok/></div>}
+    {detail?.history?.length>0&&<section className="clinic-setup-surface">
+      <h2>{l("history")}</h2>
+      <div className="clinic-setup-history">{detail.history.map((h:any,i:number)=>
+       <div key={i}><span>{short(h.createdAt)}</span>
+        <strong>{l(h.action)||h.action}</strong>
+        {h.reason&&<p>{h.reason}</p>}</div>)}</div>
     </section>}
-    {stage===0&&<section className="card panel">
-      <h2>{l("organization")}</h2><form onSubmit={e=>{e.preventDefault();setStage(1);}}>
-        <OrganizationFields form={form} setForm={setForm}/>
-        <div className="phase-actions"><button className="btn btn-primary" disabled={!canEdit}>{l("continue")}</button></div>
-      </form></section>}
-    {stage===1&&<section className="card panel"><h2>{l("choosePlan")}</h2>
-      <p className="muted">{l("preview")}</p>
-      <PlanCards plans={allPlans.filter((p:any)=>!detail||detail.clinic.status==="draft"||p.id===plan)}
-        selected={plan} onSelect={setPlan}/>
-      <div className="phase-actions"><button className="btn btn-secondary" onClick={()=>setStage(0)}>{l("back")}</button>
-        <button className="btn btn-primary" onClick={()=>setStage(2)} disabled={!plan}>{l("continue")}</button></div>
-    </section>}
-    {stage===2&&<section className="card panel"><h2>{l("review")}</h2>
-      <p><strong>{form.displayName||l("newClinic")}</strong> · {form.city}</p>
-      <p>{l("plan")}: {allPlans.find((p:any)=>p.id===plan)?.label||detail?.plan?.label||"—"}</p>
-      <form onSubmit={save}><div className="phase-actions">
-        <button type="button" className="btn btn-secondary" onClick={()=>setStage(1)}>{l("back")}</button>
-        <button className="btn btn-primary" disabled={busy||!canEdit||!plan}>{l("save")}</button></div></form>
-      {selected&&<div className="phase-upload"><h3>{l("evidence")}</h3><p className="muted">{l("fileHint")}</p>
-        <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" disabled={busy||!canEdit}
-          onChange={e=>setFile(e.currentTarget.files?.[0]||null)}/>
-        <button className="btn btn-secondary" type="button" onClick={upload} disabled={busy||!file||!canEdit}>{l("upload")}</button>
-        <h3>{l("uploaded")}</h3>{detail?.documents?.length?<ul>{detail.documents.map((d:any)=>
-          <li key={d.id}>{d.fileName} ({Math.round(d.sizeBytes/1024)} KB)</li>)}</ul>:<Empty>{l("noRecords")}</Empty>}
-        <p className="muted">{l("privacy")}</p>
-        <label className="phase-check"><input type="checkbox" checked={attested} onChange={e=>setAttested(e.target.checked)}/>
-          {l("attest")}</label>
-        <button className="btn btn-primary" onClick={submit} type="button" disabled={busy||!canEdit||!attested||
-          !detail?.documents?.some((d:any)=>d.kind==="clinic_license")}>{l("submit")}</button>
-        <InlineAlert>{l("verifiedNote")}</InlineAlert>
-      </div>}</section>}
-    {good&&<Alert message={good} ok/>}{error&&<Alert message={l("failed")+": "+error}/>}
-    {detail?.history?.length>0&&<section className="card panel"><h2>{l("history")}</h2>
-      {detail.history.map((h:any,i:number)=><p key={i}>{short(h.createdAt)} · {l(h.action)||h.action} · {h.reason}</p>)}
-    </section>}
-  </div>;
+   </div>
+   <aside className="clinic-setup-aside">
+    <section className="clinic-setup-side-card">
+     <span className="clinic-setup-side-symbol" aria-hidden="true">✦</span>
+     <h2>{l("verification")}</h2>
+     <p>{isSubmitted?words.underReview:words.statusDraft}</p>
+     <div className="clinic-setup-side-steps">
+      <div><span>{isReady?"✓":"1"}</span>{l("organization")}</div>
+      <div><span>{plan?"✓":"2"}</span>{l("choosePlan")}</div>
+      <div><span>{savedLicense?"✓":"3"}</span>{words.docs}</div>
+      <div><span>{status==="approved"?"✓":"4"}</span>{l("verification")}</div>
+     </div>
+     <p className="clinic-setup-hint">{l("verifiedNote")}</p>
+    </section>
+    <section className="clinic-setup-side-card">
+     <h3>{words.professional}</h3><p>{words.professionalDetail}</p>
+     {isReady&&<a href={"/clinic/staff?clinic="+encodeURIComponent(selected)+"&tab=invitations"}>
+      {words.doctorLink} ↗</a>}
+    </section>
+   </aside>
+  </div>
+ </div>;
 }
-
 
 function ClinicSettings(){
  const l=useText();
