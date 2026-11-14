@@ -281,6 +281,38 @@ export function patientBookingRouter(){
   });
   res.json({state});
  }));
+ staff.get("/record-links/:linkId/releasable",route(async(req:StaffRequest,res)=>{
+  const {clinic,ctx}=await clinicScheduler(req,false);
+  if(ctx.role!=="dentist"&&ctx.role!=="owner"&&ctx.role!=="manager")
+   fail(403,"RELEASE_ROLE_DENIED");
+  if(ctx.role!=="dentist"&&!ctx.membership.clinicianEnabled)fail(403,"RELEASE_ROLE_DENIED");
+  const link=id(req.params.linkId);
+  const [linked]=await sqlClient`SELECT patient_id FROM patient_record_link_requests
+    WHERE id=${link} AND clinic_id=${clinic} AND state='approved'`;
+  if(!linked)fail(404,"APPROVED_LINK_REQUIRED");
+  const summaries=await sqlClient`SELECT e.id,e.signed_at,e.reason,
+    r.revoked_at IS NULL AS released
+    FROM clinic_encounters e
+    LEFT JOIN patient_record_releases r ON r.link_id=${link} AND r.clinic_id=${clinic}
+      AND r.resource_kind='signed_encounter_summary' AND r.resource_id=e.id
+    WHERE e.clinic_id=${clinic} AND e.patient_id=${linked.patient_id}
+    AND e.status='signed'
+    ${ctx.role==="dentist"?sqlClient`AND e.provider_membership_id=${ctx.membership.id}`:sqlClient``}
+    ORDER BY e.signed_at DESC LIMIT 80`;
+  const receipts=ctx.role==="dentist"?[]:
+   await sqlClient`SELECT i.id,i.invoice_number,i.issued_at,i.total_afn,
+    r.revoked_at IS NULL AS released
+    FROM clinic_invoices i
+    LEFT JOIN patient_record_releases r ON r.link_id=${link} AND r.clinic_id=${clinic}
+      AND r.resource_kind='issued_receipt' AND r.resource_id=i.id
+    WHERE i.clinic_id=${clinic} AND i.patient_id=${linked.patient_id}
+    AND i.status='issued' ORDER BY i.issued_at DESC LIMIT 80`;
+  // Only safe care summaries and invoice metadata for authorized clinic staff.
+  res.json({summaries:summaries.map(r=>({id:r.id,title:r.reason,
+    signedAt:r.signed_at,released:!!r.released})),
+   receipts:receipts.map(r=>({id:r.id,invoiceNumber:r.invoice_number,
+    issuedAt:r.issued_at,totalAfn:r.total_afn,released:!!r.released}))});
+ }));
  staff.post("/record-links/:linkId/releases",route(async(req:StaffRequest,res)=>{
   const {clinic,ctx}=await clinicScheduler(req);
   if(ctx.role!=="dentist"&&ctx.role!=="owner"&&ctx.role!=="manager")
@@ -305,6 +337,14 @@ export function patientBookingRouter(){
       WHERE clinic_id=${clinic} AND patient_id=${linked.patient_id}
       AND id=${resourceId} AND status='issued'`;
    if(!resource.length)fail(404,"RELEASABLE_RECORD_NOT_FOUND");
+   if(ctx.role==="dentist"){
+    if(kind!=="signed_encounter_summary")fail(403,"RELEASE_ROLE_DENIED");
+    const [owned]=await tx`SELECT id FROM clinic_encounters
+      WHERE clinic_id=${clinic} AND patient_id=${linked.patient_id}
+      AND provider_membership_id=${ctx.membership.id} AND id=${resourceId}
+      AND status='signed'`;
+    if(!owned)fail(403,"RELEASE_ROLE_DENIED");
+   }
    if(operation==="release"){
     await tx`INSERT INTO patient_record_releases
       (id,link_id,clinic_id,resource_kind,resource_id,released_by)
