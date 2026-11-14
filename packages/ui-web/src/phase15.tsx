@@ -480,7 +480,7 @@ export function PatientRecordsPage(){
 
 type StaffContext={name:string;email:string;clinics:{
  clinicId:string;clinicName:string;membershipId:string;role:string;clinicianEnabled:boolean}[]};
-function ClinicShell({title,children}:{title:string;children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
+function ClinicShell({title,activeKey="appointments",children}:{title:string;activeKey?:string;children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
  const {t}=useWords(),[ctx,setCtx]=useState<StaffContext|null>(null),[clinic,setClinic]=useState<string|null>(null);
  const [error,setError]=useState("");
  useEffect(()=>{
@@ -491,7 +491,7 @@ function ClinicShell({title,children}:{title:string;children:(clinicId:string,ro
  if(!ctx)return <Spinner/>;
  const space=(clinic?ctx.clinics.find(c=>c.clinicId===clinic):null)||ctx.clinics[0];
  if(!space)return <Page heading={title}><Banner text={t("signClinic")}/></Page>;
- return <Shell ctx={ctx as any} space={space as any} active="appointments">
+ return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
   <Page heading={title} sub={space.clinicName}>
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
@@ -505,7 +505,7 @@ type StaffRequestRow={id:string;patientName:string;serviceName:string;startAt:st
 type LinkRequest={id:string;state:string;suppliedPatientNumber:string;
  requestedAt:string;patientId:string|null;method:string|null;applicantName:string};
 export function ClinicBookingRequestsPage(){
- return <ClinicShell title={vocab.en.clinicQueue}>{(clinicId,role,clinicianEnabled)=><Requests cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
+ return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=><Requests cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
 }
 function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianEnabled:boolean}){
  const {t,fmt}=useWords(),[filter,setFilter]=useState("pending");
@@ -632,7 +632,7 @@ function ApprovedRecordReleases({cid,link,enabled}:{cid:string;link:LinkRequest;
 
 export function ClinicNotificationsPage(){
  const {t,fmt}=useWords();
- return <ClinicShell title={t("settings")}>{cid=><Notifications cid={cid}/>}</ClinicShell>;
+ return <ClinicShell title={t("settings")} activeKey="notifications">{cid=><Notifications cid={cid}/>}</ClinicShell>;
 }
 function Notifications({cid}:{cid:string}){
  const {t,fmt}=useWords(),[items,setItems]=useState<any[]>([]);
