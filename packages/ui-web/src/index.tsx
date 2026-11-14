@@ -101,6 +101,16 @@ export function TodayLabel() {
   }).format(new Date());
   return <span>{formatted}</span>;
 }
+function PatientAccountNavLink(){
+ const {t}=usePreferences();
+ const [authenticated,setAuthenticated]=useState(false);
+ useEffect(()=>{let active=true;request<Me>("/v1/me").then(()=>{
+  if(active)setAuthenticated(true)}).catch(()=>{if(active)setAuthenticated(false)});
+  return ()=>{active=false};
+ },[]);
+ return <a className="nav-link" href={authenticated?"/account":"/login"}>
+  {t(authenticated?"patientAccountLink":"patientSignInLink")}</a>;
+}
 export function SiteLayout({ children, audience }: { children: ReactNode; audience: "clinic" | "admin" | "patient" }) {
   const { t } = usePreferences();
   const home = audience === "clinic" ? "/clinic" : audience === "admin" ? "/admin" : "/";
@@ -113,7 +123,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
       <div className="header-nav">
         <nav aria-label={t("home")}>
           <a className="nav-link" href={home}>{audience === "clinic" ? t("clinicPortal") : audience === "admin" ? t("adminPortal") : t("home")}</a>
-          {audience === "patient" && <><a className="nav-link" href="/search">{t("findCare")}</a><a className="nav-link" href="/about">{t("aboutDandanLink")}</a></>}
+          {audience === "patient" && <><a className="nav-link" href="/search">{t("findCare")}</a><a className="nav-link" href="/about">{t("aboutDandanLink")}</a><PatientAccountNavLink/></>}
           {audience === "clinic" && <a className="nav-link" href="/pricing">{t("pricing")}</a>}
           {audience !== "patient" && <a className="nav-link" href="/privacy">{t("privacy")}</a>}
         </nav>
