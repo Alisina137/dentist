@@ -65,8 +65,8 @@ type Review={id:string;bookingId:string;currentVersion:number;state:string;
  stars:number;headline:string;feedback:string;decisionCategory:string|null;decisionNote:string|null;
  publishedVersion:number|null;withdrawn:boolean};
 type Pending={id:string;clinicId:string;version:number;stars:number;headline:string;feedback:string};
-type Report={id:string;review_id:string;version:number;headline:string;feedback:string;category:string;note:string};
-type Appeal={id:string;review_id:string;version:number;headline:string;feedback:string;reason:string};
+type Report={id:string;review_id:string;version:number;headline:string;feedback:string;stars:number;category:string;note:string};
+type Appeal={id:string;review_id:string;version:number;headline:string;feedback:string;stars:number;reason:string};
 function Choice({selected,onClick,children}:{selected:boolean;onClick:()=>void;children:React.ReactNode}){
  return <button type="button" className={"p17-pill"+(selected?" active":"")} onClick={onClick}>{children}</button>;
 }
