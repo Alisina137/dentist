@@ -603,7 +603,7 @@ export function listingRouter(){
      WHERE membership_id=${id}`;
    }
    await credentialLog(tx,v.clinic_id,id,v.current_submission_id,req.reviewer!.id,
-    action==="approve"?"approved":action==="reject"?"rejected":action,basis?reason:reason,basis);
+    action==="approve"?"approved":action==="reject"?"rejected":action==="revoke"?"revoked":action,reason,basis);
   });
   noStore(res);res.json({membershipId:id,status:action==="approve"?"verified":
    action==="reject"?"rejected":action==="revoke"?"revoked":"needs_changes",
