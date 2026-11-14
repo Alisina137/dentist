@@ -106,7 +106,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
   const home = audience === "clinic" ? "/clinic" : audience === "admin" ? "/admin" : "/";
   return <div className="shell">
     <a className="skip-link" href="#main">{t("skipToContent")}</a>
-    <header className="site-header">
+    <header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
       <a href={home} className="brand" aria-label={t("brand") + " — " + t("home")}>
         <span aria-hidden="true" className="brand-symbol">✦</span><span>{t("brand")}</span>
       </a>
