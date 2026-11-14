@@ -9,7 +9,7 @@ const TERMS="patient-terms-2026-11-14-v1",PRIVACY="patient-privacy-2026-11-14-v1
 const FAMILY="patient-family-2026-11-14-v1";
 type PatientRequest=Request&{patientUserId?:string;patientEmail?:string;profile?:any};
 class Fault extends Error{constructor(public status:number,public code:string){super(code);}}
-const fail=(status:number,code:string):never=>{throw new Fault(status,code)};
+function fail(status:number,code:string):never{throw new Fault(status,code)}
 const route=(fn:(req:PatientRequest,res:Response)=>Promise<void>)=>
  (req:PatientRequest,res:Response,next:NextFunction)=>{fn(req,res).catch(next)};
 function content(res:Response){
