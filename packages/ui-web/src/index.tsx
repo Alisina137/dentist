@@ -118,8 +118,8 @@ function PatientAccountNavLink({active=false,closeMenu}:{active?:boolean;closeMe
 /** Four meaningful mobile patient destinations; no fake Appointments/Bills/Reviews tabs. */
 function PatientBottomNav({path}:{path:string}){
  const {t}=usePreferences();
- if(!path||/\\/(login|signup|verify|forgot-password|reset-password)(\\/|$)/.test(path)||
-  path.startsWith("/account/onboarding"))return null;
+  if(!path||["login","signup","verify","forgot-password","reset-password"].some(x=>
+   path==="/"+x||path.startsWith("/"+x+"/"))||path.startsWith("/account/onboarding"))return null;
  const nav=[
   {key:"home",href:"/",label:t("home"),icon:"home"},
   {key:"find",href:"/search",label:t("findCare"),icon:"search"},
