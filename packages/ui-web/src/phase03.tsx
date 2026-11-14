@@ -9,7 +9,7 @@ type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 const base=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const labels:Record<string,Record<string,string>>={
  en:{
-  appointments:"Appointments",clinical:"Clinical",finance:"Finance",settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
+  appointments:"Appointments",clinical:"Clinical",finance:"Finance",listing:"Clinic Listing",settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
   security:"Security & Access",myProfile:"My membership",home:"Overview",account:"Account",
   clinics:"Clinic",role:"Role",status:"Status",email:"Email",name:"Name",
   invitedBy:"Invited by",joined:"Joined",joinedOn:"Joined at",activity:"Activity history",
@@ -59,7 +59,7 @@ const labels:Record<string,Record<string,string>>={
   unpaid:"Subscription plan capacity is enforced before staff invitations."
  },
  "fa-AF":{
-  appointments:"وقت‌های ملاقات",clinical:"کلینیکی",finance:"مالی",settings:"تنظیمات",workspace:"فضای کاری",operations:"عملیات کلینیک",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",patients:"مریضان",staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
+  appointments:"وقت‌های ملاقات",clinical:"کلینیکی",finance:"مالی",listing:"نمایش کلینیک",settings:"تنظیمات",workspace:"فضای کاری",operations:"عملیات کلینیک",services:"خدمات و قیمت‌ها",resources:"چوکی‌ها و اتاق‌ها",hours:"ساعات و رخصتی‌ها",patients:"مریضان",staff:"کارمندان و منابع",team:"تیم",dentists:"داکتران دندان",invitations:"دعوت‌ها",
   security:"امنیت و دسترسی",myProfile:"عضویت من",home:"نمای کلی",account:"حساب",
   clinics:"کلینیک",role:"نقش",status:"وضعیت",email:"ایمیل",name:"نام",
   invitedBy:"دعوت‌شده توسط",joined:"پیوست",joinedOn:"تاریخ عضویت",activity:"تاریخچه فعالیت",
@@ -107,7 +107,7 @@ const labels:Record<string,Record<string,string>>={
   ownerSafe:"دسترسی مالک از مدیریت کارمندان لغو نمی‌شود.",unpaid:"ظرفیت پلن قبل از دعوت بررسی می‌شود."
  },
  "ps-AF":{
-  appointments:"لیدنې",clinical:"کلینیکي",finance:"مالي چارې",settings:"تنظیمات",workspace:"کاري برخه",operations:"د کلینیک چارې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",patients:"ناروغان",staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
+  appointments:"لیدنې",clinical:"کلینیکي",finance:"مالي چارې",listing:"د کلینیک پېژندنه",settings:"تنظیمات",workspace:"کاري برخه",operations:"د کلینیک چارې",services:"خدمتونه او بیې",resources:"څوکۍ او خونې",hours:"وختونه او رخصتۍ",patients:"ناروغان",staff:"کارکوونکي او سرچینې",team:"ټیم",dentists:"د غاښونو ډاکټران",invitations:"بلنې",
   security:"امنیت او لاسرسی",myProfile:"زما غړیتوب",home:"لنډیز",account:"حساب",
   clinics:"کلینیک",role:"دنده",status:"حالت",email:"برېښنالیک",name:"نوم",
   invitedBy:"بلنه ورکوونکی",joined:"ګډ شوی",joinedOn:"د غړیتوب نېټه",activity:"د کړنو تاریخ",
@@ -215,6 +215,7 @@ function navigation(space:Space,t:(key:string)=>string){
  const patients=link("patients","/clinic/patients","♧","workspace");
  const clinical=link("clinical","/clinic/clinical","✚","workspace");
  const finance=link("finance","/clinic/finance","▤","workspace");
+ const listing=link("listing","/clinic/listing","◈","workspace");
  const staff=link("staff","/clinic/staff","◉","operations");
  const resources=link("resources","/clinic/resources","▦","operations");
  const services=link("services","/clinic/services","✦","operations");
@@ -223,7 +224,7 @@ function navigation(space:Space,t:(key:string)=>string){
  const profile=link("myProfile","/clinic/staff/"+space.membershipId,"◎","settings");
  const options=[home];
  if(space.role==="owner"||space.role==="manager"){
-  options.push(appointments,patients,clinical,finance,staff,resources,services,hours,security);
+  options.push(appointments,patients,clinical,finance,listing,staff,resources,services,hours,security);
  }else if(space.role==="dentist"||space.role==="receptionist"){
   options.push(appointments,patients,...(space.role==="dentist"?[clinical]:[finance]),resources,services,hours,profile,security);
  }else if(space.role==="assistant"){
@@ -235,7 +236,7 @@ function navigation(space:Space,t:(key:string)=>string){
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
  const {t}=useLang();const nav=navigation(space,t);
- const pageHasOwnHeading=["patients","services","resources","hours","appointments","clinical","finance"].includes(active);
+ const pageHasOwnHeading=["patients","services","resources","hours","appointments","clinical","finance","listing"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
     <div className="pill">{t(space.role)}</div>
