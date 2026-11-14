@@ -39,3 +39,10 @@ export function upsertMobileApiEnv(contents, publicUrl) {
   if (!replaced) updated.push("EXPO_PUBLIC_API_URL=" + parsed.origin);
   return updated.join(newline).replace(/(?:\r?\n)*$/, "") + newline;
 }
+
+/** Cloudflare Quick Tunnel prints its temporary URL to stderr on startup. */
+export function findCloudflareQuickTunnel(logText) {
+  if (typeof logText !== "string") return null;
+  const match = logText.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com\b/i);
+  return match ? match[0] : null;
+}
