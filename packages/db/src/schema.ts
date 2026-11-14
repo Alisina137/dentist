@@ -719,3 +719,64 @@ export const clinicInvoiceEvent=pgTable("clinic_invoice_events",{
  actorId:text("actor_id").notNull().references(()=>user.id),
  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
 },t=>[index("clinic_invoice_events_history_idx").on(t.clinicId,t.invoiceId,t.createdAt)]);
+
+
+/** PH11: clinic operational costs; never linked to patient invoices or treatment. */
+export const clinicExpenseCounter=pgTable("clinic_expense_counters",{
+ clinicId:text("clinic_id").primaryKey().references(()=>clinic.id),
+ nextNumber:integer("next_number").notNull().default(1)
+});
+export const clinicExpense=pgTable("clinic_expenses",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ expenseNumber:integer("expense_number").notNull(),
+ revision:integer("revision").notNull().default(1),
+ status:text("status").notNull().default("posted"),
+ expenseDate:date("expense_date",{mode:"string"}).notNull(),
+ category:text("category").notNull(),description:text("description").notNull(),
+ amountAfn:integer("amount_afn").notNull(),paymentMethod:text("payment_method").notNull(),
+ reference:text("reference"),attribution:text("attribution"),voidReason:text("void_reason"),
+ createdBy:text("created_by").notNull().references(()=>user.id),
+ updatedBy:text("updated_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("clinic_expenses_clinic_number").on(t.clinicId,t.expenseNumber),
+ index("clinic_expenses_period_idx").on(t.clinicId,t.expenseDate,t.id),
+ index("clinic_expenses_category_idx").on(t.clinicId,t.status,t.category,t.expenseDate)
+]);
+
+/** Up to 1 MB of verified PDF/JPEG/PNG evidence per expense version. No public URLs. */
+export const clinicExpenseReceipt=pgTable("clinic_expense_receipts",{
+ id:text("id").primaryKey(),clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ expenseId:text("expense_id").notNull().references(()=>clinicExpense.id),
+ version:integer("version").notNull(),fileName:text("file_name").notNull(),
+ mimeType:text("mime_type").notNull(),byteLength:integer("byte_length").notNull(),
+ sha256Hex:text("sha256_hex").notNull(),
+ // Drizzle schema tracks metadata; binary bytes are served by a guarded SQL route,
+ // never exposed by the ordinary list/detail queries.
+ uploadedBy:text("uploaded_by").notNull().references(()=>user.id),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("clinic_expense_receipts_version_unique").on(t.expenseId,t.version),
+ index("clinic_expense_receipts_idx").on(t.clinicId,t.expenseId,t.version)
+]);
+
+/** Every correction or void creates an immutable historical copy, including provenance. */
+export const clinicExpenseVersion=pgTable("clinic_expense_versions",{
+ id:text("id").primaryKey(),expenseId:text("expense_id").notNull().references(()=>clinicExpense.id),
+ clinicId:text("clinic_id").notNull().references(()=>clinic.id),
+ version:integer("version").notNull(),action:text("action").notNull(),
+ expenseDate:date("expense_date",{mode:"string"}).notNull(),
+ category:text("category").notNull(),description:text("description").notNull(),
+ amountAfn:integer("amount_afn").notNull(),paymentMethod:text("payment_method").notNull(),
+ reference:text("reference"),attribution:text("attribution"),
+ receiptId:text("receipt_id").references(()=>clinicExpenseReceipt.id),
+ correctionReason:text("correction_reason"),
+ actorId:text("actor_id").notNull().references(()=>user.id),
+ actionKey:text("action_key").notNull(),requestDigest:text("request_digest").notNull(),
+ createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow()
+},t=>[
+ uniqueIndex("clinic_expense_versions_version_unique").on(t.expenseId,t.version),
+ uniqueIndex("clinic_expense_versions_action_unique").on(t.clinicId,t.actorId,t.actionKey),
+ index("clinic_expense_versions_hist_idx").on(t.clinicId,t.expenseId,t.version)
+]);
