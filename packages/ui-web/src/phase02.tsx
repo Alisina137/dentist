@@ -351,21 +351,59 @@ const emptyClinic={
   district:"",address:"",phone:"",email:"",licenseNumber:""
 };
 function OrganizationFields({form,setForm}:{form:any,setForm:(x:any)=>void}){
-  const l=useText();
-  const change=(key:string)=>(v:string)=>setForm((s:any)=>({...s,[key]:v}));
-  return <div className="phase-form-grid">
-    <Input title={l("legalName")} value={form.legalName} change={change("legalName")} required/>
+ const l=useText();const {locale}=usePreferences();
+ const words={
+  en:{identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
+   location:"Location and contacts",sub:"Enter accurate clinic information; published data requires separate approval.",
+   license:"Registration number is optional here. The actual clinic license document is reviewed in the verification step.",
+   clinical:"Professional qualifications and ID cards belong in the dentist credential workflow, not clinic registration."},
+  "fa-AF":{identity:"هویت کلینیک",public:"عمومی پس از تأیید",private:"خصوصی برای بررسی‌کنندگان",
+   location:"موقعیت و تماس‌ها",sub:"معلومات دقیق کلینیک را درج کنید؛ نشر عمومی نیازمند تأیید جداگانه است.",
+   license:"شماره ثبت اینجا اختیاری است؛ سند اصلی جواز در مرحله تأیید بررسی می‌شود.",
+   clinical:"اسناد حرفه‌ای و کارت هویت داکتر مربوط روند تأیید داکتر است، نه ثبت کلینیک."},
+  "ps-AF":{identity:"د کلینیک پېژندنه",public:"له تایید وروسته عام",private:"د کتونکو لپاره محرم",
+   location:"ځای او اړیکې",sub:"د کلینیک دقیق معلومات ولیکئ؛ عامه خپرول بېل تایید غواړي.",
+   license:"د ثبت شمېره دلته اختیاري ده؛ اصلي جواز په تایید پړاو کې کتل کېږي.",
+   clinical:"د ډاکټر مسلکي اسناد او پېژندپاڼې د ډاکټر تایید پورې تړلې دي، نه د کلینیک ثبت پورې."}
+ }[locale]||{
+  identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
+  location:"Location and contacts",sub:"Enter accurate clinic information.",
+  license:"Clinic license proof is reviewed separately.",
+  clinical:"Doctor ID and professional documents use the separate credential workflow."};
+ const change=(key:string)=>(v:string)=>setForm((x:any)=>({...x,[key]:v}));
+ return <div className="clinic-setup-form-sections">
+  <section className="clinic-setup-field-section">
+   <header className="clinic-setup-field-section-head">
+    <span aria-hidden="true" className="clinic-setup-field-icon">▤</span>
+    <div><h3>{words.identity}</h3><p>{words.sub}</p></div>
+   </header>
+   <div className="phase-form-grid">
     <Input title={l("displayName")} value={form.displayName} change={change("displayName")} required/>
+    <Input title={l("legalName")} value={form.legalName} change={change("legalName")} required/>
     <Select title={l("clinicType")} value={form.clinicType} change={change("clinicType")}
-      options={["solo","office","specialty"].map(id=>({id,label:l(id)}))}/>
+     options={["solo","office","specialty"].map(id=>({id,label:l(id)}))}/>
+    <Input title={l("license")} value={form.licenseNumber} change={change("licenseNumber")}/>
+   </div>
+   <div className="clinic-setup-data-note">
+    <span className="clinic-setup-privacy-badge">⛨ {words.private}</span>
+    <p>{words.license}</p></div>
+  </section>
+  <section className="clinic-setup-field-section">
+   <header className="clinic-setup-field-section-head">
+    <span aria-hidden="true" className="clinic-setup-field-icon is-location">⌖</span>
+    <div><h3>{words.location}</h3><p>{words.public}</p></div>
+   </header>
+   <div className="phase-form-grid">
     <Input title={l("province")} value={form.province} change={change("province")} required/>
     <Input title={l("city")} value={form.city} change={change("city")} required/>
     <Input title={l("district")} value={form.district} change={change("district")}/>
     <Input title={l("address")} value={form.address} change={change("address")} required/>
     <Input title={l("phone")} value={form.phone} change={change("phone")} type="tel" required/>
     <Input title={l("email")} value={form.email} change={change("email")} type="email" required/>
-    <Input title={l("license")} value={form.licenseNumber} change={change("licenseNumber")}/>
-  </div>;
+   </div>
+  </section>
+  <p className="clinic-setup-hint">⛨ {words.clinical}</p>
+ </div>;
 }
 function PlanCards({plans,selected,onSelect,readonly=false}:{plans:any[],selected:string,onSelect:(s:string)=>void,readonly?:boolean}){
   const l=useText();
