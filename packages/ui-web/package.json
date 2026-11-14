@@ -1,6 +1,40 @@
 {
-  "name":"@dandanlink/ui","private":true,"version":"0.1.0","type":"module",
-  "exports":{".":"./src/index.tsx","./styles.css":"./src/styles.css","./polish.css":"./src/polish.css","./patient-experience.css":"./src/patient-experience.css","./clinic-onboarding.css":"./src/clinic-onboarding.css","./phase02":"./src/phase02.tsx","./phase03":"./src/phase03.tsx","./phase04":"./src/phase04.tsx","./phase05":"./src/phase05.tsx","./phase06":"./src/phase06.tsx","./phase07":"./src/phase07.tsx","./phase08":"./src/phase08.tsx","./phase09":"./src/phase09.tsx","./phase10":"./src/phase10.tsx","./phase11":"./src/phase11.tsx","./phase12":"./src/phase12.tsx","./phase13":"./src/phase13.tsx","./phase14":"./src/phase14.tsx"},
-  "dependencies":{"@dandanlink/locales":"workspace:*","better-auth":"^1.7.0","react":"^19.2.0","react-dom":"^19.2.0","react-qr-code":"^2.0.15"},
-  "devDependencies":{"@types/react":"^19.2.0","@types/react-dom":"^19.2.0","typescript":"^5.9.3"}
+  "name": "@dandanlink/ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles.css": "./src/styles.css",
+    "./polish.css": "./src/polish.css",
+    "./patient-experience.css": "./src/patient-experience.css",
+    "./clinic-onboarding.css": "./src/clinic-onboarding.css",
+    "./phase02": "./src/phase02.tsx",
+    "./phase03": "./src/phase03.tsx",
+    "./phase04": "./src/phase04.tsx",
+    "./phase05": "./src/phase05.tsx",
+    "./phase06": "./src/phase06.tsx",
+    "./phase07": "./src/phase07.tsx",
+    "./phase08": "./src/phase08.tsx",
+    "./phase09": "./src/phase09.tsx",
+    "./phase10": "./src/phase10.tsx",
+    "./phase11": "./src/phase11.tsx",
+    "./phase12": "./src/phase12.tsx",
+    "./phase13": "./src/phase13.tsx",
+    "./phase14": "./src/phase14.tsx",
+    "./phase15": "./src/phase15.tsx",
+    "./phase15.css": "./src/phase15.css"
+  },
+  "dependencies": {
+    "@dandanlink/locales": "workspace:*",
+    "better-auth": "^1.7.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-qr-code": "^2.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.3"
+  }
 }
