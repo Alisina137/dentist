@@ -526,7 +526,7 @@ function Payments({space}:{space:Space}){
   const head=["date","invoice","kind","method","amount_afn","reference","entered_by"];
   const rows=data.entries.map((e:any)=>[e.occurred_at,e.invoice_number,e.kind,e.method,e.amount_afn,
    e.reference||"",e.actor_name||""]);
-  const csv=[head,...rows].map(v=>v.map(x=>'"'+String(x??"").replaceAll('"','""')+'"').join(",")).join("\r\n");
+  const csv=[head,...rows].map((v:(string|number)[])=>v.map((x:string|number)=>'"'+String(x??"").replaceAll('"','""')+'"').join(",")).join("\r\n");
   const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");
   a.href=url;a.download="clinic-ledger-page-"+page+".csv";a.click();URL.revokeObjectURL(url);
