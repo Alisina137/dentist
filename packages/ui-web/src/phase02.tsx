@@ -350,7 +350,7 @@ const emptyClinic={
   legalName:"",displayName:"",clinicType:"office",province:"Kabul",city:"Kabul",
   district:"",address:"",phone:"",email:"",licenseNumber:""
 };
-function OrganizationFields({form,setForm}:{form:any,setForm:(x:any)=>void}){
+function OrganizationFields({form,setForm,readonly=false}:{form:any,setForm:(x:any)=>void,readonly?:boolean}){
  const l=useText();const {locale}=usePreferences();
  const words={
   en:{identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
@@ -371,7 +371,7 @@ function OrganizationFields({form,setForm}:{form:any,setForm:(x:any)=>void}){
   license:"Clinic license proof is reviewed separately.",
   clinical:"Doctor ID and professional documents use the separate credential workflow."};
  const change=(key:string)=>(v:string)=>setForm((x:any)=>({...x,[key]:v}));
- return <div className="clinic-setup-form-sections">
+ return <fieldset className="clinic-setup-form-sections clinic-setup-fields-readonly" disabled={readonly}>
   <section className="clinic-setup-field-section">
    <header className="clinic-setup-field-section-head">
     <span aria-hidden="true" className="clinic-setup-field-icon">▤</span>
@@ -403,7 +403,7 @@ function OrganizationFields({form,setForm}:{form:any,setForm:(x:any)=>void}){
    </div>
   </section>
   <p className="clinic-setup-hint">⛨ {words.clinical}</p>
- </div>;
+ </fieldset>;
 }
 function PlanCards({plans,selected,onSelect,readonly=false}:{plans:any[],selected:string,onSelect:(s:string)=>void,readonly?:boolean}){
   const l=useText();
@@ -644,7 +644,7 @@ function Onboarding(){
       <div><h2>{words.profile}</h2><span className="clinic-setup-privacy-badge">⌁ {words.private}</span></div>
      </div>
      <form className="clinic-setup-form" onSubmit={e=>{e.preventDefault();go(1)}}>
-      <OrganizationFields form={form} setForm={setForm}/>
+      <OrganizationFields form={form} setForm={setForm} readonly={!canEdit}/>
       <div className="clinic-setup-actions">
        <button className="btn btn-primary" type="submit" disabled={!canEdit}>
         {words.next} →</button></div>
