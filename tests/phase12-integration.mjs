@@ -57,6 +57,11 @@ const credential=ok(await request(mine+"/dentists/"+doctorId+"/credentials","POS
 },dentist.session),[201],"dentist submits private credential document");
 assert.equal(credential.status,"pending");
 assert.equal(credential.draftVersion,currentDraft);
+const selfCredential=ok(await request(mine+"/dentists/"+doctorId+"/credential","GET",undefined,dentist.session),
+ [200],"dentist sees only own credential status and review history");
+assert.equal(selfCredential.verification.status,"pending");
+ok(await request(mine+"/dentists/"+doctorId+"/credential","GET",undefined,reception.session),
+ [403],"unrelated reception role cannot inspect clinician credential history");
 ok(await request(mine+"/dentists/"+doctorId+"/credentials","POST",{
  credentialType:"Dental professional license",credentialNumber:"PH12-DENTAL-2017",
  validUntil:"2030-11-14",attested:true,evidence:{
