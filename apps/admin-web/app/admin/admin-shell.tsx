@@ -5,6 +5,7 @@ import Link from "next/link";
 import {usePathname,useRouter} from "next/navigation";
 import {authClient,CareIcon,LocaleControls,usePreferences,type CareIconName} from "@dandanlink/ui";
 import {PersistentAdminShellProvider} from "@dandanlink/ui/admin-shell-context";
+import {AdminHeaderTools} from "@dandanlink/ui/admin-operations-header";
 
 type Role="admin"|"support"|"user"|"loading";
 type Group="overview"|"verification"|"finance"|"operations"|"platform";
@@ -19,6 +20,8 @@ const NAV:Item[]=[
  {key:"plans",href:"/admin/plans",group:"finance",icon:"package"},
  {key:"support",href:"/admin/support",group:"operations",icon:"life-buoy"},
  {key:"analytics",href:"/admin/analytics",group:"operations",icon:"chart-columns"},
+ {key:"alerts",href:"/admin/alerts",group:"operations",icon:"bell"},
+ {key:"monitoring",href:"/admin/monitoring",group:"platform",icon:"activity"},
  {key:"security",href:"/admin/security",group:"platform",icon:"shield-check"},
  {key:"settings",href:"/admin/settings",group:"platform",icon:"sliders-horizontal"},
  {key:"pilot",href:"/admin/pilot",group:"platform",icon:"rocket"}
@@ -26,7 +29,7 @@ const NAV:Item[]=[
 const TRANSLATIONS:Record<string,Record<string,string>>={
  en:{dashboard:"Dashboard",clinics:"Clinics",dentists:"Dentist verification",listings:"Clinic listings",
   reviews:"Patient reviews",subscriptions:"Subscriptions",plans:"Plans",support:"Support desk",
-  analytics:"Analytics",security:"Security",settings:"Settings",pilot:"Pilot readiness",
+  analytics:"Analytics",alerts:"Alerts",monitoring:"Monitoring",security:"Security",settings:"Settings",pilot:"Pilot readiness",
   overview:"Overview",verification:"Verification",finance:"Finance",operations:"Operations",
   platform:"Platform",navigation:"Administration navigation",signOut:"Sign out",
   workspace:"Administration",loading:"Loading administrator access",login:"Sign in",
@@ -37,7 +40,7 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   secureWorkspace:"Secure workspace",mainContent:"Workspace content"},
  "fa-AF":{dashboard:"داشبورد",clinics:"کلینیک‌ها",dentists:"تأیید داکتران",listings:"آگهی‌های کلینیک",
   reviews:"نظرات مریضان",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",support:"پشتیبانی",
-  analytics:"تحلیل‌ها",security:"امنیت",settings:"تنظیمات",pilot:"آمادگی آزمایشی",
+  analytics:"تحلیل‌ها",alerts:"هشدارها",monitoring:"نظارت",security:"امنیت",settings:"تنظیمات",pilot:"آمادگی آزمایشی",
   overview:"نمای کلی",verification:"تأیید",finance:"مالی",operations:"عملیات",
   platform:"پلتفرم",navigation:"منوی مدیریت",signOut:"خروج",workspace:"مدیریت",
   loading:"در حال بررسی دسترسی مدیر",login:"ورود",
@@ -48,7 +51,7 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   secureWorkspace:"محیط امن مدیریت",mainContent:"محتوای مدیریت"},
  "ps-AF":{dashboard:"ډشبورډ",clinics:"کلینیکونه",dentists:"د ډاکټرانو تایید",listings:"د کلینیک اعلانونه",
   reviews:"د ناروغانو نظرونه",subscriptions:"ګډونونه",plans:"پلانونه",support:"ملاتړ",
-  analytics:"شننې",security:"امنیت",settings:"تنظیمات",pilot:"ازمایښتي چمتووالی",
+  analytics:"شننې",alerts:"خبرتیاوې",monitoring:"څارنه",security:"امنیت",settings:"تنظیمات",pilot:"ازمایښتي چمتووالی",
   overview:"عمومي کتنه",verification:"تایید",finance:"مالي",operations:"عملیات",
   platform:"پلاتفورم",navigation:"د ادارې نوملړ",signOut:"وتل",workspace:"مدیریت",
   loading:"د مدیر لاسرسی کتل کېږي",login:"ننوتل",
@@ -214,6 +217,7 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
        <div className="admin-header-current"><strong>{title}</strong><span>{t("secureWorkspace")}</span></div>
       </div>
      </div>
+     {role==="admin"&&<AdminHeaderTools/>}
      <div className="admin-header-account">
       <div className="admin-account-identity">
        <span className="admin-user-avatar" aria-hidden="true">{initials}</span>
