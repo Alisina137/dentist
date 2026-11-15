@@ -79,6 +79,6 @@ jobs:
           node tests/phase17-integration.mjs
           node tests/admin-phase-c-integration.mjs
           node tests/phase18-integration.mjs
-          node tests/phase19-integration.mjs
+          node tests/admin-phase-e-integration.mjs
           NODE_ENV=test node scripts/verify-test-backup-restore.mjs
           node tests/dev-no-email-integration.mjs
