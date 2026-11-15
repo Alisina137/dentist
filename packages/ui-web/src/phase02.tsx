@@ -181,9 +181,9 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
   const l=useText();
   const {locale}=usePreferences();
   const extraLabels:Record<string,Record<string,string>>={
-   en:{reports:"Reports",support:"Support",analytics:"Analytics",platformSecurity:"Security",platformSettings:"Settings"},
-   "fa-AF":{reports:"گزارش‌ها",support:"پشتیبانی",analytics:"تحلیل‌ها",platformSecurity:"امنیت",platformSettings:"تنظیمات"},
-   "ps-AF":{reports:"راپورونه",support:"ملاتړ",analytics:"شننې",platformSecurity:"امنیت",platformSettings:"تنظیمات"}
+   en:{reports:"Reports",support:"Support",analytics:"Analytics",platformSecurity:"Security",platformSettings:"Settings",pilot:"Pilot readiness"},
+   "fa-AF":{reports:"گزارش‌ها",support:"پشتیبانی",analytics:"تحلیل‌ها",platformSecurity:"امنیت",platformSettings:"تنظیمات",pilot:"آمادگی آزمایشی"},
+   "ps-AF":{reports:"راپورونه",support:"ملاتړ",analytics:"شننې",platformSecurity:"امنیت",platformSettings:"تنظیمات",pilot:"ازمایښتي چمتووالی"}
   };
   const label=(key:string)=>extraLabels[locale]?.[key]||l(key);
   const nav=audience==="clinic"?[
@@ -194,7 +194,7 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
   ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["dentists","/admin/dentists"],["listings","/admin/listings"],["reviews","/admin/reviews"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"],
-    ["support","/admin/support"],["analytics","/admin/analytics"],["platformSecurity","/admin/security"],["platformSettings","/admin/settings"]];
+    ["support","/admin/support"],["analytics","/admin/analytics"],["platformSecurity","/admin/security"],["platformSettings","/admin/settings"],["pilot","/admin/pilot"]];
   const active=view==="review"?"clinics":view==="dentistReview"?"dentists":view==="listingReview"?"listings":view;
   return <div className="work-layout phase-layout">
     <aside className="card side-panel">
@@ -206,7 +206,7 @@ function Frame({audience,view,children,name}:{audience:Audience,view:View,childr
         <a href={link} className="phase04-side-link" aria-current={active===key?"page":undefined}>
          <span className="phase04-side-icon" aria-hidden="true">
           {({dashboard:"⌂",appointments:"▦",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
-            onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",reports:"▥",support:"✉",analytics:"▤",platformSecurity:"⛨",platformSettings:"⚙",
+            onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",reports:"▥",support:"✉",analytics:"▤",platformSecurity:"⛨",platformSettings:"⚙",pilot:"◎",
             clinics:"▤",dentists:"✚",listings:"◈",reviews:"★",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
          <span>{label(key)}</span></a>
        </React.Fragment>)}
