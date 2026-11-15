@@ -12,6 +12,47 @@ try{
  assert.ok(faq.categories[0].label_fa&&faq.categories[0].label_ps);
  ok(await request(root+"/tickets/mine"),[401],"anonymous has no tickets");
  ok(await request(reports+"/platform/overview"),[401],"anonymous cannot see platform data");
+// Phase B: live metrics, role separation, Kabul date boundaries, trends and privacy.
+ ok(await request(reports+"/platform/dashboard"),[401],"anonymous dashboard denied");
+ ok(await request(reports+"/platform/dashboard","GET",undefined,owner.session),[403],
+  "clinic owner must not access platform dashboard or payment data");
+ ok(await request(reports+"/platform/dashboard?days=14","GET",undefined,admin.session),[422],
+  "unapproved chart range is not accepted");
+ ok(await request(reports+"/platform/dashboard?days=7&days=90","GET",undefined,admin.session),[422],
+  "multi-value range cannot bypass strict validation");
+ const liveResponse=await request(reports+"/platform/dashboard?days=30","GET",undefined,admin.session);
+ const live=ok(liveResponse,[200],"MFA admin receives true operational dashboard");
+ assert.match(liveResponse.headers.get("cache-control")||"",/no-store/);
+ assert.equal(live.period.timezone,"Asia/Kabul");
+ assert.equal(live.period.days,30);
+ assert.equal(live.trend.length,30);
+ assert.equal(live.trend[0].day,live.period.from);
+ assert.equal(live.trend.at(-1).day,live.period.to);
+ const [clinicCount]=await db`SELECT count(*)::int AS count FROM clinics`;
+ assert.equal(live.clinics.total,clinicCount.count,"dashboard clinic total from database");
+ assert.equal(live.trend.reduce((acc,x)=>acc+x.registrations,0),live.clinics.registered,
+  "daily registrations reconcile with period KPI");
+ assert.equal(live.trend.reduce((acc,x)=>acc+x.appointments,0),live.appointments.created,
+  "daily booked appointments reconcile with period KPI");
+ assert.equal(live.trend.reduce((acc,x)=>acc+x.receiptsAfn,0),live.subscriptions.receiptsAfn,
+  "daily platform invoice receipts reconcile with finance KPI");
+ assert.ok(Number.isInteger(live.dentists.pending));
+ assert.ok(Number.isInteger(live.listings.pending));
+ assert.ok(Number.isInteger(live.reviews.pending));
+ assert.ok(Number.isInteger(live.support.overdue));
+ assert.ok(typeof live.operations.pilotReleaseEnabled==="boolean");
+ const serialized=JSON.stringify(live);
+ for(const disallowed of ['"actor_id"','"requester_id"','"patient_id"',
+  '"clinic_id"','"support_messages"','"clinical_note"','"email"'])
+  assert.ok(!serialized.includes(disallowed),"dashboard leaks a private identifier: "+disallowed);
+ assert.ok(live.activity.every(item=>Object.keys(item).every(key=>
+  ["action","outcome","subjectType","at"].includes(key)));
+ for(const length of [7,90]){
+  const period=ok(await request(reports+"/platform/dashboard?days="+length,
+   "GET",undefined,admin.session),[200],"dashboard "+length+" day period");
+  assert.equal(period.trend.length,length);
+ }
+
  ok(await request(reports+"/platform/security","GET",undefined,owner.session),[403],"clinic owner cannot see security");
  ok(await request(reports+"/platform/overview","GET",undefined,owner.session),[403],"clinic owner cannot see platform data");
  ok(await request(reports+"/clinics/"+clinic.id+"/report","GET",undefined,stranger.session),[404],
