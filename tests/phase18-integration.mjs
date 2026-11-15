@@ -72,6 +72,38 @@ try{
  const adminQueue=ok(await request(root+"/admin/tickets?status=open","GET",undefined,admin.session),
   [200],"MFA admin support queue");
  assert.ok(adminQueue.tickets.find(x=>x.id===ticket.id));
+ const identity=ok(await request(root+"/identity","GET",undefined,admin.session),
+  [200],"MFA admin sees own safe support identity");
+ assert.ok(identity.id);
+ ok(await request(root+"/admin/tickets/"+ticket.id+"/assign","POST",{
+  agentId:identity.id
+ },admin.session),[200],"MFA admin can self-assign the case");
+ const assigned=ok(await request(root+"/tickets/"+ticket.id,"GET",undefined,admin.session),
+  [200],"assigned ticket details returned to authorized staff");
+ assert.equal(assigned.ticket.assignee_id,identity.id);
+ const ownList=ok(await request(root+"/admin/tickets?status=open&assigned=mine",
+  "GET",undefined,admin.session),[200],"assigned queue filter");
+ assert.ok(ownList.tickets.find(x=>x.id===ticket.id));
+ ok(await request(root+"/admin/tickets/"+ticket.id+"/notes","POST",{
+  message:"Patient requests an update. Use administrative booking status only."
+ },admin.session),[201],"internal support notes stored privately");
+ const internal=ok(await request(root+"/admin/tickets/"+ticket.id+"/notes",
+  "GET",undefined,admin.session),[200],"internal notes visible to admin");
+ assert.equal(internal.notes.length,1);
+ ok(await request(root+"/admin/tickets/"+ticket.id+"/notes","GET",undefined,requester.session),
+  [403],"requester cannot read support-only notes");
+ const agentList=ok(await request(root+"/admin/agents","GET",undefined,admin.session),
+  [200],"assignee dropdown data");
+ assert.ok(agentList.agents.some(x=>x.id===identity.id));
+ ok(await request(root+"/admin/tickets/"+ticket.id+"/escalate","POST",{},admin.session),
+  [200],"urgent support ticket escalation");
+ ok(await request(root+"/admin/tickets/"+ticket.id+"/escalate","POST",{},admin.session),
+  [409],"duplicate escalation blocked");
+ const escalated=ok(await request(root+"/admin/tickets?status=open&category=booking&assigned=mine&ageDays=0",
+  "GET",undefined,admin.session),[200],"filtered queue shows urgent ticket");
+ assert.equal(escalated.tickets.find(x=>x.id===ticket.id).priority,"high");
+ ok(await request(root+"/admin/tickets?ageDays=1000","GET",undefined,admin.session),
+  [422],"invalid support age filter rejected");
  const initial=ok(await request(root+"/tickets/"+ticket.id,"GET",undefined,admin.session),
   [200],"admin redacted ticket detail");
  assert.equal(initial.messages.length,1);
