@@ -5,6 +5,7 @@ import Link from "next/link";
 import {usePathname,useRouter} from "next/navigation";
 import {authClient,CareIcon,LocaleControls,usePreferences,type CareIconName} from "@dandanlink/ui";
 import {PersistentAdminShellProvider} from "@dandanlink/ui/admin-shell-context";
+import {AdminCommandCenter} from "./command-center";
 
 type Role="admin"|"support"|"user"|"loading";
 type Group="overview"|"verification"|"finance"|"operations"|"platform";
@@ -24,7 +25,7 @@ const NAV:Item[]=[
  {key:"pilot",href:"/admin/pilot",group:"platform",icon:"rocket"}
 ];
 const TRANSLATIONS:Record<string,Record<string,string>>={
- en:{dashboard:"Dashboard",clinics:"Clinics",dentists:"Dentist verification",listings:"Clinic listings",
+ en:{searchPlatform:"Search platform",notifications:"Notifications",dashboard:"Dashboard",clinics:"Clinics",dentists:"Dentist verification",listings:"Clinic listings",
   reviews:"Patient reviews",subscriptions:"Subscriptions",plans:"Plans",support:"Support desk",
   analytics:"Analytics",security:"Security",settings:"Settings",pilot:"Pilot readiness",
   overview:"Overview",verification:"Verification",finance:"Finance",operations:"Operations",
@@ -35,7 +36,7 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   closeMenu:"Close navigation",account:"Account",adminRole:"Platform administrator",
   supportRole:"Support agent",current:"Current page",breadcrumb:"Breadcrumb",
   secureWorkspace:"Secure workspace",mainContent:"Workspace content"},
- "fa-AF":{dashboard:"داشبورد",clinics:"کلینیک‌ها",dentists:"تأیید داکتران",listings:"آگهی‌های کلینیک",
+ "fa-AF":{searchPlatform:"جستجوی پلتفرم",notifications:"اعلان‌ها",dashboard:"داشبورد",clinics:"کلینیک‌ها",dentists:"تأیید داکتران",listings:"آگهی‌های کلینیک",
   reviews:"نظرات مریضان",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",support:"پشتیبانی",
   analytics:"تحلیل‌ها",security:"امنیت",settings:"تنظیمات",pilot:"آمادگی آزمایشی",
   overview:"نمای کلی",verification:"تأیید",finance:"مالی",operations:"عملیات",
@@ -46,7 +47,7 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   closeMenu:"بستن منوی مدیریت",account:"حساب",adminRole:"مدیر پلتفرم",
   supportRole:"کارمند پشتیبانی",current:"صفحه فعلی",breadcrumb:"مسیر صفحه",
   secureWorkspace:"محیط امن مدیریت",mainContent:"محتوای مدیریت"},
- "ps-AF":{dashboard:"ډشبورډ",clinics:"کلینیکونه",dentists:"د ډاکټرانو تایید",listings:"د کلینیک اعلانونه",
+ "ps-AF":{searchPlatform:"د پلاتفورم لټون",notifications:"خبرتیاوې",dashboard:"ډشبورډ",clinics:"کلینیکونه",dentists:"د ډاکټرانو تایید",listings:"د کلینیک اعلانونه",
   reviews:"د ناروغانو نظرونه",subscriptions:"ګډونونه",plans:"پلانونه",support:"ملاتړ",
   analytics:"شننې",security:"امنیت",settings:"تنظیمات",pilot:"ازمایښتي چمتووالی",
   overview:"عمومي کتنه",verification:"تایید",finance:"مالي",operations:"عملیات",
@@ -72,6 +73,9 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  const [collapsed,setCollapsed]=useState(false);
  const [mobileOpen,setMobileOpen]=useState(false);
  const [navPending,setNavPending]=useState(false);
+ const [showCommand,setShowCommand]=useState(false);
+ const [commandTab,setCommandTab]=useState<"search"|"notices">("search");
+ const [unreadNotices,setUnreadNotices]=useState(0);
  const mobileToggleRef=useRef<HTMLButtonElement>(null);
  const drawerRef=useRef<HTMLElement>(null);
  const mobileCloseRef=useRef<HTMLButtonElement>(null);
@@ -93,6 +97,34 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
   try{setCollapsed(localStorage.getItem(STORAGE_COLLAPSE_KEY)==="1");}catch{/* restricted storage */}
  },[]);
  useEffect(()=>{setMobileOpen(false);setNavPending(false);},[pathname]);
+ useEffect(()=>{
+  if(role!=="admin"){setUnreadNotices(0);return;}
+  let alive=true;
+  const refreshNotices=()=>{
+   fetch(api+"/v1/admin/center/notices",{credentials:"include",cache:"no-store"})
+    .then(async r=>{if(!r.ok)throw Error("NOTICES_DENIED");
+     return r.json() as Promise<{unread:number}>;})
+    .then(d=>{if(alive)setUnreadNotices(Math.max(0,d.unread));})
+    .catch(()=>{if(alive)setUnreadNotices(0);});
+  };
+  refreshNotices();
+  const timer=window.setInterval(()=>{
+   if(document.visibilityState==="visible")refreshNotices();
+  },60000);
+  window.addEventListener("admin-notices-changed",refreshNotices);
+  return()=>{alive=false;clearInterval(timer);
+   window.removeEventListener("admin-notices-changed",refreshNotices);};
+ },[role,pathname,showCommand]);
+ useEffect(()=>{
+  if(role!=="admin")return;
+  const shortcut=(e:KeyboardEvent)=>{
+   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){
+    e.preventDefault();setCommandTab("search");setShowCommand(true);
+   }
+  };
+  window.addEventListener("keydown",shortcut);
+  return()=>window.removeEventListener("keydown",shortcut);
+ },[role]);
  useEffect(()=>{
   if(!mobileOpen)return;
   mobileCloseRef.current?.focus();
@@ -215,6 +247,18 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
       </div>
      </div>
      <div className="admin-header-account">
+      {role==="admin"&&<div className="adm-e-header-controls">
+       <button type="button" onClick={()=>{
+        setCommandTab("search");setShowCommand(true);}} title={t("searchPlatform")}>
+        <CareIcon name="search" size={17}/><span>{t("searchPlatform")}</span>
+        <kbd className="adm-e-shortcut">Ctrl K</kbd></button>
+       <button type="button" className="adm-e-header-bell" onClick={()=>{
+        setCommandTab("notices");setShowCommand(true);}} title={t("notifications")}
+        aria-label={t("notifications")+(unreadNotices?" ("+unreadNotices+")":"")}>
+        <CareIcon name="bell" size={19}/>
+        {unreadNotices>0&&<b>{unreadNotices>99?"99+":unreadNotices}</b>}
+       </button>
+      </div>}
       <div className="admin-account-identity">
        <span className="admin-user-avatar" aria-hidden="true">{initials}</span>
        <div className="admin-user-copy"><strong>{name||t("account")}</strong>
@@ -227,6 +271,11 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
     </header>
     {navPending&&<div className="admin-navigation-progress" role="status" aria-label={t("loading")}/>}
     <div className="admin-route-content" aria-label={t("mainContent")}>{children}</div>
+    {role==="admin"&&showCommand&&<div className="adm-e-overlay" role="presentation"
+     onMouseDown={e=>{if(e.target===e.currentTarget)setShowCommand(false);}}>
+     <AdminCommandCenter compact initialTab={commandTab}
+      onClose={()=>setShowCommand(false)}/>
+    </div>}
    </section>
   </div>
  </PersistentAdminShellProvider>;
