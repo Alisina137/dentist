@@ -182,7 +182,33 @@ async function nextAlternatives(cid:string,input:{date:string;serviceId:string;p
  if(alternativeCache.size>150)alternativeCache.clear();
  try{return await promise;}catch(error){alternativeCache.delete(cacheKey);throw error;}
 }
-export async function createAppointment(ctx:ActorContext,cid:string,actorId:string,raw:any){
+// Queue same-tenant appointment creates BEFORE opening a database transaction.
+// Without this application-side lane, >pool-size requests can each occupy a
+// connection waiting on a clinic row lock while the lock holder itself needs a
+// second connection for availabilityPreview/requirePatient: pool starvation.
+// Database exclusion constraints and row locks still arbitrate cross-process races.
+const clinicCreateTails=new Map<string,Promise<void>>();
+const clinicCreateCounts=new Map<string,number>();
+async function queueClinicCreate<T>(cid:string,work:()=>Promise<T>):Promise<T>{
+ const count=(clinicCreateCounts.get(cid)||0)+1;
+ if(count>150)fail(429,"BOOKING_QUEUE_BUSY");
+ clinicCreateCounts.set(cid,count);
+ const before=clinicCreateTails.get(cid)||Promise.resolve();
+ let release!:()=>void;
+ const own=new Promise<void>(resolve=>{release=resolve;});
+ clinicCreateTails.set(cid,own);
+ try{
+  await before;
+  return await work();
+ }finally{
+  release();
+  if(clinicCreateTails.get(cid)===own)clinicCreateTails.delete(cid);
+  const remaining=(clinicCreateCounts.get(cid)||1)-1;
+  if(remaining>0)clinicCreateCounts.set(cid,remaining);
+  else clinicCreateCounts.delete(cid);
+ }
+}
+async function createAppointmentSerial(ctx:ActorContext,cid:string,actorId:string,raw:any){
  const input=appointmentInput(raw);
  if(!mayScheduleProvider(ctx,input.providerId))fail(403,"PROVIDER_SCOPE_DENIED");
  const key=uuidLike(raw.idempotencyKey,"IDEMPOTENCY_KEY");
@@ -239,6 +265,9 @@ export async function createAppointment(ctx:ActorContext,cid:string,actorId:stri
   throw e;
  }
  return {appointment:created,replayed:reused,conflict:false};
+}
+export async function createAppointment(ctx:ActorContext,cid:string,actorId:string,raw:any){
+ return queueClinicCreate(cid,()=>createAppointmentSerial(ctx,cid,actorId,raw));
 }
 export async function rescheduleAppointment(ctx:ActorContext,cid:string,actorId:string,id:string,raw:any){
  const input=changeInput(raw),key=uuidLike(raw.idempotencyKey,"IDEMPOTENCY_KEY");
