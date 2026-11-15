@@ -155,9 +155,15 @@ async function event(tx:any,cid:string,actorId:string,a:Appointment,action:strin
  await tx.insert(schema.outboxEvent).values({id:randomUUID(),kind:"appointment."+action,
   state:"pending",safePayload:JSON.stringify({clinicId:cid,appointmentId:a.id})});
 }
+const alternativeCache=new Map<string,{until:number;promise:Promise<{date:string;start:string;resourceId:string|null}[]>}>();
 async function nextAlternatives(cid:string,input:{date:string;serviceId:string;providerId:string;resourceId:string|null},
  after:string,excludeId?:string):Promise<{date:string;start:string;resourceId:string|null}[]>{
- const found:{date:string;start:string;resourceId:string|null}[]=[];
+// Short coalescing window: repeated same-slot conflicts share one suggestions lookup.
+ // The suggestions are advisory, not a reservation; the booking endpoint revalidates.
+ const cacheKey=JSON.stringify([cid,input.date,input.serviceId,input.providerId,input.resourceId,after,excludeId||null]);
+ const cached=alternativeCache.get(cacheKey);
+ if(cached&&cached.until>Date.now())return cached.promise;
+ const result=(async()=>{ const found:{date:string;start:string;resourceId:string|null}[]=[];
  for(let n=0;n<10&&found.length<3;n++){
   const date=shiftDay(input.date,n);
   try{
@@ -186,6 +192,17 @@ export async function createAppointment(ctx:ActorContext,cid:string,actorId:stri
     where:and(eq(schema.clinicAppointment.id,replay.found.appointmentId),
      eq(schema.clinicAppointment.clinicId,cid))}))!;}
    await requirePatient(cid,input.patientId);
+   // PH19 contention hardening: after the clinic lock, short-circuit an
+   // already booked exact slot instead of repeating expensive calendar evaluation.
+   // Overlap exclusion constraints remain the final authority for partial overlaps.
+   const minute=Number(input.start.slice(0,2))*60+Number(input.start.slice(3));
+   const booked=await tx.query.clinicAppointment.findFirst({where:and(
+    eq(schema.clinicAppointment.clinicId,cid),
+    eq(schema.clinicAppointment.providerMembershipId,input.providerId),
+    eq(schema.clinicAppointment.startAt,new Date(localToUtc(input.date,minute))),
+    inArray(schema.clinicAppointment.status,blocksResource as ("confirmed"|"arrived"|"in_treatment"|"completed")[])
+   )});
+   if(booked)fail(409,"APPOINTMENT_SLOT_UNAVAILABLE");
    const view=await availabilityPreview(cid,{date:input.date,serviceId:input.serviceId,
     providerId:input.providerId,resourceId:input.resourceId??undefined});
    const resourceChosen=view.slots.find(x=>x.start===input.start&&
