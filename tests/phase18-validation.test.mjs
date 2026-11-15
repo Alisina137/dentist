@@ -40,7 +40,7 @@ test("PH18 support agent auth never grants access to clinical data",()=>{
 });
 test("PH18 platform intelligence is suppressed and security views are admin-only",()=>{
  const api=read("apps/api/src/insights-router.ts");
- assert.match(api,/const countSafe/);
+ assert.match(api,/function countSafe/);
  assert.match(api,/n===0\|\|n>=5\?n:null/);
  assert.match(api,/opsStaff\(req\)/);
  assert.match(api,/opsAdmin\(req\)/);
