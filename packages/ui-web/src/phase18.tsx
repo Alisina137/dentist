@@ -228,7 +228,7 @@ type Faq={key:string;en:string;fa:string;ps:string;answerEn:string;answerFa:stri
 type Category={code:string;label_en:string;label_fa:string;label_ps:string};
 type Ticket={id:string;reference:string;title:string;category_code:string;status:string;created_at:string;updated_at:string};
 type Message={id:string;author_role:string;body:string;created_at:string};
-export function HelpPortal(){
+export function HelpPortal({audience="patient"}:{audience?:"patient"|"clinic"}){
  const {t,lang}=useWords();const [faq,setFaq]=useState<Faq[]>([]),[categories,setCategories]=useState<Category[]>([]);
  const [auth,setAuth]=useState(false),[tickets,setTickets]=useState<Ticket[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<{ticket:Ticket;messages:Message[]}|null>(null);
@@ -275,7 +275,7 @@ export function HelpPortal(){
     <p>{lang==="fa-AF"?f.answerFa:lang==="ps-AF"?f.answerPs:f.answerEn}</p>
    </details>)}</div></section>
   {!auth?<section className="p18-panel"><h2>{t("createTicket")}</h2>
-   <p>{t("supportNeedsLogin")}</p><a className="btn btn-primary" href="/login?next=/help">{t("login")}</a></section>:
+   <p>{t("supportNeedsLogin")}</p><a className="btn btn-primary" href={audience==="clinic"?"/clinic/login":"/login?next=/help"}>{t("login")}</a></section>:
   <div className="p18-split">
    <section className="p18-panel"><h2>{t("createTicket")}</h2>
     <form className="p18-form" onSubmit={create}>
