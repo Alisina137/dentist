@@ -27,6 +27,7 @@ import { patientReviewRouter } from "./patient-review-router.js";
 import { insightsRouter } from "./insights-router.js";
 import { supportRouter } from "./support-router.js";
 import { portabilityRouter } from "./portability-router.js";
+import { protectHealthWrites, getPilotReadiness } from "./pilot-gate.js";
 import { startBookingNotificationWorker } from "./booking-notifications.js";
 
 const app = express();
@@ -45,6 +46,8 @@ app.use((_req, res, next) => {
 });
 // Better Auth needs the original raw request, before the JSON parser.
 app.all("/api/auth/*", toNodeHandler(auth));
+// Deny new protected health data writes until evidence-backed pilot approval in production.
+app.use(protectHealthWrites);
 // Only guarded registry imports accept CSV-sized JSON bodies.
 // All other endpoints keep the 16 KiB body limit.
 app.use("/v1/registry", express.json({limit:"1.5mb"}), patientRegistryRouter());
@@ -80,7 +83,8 @@ app.get("/ready", async (_req, res) => {
 app.get("/v1/public/status", (_req, res) => res.json({
   product: "DandanLink", release: "PH19", marketplaceAvailable: true, patientAccountsEnabled: true,
   patientWebBookingEnabled: true, nativeBookingEnabled: true,
-  emailVerificationRequired: !devEmailVerificationDisabled
+  emailVerificationRequired: !devEmailVerificationDisabled,
+  pilotReleaseEnabled: getPilotReadiness().releaseEnabled
 }));
 
 type Identity = { id: string; name: string; email: string; emailVerified: boolean; twoFactorEnabled?: boolean };
