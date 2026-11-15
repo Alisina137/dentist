@@ -40,7 +40,7 @@ test("Phase B dashboard has real loading, actions, trends, health and localized 
  assert.match(layout,/import "@dandanlink\/ui\/admin-dashboard\.css";/);
  assert.match(pkg,/"\.\/admin-dashboard":"\.\/src\/admin-dashboard\.tsx"/);
  for(const key of ["role=\"status\"","admin-page-loading","AbortController","cache:\"no-store\"",
-  "credentials:\"include\"","visibilityState==="visible"","range","aria-pressed",
+  "credentials:\"include\"",'visibilityState==="visible"',"range","aria-pressed",
   "Kpi","TrendChart","actionRows","queueClinics","queueDentists",
   "queueListings","queueReviews","queuePayments","queueSupport","recentTitle",
   "securityTitle","failedNotifications","pilotReleaseEnabled","fa-AF","ps-AF",
