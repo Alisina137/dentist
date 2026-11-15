@@ -248,6 +248,16 @@ export function patientReviewRouter(){
  }));
  router.use("/admin",adminArea);
  adminArea.use(identity,admin);
+ adminArea.get("/history",task(async(_req,res)=>{
+  // Moderation decision metadata only: never expose patient, clinic or actor identifiers.
+  const rows=await sqlClient`SELECT action,version,occurred_at
+   FROM patient_review_events WHERE action IN
+    ('approved','rejected','report_dismissed','report_removed','appeal_upheld','appeal_overturned')
+   ORDER BY occurred_at DESC,id DESC LIMIT 30`;
+  clean(res);res.json({events:rows.map(item=>({
+   action:item.action,version:item.version,at:item.occurred_at
+  }))});
+ }));
  adminArea.get("/queue",task(async(req,res)=>{
   const {page,pageSize,offset,q,sort}=moderationPage(req);
   const [rows,total]=await Promise.all([
