@@ -9,7 +9,7 @@ type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 const base=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const labels:Record<string,Record<string,string>>={
  en:{
-  appointments:"Appointments",bookingRequests:"Online requests",notifications:"Notifications",clinical:"Clinical",finance:"Finance",listing:"Clinic Listing",myVerification:"My Credentials",settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
+  appointments:"Appointments",bookingRequests:"Online requests",notifications:"Notifications",clinical:"Clinical",finance:"Finance",reports:"Reports",listing:"Clinic Listing",myVerification:"My Credentials",settings:"Settings",workspace:"Workspace",operations:"Operations",services:"Services & Pricing",resources:"Chairs & Rooms",hours:"Hours & Holidays",patients:"Patients",staff:"Staff & Resources",team:"Team",dentists:"Dentists",invitations:"Invitations",
   security:"Security & Access",myProfile:"My membership",home:"Overview",account:"Account",
   clinics:"Clinic",role:"Role",status:"Status",email:"Email",name:"Name",
   invitedBy:"Invited by",joined:"Joined",joinedOn:"Joined at",activity:"Activity history",
@@ -217,6 +217,7 @@ function navigation(space:Space,t:(key:string)=>string){
  const patients=link("patients","/clinic/patients","♧","workspace");
  const clinical=link("clinical","/clinic/clinical","✚","workspace");
  const finance=link("finance","/clinic/finance","▤","workspace");
+  const reports=link("reports","/clinic/reports","▥","workspace");
  const listing=link("listing","/clinic/listing","◈","workspace");
  const myVerification=link("myVerification","/clinic/credentials","◈","workspace");
  const staff=link("staff","/clinic/staff","◉","operations");
@@ -227,19 +228,19 @@ function navigation(space:Space,t:(key:string)=>string){
  const profile=link("myProfile","/clinic/staff/"+space.membershipId,"◎","settings");
  const options=[home];
  if(space.role==="owner"||space.role==="manager"){
-  options.push(appointments,bookingRequests,patients,clinical,finance,listing,staff,resources,services,hours,notifications,security);
+  options.push(appointments,bookingRequests,patients,clinical,finance,reports,listing,staff,resources,services,hours,notifications,security);
  }else if(space.role==="dentist"||space.role==="receptionist"){
   options.push(appointments,bookingRequests,patients,...(space.role==="dentist"?[clinical,myVerification]:[finance]),resources,services,hours,profile,security);
  }else if(space.role==="assistant"){
   options.push(appointments,clinical,profile,security);
  }else if(space.role==="cashier"){
-  options.push(finance,patients,profile,security);
+  options.push(finance,reports,patients,profile,security);
  }else options.push(profile,security);
  return options;
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
  const {t}=useLang();const nav=navigation(space,t);
- const pageHasOwnHeading=["patients","services","resources","hours","appointments","bookingRequests","notifications","clinical","finance","listing","myVerification"].includes(active);
+ const pageHasOwnHeading=["patients","services","resources","hours","appointments","bookingRequests","notifications","clinical","finance","reports","listing","myVerification"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
     <div className="pill">{t(space.role)}</div>
