@@ -1,0 +1,88 @@
+/* DandanLink PH18 — role-aware, mobile-first analytical and support surfaces. */
+.p18-wrap{width:100%;max-width:1320px;margin:0 auto 36px;display:grid;gap:20px;min-width:0}
+.p18-hero{padding:30px 32px;border-radius:24px;background:linear-gradient(130deg,#123b6a,#245ba0 67%,#237db0);
+ color:#fff;box-shadow:0 12px 34px rgba(18,65,115,.14)}
+.p18-hero h1{color:#fff;margin:10px 0;font-weight:800;font-size:clamp(1.55rem,3vw,2.25rem);letter-spacing:-.04em}
+.p18-hero p{color:#e1f0ff;line-height:1.65;max-width:78ch;margin:0}
+.p18-kicker{font-size:.7rem;letter-spacing:.17em;text-transform:uppercase;font-weight:800;color:#a6dfff}
+.p18-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:0}
+.p18-toolbar label,.p18-form label{display:grid;gap:6px;font-size:.85rem;font-weight:700;color:#1b375c;min-width:0}
+.p18-toolbar input,.p18-toolbar select,.p18-form input:not([type=checkbox]),.p18-form select,.p18-form textarea{
+ display:block;width:100%;min-width:0;box-sizing:border-box;background:white;border:1px solid #c8d8e9;
+ border-radius:12px;color:#162f4a;min-height:42px;padding:9px 13px;font:inherit;outline-offset:2px}
+.p18-form textarea{resize:vertical;line-height:1.6;min-height:94px}
+.p18-toolbar .btn{white-space:nowrap;min-height:42px}
+.p18-tabs{display:flex;flex-wrap:wrap;gap:7px;border:1px solid #dbe6f1;background:#f0f6fb;padding:7px;
+ border-radius:16px;width:fit-content;max-width:100%}
+.p18-tabs button{border:0;background:transparent;padding:10px 18px;border-radius:11px;color:#55718e;
+ font:inherit;font-size:.9rem;font-weight:700;cursor:pointer}
+.p18-tabs button[aria-selected=true]{background:#fff;color:#12589c;box-shadow:0 2px 9px rgba(28,73,120,.12)}
+.p18-tabs button:focus-visible,.p18-ticket-option:focus-visible,.p18-admin-sidebar a:focus-visible{
+ outline:3px solid #1b83d1;outline-offset:2px}
+.p18-panel{border:1px solid #e0eaf3;background:#fff;border-radius:20px;padding:23px;
+ box-shadow:0 10px 28px rgba(37,77,118,.06);min-width:0}
+.p18-panel h2{font-size:1.15rem;color:#1c3d63;margin:0 0 17px;font-weight:800}
+.p18-panel h3{font-size:1rem;color:#1c3d63}
+.p18-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:13px;margin-bottom:22px}
+.p18-stat{background:linear-gradient(180deg,#f7fbff,#edf6fc);border:1px solid #dcebf8;
+ padding:18px;border-radius:16px;display:flex;flex-direction:column;gap:9px}
+.p18-stat span{font-size:.82rem;color:#506d86;font-weight:600}
+.p18-stat strong{font-size:1.75rem;letter-spacing:-.035em;color:#124e86;direction:ltr;text-align:start}
+.p18-stat small{font-size:.75rem;color:#68839b}
+.p18-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;min-width:0}
+.p18-split>*,.p18-split>div{min-width:0}
+.p18-table{border:1px solid #e2ecf3;border-radius:13px;overflow:hidden;margin-bottom:13px}
+.p18-table-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
+ padding:12px 14px;border-bottom:1px solid #e8eff6;color:#46617a;font-size:.85rem}
+.p18-table-row:last-child{border-bottom:0}
+.p18-table-row strong{color:#214e7c;direction:ltr}
+.p18-footnote{color:#627b90;font-size:.82rem;line-height:1.8;margin:15px 0 0}
+.p18-form{display:grid;gap:14px;min-width:0}
+.p18-form button{justify-self:start}
+.p18-faq details{background:#f7fbff;border:1px solid #e0edf6;border-radius:13px;padding:15px 17px;margin:9px 0}
+.p18-faq summary{cursor:pointer;font-weight:700;color:#1a527e}
+.p18-faq p{line-height:1.8;color:#425e74}
+.p18-ticket-list{max-height:630px;overflow:auto;display:grid;gap:8px;align-content:start}
+.p18-ticket-option{display:flex;flex-direction:column;text-align:start;gap:6px;width:100%;
+ border:1px solid #e0eaf3;border-radius:13px;background:#f8fbfd;padding:13px 14px;
+ cursor:pointer;color:#315373;min-width:0;overflow-wrap:anywhere}
+.p18-ticket-option.selected{background:#eaf5ff;border-color:#468bce;box-shadow:inset 3px 0 #2c88ce}
+.p18-ticket-option small{font-size:.75rem;color:#71869a}
+.p18-conversation{display:grid;gap:12px;max-height:540px;overflow:auto;padding:12px 2px;margin:16px 0}
+.p18-message{max-width:94%;border-radius:15px;background:#edf5fc;border:1px solid #d5e6f5;padding:13px 15px;color:#264962;
+ overflow-wrap:anywhere}
+.p18-message.support{margin-inline-start:auto;background:#e8f6ef;border-color:#c8e8d6}
+.p18-message small{color:#63829a;font-size:.73rem}
+.p18-message p{line-height:1.7;white-space:pre-wrap;margin:8px 0 0}
+.p18-admin-layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:24px;max-width:1490px;
+ padding:18px 24px 46px;margin:auto;align-items:start}
+.p18-admin-sidebar{background:#fff;border:1px solid #e0eaf3;border-radius:22px;padding:22px;
+ position:sticky;top:20px;display:grid;gap:13px;box-shadow:0 8px 28px rgba(20,70,110,.05)}
+.p18-admin-sidebar .p18-kicker{color:#407cae}
+.p18-admin-sidebar h2{margin:0 0 10px;color:#1c3e60;font-size:1.2rem}
+.p18-admin-sidebar nav{display:grid;gap:5px}
+.p18-admin-sidebar a{display:block;border-radius:11px;color:#3e607f;padding:11px 12px;text-decoration:none;font-size:.9rem;font-weight:700}
+.p18-admin-sidebar a[aria-current=page]{background:#e9f4ff;color:#135f9b}
+.p18-admin-sidebar a:hover{background:#f3f8fd}
+.p18-admin-main{min-width:0;display:grid;gap:22px}
+.p18-admin-main>.p18-stats{margin-bottom:0}
+.p18-check{display:flex!important;align-items:center;gap:10px}
+.p18-check input{width:18px;height:18px}
+@media(max-width:920px){
+ .p18-admin-layout{grid-template-columns:minmax(0,1fr);padding:12px 12px 32px;gap:13px}
+ .p18-admin-sidebar{position:static;padding:15px}
+ .p18-admin-sidebar nav{display:flex;flex-wrap:wrap}
+ .p18-split{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:560px){
+ .p18-hero{padding:22px 19px;border-radius:19px}
+ .p18-panel{padding:16px;border-radius:16px}
+ .p18-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p18-stat{padding:12px}
+ .p18-stat strong{font-size:1.4rem}
+ .p18-tabs{width:100%;overflow:auto;flex-wrap:nowrap}
+ .p18-tabs button{white-space:nowrap;padding:9px 12px}
+ .p18-toolbar label{flex:1 1 130px}
+ .p18-toolbar .btn{flex:1 1 auto}
+}
+@media(prefers-reduced-motion:reduce){.p18-wrap *,.p18-admin-layout *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
