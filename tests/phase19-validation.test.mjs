@@ -34,3 +34,20 @@ test("PH19 export route is localized and in clinic navigation only for owner",()
  assert.match(file("apps/clinic-web/app/clinic/settings/export/page.tsx"),/ClinicDataPortability/);
  assert.match(file("apps/clinic-web/app/layout.tsx"),/phase19\.css/);
 });
+
+test("PH19 production writes fail closed until independently approved pilot switches",()=>{
+ const code=file("apps/api/src/pilot-gate.ts");
+ const server=file("apps/api/src/server.ts");
+ for(const term of ["NODE_ENV","production","PH19_PILOT_RELEASE_ENABLED",
+  "PH19_LEGAL_PRIVACY_APPROVED","PH19_CLINICAL_REVIEW_APPROVED",
+  "PH19_BACKUP_RESTORE_APPROVED","PH19_HOSTING_SECURITY_APPROVED",
+  "PILOT_RELEASE_BLOCKED","registry|appointments|clinical","getPilotReadiness"])
+  assert.ok(code.includes(term),term);
+ assert.match(server,/app\.use\(protectHealthWrites\)/);
+ assert.match(server,/pilotReleaseEnabled: getPilotReadiness\(\)\.releaseEnabled/);
+ assert.match(file("apps/admin-web/app/admin/pilot/page.tsx"),/view="pilot"/);
+ const admin=file("packages/ui-web/src/phase18-admin.tsx");
+ assert.match(admin,/AdminPilotReadiness/);
+ for(const term of ["legalPrivacy","clinicalReview","backupRestore","pilotRoster"])
+  assert.ok(file("packages/ui-web/src/phase19-admin.tsx").includes(term),term);
+});
