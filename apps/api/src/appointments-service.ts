@@ -158,25 +158,29 @@ async function event(tx:any,cid:string,actorId:string,a:Appointment,action:strin
 const alternativeCache=new Map<string,{until:number;promise:Promise<{date:string;start:string;resourceId:string|null}[]>}>();
 async function nextAlternatives(cid:string,input:{date:string;serviceId:string;providerId:string;resourceId:string|null},
  after:string,excludeId?:string):Promise<{date:string;start:string;resourceId:string|null}[]>{
-// Short coalescing window: repeated same-slot conflicts share one suggestions lookup.
- // The suggestions are advisory, not a reservation; the booking endpoint revalidates.
+ // Conflict responses from the same slot share a small advisory-only suggestion lookup.
  const cacheKey=JSON.stringify([cid,input.date,input.serviceId,input.providerId,input.resourceId,after,excludeId||null]);
  const cached=alternativeCache.get(cacheKey);
  if(cached&&cached.until>Date.now())return cached.promise;
- const result=(async()=>{ const found:{date:string;start:string;resourceId:string|null}[]=[];
- for(let n=0;n<10&&found.length<3;n++){
-  const date=shiftDay(input.date,n);
-  try{
-   const view=await availabilityPreview(cid,{date,serviceId:input.serviceId,
-    providerId:input.providerId,resourceId:input.resourceId??undefined,excludeAppointmentId:excludeId});
-   for(const x of view.slots){
-    if(n===0&&x.start<=after)continue;
-    found.push({date,start:x.start,resourceId:x.resourceId});
-    if(found.length===3)break;
-   }
-  }catch{/* No suggestions for a closed/non-operational day. */}
- }
- return found;
+ const promise=(async()=>{
+  const found:{date:string;start:string;resourceId:string|null}[]=[];
+  for(let n=0;n<10&&found.length<3;n++){
+   const date=shiftDay(input.date,n);
+   try{
+    const view=await availabilityPreview(cid,{date,serviceId:input.serviceId,
+     providerId:input.providerId,resourceId:input.resourceId??undefined,excludeAppointmentId:excludeId});
+    for(const x of view.slots){
+     if(n===0&&x.start<=after)continue;
+     found.push({date,start:x.start,resourceId:x.resourceId});
+     if(found.length===3)break;
+    }
+   }catch{/* No suggestions for a closed/non-operational day. */}
+  }
+  return found;
+ })();
+ alternativeCache.set(cacheKey,{until:Date.now()+5000,promise});
+ if(alternativeCache.size>150)alternativeCache.clear();
+ try{return await promise;}catch(error){alternativeCache.delete(cacheKey);throw error;}
 }
 export async function createAppointment(ctx:ActorContext,cid:string,actorId:string,raw:any){
  const input=appointmentInput(raw);
