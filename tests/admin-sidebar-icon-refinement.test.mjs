@@ -8,12 +8,12 @@ test("Admin navigation uses a distinct modern SVG icon for every sidebar tab",()
  const symbols=read("packages/ui-web/src/care-icons.tsx");
  const items=Array.from(source.matchAll(/\{key:"([^"]+)",href:"([^"]+)",group:"([^"]+)",icon:"([^"]+)"\}/g),
   m=>({key:m[1],href:m[2],group:m[3],icon:m[4]}));
- assert.equal(items.length,12,"Each existing platform sidebar tab remains present");
- assert.equal(new Set(items.map(x=>x.icon)).size,12,"Every tab has its own recognizable icon");
+ assert.equal(items.length,14,"All platform sidebar tabs, including Phase E, remain present");
+ assert.equal(new Set(items.map(x=>x.icon)).size,14,"Every tab has its own recognizable icon");
  const expected={
   dashboard:"layout-dashboard",clinics:"hospital",dentists:"badge-check",
   listings:"images",reviews:"message-square-star",subscriptions:"credit-card",
-  plans:"package",support:"life-buoy",analytics:"chart-columns",
+  plans:"package",support:"life-buoy",analytics:"chart-columns",alerts:"bell",monitoring:"activity",
   security:"shield-check",settings:"sliders-horizontal",pilot:"rocket"
  };
  for(const item of items){
