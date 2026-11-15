@@ -1,6 +1,6 @@
 "use client";
 import React,{useEffect,useState,type FormEvent} from "react";
-import {InlineAlert} from "./index";
+import {InlineAlert,AdminMfaSetup} from "./index";
 import {call18,useWords,Stat,ChipTabs,Notice,num} from "./phase18";
 
 type View="support"|"analytics"|"security"|"settings";
@@ -100,7 +100,7 @@ export function AdminOperationsPortal({view}:{view:View}){
    {role==="admin"&&<a href="/admin">← {t("back")}</a>}
    <nav aria-label={o("desk")}>{links.map(x=>
     <a key={x.id} aria-current={view===x.id?"page":undefined} href={"/admin/"+x.id}>{x.label}</a>)}</nav>
-   <a href="/help">{t("help")}</a>
+   <a href="/admin/support">{t("help")}</a>
   </aside>
   <div className="p18-admin-main">
    <header className="p18-hero"><span className="p18-kicker">PH18 · PLATFORM OPERATIONS</span>
@@ -108,6 +108,7 @@ export function AdminOperationsPortal({view}:{view:View}){
      view==="security"?t("security"):t("settings")}</h1>
     <p>{view==="support"?o("supportHint"):o("privacy")}</p></header>
    {role===null?<InlineAlert>{t("loading")}</InlineAlert>:needsMfa?
+    role==="support"?<AdminMfaSetup home="/admin/support"/>:
     <InlineAlert kind="warning">{o("mfaGate")} <a href="/admin/2fa">{t("security")}</a></InlineAlert>:
     !permitted?<InlineAlert kind="error">{view==="settings"||view==="security"?o("roleGate"):o("supportGate")}
      <a href="/admin/login">{t("login")}</a></InlineAlert>:
