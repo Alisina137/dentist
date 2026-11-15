@@ -1,0 +1,190 @@
+/* Phase B — data-led platform dashboard. Admin-scoped, no global clinic/patient effects. */
+.shell-admin .adm-b-dashboard{
+ --b-ink:#153b4d;--b-muted:#637b88;--b-border:#e0e9ed;--b-accent:#0b7887;
+ --b-pale:#e6f4f4;--b-shadow:0 5px 23px rgba(21,67,81,.045);
+ display:grid;gap:22px;min-width:0;animation:adm-b-reveal .2s ease-out;
+}
+.shell-admin .adm-b-dashboard :is(h1,h2,p){margin:0}
+.shell-admin .adm-b-dashboard h1{font-size:clamp(24px,2.4vw,32px);
+ color:#12384b;font-weight:830;letter-spacing:-.035em;line-height:1.28}
+.shell-admin .adm-b-dashboard h2{font-size:17px;line-height:1.45;
+ color:var(--b-ink);font-weight:780;letter-spacing:-.018em}
+.shell-admin .adm-b-intro{display:flex;justify-content:space-between;align-items:end;
+ gap:20px;flex-wrap:wrap}
+.shell-admin .adm-b-intro-copy{display:grid;gap:7px}
+.shell-admin .adm-b-eyebrow{font-size:10px;letter-spacing:.13em;font-weight:850;color:#0d8490}
+[dir="rtl"] .shell-admin .adm-b-eyebrow{letter-spacing:0}
+.shell-admin .adm-b-intro-copy p{font-size:13px;color:var(--b-muted);line-height:1.6;max-width:75ch}
+.shell-admin .adm-b-toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.shell-admin .adm-b-period{display:inline-flex;gap:4px;padding:4px;
+ border-radius:11px;background:#edf4f6;border:1px solid #dce9ed}
+.shell-admin .adm-b-period button{border:0;background:transparent;padding:7px 12px;
+ min-height:35px;border-radius:8px;color:#617a89;font-size:12px;font-weight:730;
+ transition:background .15s,color .15s}
+.shell-admin .adm-b-period button[aria-pressed="true"]{color:#0b6170;background:#fff;
+ box-shadow:0 1px 6px rgba(28,72,85,.1)}
+.shell-admin .adm-b-refresh{display:inline-flex;align-items:center;gap:7px;
+ min-height:44px;padding:8px 14px;background:#fff;color:#246576;border-color:#cedeE4}
+.shell-admin .adm-b-meta{display:flex;justify-content:space-between;
+ align-items:center;gap:10px;flex-wrap:wrap;padding-block:0 3px;
+ border-block-end:1px solid #e2eaee;color:#627f8c;font-size:11.5px}
+.shell-admin .adm-b-meta span{display:inline-flex;align-items:center;gap:6px}
+.shell-admin .adm-b-meta time{font-weight:680}
+.shell-admin .adm-b-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.shell-admin .adm-b-kpi{background:#fff;border:1px solid var(--b-border);
+ border-radius:15px;box-shadow:var(--b-shadow);padding:17px 18px;
+ min-height:166px;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;
+ grid-template-rows:auto auto auto 1fr;align-content:start;gap:4px 8px;
+ color:inherit;text-decoration:none;position:relative;overflow:hidden;
+ transition:transform .17s ease,border-color .17s ease,box-shadow .17s ease}
+.shell-admin .adm-b-kpi:hover{transform:translateY(-2px);border-color:#b5dce0;
+ box-shadow:0 9px 26px rgba(18,85,100,.09)}
+.shell-admin .adm-b-kpi-icon{grid-column:2;grid-row:1/3;width:42px;height:42px;
+ display:grid;place-items:center;border-radius:12px;background:#e9f5f5;color:#107a87}
+.shell-admin .adm-b-kpi-label{grid-column:1;grid-row:1;
+ font-size:12px;color:#526f7d;font-weight:730;line-height:1.5}
+.shell-admin .adm-b-kpi-value{grid-column:1;grid-row:2;
+ font-size:clamp(25px,2.5vw,34px);font-weight:830;color:var(--b-ink);
+ line-height:1.22;letter-spacing:-.03em;overflow-wrap:anywhere}
+.shell-admin .adm-b-kpi-detail{grid-column:1/3;grid-row:3;
+ font-size:11.5px;color:#637d89;line-height:1.5}
+.shell-admin .adm-b-kpi-delta{grid-column:1/3;grid-row:4;
+ align-self:end;width:fit-content;font-size:11px;line-height:1.4;font-weight:710;
+ color:#1c7481;background:#eef8f8;padding:5px 8px;border-radius:7px}
+.shell-admin .adm-b-kpi-arrow{position:absolute;inset-inline-end:10px;inset-block-end:11px;
+ opacity:0;color:#11798b;transition:opacity .18s}
+.shell-admin .adm-b-kpi:hover .adm-b-kpi-arrow,
+.shell-admin .adm-b-kpi:focus-visible .adm-b-kpi-arrow{opacity:1}
+.shell-admin .adm-b-main-grid,.shell-admin .adm-b-lower-grid{
+ display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.18fr);gap:15px;align-items:start}
+.shell-admin .adm-b-lower-grid{grid-template-columns:minmax(0,1.18fr) minmax(0,.94fr)}
+.shell-admin .adm-b-panel{background:#fff;border:1px solid var(--b-border);
+ border-radius:17px;box-shadow:var(--b-shadow);min-width:0;padding:clamp(17px,2vw,22px)}
+.shell-admin .adm-b-panel-head{display:flex;align-items:start;justify-content:space-between;
+ gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.shell-admin .adm-b-panel-head p{font-size:12px;line-height:1.65;color:var(--b-muted);margin-top:3px}
+.shell-admin .adm-b-panel-badge{display:grid;place-items:center;min-width:32px;
+ height:32px;padding:0 8px;border-radius:9px;background:#eaf5f5;
+ font-size:14px;font-weight:800;color:#127481}
+.shell-admin .adm-b-queue-list{display:grid;gap:3px}
+.shell-admin .adm-b-queue-row{display:flex;align-items:center;gap:10px;
+ border-radius:11px;padding:9px 8px;min-height:62px;border:1px solid transparent;
+ color:var(--b-ink);text-decoration:none;transition:background .16s,border-color .16s}
+.shell-admin .adm-b-queue-row:hover{background:#f1f8f9;border-color:#e3eff0}
+.shell-admin .adm-b-queue-icon{display:grid;place-items:center;border-radius:10px;
+ background:#f0f6f8;color:#377b89;width:37px;height:37px;flex:0 0 37px}
+.shell-admin .adm-b-queue-copy{display:grid;gap:2px;min-width:0;flex:1}
+.shell-admin .adm-b-queue-copy strong{font-size:12.5px;line-height:1.4;
+ font-weight:760;white-space:normal}
+.shell-admin .adm-b-queue-copy small{color:#627b88;font-size:10.5px;
+ line-height:1.4;overflow-wrap:anywhere}
+.shell-admin .adm-b-queue-count{min-width:31px;height:29px;padding:0 7px;
+ border-radius:8px;display:grid;place-items:center;background:#f0f5f6;
+ color:#587582;font-size:12px;font-weight:790}
+.shell-admin .adm-b-queue-count.has-work{background:#fff0dd;color:#975916}
+.shell-admin .adm-b-row-arrow{color:#8ca0aa}
+[dir="rtl"] .shell-admin .adm-b-row-arrow svg{transform:rotate(180deg)}
+.shell-admin .adm-b-chart-panel{display:grid;gap:12px}
+.shell-admin .adm-b-chart-panel .adm-b-panel-head{margin-bottom:1px}
+.shell-admin .adm-b-secondary-link{display:inline-flex;gap:5px;align-items:center;
+ font-size:11.5px;font-weight:740;color:#0c7785;text-decoration:none}
+.shell-admin .adm-b-secondary-link:hover{text-decoration:underline}
+.shell-admin .adm-b-chart-tabs{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.shell-admin .adm-b-chart-tabs button{font-size:11px;line-height:1.45;
+ font-weight:740;min-height:35px;padding:7px 10px;border:1px solid #dfebee;
+ border-radius:9px;background:#f8fafb;color:#567583}
+.shell-admin .adm-b-chart-tabs button[aria-pressed="true"]{background:#e6f5f5;
+ color:#086477;border-color:#a8d4d8}
+.shell-admin .adm-b-chart-area{position:relative;min-width:0;min-height:230px}
+.shell-admin .adm-b-chart-area svg{display:block;width:100%;height:auto;
+ min-height:180px;direction:ltr;overflow:visible}
+.shell-admin .adm-b-chart-empty{position:absolute;inset-block-start:42%;
+ inset-inline:0;text-align:center;font-size:12px;color:#69818c}
+.shell-admin .adm-b-chart-details{font-size:12px;border-top:1px solid #ebf0f2;
+ padding-top:12px;color:#597584}
+.shell-admin .adm-b-chart-details summary{cursor:pointer;user-select:none;
+ color:#0d7787;font-weight:730}
+.shell-admin .adm-b-table-wrap{max-height:270px;overflow:auto;margin-top:10px;
+ border:1px solid #e2ecef;border-radius:9px}
+.shell-admin .adm-b-table-wrap table{width:100%;border-collapse:collapse;
+ font-size:12px;text-align:start}
+.shell-admin .adm-b-table-wrap th,.shell-admin .adm-b-table-wrap td{
+ padding:8px 12px;border-bottom:1px solid #e9eff1;text-align:start}
+.shell-admin .adm-b-table-wrap th{background:#f2f8f9;font-weight:760}
+.shell-admin .adm-b-caption{font-size:11.5px;color:#6d8290;line-height:1.6}
+.shell-admin .adm-b-activity-list{list-style:none;display:grid;gap:0;padding:0;margin:0}
+.shell-admin .adm-b-activity-list li{display:flex;gap:11px;align-items:start;
+ padding:12px 4px;border-bottom:1px solid #edf1f3;min-width:0}
+.shell-admin .adm-b-activity-list li:last-child{border-bottom:0}
+.shell-admin .adm-b-activity-dot{width:9px;height:9px;flex:0 0 9px;
+ border:2px solid #0f8692;border-radius:50%;margin-block-start:7px;
+ background:#e3f5f5;box-shadow:0 0 0 4px #eaf8f8}
+.shell-admin .adm-b-activity-dot.warning{border-color:#bb722a;background:#fae3bd;box-shadow:0 0 0 4px #fff4e5}
+.shell-admin .adm-b-activity-list li div{display:grid;gap:2px;flex:1;min-width:0}
+.shell-admin .adm-b-activity-list li strong{font-size:12px;font-weight:750;
+ overflow-wrap:anywhere}
+.shell-admin .adm-b-activity-list li span:not(.adm-b-activity-dot){
+ font-size:10.5px;color:#637f8a}
+.shell-admin .adm-b-activity-list li time{font-size:10.5px;color:#5f7988;
+ white-space:nowrap;flex:0 0 auto}
+.shell-admin .adm-b-empty{padding:22px 10px;text-align:center;
+ color:#667f8d;font-size:12px;line-height:1.7}
+.shell-admin .adm-b-health-list{display:grid;gap:4px}
+.shell-admin .adm-b-health-row{display:flex;justify-content:space-between;align-items:center;
+ gap:14px;border-bottom:1px solid #ebf0f3;padding:12px 0}
+.shell-admin .adm-b-health-row>span{font-size:12px;font-weight:690;
+ display:inline-flex;align-items:center;gap:9px;color:#4b6d7d}
+.shell-admin .adm-b-health-row strong{font-size:12px;font-weight:760;text-align:end;
+ color:#197482}
+.shell-admin .adm-b-health-row .adm-b-health-attention{color:#965c1b}
+.shell-admin .adm-b-led{width:9px;height:9px;border-radius:50%;display:inline-block;
+ flex:0 0 9px;background:#22a27b;box-shadow:0 0 0 3px #dff6ed}
+.shell-admin .adm-b-led.is-warning{background:#cf9146;box-shadow:0 0 0 3px #fff0da}
+.shell-admin .adm-b-health-notice{display:flex;gap:8px;align-items:start;
+ margin-block:17px 13px;font-size:11.5px;line-height:1.65;
+ border-radius:10px;background:#fff8e9;color:#7a5723;padding:12px}
+.shell-admin .adm-b-health-notice svg{flex:0 0 auto;margin-top:2px}
+.shell-admin .adm-b-footer-links{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+ border-top:1px solid #edf2f3;padding-top:11px}
+.shell-admin .adm-b-footer-links a{font-size:12px;font-weight:750;color:#0b7989}
+.shell-admin .adm-b-footer-links a:hover{text-decoration:underline}
+.shell-admin .adm-b-privacy{display:flex;gap:7px;align-items:center;
+ color:#657f8b;font-size:11px}
+.shell-admin .adm-b-privacy svg{flex:0 0 auto}
+.shell-admin .adm-b-loading .admin-loading-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@keyframes adm-b-reveal{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:1240px){
+ .shell-admin .adm-b-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .shell-admin .adm-b-main-grid,.shell-admin .adm-b-lower-grid{grid-template-columns:1fr}
+ .shell-admin .adm-b-kpi{min-height:146px}
+ .shell-admin .adm-b-dashboard{gap:17px}
+}
+@media(max-width:620px){
+ .shell-admin .adm-b-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .shell-admin .adm-b-kpi{padding:12px 12px;min-height:148px}
+ .shell-admin .adm-b-kpi-value{font-size:25px}
+ .shell-admin .adm-b-kpi-label{font-size:11px}
+ .shell-admin .adm-b-kpi-icon{width:34px;height:34px}
+ .shell-admin .adm-b-kpi-icon svg{width:18px;height:18px}
+ .shell-admin .adm-b-kpi-detail{font-size:10.5px}
+ .shell-admin .adm-b-dashboard h1{font-size:26px}
+ .shell-admin .adm-b-panel{padding:15px}
+ .shell-admin .adm-b-activity-list li time{white-space:normal;max-width:100px}
+ .shell-admin .adm-b-intro{align-items:stretch}
+ .shell-admin .adm-b-toolbar{justify-content:space-between}
+ .shell-admin .adm-b-toolbar .adm-b-period button{padding-inline:9px}
+ .shell-admin .adm-b-loading .admin-loading-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:410px){
+ .shell-admin .adm-b-kpi{min-height:155px}
+ .shell-admin .adm-b-kpi-value{font-size:23px}
+ .shell-admin .adm-b-chart-tabs button{font-size:10px}
+ .shell-admin .adm-b-queue-row{gap:7px}
+ .shell-admin .adm-b-queue-icon{width:32px;height:32px;flex-basis:32px}
+}
+@media(prefers-reduced-motion:reduce){
+ .shell-admin .adm-b-dashboard{animation:none}
+ .shell-admin .adm-b-kpi,.shell-admin .adm-b-queue-row,
+ .shell-admin .adm-b-period button{transition:none}
+ .shell-admin .adm-b-kpi:hover{transform:none}
+}
