@@ -75,4 +75,5 @@ jobs:
           node tests/phase15-integration.mjs || { grep 'PH15 booking error' /tmp/dandanlink-api.log | tail -n 10 || true; exit 1; }
           node tests/phase16-integration.mjs
           node tests/phase17-integration.mjs
+          node tests/phase18-integration.mjs
           node tests/dev-no-email-integration.mjs
