@@ -14,7 +14,7 @@ type Summary={
  reviews:{pending:number;reports:number;appeals:number};
  subscriptions:{active:number;trialing:number;awaitingPayments:number;paidInvoices:number;receiptsAfn:number;previousReceiptsAfn:number};
  appointments:{created:number;cancelled:number;previousCreated:number};
- support:{open:number;inProgress:number;waiting:number;highPriority:number;overdue:number;created:number;previousCreated:number};
+ support:{open:number;inProgress:number;waiting:number;highPriority:number;overdue:number;urgent:number;created:number;previousCreated:number};
  operations:{databaseResponsive:boolean;delayedOutbox:number;failedNotifications:number;pilotReleaseEnabled:boolean;caveat:string};
  trend:Trend[];activity:Activity[];privacy:string;
 };
@@ -260,7 +260,7 @@ export function AdminDashboardPortal(){
    secondary:[data.reviews.pending,data.reviews.reports,data.reviews.appeals].map(fmt).join(" · ")+" "+t("reviewsBreakdown"),
    href:"/admin/reviews",icon:"star" as CareIconName},
   {key:"queuePayments",count:data.subscriptions.awaitingPayments,secondary:"",href:"/admin/subscriptions",icon:"receipt" as CareIconName},
-  {key:"queueSupport",count:data.support.highPriority,secondary:fmt(data.support.highPriority)+" · "+
+  {key:"queueSupport",count:data.support.urgent,secondary:fmt(data.support.highPriority)+" · "+
    fmt(data.support.overdue)+" "+t("supportBreakdown"),href:"/admin/support?status=open",icon:"mail" as CareIconName}
  ];
  const metrics=[
