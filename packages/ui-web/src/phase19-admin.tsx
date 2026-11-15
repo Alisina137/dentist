@@ -4,7 +4,7 @@ import {InlineAlert} from "./index";
 import {call18,useWords} from "./phase18";
 type Report={controls:{id:string;complete:boolean}[];passCount:number;overall:string;releaseEnabled:boolean;caveat:string};
 const labels:Record<string,Record<string,string>>={
- en:{title:"Pilot readiness",intro:"Operational launch gates for verified clinics. Missing approvals remain release blockers.",
+ en:{blockedCount:"Unapproved controls",checklist:"Gate-by-gate verification",manualApproval:"This screen records operator flags only. Evidence, signatures and clinical/legal sign-off must be verified outside this application.",title:"Pilot readiness",intro:"Operational launch gates for verified clinics. Missing approvals remain release blockers.",
   legalPrivacy:"Legal privacy & retention",clinicalReview:"Clinical review & guardian consent",
   hostingEncryption:"Hosting, encryption & PHI controls",backupRestore:"Production backup & recovery",
   penetrationTest:"Penetration & authorization audit",accessReview:"Admin/staff access review",
@@ -15,7 +15,7 @@ const labels:Record<string,Record<string,string>>={
   pass:"Operator marked ready — human sign-off evidence is still mandatory.",
   note:"These indicators come from operator environment configuration, not automatic proof of certification.",
   evidence:"Approval runbook",score:"Controls marked complete"},
- "fa-AF":{title:"آمادگی آزمایشی",intro:"شرایط نشر آزمایشی برای کلینیک‌های تأییدشده. هر تأیید ناقص مانع نشر است.",
+ "fa-AF":{blockedCount:"شرایط تأییدنشده",checklist:"بررسی هر شرط",manualApproval:"این صفحه فقط علامت‌های مسئول را نشان می‌دهد. اسناد، امضاها و تأیید رسمی حقوقی و طبی باید جداگانه بررسی شوند.",title:"آمادگی آزمایشی",intro:"شرایط نشر آزمایشی برای کلینیک‌های تأییدشده. هر تأیید ناقص مانع نشر است.",
   legalPrivacy:"تأیید حقوقی و محرمیت",clinicalReview:"بازبینی طبی و رضایت سرپرست",
   hostingEncryption:"میزبانی، رمزگذاری و محرمیت صحی",backupRestore:"پشتیبان‌گیری و بازیابی واقعی",
   penetrationTest:"آزمون نفوذ و دسترسی",accessReview:"بازبینی دسترسی مدیران و کارمندان",
@@ -24,7 +24,7 @@ const labels:Record<string,Record<string,string>>={
   approve:"تا تأیید مستقل و ثبت مستندات، نشر مجاز نیست.",reload:"تازه‌سازی شرایط",error:"بارگیری وضعیت ممکن نیست.",
   pass:"آماده به تأیید مسئول؛ اسناد رسمی هنوز ضروری است.",note:"این علایم از تنظیمات مسئول می‌آید و تأیید مستقل نیست.",
   evidence:"رهنمود تأیید",score:"شرایط ثبت‌شده"},
- "ps-AF":{title:"د ازمایښتي پیل چمتووالی",intro:"د تایید شوو کلینیکونو لپاره د پیل شرایط. هر نیمګړی شرط پیل بندوي.",
+ "ps-AF":{blockedCount:"نه تایید شوي شرطونه",checklist:"د هر شرط ارزونه",manualApproval:"دا مخ یوازې د مسئول ټاکلي شرطونه ښيي. سندونه، لاسلیکونه او رسمي طبي او قانوني تایید جلا اړتیا لري.",title:"د ازمایښتي پیل چمتووالی",intro:"د تایید شوو کلینیکونو لپاره د پیل شرایط. هر نیمګړی شرط پیل بندوي.",
   legalPrivacy:"قانوني محرمیت او ساتنه",clinicalReview:"طبي ارزونه او د سرپرست رضا",
   hostingEncryption:"کوربه‌توب، کوډ کول او محرمیت",backupRestore:"ریښتینی بیک اپ او بېرته راګرځول",
   penetrationTest:"د امنیتي نفوذ او اجازو ازموینه",accessReview:"د کارکوونکو د لاسرسي ارزونه",
@@ -48,13 +48,21 @@ export function AdminPilotReadiness(){
   {data&&<>
    <div className="p18-stats"><div className="p18-stat"><span>{t("score")}</span>
     <strong>{data.passCount}/{data.controls.length}</strong></div>
+    <div className="p18-stat"><span>{t("blockedCount")}</span>
+     <strong>{data.controls.length-data.passCount}</strong></div>
     <div className="p18-stat"><span>{t("title")}</span>
      <strong style={{fontSize:"1.1rem"}}>{data.releaseEnabled?t("pass"):t("blocked")}</strong></div></div>
+   <div className="adm-f-progress" role="progressbar" aria-label={t("score")}
+    aria-valuemin={0} aria-valuemax={data.controls.length} aria-valuenow={data.passCount}>
+    <span style={{width:(data.passCount/Math.max(1,data.controls.length)*100)+"%"}}/></div>
+   <p className="adm-f-pilot-note">{t("manualApproval")}</p>
    <InlineAlert kind={data.releaseEnabled?"success":"warning"}>{t("approve")}</InlineAlert>
    <p className="p18-footnote">{t("note")}</p>
-   <section className="p18-panel"><div className="p19-list">{data.controls.map(item=>
-    <article className="p19-row" key={item.id}><strong>{t(item.id)}</strong>
-     <span className={"p19-state "+(item.complete?"downloaded":"expired")}>
+   <section className="p18-panel"><h3>{t("checklist")}</h3>
+    <div className="p19-list">{data.controls.map(item=>
+    <article className="p19-row adm-f-check-group" key={item.id}>
+     <strong>{t(item.id)}</strong>
+     <span role="status" className={"p19-state "+(item.complete?"downloaded":"expired")}>
       {item.complete?t("complete"):t("blocked")}</span>
     </article>)}</div></section>
   </>}
