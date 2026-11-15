@@ -30,7 +30,7 @@ test("PH10 API requires actual performed care and prevents payment double-postin
 test("PH10 navigation and all financial routes have real integration",()=>{
  const side=read("packages/ui-web/src/phase03.tsx");
  assert.match(side,/const finance=link\("finance","\/clinic\/finance"/);
- assert.match(side,/options.push\(finance,patients/);
+ assert.match(side,/options.push\(finance,(?:reports,)?patients/);
  const ui=read("packages/ui-web/src/phase10.tsx");
  for(const part of ["FinancePortal","InvoiceEditor","InvoiceDetail","Payments","Balances","Receipt",
   "PatientBilling","recordPayment","phase10-printable","usePreferences",
