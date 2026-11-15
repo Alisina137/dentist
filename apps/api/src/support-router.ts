@@ -145,7 +145,8 @@ export function supportRouter(){
   if(ticket.status==="closed")opsFail(409,"TICKET_CLOSED");
   await sqlClient.begin(async tx=>{
    const changed=await tx`UPDATE support_tickets
-    SET status=${next},updated_at=now(),resolved_at=${["resolved","closed"].includes(next)?new Date():null}
+    SET status=${next},updated_at=now(),
+      resolved_at=CASE WHEN ${next} IN ('resolved','closed') THEN now() ELSE NULL END
     WHERE id=${ticket.id} AND status=${ticket.status} RETURNING id`;
    if(!changed.length)opsFail(409,"STALE_TICKET");
    await tx`INSERT INTO support_ticket_events(id,ticket_id,actor_id,action,previous_state,new_state)
