@@ -7,7 +7,10 @@ export type CareIconName =
   | "privacy" | "security" | "logout" | "arrow" | "check" | "calendar"
   | "clock" | "edit" | "download" | "plus" | "mail" | "bell"
   | "file" | "heart" | "chevron" | "sparkle" | "users"
-  | "chart" | "star" | "layers" | "receipt" | "dental" | "clipboard" | "panel" | "activity";
+  | "chart" | "star" | "layers" | "receipt" | "dental" | "clipboard" | "panel" | "activity"
+  | "layout-dashboard" | "hospital" | "badge-check" | "images" | "message-square-star"
+  | "credit-card" | "package" | "life-buoy" | "chart-columns" | "shield-check"
+  | "sliders-horizontal" | "rocket";
 
 type Props={name:CareIconName;size?:number;className?:string};
 export function CareIcon({name,size=20,className}:Props){
@@ -48,7 +51,21 @@ export function CareIcon({name,size=20,className}:Props){
   dental:<><path d="M12 4c-2-1.3-4.1-2-6-1.1C3.3 4.2 3 7.3 4.1 10c1 2.2 1.4 6.4 2.6 9.2.4 1 1.6 1.1 2.1.2l2.2-6.5c.3-.9 1.7-.9 2 0l2.2 6.5c.5.9 1.7.8 2.1-.2 1.2-2.8 1.6-7 2.6-9.2C21 7.3 20.7 4.2 18 2.9c-1.9-.9-4 0-6 1.1Z"/></>,
   clipboard:<><rect x="5" y="5" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M9 13h6M9 17h5"/></>,
   panel:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M13 8h4M13 12h4"/></>,
-  activity:<><path d="M3 12h4l3-7 4 14 3-7h4"/></>
+  activity:<><path d="M3 12h4l3-7 4 14 3-7h4"/></>,
+  // Modern, consistent 24px line icons for the platform admin workspace.
+  // Retain the original icon names for all patient and clinic interfaces.
+  "layout-dashboard":<><rect x="3" y="3" width="7" height="10" rx="1.4"/><rect x="14" y="3" width="7" height="6" rx="1.4"/><rect x="14" y="13" width="7" height="8" rx="1.4"/><rect x="3" y="17" width="7" height="4" rx="1.4"/></>,
+  hospital:<><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M12 7v5M9.5 9.5h5M9 21v-5h6v5M6 16h1M17 16h1"/></>,
+  "badge-check":<><path d="M12 2.5 15.1 4l3.4-.1 1.1 3.2 2.1 2.6-1.7 2.9.1 3.4-3.2 1.4-1.9 2.8-3-.9-3 .9-1.9-2.8-3.2-1.4.1-3.4-1.7-2.9 2.1-2.6L5.5 3.9 8.9 4Z"/><path d="m8.2 11.9 2.5 2.5 5.2-5.2"/></>,
+  images:<><rect x="6" y="3" width="15" height="15" rx="2"/><path d="M3 7v11a3 3 0 0 0 3 3h11"/><circle cx="12.5" cy="8.5" r="1.4"/><path d="m8.5 15 3-3 2.4 2.1 2.6-3 3 3.7"/></>,
+  "message-square-star":<><path d="M20 11v6a2 2 0 0 1-2 2H9l-4.5 2V17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/><path d="m18.5 2 1 2.5L22 5.5 19.5 6.6l-1 2.4-1-2.4L15 5.5l2.5-1Z"/></>,
+  "credit-card":<><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M7 15h4"/></>,
+  package:<><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10M7.5 4.5l9 5"/></>,
+  "life-buoy":<><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.6 5.6 3.6 3.6m5.6 5.6 3.6 3.6m0-12.8-3.6 3.6m-5.6 5.6-3.6 3.6"/></>,
+  "chart-columns":<><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx=".6"/><rect x="12" y="8" width="3" height="10" rx=".6"/><rect x="17" y="5" width="3" height="13" rx=".6"/></>,
+  "shield-check":<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m8.5 12.4 2.4 2.4 4.7-5"/></>,
+  "sliders-horizontal":<><path d="M3 6h8m4 0h6M3 12h3m4 0h11M3 18h10m4 0h4"/><circle cx="13" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="15" cy="18" r="2"/></>,
+  rocket:<><path d="M5.5 15.5 3 21l5.5-2.5M9 15l-3-3c.9-3.6 5.8-7.9 14-9 0 8.2-5.4 13.2-9 14l-2-2Z"/><circle cx="15" cy="9" r="2"/><path d="M9 15 5 19m6-2 1 4 3-4M6 12l-4-1 3-3"/></>
  };
  return <svg aria-hidden="true" focusable="false" className={className} width={size} height={size}
   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}

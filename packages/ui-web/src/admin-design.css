@@ -339,3 +339,68 @@
  .admin-nav-skeleton span,.admin-loading-card,.admin-loading-line{
   transition:none!important;animation:none!important}
 }
+
+
+/* Navigation refinement: slight inward alignment and premium icon treatment.
+   Logical spacing keeps the shift correct for English (LTR), Dari and Pashto (RTL). */
+.shell-admin .admin-persistent-nav .admin-sidebar-link{
+ margin-inline:5px 3px;
+ padding-inline:10px 9px!important;
+ transition:background .18s ease,color .18s ease,border-color .18s ease,translate .18s ease;
+}
+.shell-admin .admin-persistent-nav .admin-nav-group{
+ margin-inline:18px 12px;
+}
+.shell-admin .admin-persistent-nav .admin-sidebar-icon{
+ width:34px;height:34px;flex:0 0 34px;
+ border:1px solid #e7eff2;
+ border-radius:10px;
+ color:#526f81;
+ background:#f4f8fa;
+ transition:background-color .18s ease,color .18s ease,border-color .18s ease;
+}
+.shell-admin .admin-persistent-nav .admin-sidebar-icon svg{
+ stroke-width:1.85;
+ stroke-linecap:round;
+ stroke-linejoin:round;
+}
+.shell-admin .admin-persistent-nav .admin-sidebar-link:hover .admin-sidebar-icon{
+ color:#0a7584;
+ background:#e9f5f6;
+ border-color:#d5ebed;
+}
+.shell-admin .admin-persistent-nav .admin-sidebar-link[aria-current="page"] .admin-sidebar-icon{
+ color:#087081;
+ background:#d8eef0;
+ border-color:#c1e4e7;
+}
+@media (hover:hover) and (pointer:fine){
+ .shell-admin .admin-persistent-nav .admin-sidebar-link:hover:not([aria-current="page"]){
+  translate:3px 0;
+ }
+ [dir="rtl"] .shell-admin .admin-persistent-nav .admin-sidebar-link:hover:not([aria-current="page"]){
+  translate:-3px 0;
+ }
+}
+/* Icon-only desktop mode retains centered navigation, without the indent or shift. */
+.shell-admin .admin-sidebar-collapsed .admin-persistent-nav .admin-sidebar-link{
+ margin-inline:0;
+ padding-inline:6px!important;
+ translate:none!important;
+}
+.shell-admin .admin-sidebar-collapsed .admin-persistent-nav .admin-sidebar-icon{
+ width:36px;height:36px;flex-basis:36px;
+}
+@media(max-width:900px){
+ /* Drawer stays spacious, including when desktop state was saved as collapsed. */
+ .shell-admin .admin-persistent-nav .admin-sidebar-link,
+ .shell-admin .admin-sidebar-collapsed .admin-persistent-nav .admin-sidebar-link{
+  margin-inline:5px 3px;
+  padding-inline:10px 9px!important;
+ }
+ .shell-admin .admin-persistent-nav .admin-nav-group{margin-inline:18px 12px}
+}
+@media(prefers-reduced-motion:reduce){
+ .shell-admin .admin-persistent-nav .admin-sidebar-link{translate:none!important;transition:none!important}
+ .shell-admin .admin-persistent-nav .admin-sidebar-icon{transition:none!important}
+}

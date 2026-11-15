@@ -10,18 +10,18 @@ type Role="admin"|"support"|"user"|"loading";
 type Group="overview"|"verification"|"finance"|"operations"|"platform";
 type Item={key:string;href:string;group:Group;icon:CareIconName};
 const NAV:Item[]=[
- {key:"dashboard",href:"/admin",group:"overview",icon:"overview"},
- {key:"clinics",href:"/admin/clinics",group:"verification",icon:"clinic"},
- {key:"dentists",href:"/admin/dentists",group:"verification",icon:"dental"},
- {key:"listings",href:"/admin/listings",group:"verification",icon:"layers"},
- {key:"reviews",href:"/admin/reviews",group:"verification",icon:"star"},
- {key:"subscriptions",href:"/admin/subscriptions",group:"finance",icon:"receipt"},
- {key:"plans",href:"/admin/plans",group:"finance",icon:"file"},
- {key:"support",href:"/admin/support",group:"operations",icon:"mail"},
- {key:"analytics",href:"/admin/analytics",group:"operations",icon:"chart"},
- {key:"security",href:"/admin/security",group:"platform",icon:"shield"},
- {key:"settings",href:"/admin/settings",group:"platform",icon:"settings"},
- {key:"pilot",href:"/admin/pilot",group:"platform",icon:"clipboard"}
+ {key:"dashboard",href:"/admin",group:"overview",icon:"layout-dashboard"},
+ {key:"clinics",href:"/admin/clinics",group:"verification",icon:"hospital"},
+ {key:"dentists",href:"/admin/dentists",group:"verification",icon:"badge-check"},
+ {key:"listings",href:"/admin/listings",group:"verification",icon:"images"},
+ {key:"reviews",href:"/admin/reviews",group:"verification",icon:"message-square-star"},
+ {key:"subscriptions",href:"/admin/subscriptions",group:"finance",icon:"credit-card"},
+ {key:"plans",href:"/admin/plans",group:"finance",icon:"package"},
+ {key:"support",href:"/admin/support",group:"operations",icon:"life-buoy"},
+ {key:"analytics",href:"/admin/analytics",group:"operations",icon:"chart-columns"},
+ {key:"security",href:"/admin/security",group:"platform",icon:"shield-check"},
+ {key:"settings",href:"/admin/settings",group:"platform",icon:"sliders-horizontal"},
+ {key:"pilot",href:"/admin/pilot",group:"platform",icon:"rocket"}
 ];
 const TRANSLATIONS:Record<string,Record<string,string>>={
  en:{dashboard:"Dashboard",clinics:"Clinics",dentists:"Dentist verification",listings:"Clinic listings",
