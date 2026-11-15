@@ -1,2 +1,3 @@
-import {AdminOperationsPortal} from "@dandanlink/ui/phase18-admin";
-export default function Page(){return <AdminOperationsPortal view="security"/>;}
+import {AdminSecurityPortal} from "./security-portal";
+import "./security-final.css";
+export default function Page(){return <AdminSecurityPortal/>;}

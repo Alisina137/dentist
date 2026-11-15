@@ -45,8 +45,8 @@ test("Phase D support desk has meaningful 24h/48h metrics and constrained list w
  for(const token of ['adm-d-sla','deskStats?.firstReplyOverdue',
   'deskStats?.triageOverdue','first_reply_overdue','adm-d-support-pager',
   'adm-d-support-search','adm-d-support-history',
-  'firstReplyOverdue','sort,q:search,page:String(page)','"fa-AF":{supportSummary',
-  '"ps-AF":{supportSummary'])
+  'firstReplyOverdue','sort,q:search,page:String(page)','"fa-AF":{settingsIntro',
+  '"ps-AF":{settingsIntro'])
   assert.ok(ui.includes(token),token);
  assert.doesNotMatch(api.slice(api.indexOf('router.get("/admin/tickets/:ticketId/activity"'),
   api.indexOf('router.get("/admin/templates"')),/SELECT.*actor_id/);

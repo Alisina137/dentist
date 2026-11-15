@@ -1,6 +1,6 @@
 "use client";
 import React,{useEffect,useState,type FormEvent} from "react";
-import {InlineAlert,AdminMfaSetup} from "./index";
+import {InlineAlert,AdminMfaSetup,CareIcon} from "./index";
 import {call18,useWords,Stat,ChipTabs,Notice,num} from "./phase18";
 import {usePersistentAdminShell} from "./admin-shell-context";
 import {AdminPilotReadiness} from "./phase19-admin";
@@ -20,10 +20,10 @@ type Security={period:string;note:string;
 type Category={code:string;label_en:string;label_fa:string;label_ps:string;active:boolean;sort_order:number};
 type Template={id:string;title_en:string;title_fa:string;title_ps:string;
  body_en:string;body_fa:string;body_ps:string;active:boolean};
-type Agent={user_id:string;name:string;granted_at:string;revoked_at:string|null};
+type Agent={user_id:string;name:string;granted_at:string;revoked_at:string|null;email_verified:boolean;mfa_ready:boolean};
 type Settings={categories:Category[];templates:Template[];agents:Agent[]};
 const O:Record<string,Record<string,string>>={
- en:{supportSummary:"Queue health",firstReplyOverdue:"First response overdue",triageOverdue:"Triage overdue",
+ en:{settingsIntro:"Manage support categories, response templates, and delegated staff access.",agentIntro:"Support agents cannot access clinical records or clinic billing. Verified MFA is required to use support tools.",mfaReady:"MFA ready",mfaMissing:"MFA required",confirmGrant:"I have checked the recipient and their authorized nonclinical role.",confirmRevoke:"I understand this immediately ends the agent’s support access.",revokeWarning:"Revocation ends support access but preserves the audit trail.",cancelAction:"Cancel",newItem:"New item",editSelected:"Editing selected item",saveChanges:"Save changes",resetEditor:"Clear editor",findAgent:"Find support agents",noAgentMatch:"No matching support agents.",inactive:"Revoked",settingsError:"Unable to load settings.",retrySettings:"Retry",supportSummary:"Queue health",firstReplyOverdue:"First response overdue",triageOverdue:"Triage overdue",
  dueSoon:"First response due soon",unassignedCases:"Unassigned cases",highPriority:"High-priority cases",
  slaNotice:"Operational targets: first reply within 24h and triage within 48h. These are internal indicators, not guaranteed service commitments.",
  searchTicket:"Search title or reference",searchButton:"Search",sortOrder:"Order",priorityFilter:"Priority",urgency:"Attention",
@@ -49,7 +49,7 @@ const O:Record<string,Record<string,string>>={
  mfaGate:"Enable and verify two-factor authentication to access support operations.",
  privacy:"All reporting is aggregate and suppresses small groups. Staff cannot access clinical records.",
  users:"Users",current:"Current",waiting:"Waiting"},
- "fa-AF":{supportSummary:"وضعیت صف پشتیبانی",firstReplyOverdue:"پاسخ اول با تأخیر",triageOverdue:"بررسی اولیه با تأخیر",
+ "fa-AF":{settingsIntro:"دسته‌بندی‌های پشتیبانی، پاسخ‌های آماده و دسترسی کارمندان را مدیریت کنید.",agentIntro:"پشتیبانی به اسناد صحی یا پرداخت‌های کلینیک دسترسی ندارد؛ MFA تأییدشده لازم است.",mfaReady:"MFA فعال",mfaMissing:"نیاز به MFA",confirmGrant:"هویت و نقش غیرطبی این شخص را بررسی کرده‌ام.",confirmRevoke:"می‌دانم که این کار دسترسی پشتیبانی را قطع می‌کند.",revokeWarning:"دسترسی فوری قطع می‌شود، اما سابقه حسابرسی باقی می‌ماند.",cancelAction:"لغو",newItem:"مورد جدید",editSelected:"ویرایش مورد انتخاب‌شده",saveChanges:"ذخیره تغییرات",resetEditor:"پاک‌کردن فرم",findAgent:"جستجوی کارمند",noAgentMatch:"کارمندی یافت نشد.",inactive:"لغوشده",settingsError:"تنظیمات دریافت نشد.",retrySettings:"دوباره",supportSummary:"وضعیت صف پشتیبانی",firstReplyOverdue:"پاسخ اول با تأخیر",triageOverdue:"بررسی اولیه با تأخیر",
  dueSoon:"پاسخ اول نزدیک به موعد",unassignedCases:"درخواست‌های بدون مسئول",highPriority:"درخواست‌های عاجل",
  slaNotice:"هدف داخلی: پاسخ نخست طی ۲۴ ساعت و بررسی اولیه طی ۴۸ ساعت؛ این تعهد خدماتی تضمین‌شده نیست.",
  searchTicket:"جستجوی عنوان یا مرجع",searchButton:"جستجو",sortOrder:"ترتیب",priorityFilter:"اولویت",urgency:"موارد ضروری",
@@ -75,7 +75,7 @@ const O:Record<string,Record<string,string>>={
  mfaGate:"برای ورود به بخش پشتیبانی، تأیید دومرحله‌ای را فعال و تأیید کنید.",
  privacy:"گزارش‌ها مجموعی اند و گروه‌های کوچک پنهان می‌شوند. پشتیبانی به اسناد صحی دسترسی ندارد.",
  users:"کاربران",current:"فعلی",waiting:"منتظر"},
- "ps-AF":{supportSummary:"د ملاتړ کتار حالت",firstReplyOverdue:"لومړی ځواب ځنډېدلی",triageOverdue:"لومړنۍ کتنه ځنډېدلې",
+ "ps-AF":{settingsIntro:"د ملاتړ برخې، چمتو ځوابونه او د کارکوونکو اجازه اداره کړئ.",agentIntro:"ملاتړ طبي ریکارډونو او کلینیک بیلونو ته لاسرسی نه لري؛ تایید شوی MFA اړین دی.",mfaReady:"MFA فعال",mfaMissing:"MFA اړین",confirmGrant:"د دې کس هویت او غیرطبي دنده مې تایید کړه.",confirmRevoke:"پوهېږم چې د ملاتړ لاسرسی سمدستي ختمېږي.",revokeWarning:"اجازه پای ته رسېږي، خو د ثبت پېښې نه پاکېږي.",cancelAction:"لغوه",newItem:"نوی مورد",editSelected:"ټاکلی مورد سمول",saveChanges:"خوندي کول",resetEditor:"فورمه پاکول",findAgent:"کارکوونکی ولټوئ",noAgentMatch:"کارکوونکی ونه موندل شو.",inactive:"لغوه شوی",settingsError:"تنظیمات نه راځي.",retrySettings:"بیا هڅه",supportSummary:"د ملاتړ کتار حالت",firstReplyOverdue:"لومړی ځواب ځنډېدلی",triageOverdue:"لومړنۍ کتنه ځنډېدلې",
  dueSoon:"لومړي ځواب وخت رانږدې دی",unassignedCases:"بې مسئوله غوښتنې",highPriority:"لوړ لومړیتوب غوښتنې",
  slaNotice:"داخلي هدفونه: لومړی ځواب په ۲۴ ساعتونو او لومړنۍ کتنه په ۴۸ ساعتونو کې؛ تضمین شوې ژمنه نه ده.",
  searchTicket:"د سرلیک یا مرجع لټون",searchButton:"لټون",sortOrder:"ترتیب",priorityFilter:"لومړیتوب",urgency:"بیړنۍ غوښتنې",
@@ -423,13 +423,17 @@ function OperationSettings({busy,setBusy,signal,reload,message}:DeskProps){
  const [data,setData]=useState<Settings|null>(null);
  const [cat,setCat]=useState<Category>(initialCategory),[tpl,setTpl]=useState<Template>(initialTemplate);
  const [email,setEmail]=useState(""),[tab,setTab]=useState<"categories"|"template"|"agents">("categories");
+ const [editingCategory,setEditingCategory]=useState(""),[editingTemplate,setEditingTemplate]=useState("");
+ const [grantVerified,setGrantVerified]=useState(false),[agentSearch,setAgentSearch]=useState("");
+ const [revokeId,setRevokeId]=useState(""),[revokeConfirmed,setRevokeConfirmed]=useState(false);
+ const [settingsError,setSettingsError]=useState("");
  useEffect(()=>{let live=true;call18<Settings>("/support/admin/settings")
-  .then(x=>{if(live)setData(x)}).catch(e=>message(e.message));return()=>{live=false};},[signal]);
+  .then(x=>{if(live){setData(x);setSettingsError("");}}).catch(e=>{if(live){setData(null);setSettingsError(e.message);message(e.message);}});return()=>{live=false};},[signal]);
  async function saveCategory(e:FormEvent){
   e.preventDefault();setBusy(true);
   try{await call18("/support/admin/categories/"+cat.code,"PUT",{
    en:cat.label_en,fa:cat.label_fa,ps:cat.label_ps,active:cat.active});
-   setCat(initialCategory);reload();message(t("save"),true)}
+   setCat(initialCategory);setEditingCategory("");reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
  async function saveTemplate(e:FormEvent){
@@ -437,46 +441,53 @@ function OperationSettings({busy,setBusy,signal,reload,message}:DeskProps){
   try{await call18("/support/admin/templates/"+tpl.id,"PUT",{
    title_en:tpl.title_en,title_fa:tpl.title_fa,title_ps:tpl.title_ps,
    body_en:tpl.body_en,body_fa:tpl.body_fa,body_ps:tpl.body_ps,active:tpl.active});
-   setTpl(initialTemplate);reload();message(t("save"),true)}
+   setTpl(initialTemplate);setEditingTemplate("");reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
  async function grant(e:FormEvent){
-  e.preventDefault();setBusy(true);
+  e.preventDefault();if(!grantVerified||busy)return;
+  setBusy(true);
   try{await call18("/support/admin/agents","POST",{email});
-   setEmail("");reload();message(t("save"),true)}
+   setEmail("");setGrantVerified(false);reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
  async function revoke(id:string){
-  if(!window.confirm(o("revoke")+"?"))return;
+  if(revokeId!==id||!revokeConfirmed||busy)return;
   setBusy(true);
   try{await call18("/support/admin/agents/"+id+"/revoke","POST",{});
-   reload();message(t("save"),true)}
+   setRevokeId("");setRevokeConfirmed(false);reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
- const field=(label:string,value:string,change:(s:string)=>void,min=2,max=120)=>
-  <label key={label}>{label}<input required minLength={min} maxLength={max} value={value} onChange={e=>change(e.target.value)}/></label>;
- return <div className="p18-panel">
+ const field=(label:string,value:string,change:(s:string)=>void,min=2,max=120,disabled=false)=>
+  <label key={label}>{label}<input required minLength={min} maxLength={max} disabled={disabled} value={value} onChange={e=>change(e.target.value)}/></label>;
+ const visibleAgents=(data?.agents||[]).filter(a=>a.name.toLocaleLowerCase().includes(agentSearch.toLocaleLowerCase()));
+ const currentRevoke=data?.agents.find(a=>a.user_id===revokeId&&!a.revoked_at);
+ return <div className="adm-f-settings"><p className="adm-f-settings-intro"><CareIcon name="shield-check" size={19}/>{o("settingsIntro")}</p><div className="p18-panel">
   <h2>{o("supportSettings")}</h2>
   <ChipTabs items={(["categories","template","agents"] as const).map(id=>({id,label:o(id)}))}
    active={tab} set={setTab}/>
-  {!data?<InlineAlert>{t("loading")}</InlineAlert>:tab==="categories"?<div className="p18-split">
+  {settingsError&&<div className="adm-f-error" role="alert"><InlineAlert kind="error">{o("settingsError")} · {settingsError}</InlineAlert><button type="button" className="btn btn-secondary" onClick={reload}>{o("retrySettings")}</button></div>}
+  {!data&&!settingsError?<AdminLoadingSkeleton label={t("loading")}/>:!data?null:tab==="categories"?<div className="p18-split">
    <div className="p18-table">{data.categories.map(x=><button className="p18-ticket-option" key={x.code}
-    onClick={()=>setCat({...x})} type="button"><strong>{x.code}</strong>
+    onClick={()=>{setCat({...x});setEditingCategory(x.code);}} aria-pressed={editingCategory===x.code} type="button"><strong>{x.code}</strong>
      <span>{lang==="fa-AF"?x.label_fa:lang==="ps-AF"?x.label_ps:x.label_en}</span></button>)}</div>
-   <form className="p18-form" onSubmit={saveCategory}>
-    {field(o("categoryCode"),cat.code,s=>setCat(x=>({...x,code:s})),3,32)}
+   <form className="p18-form" onSubmit={saveCategory}><strong>{editingCategory?o("editSelected"):o("newItem")}</strong>
+    <label>{o("categoryCode")}<input required pattern="[a-z][a-z0-9_]{2,31}" minLength={3} maxLength={32}
+     value={cat.code} disabled={Boolean(editingCategory)} onChange={e=>setCat(x=>({...x,code:e.target.value}))}/></label>
     {field(o("nameEn"),cat.label_en,s=>setCat(x=>({...x,label_en:s})))}
     {field(o("nameFa"),cat.label_fa,s=>setCat(x=>({...x,label_fa:s})))}
     {field(o("namePs"),cat.label_ps,s=>setCat(x=>({...x,label_ps:s})))}
     <label className="p18-check"><input type="checkbox" checked={cat.active}
      onChange={e=>setCat(x=>({...x,active:e.target.checked}))}/>{o("active")}</label>
-    <button disabled={busy} className="btn btn-primary">{o("create")}</button>
+    <div className="adm-f-settings-actions"><button type="button" disabled={busy} className="btn btn-secondary" onClick={()=>{setCat(initialCategory);setEditingCategory("");}}>{o("resetEditor")}</button>
+     <button disabled={busy} className="btn btn-primary" type="submit">{editingCategory?o("saveChanges"):o("create")}</button></div>
    </form></div>:tab==="template"?<div className="p18-split">
     <div className="p18-table">{data.templates.map(x=><button type="button" className="p18-ticket-option"
-      onClick={()=>setTpl({...x})} key={x.id}><strong>{x.id}</strong>
+      onClick={()=>{setTpl({...x});setEditingTemplate(x.id);}} aria-pressed={editingTemplate===x.id} key={x.id}><strong>{x.id}</strong>
       <span>{lang==="fa-AF"?x.title_fa:lang==="ps-AF"?x.title_ps:x.title_en}</span></button>)}</div>
-    <form className="p18-form" onSubmit={saveTemplate}>
-     {field(o("templateId"),tpl.id,s=>setTpl(x=>({...x,id:s})),3,32)}
+    <form className="p18-form" onSubmit={saveTemplate}><strong>{editingTemplate?o("editSelected"):o("newItem")}</strong>
+     <label>{o("templateId")}<input required pattern="[a-z][a-z0-9_]{2,31}" minLength={3} maxLength={32}
+      value={tpl.id} disabled={Boolean(editingTemplate)} onChange={e=>setTpl(x=>({...x,id:e.target.value}))}/></label>
      {(["en","fa","ps"] as const).map(k=>
       field(o("title"+k.charAt(0).toUpperCase()+k.slice(1)),tpl[`title_${k}`],s=>
        setTpl(x=>({...x,["title_"+k]:s})),3,120))}
@@ -485,15 +496,33 @@ function OperationSettings({busy,setBusy,signal,reload,message}:DeskProps){
        onChange={e=>setTpl(x=>({...x,["body_"+k]:e.target.value}))}/></label>)}
      <label className="p18-check"><input type="checkbox" checked={tpl.active}
       onChange={e=>setTpl(x=>({...x,active:e.target.checked}))}/>{o("active")}</label>
-     <button disabled={busy} className="btn btn-primary">{o("create")}</button>
-    </form></div>:<div className="p18-split">
-    <form className="p18-form" onSubmit={grant}>{field(o("email"),email,setEmail,5,160)}
-     <button disabled={busy} className="btn btn-primary">{o("grant")}</button></form>
-    <div className="p18-table">{data.agents.length?data.agents.map(a=>
-     <div key={a.user_id} className="p18-table-row"><span>{a.name}</span>
-      <span>{a.revoked_at?o("revoke"):o("active")}</span>
+     <div className="adm-f-settings-actions"><button type="button" disabled={busy} className="btn btn-secondary" onClick={()=>{setTpl(initialTemplate);setEditingTemplate("");}}>{o("resetEditor")}</button>
+      <button disabled={busy} className="btn btn-primary" type="submit">{editingTemplate?o("saveChanges"):o("create")}</button></div>
+    </form></div>:<div className="adm-f-settings"><p className="adm-f-settings-intro"><CareIcon name="shield" size={18}/>{o("agentIntro")}</p><div className="p18-split">
+    <form className="p18-form" onSubmit={grant}>
+     <label>{o("email")}<input type="email" required minLength={5} maxLength={160}
+      autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
+     <label className="p18-check"><input type="checkbox" checked={grantVerified} required
+      onChange={e=>setGrantVerified(e.target.checked)}/>{o("confirmGrant")}</label>
+     <button disabled={busy||!grantVerified} className="btn btn-primary" type="submit">{o("grant")}</button></form>
+    <div className="p18-table"><label>{o("findAgent")}<input type="search" maxLength={80} value={agentSearch}
+     onChange={e=>setAgentSearch(e.target.value)}/></label>
+     {visibleAgents.length?visibleAgents.map(a=>
+     <div key={a.user_id} className="p18-table-row adm-f-privileges">
+      <span><strong>{a.name}</strong><small>{a.revoked_at?o("inactive"):a.mfa_ready?o("mfaReady"):o("mfaMissing")}</small></span>
+      <span className={"adm-f-pill"+(!a.mfa_ready&&!a.revoked_at?" is-warning":"")}>{a.revoked_at?o("inactive"):a.mfa_ready?o("mfaReady"):o("mfaMissing")}</span>
       {!a.revoked_at&&<button className="btn btn-secondary" disabled={busy}
-       type="button" onClick={()=>revoke(a.user_id)}>{o("revoke")}</button>}</div>):
-     <p>{t("noData")}</p>}</div></div>}
- </div>;
+       type="button" onClick={()=>{setRevokeId(a.user_id);setRevokeConfirmed(false);}}>{o("revoke")}</button>}</div>):
+     <p>{o("noAgentMatch")}</p>}</div></div>
+     {currentRevoke&&<div className="adm-f-revoke-panel" role="group" aria-label={o("revoke")}>
+      <strong>{o("revoke")}: {currentRevoke.name}</strong><p>{o("revokeWarning")}</p>
+      <label><input type="checkbox" checked={revokeConfirmed}
+       onChange={e=>setRevokeConfirmed(e.target.checked)}/>{o("confirmRevoke")}</label>
+      <div className="adm-f-revoke-actions"><button type="button" className="btn btn-secondary"
+       disabled={busy} onClick={()=>{setRevokeId("");setRevokeConfirmed(false);}}>{o("cancelAction")}</button>
+       <button type="button" className="btn btn-primary" disabled={busy||!revokeConfirmed}
+       onClick={()=>void revoke(currentRevoke.user_id)}>{o("revoke")}</button></div>
+     </div>}
+    </div>}
+ </div></div>;
 }

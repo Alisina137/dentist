@@ -79,6 +79,9 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  const mobileToggleRef=useRef<HTMLButtonElement>(null);
  const drawerRef=useRef<HTMLElement>(null);
  const mobileCloseRef=useRef<HTMLButtonElement>(null);
+ const searchTriggerRef=useRef<HTMLButtonElement>(null);
+ const noticeTriggerRef=useRef<HTMLButtonElement>(null);
+ const previousCommandFocus=useRef<HTMLElement|null>(null);
  const isPublic=PUBLIC_ADMIN_PATH.test(pathname);
  const t=(key:string)=>TRANSLATIONS[locale]?.[key]||TRANSLATIONS.en[key]||key;
  useEffect(()=>{
@@ -119,7 +122,10 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
   if(role!=="admin")return;
   const shortcut=(e:KeyboardEvent)=>{
    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){
-    e.preventDefault();setCommandTab("search");setShowCommand(true);
+    e.preventDefault();
+    previousCommandFocus.current=document.activeElement instanceof HTMLElement?
+     document.activeElement:searchTriggerRef.current;
+    setCommandTab("search");setShowCommand(true);
    }
   };
   window.addEventListener("keydown",shortcut);
@@ -177,6 +183,11 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
   const next=!collapsed;
   setCollapsed(next);
   try{localStorage.setItem(STORAGE_COLLAPSE_KEY,next?"1":"0");}catch{/* restricted storage */}
+ }
+ function closeCommand(){
+  setShowCommand(false);
+  const trigger=previousCommandFocus.current||searchTriggerRef.current;
+  window.requestAnimationFrame(()=>trigger?.focus());
  }
  async function signOut(){
   if(signingOut)return;
@@ -248,11 +259,13 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
      </div>
      <div className="admin-header-account">
       {role==="admin"&&<div className="adm-e-header-controls">
-       <button type="button" onClick={()=>{
+       <button ref={searchTriggerRef} type="button" onClick={event=>{
+        previousCommandFocus.current=event.currentTarget;
         setCommandTab("search");setShowCommand(true);}} title={t("searchPlatform")}>
         <CareIcon name="search" size={17}/><span>{t("searchPlatform")}</span>
         <kbd className="adm-e-shortcut">Ctrl K</kbd></button>
-       <button type="button" className="adm-e-header-bell" onClick={()=>{
+       <button ref={noticeTriggerRef} type="button" className="adm-e-header-bell" onClick={event=>{
+        previousCommandFocus.current=event.currentTarget;
         setCommandTab("notices");setShowCommand(true);}} title={t("notifications")}
         aria-label={t("notifications")+(unreadNotices?" ("+unreadNotices+")":"")}>
         <CareIcon name="bell" size={19}/>
@@ -272,9 +285,9 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
     {navPending&&<div className="admin-navigation-progress" role="status" aria-label={t("loading")}/>}
     <div className="admin-route-content" aria-label={t("mainContent")}>{children}</div>
     {role==="admin"&&showCommand&&<div className="adm-e-overlay" role="presentation"
-     onMouseDown={e=>{if(e.target===e.currentTarget)setShowCommand(false);}}>
+     onMouseDown={e=>{if(e.target===e.currentTarget)closeCommand();}}>
      <AdminCommandCenter compact initialTab={commandTab}
-      onClose={()=>setShowCommand(false)}/>
+      onClose={closeCommand}/>
     </div>}
    </section>
   </div>

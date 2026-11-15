@@ -345,8 +345,11 @@ export function supportRouter(){
   const [categories,templates,agents]=await Promise.all([
    sqlClient`SELECT * FROM support_categories ORDER BY sort_order,code`,
    sqlClient`SELECT * FROM support_templates ORDER BY id`,
-   sqlClient`SELECT s.user_id,u.name,s.granted_at,s.revoked_at
+   sqlClient`SELECT s.user_id,u.name,s.granted_at,s.revoked_at,
+    u.email_verified,
+    (u.two_factor_enabled=true AND coalesce(f.verified,false)=true) AS mfa_ready
     FROM platform_support_agents s JOIN auth_users u ON u.id=s.user_id
+    LEFT JOIN auth_two_factors f ON f.user_id=s.user_id
     ORDER BY s.granted_at DESC LIMIT 100`
   ]);
   privateOps(res);res.json({categories,templates,agents});

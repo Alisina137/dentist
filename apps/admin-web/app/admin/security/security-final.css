@@ -1,0 +1,80 @@
+/* Phase F — administrator security/access posture, focused settings and pilot polish. */
+.shell-admin .adm-f-security{display:grid;gap:18px;min-width:0;color:#254d60}
+.shell-admin .adm-f-title{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.shell-admin .adm-f-title h1{margin:4px 0 5px;font-size:clamp(23px,2.5vw,31px);letter-spacing:-.03em;color:#173e52}
+.shell-admin .adm-f-title p{font-size:12.5px;line-height:1.65;color:#5c7888;margin:0}
+.shell-admin .adm-f-eyebrow{font-size:10px;letter-spacing:.1em;font-weight:840;color:#0a7a8d}
+.shell-admin .adm-f-title>button{display:inline-flex;align-items:center;gap:7px}
+.shell-admin .adm-f-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.shell-admin .adm-f-stat{display:grid;gap:5px;min-height:135px;min-width:0;background:#fff;border:1px solid #dfeaed;border-radius:14px;padding:15px;box-shadow:0 3px 18px rgba(29,70,87,.04)}
+.shell-admin .adm-f-stat-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#e7f4f5;color:#0b7688}
+.shell-admin .adm-f-stat>span:nth-child(2){font-size:11px;color:#597888;font-weight:740}
+.shell-admin .adm-f-stat strong{font-size:clamp(22px,2.7vw,28px);color:#173d51;font-weight:840}
+.shell-admin .adm-f-stat small{color:#718894;font-size:10px}
+.shell-admin .adm-f-notice{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid #d4e8df;border-radius:13px;background:#f3faf6}
+.shell-admin .adm-f-notice.is-warning{background:#fff8e9;border-color:#ead9bc}
+.shell-admin .adm-f-notice>svg{flex:0 0 auto;color:#267e66}
+.shell-admin .adm-f-notice.is-warning>svg{color:#a56b2b}
+.shell-admin .adm-f-notice>div{flex:1;min-width:0}
+.shell-admin .adm-f-notice strong{font-size:12.5px}
+.shell-admin .adm-f-notice p{margin:4px 0 0;font-size:11.5px;color:#657b85;line-height:1.65}
+.shell-admin .adm-f-notice a{color:#0a7383;font-size:11.5px;font-weight:780;white-space:nowrap}
+.shell-admin .adm-f-columns{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.95fr);gap:15px;align-items:start}
+.shell-admin .adm-f-panel{border:1px solid #dfebee;border-radius:14px;padding:clamp(14px,2vw,19px);background:#fff;box-shadow:0 3px 17px rgba(29,70,87,.035);min-width:0;display:grid;gap:14px}
+.shell-admin .adm-f-panel h2{margin:0;font-size:16px;color:#1e495b}
+.shell-admin .adm-f-section-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.shell-admin .adm-f-section-head span{color:#647c8a;font-size:11px}
+.shell-admin .adm-f-tablewrap{overflow-x:auto;max-height:390px;overflow-y:auto}
+.shell-admin .adm-f-tablewrap table{border-collapse:collapse;width:100%;font-size:12px;text-align:start}
+.shell-admin .adm-f-tablewrap th,.shell-admin .adm-f-tablewrap td{padding:10px;border-bottom:1px solid #e7eff1;text-align:start}
+.shell-admin .adm-f-tablewrap th{font-size:10px;background:#f5fafb;color:#5d7784;font-weight:780}
+.shell-admin .adm-f-tablewrap td{overflow-wrap:anywhere}
+.shell-admin .adm-f-empty{padding:20px;color:#607b89;font-size:12px}
+.shell-admin .adm-f-pilot-status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:#5f7887}
+.shell-admin .adm-f-pilot-status strong{font-size:12px;padding:7px 11px;border-radius:20px}
+.shell-admin .adm-f-pilot-status .is-blocked{color:#8e522b;background:#fff0de}
+.shell-admin .adm-f-pilot-status .is-operator{color:#237359;background:#e8f5ed}
+.shell-admin .adm-f-progress{height:10px;overflow:hidden;border-radius:20px;background:#e5edef}
+.shell-admin .adm-f-progress span{height:100%;background:#2b9b9b;display:block;border-radius:20px}
+.shell-admin .adm-f-disclaimer{display:flex;align-items:start;gap:8px;font-size:11px;color:#687f8c;line-height:1.65;margin:0}
+.shell-admin .adm-f-disclaimer svg{flex:0 0 auto}
+.shell-admin footer.adm-f-disclaimer{border-top:1px solid #e5ecf0;padding-top:14px;flex-wrap:wrap}
+.shell-admin footer.adm-f-disclaimer span{flex:1;min-width:200px}
+.shell-admin footer.adm-f-disclaimer time{white-space:nowrap}
+.shell-admin .adm-f-links{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.shell-admin .adm-f-links a{display:inline-flex;align-items:center;gap:6px;background:#e9f5f6;color:#0b7180;text-decoration:none;padding:9px 11px;border-radius:10px;font-size:11.5px;font-weight:760}
+.shell-admin .adm-f-links a:hover{background:#d7eef0}
+.shell-admin .adm-f-error{display:grid;gap:8px}
+.shell-admin .adm-f-error button{justify-self:start}
+.shell-admin .adm-f-settings{display:grid;gap:15px}
+.shell-admin .adm-f-settings .p18-panel{margin:0}
+.shell-admin .adm-f-settings .p18-split{align-items:start}
+.shell-admin .adm-f-settings-intro{display:flex;align-items:center;gap:9px;padding:12px 14px;background:#f1f8f9;color:#3d6878;border:1px solid #d5e8eb;border-radius:11px;font-size:11.5px;line-height:1.6}
+.shell-admin .adm-f-settings-intro svg{flex:0 0 auto}
+.shell-admin .adm-f-current{border-color:#8fcbd2!important;background:#eaf7f8!important}
+.shell-admin .adm-f-settings .p18-ticket-option:focus-visible{outline:3px solid #39a0a9;outline-offset:3px}
+.shell-admin .adm-f-settings .p18-form{border:1px solid #dfebef;border-radius:13px;background:#fbfcfd;padding:16px;min-width:0}
+.shell-admin .adm-f-settings .p18-form>label{font-size:12px;font-weight:750;color:#436373}
+.shell-admin .adm-f-settings .p18-form>label input,.shell-admin .adm-f-settings .p18-form textarea{font-size:13px}
+.shell-admin .adm-f-settings .p18-form:focus-within{border-color:#bfdfe4}
+.shell-admin .adm-f-settings-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.shell-admin .adm-f-settings-actions .btn{min-height:40px}
+.shell-admin .adm-f-privileges{display:flex;gap:10px;align-items:start;justify-content:space-between;flex-wrap:wrap;background:#f5fafb;border-radius:11px;padding:12px;border:1px solid #dfebef}
+.shell-admin .adm-f-privileges strong{display:block;font-size:12.5px;color:#25536a}
+.shell-admin .adm-f-privileges small{display:block;font-size:11px;color:#657e89;margin-top:4px;line-height:1.5}
+.shell-admin .adm-f-pill{display:inline-flex;align-items:center;gap:5px;border-radius:30px;padding:5px 10px;background:#e9f4f6;color:#2b7480;font-size:11px;font-weight:750}
+.shell-admin .adm-f-pill.is-warning{background:#fff0db;color:#92602b}
+.shell-admin .adm-f-revoke-panel{border:1px solid #f0d6c9;border-radius:11px;padding:14px;background:#fff8f3;display:grid;gap:10px}
+.shell-admin .adm-f-revoke-panel strong{font-size:13px;color:#6f4937}
+.shell-admin .adm-f-revoke-panel p{font-size:12px;line-height:1.65;color:#785d4e;margin:0}
+.shell-admin .adm-f-revoke-panel label{display:flex;gap:9px;align-items:start;font-size:12px}
+.shell-admin .adm-f-revoke-panel label input{margin-top:4px}
+.shell-admin .adm-f-revoke-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.shell-admin .adm-f-settings .p18-tabs{gap:7px}
+.shell-admin .adm-f-pilot-note{padding:12px 14px;border-radius:12px;border:1px solid #e8dcc3;background:#fff8ea;color:#7c5a2d;font-size:12px;line-height:1.65}
+.shell-admin .adm-f-check-group{padding:12px 0;border-bottom:1px solid #e7eef1;display:grid;gap:4px}
+.shell-admin .adm-f-check-group strong{font-size:12px}
+.shell-admin .adm-f-check-group small{font-size:11px;color:#677f8a}
+@media(max-width:1100px){.shell-admin .adm-f-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shell-admin .adm-f-columns{grid-template-columns:1fr}}
+@media(max-width:640px){.shell-admin .adm-f-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.shell-admin .adm-f-stat{padding:12px}.shell-admin .adm-f-notice{flex-wrap:wrap}.shell-admin .adm-f-notice a{margin-inline-start:28px}.shell-admin .adm-f-settings .p18-split{grid-template-columns:1fr}.shell-admin .adm-f-tablewrap{max-height:340px}}
+@media(prefers-reduced-motion:reduce){.shell-admin .adm-f-links a{transition:none}}
