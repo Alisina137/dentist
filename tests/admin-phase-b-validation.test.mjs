@@ -10,7 +10,7 @@ test("Phase B dashboard uses actual platform data with validated Kabul dates",()
   "patient_review_versions","patient_review_reports","patient_review_appeals",
   "support_tickets","clinic_listing_heads","clinic_dentist_credential_cases",
   "platform_subscription_invoices","verified_at","outbox_events",
-  "patient_booking_notifications","count(*)","group","previousRegistered","previousReceiptsAfn",
+  "patient_booking_notifications","count(*)","GROUP BY 1","previousRegistered","previousReceiptsAfn",
   "receiptsAfn","trend","activity"])
   assert.ok(data.includes(key),"Missing actual source: "+key);
  assert.match(data,/return \{[\s\S]*privacy:"Admin-only metadata and aggregates/);
