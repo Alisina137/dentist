@@ -2,6 +2,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import QRCode from "react-qr-code";
 import { CareIcon } from "./care-icons";
+export { CareIcon } from "./care-icons";
+export type { CareIconName } from "./care-icons";
 import { createAuthClient } from "better-auth/client";
 import { twoFactorClient } from "better-auth/client/plugins";
 import { type Calendar, type Locale, type MessageKey, isCalendar, isLocale, languages, translate } from "@dandanlink/locales";
