@@ -19,7 +19,7 @@ test("Admin navigation uses a distinct modern SVG icon for every sidebar tab",()
  for(const item of items){
   assert.equal(item.icon,expected[item.key],item.key+" icon should match its function");
   assert.ok(symbols.includes('"' + item.icon + '"'),item.icon+" should be in the SVG set");
-  assert.match(symbols,new RegExp('(?:\\b|")'+item.icon+'":<>?'),'Icon definition missing: '+item.icon);
+  assert.ok(symbols.includes('"'+item.icon+'":<')||symbols.includes(item.icon+':<'),"Icon definition missing: "+item.icon);
  }
  assert.match(source,/<CareIcon name=\{item\.icon\} size=\{19\}\/>/);
  assert.match(symbols,/strokeLinecap="round" strokeLinejoin="round"/);
