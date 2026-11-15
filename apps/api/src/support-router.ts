@@ -45,6 +45,16 @@ const faq=[
 /** No clinical data joins or searches anywhere in this router. */
 export function supportRouter(){
  const router=Router();
+ // PH18 support mutations require an allowlisted browser Origin (defense in depth with SameSite cookies).
+ router.use((req,res,next)=>{
+  if(["GET","HEAD","OPTIONS"].includes(req.method))return next();
+  const origin=req.headers.origin;
+  const allowed=[process.env.CLINIC_WEB_URL||"http://localhost:3001",
+   process.env.ADMIN_WEB_URL||"http://localhost:3000",
+   process.env.PATIENT_WEB_URL||"http://localhost:3002"];
+  if(!origin||!allowed.includes(origin)){res.status(403).json({code:"ORIGIN_DENIED"});return;}
+  next();
+ });
  router.get("/public/help",opsTask(async(_req,res)=>{
   const categories=await sqlClient`SELECT code,label_en,label_fa,label_ps
    FROM support_categories WHERE active=true ORDER BY sort_order,code`;
