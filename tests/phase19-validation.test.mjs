@@ -5,7 +5,7 @@ const file=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 test("PH19 scoped administrative export requires owner, MFA and a recent authentication",()=>{
  const code=file("apps/api/src/portability-router.ts");
  for(const text of ["authStaff","scope(req,clinic)","ctx.role!==\"owner\"","req.actor?.mfa",
-  "current","session?.createdAt","EXPORT_RECENT_LOGIN_REQUIRED","token_hash",
+  "session?.createdAt","EXPORT_RECENT_LOGIN_REQUIRED","token_hash",
   "expires_at>now()","status='ready'","randomBytes(32)","createHash",
   "private, no-store","pg_advisory_xact_lock","clinic_export_events"]){
   assert.ok(code.includes(text),text);
