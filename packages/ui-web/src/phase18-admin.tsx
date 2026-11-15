@@ -1,6 +1,6 @@
 "use client";
 import React,{useEffect,useState,type FormEvent} from "react";
-import {InlineAlert,AdminMfaSetup} from "./index";
+import {InlineAlert,AdminMfaSetup,CareIcon} from "./index";
 import {call18,useWords,Stat,ChipTabs,Notice,num} from "./phase18";
 import {usePersistentAdminShell} from "./admin-shell-context";
 import {AdminPilotReadiness} from "./phase19-admin";
