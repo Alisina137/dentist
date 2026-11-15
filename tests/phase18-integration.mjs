@@ -40,6 +40,8 @@ try{
  assert.ok(Number.isInteger(live.listings.pending));
  assert.ok(Number.isInteger(live.reviews.pending));
  assert.ok(Number.isInteger(live.support.overdue));
+ assert.ok(Number.isInteger(live.support.urgent));
+ assert.ok(live.support.urgent>=live.support.overdue);
  assert.ok(typeof live.operations.pilotReleaseEnabled==="boolean");
  const serialized=JSON.stringify(live);
  for(const disallowed of ['"actor_id"','"requester_id"','"patient_id"',
