@@ -252,7 +252,7 @@ export function ReviewModerationPage(){
        onClick={()=>{setSelected({id:item.id,action});setConfirmed(false);setReason("");}}>
        {t(action as keyof Trans)}</button>)}
      </div>
-     {selected?.id===item.id&&<form className="adm-c-decision-panel" onSubmit={e=>{e.preventDefault();void decide(item,selected.action);}}>
+     {selected?.id===item.id&&<form className="adm-c-decision-panel" onSubmit={e=>{e.preventDefault();void decide(item,selected!.action);}}>
       <strong>{t(selected.action as keyof Trans)}</strong>
       {(selected.action==="reject"||selected.action==="remove")&&
        <label>{t("category")}<select value={category}
