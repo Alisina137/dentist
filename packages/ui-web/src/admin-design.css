@@ -210,10 +210,10 @@
 .shell-admin .admin-route-content :is(.phase-tabs button.current,.p18-tabs button[aria-selected=true]){
  color:var(--admin-brand-strong);background:#e6f5f5;border-color:#b9dddf}
 .shell-admin .admin-route-content :is(.field,.p18-form label){font-size:13px;font-weight:680;color:#345467}
-.shell-admin .admin-route-content :is(input,select,textarea){
+.shell-admin .admin-route-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
  border:1px solid #cddde4;background:#fff;color:var(--admin-ink);
  border-radius:9px;min-height:42px;font-size:14px;line-height:1.5}
-.shell-admin .admin-route-content :is(input,select,textarea):focus{
+.shell-admin .admin-route-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus{
  border-color:var(--admin-brand)}
 .shell-admin .admin-route-content textarea{min-height:100px}
 .shell-admin .admin-route-content input::placeholder,
