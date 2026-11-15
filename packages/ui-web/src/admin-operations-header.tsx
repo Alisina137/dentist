@@ -115,7 +115,7 @@ export function AdminHeaderTools(){
     aria-label={t("searchTitle")} ref={modal}>
     <header><strong>{t("searchTitle")}</strong><button type="button"
      onClick={close} aria-label={t("close")}><CareIcon name="close" size={20}/></button></header>
-    <div className="adm-e-command-input"><CareIcon name="search" size={20}/>
+    <div className="adm-e-command-input" role="search"><CareIcon name="search" size={20}/>
      <input ref={input} autoComplete="off" type="search" maxLength={80}
       value={query} onChange={e=>setQuery(e.target.value)}
       placeholder={t("searchPlaceholder")} aria-label={t("search")}/>
