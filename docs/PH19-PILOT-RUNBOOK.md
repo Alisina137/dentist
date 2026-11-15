@@ -52,3 +52,7 @@ Version: 2026-11-15. This is a **fillable gate worksheet, not an approval certif
 - Pilot sponsor final decision: **NO-GO** until every item PASS, date and signature: ______
 
 If any control fails: stop uploads and pilot enrollment, preserve audit evidence, rotate exposed credentials, disable public promotion, restore only from approved backup, assess data loss and notify appropriate parties under the incident plan. Roll back the application build without dropping patient-history tables.
+
+### Operator-controlled release switches
+
+The platform readiness dashboard at `/admin/pilot` is only a status indicator. `PH19_PILOT_RELEASE_ENABLED` must remain **false** in live hosting until every external approval is signed and backed by evidence. Never set approvals merely to make the app work. With gates disabled, protected data writes receive `503 PILOT_RELEASE_BLOCKED` in production; development/CI synthetic testing remains enabled.
