@@ -75,6 +75,9 @@ test("Phase A: older admin modules still run in the same persistent shell",()=>{
  const ops=read("packages/ui-web/src/phase18-admin.tsx");
  assert.match(legacy,/if\(audience==="admin"&&persistentAdminShell\)return <>{children}<\/>;/);
  assert.match(ops,/persistentAdminShell\?main:<div className="p18-admin-layout">/);
+ assert.match(legacy,/if\(!me\)return audience==="admin"\?<section className="admin-page-loading"/);
+ assert.match(ops,/function AdminLoadingSkeleton/);
+ assert.match(ops,/role===null\?<AdminLoadingSkeleton/);
  const load=read("apps/admin-web/app/admin/loading.tsx");
  assert.match(load,/admin-page-loading/);
  assert.doesNotMatch(load,/side-panel|admin-persistent-sidebar/);
