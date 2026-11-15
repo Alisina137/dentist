@@ -50,8 +50,10 @@ test("PH18 platform intelligence is suppressed and security views are admin-only
  for(const key of ["AdminOperationsPortal","SupportDesk","PlatformAnalytics",
   "SecurityReview","OperationSettings","/support/admin/tickets","/insights/platform/security"])
   assert.ok(admin.includes(key),key);
- for(const view of ["support","analytics","security","settings"])
+ for(const view of ["support","analytics","settings"])
   assert.match(read("apps/admin-web/app/admin/"+view+"/page.tsx"),/AdminOperationsPortal/);
+ assert.match(read("apps/admin-web/app/admin/security/page.tsx"),/AdminSecurityPortal/);
+ assert.match(read("apps/admin-web/app/admin/security/security-portal.tsx"),/opsAdmin|admin\/security\/posture/);
 });
 test("PH18 ticket lifecycle and public help are real and localized",()=>{
  const code=read("apps/api/src/support-router.ts");
