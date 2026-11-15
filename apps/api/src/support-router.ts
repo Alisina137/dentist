@@ -128,6 +128,12 @@ export function supportRouter(){
     ORDER BY CASE WHEN t.priority='high' THEN 0 ELSE 1 END,t.updated_at DESC LIMIT 100`;
   privateOps(res);res.json({tickets:rows,filter});
  }));
+ router.get("/admin/templates",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const rows=await sqlClient`SELECT id,title_en,title_fa,title_ps,body_en,body_fa,body_ps
+   FROM support_templates WHERE active=true ORDER BY id LIMIT 100`;
+  privateOps(res);res.json({templates:rows});
+ }));
  router.get("/admin/agents",opsTask(async(req,res)=>{
   opsStaff(req);
   const agents=await sqlClient`SELECT a.user_id AS id,u.name
