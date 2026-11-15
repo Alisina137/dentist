@@ -1,5 +1,6 @@
 import {Router,type Request,type Response,type NextFunction} from "express";
 import {sqlClient} from "@dandanlink/db";
+import {parseDashboardDays,platformDashboard} from "./admin-dashboard-data.js";
 import {AccessFault,authStaff,scope,type StaffRequest} from "./staff-access.js";
 import {OpsFault,opsIdentity,opsTask,opsAdmin,opsStaff,privateOps,opsFail,type OpsRequest} from "./ops-access.js";
 
@@ -89,6 +90,13 @@ export function insightsRouter(){
   });
  }));
  router.use("/platform",opsIdentity);
+ // Phase B: one authoritative, privacy-safe, MFA-admin-only overview.
+ router.get("/platform/dashboard",opsTask(async(req,res)=>{
+  opsAdmin(req);
+  const days=parseDashboardDays(req.query.days);
+  privateOps(res);
+  res.json(await platformDashboard(days));
+ }));
  router.get("/platform/overview",opsTask(async(req,res)=>{
   opsStaff(req);
   const [clinics,appointments,users,verified,subscriptions,tickets]=await Promise.all([
@@ -134,6 +142,12 @@ export function insightsRouter(){
    denialsByDay:failures.map(x=>({day:x.day,count:countSafe(x.count)}))});
  }));
  router.use((err:unknown,_req:Request,res:Response,next:NextFunction)=>{
+  if(err&&typeof err==="object"&&"status" in err&&"code" in err){
+   const fault=err as {status:number;code:string};
+   if(fault.code==="INVALID_DASHBOARD_PERIOD"){
+    privateOps(res);res.status(fault.status).json({code:fault.code});return;
+   }
+  }
   if(err instanceof OpsFault||err instanceof AccessFault){
    res.status(err.status).json({code:err.code});return;
   }
