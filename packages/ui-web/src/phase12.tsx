@@ -727,8 +727,7 @@ function AdminDentistQueue(){
    onClear={()=>{setQ("");setSearch("");setPage(1);}} sort={sort}
    onSortChange={v=>{setSort(v);setPage(1);}}/>
   {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:
-   !rows.data?<Busy/>:!rows.data.dentists.length?<QueueEmpty/>:
-   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminDentists")}</strong><p>{rows.data.total} {w("items")}</p></div><div className="phase12-table-wrap adm-c-table-wrap">
+   !rows.data?<Busy/>:\n   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminDentists")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.dentists.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
     <table className="phase12-table adm-c-table"><thead><tr>
      <th>{t("professional")}</th><th>{t("clinic")}</th>
      <th>{t("credentialType")}</th><th>{t("submittedAt")}</th>
@@ -740,7 +739,7 @@ function AdminDentistQueue(){
      <td><Label value={x.status}/></td>
      <td><a className="adm-c-review-link" href={"/admin/dentists/"+x.membership_id}>
       {t("review")} →</a></td>
-    </tr>)}</tbody></table></div>
+    </tr>)}</tbody></table></div>}
     <QueuePager page={page} total={rows.data.total} pageSize={rows.data.pageSize} onPage={setPage}/></div>}
  </div>;
 }
@@ -837,9 +836,7 @@ function AdminListingQueue(){
   <QueueTools draft={q} onDraftChange={setQ} onSubmit={()=>{setSearch(q.trim());setPage(1);}}
    onClear={()=>{setQ("");setSearch("");setPage(1);}} sort={sort}
    onSortChange={v=>{setSort(v);setPage(1);}}/>
-  {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:!rows.data?<Busy/>:
-   !rows.data.listings.length?<QueueEmpty/>:
-   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminListings")}</strong><p>{rows.data.total} {w("items")}</p></div><div className="phase12-table-wrap adm-c-table-wrap">
+  {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:!rows.data?<Busy/>:\n   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminListings")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.listings.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
     <table className="phase12-table adm-c-table"><thead><tr>
      <th>{t("clinic")}</th><th>{t("city")}</th><th>{t("changes")}</th>
      <th>{t("submittedAt")}</th><th>{t("status")}</th><th>{t("action")}</th>
@@ -850,7 +847,7 @@ function AdminListingQueue(){
      <td><Label value={x.hidden?"hidden":x.pendingVersion?"pending":"published"}/></td>
      <td><a className="adm-c-review-link" href={"/admin/listings/"+x.clinicId}>
       {t("review")} →</a></td>
-    </tr>)}</tbody></table></div>
+    </tr>)}</tbody></table></div>}
     <QueuePager page={page} total={rows.data.total} pageSize={rows.data.pageSize} onPage={setPage}/></div>}
  </div>;
 }
