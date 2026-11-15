@@ -267,8 +267,7 @@ export function phase02Router() {
     const sort=String(req.query.sort??"newest");
     if(!["newest","oldest"].includes(sort))fail(422,"INVALID_SORT");
     const pageSize=10;
-    const state=status==="all"?undefined:status==="pending"
-      ?inArray(schema.clinic.status,["pending","needs_info"]):eq(schema.clinic.status,status);
+    const state=status==="all"?undefined:eq(schema.clinic.status,status);
     const q=String(req.query.q||"").trim().slice(0,80);
     const search=q?or(ilike(schema.clinic.displayName,"%"+q+"%"),
       ilike(schema.clinic.city,"%"+q+"%"),
