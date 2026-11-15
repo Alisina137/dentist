@@ -282,9 +282,13 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
         if (result.error) throw result.error;
         const data = result.data as { twoFactorRedirect?: boolean } | null;
         const nextValue = new URLSearchParams(window.location.search).get("next");
-        const next = nextValue && !nextValue.startsWith("//") &&
+        const safeNext = nextValue && !nextValue.startsWith("//") &&
           (audience === "admin" ? ["/admin/support","/admin/analytics"].includes(nextValue) :
            nextValue.startsWith("/clinic/")) ? nextValue : base;
+        // Delegated PH18 agents sign in through the admin portal but do not have platform-admin access.
+        const supportIdentity=audience==="admin"&&!nextValue
+         ? await request<{role:string}>("/v1/support/me").catch(()=>null) : null;
+        const next=supportIdentity?.role==="support"?"/admin/support":safeNext;
         window.location.assign(data?.twoFactorRedirect
           ? (audience === "admin" ? "/admin/2fa" : "/clinic/2fa") + "?next=" + encodeURIComponent(next)
           : next);
