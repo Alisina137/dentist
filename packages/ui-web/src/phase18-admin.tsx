@@ -169,6 +169,13 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
  const [templates,setTemplates]=useState<Template[]>([]);
  const [agentId,setAgentId]=useState(""),[myId,setMyId]=useState("");
  const [note,setNote]=useState(""),[notes,setNotes]=useState<{id:string;body:string;created_at:string;author_name:string}[]>([]);
+ const [searchDraft,setSearchDraft]=useState(""),[search,setSearch]=useState("");
+ const [page,setPage]=useState(1),[total,setTotal]=useState(0);
+ const [sort,setSort]=useState("priority"),[priority,setPriority]=useState("all"),[urgency,setUrgency]=useState("all");
+ const [deskStats,setDeskStats]=useState<{open:number;inProgress:number;waiting:number;unassigned:number;
+  highPriority:number;triageOverdue:number;firstReplyOverdue:number;firstReplyDueSoon:number;
+  recentResolved:number;targets:{initialResponseHours:number;triageHours:number}}|null>(null);
+ const [events,setEvents]=useState<{action:string;at:string;from:string|null;to:string|null}[]>([]);
  useEffect(()=>{const match=location.pathname.match(/^\/admin\/support\/([A-Za-z0-9_-]{8,100})$/);
   if(match)setSelected(match[1]);
  },[]);
@@ -183,12 +190,25 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
   .then(d=>{if(alive)setMyId(d.id)}).catch(()=>{});
   return()=>{alive=false};
  },[]);
- useEffect(()=>{let live=true;setLoading(true);
-  const qs=new URLSearchParams({status:filter,category,assigned,ageDays:age});
-  call18<{tickets:Ticket[]}>("/support/admin/tickets?"+qs).then(d=>{if(live)setTickets(d.tickets)})
-   .catch(e=>message(e.message)).finally(()=>{if(live)setLoading(false)});
+ useEffect(()=>{let live=true;setLoading(true);setTickets([]);
+  const qs=new URLSearchParams({status:filter,category,assigned,ageDays:age,priority,urgency,
+   sort,q:search,page:String(page)});
+  call18<{tickets:Ticket[];total:number}>("/support/admin/tickets?"+qs).then(d=>{
+   if(live){setTickets(d.tickets);setTotal(d.total);}})
+   .catch(e=>{if(live){setTotal(0);message(e.message);}}).finally(()=>{if(live)setLoading(false)});
   return()=>{live=false};
- },[filter,category,assigned,age,signal]);
+ },[filter,category,assigned,age,priority,urgency,sort,search,page,signal]);
+ useEffect(()=>{let live=true;
+  call18<typeof deskStats>("/support/admin/desk-summary").then(d=>{if(live)setDeskStats(d);})
+    .catch(e=>{if(live){setDeskStats(null);message(e.message);}});
+  return()=>{live=false};
+ },[signal]);
+ useEffect(()=>{if(!selected){setEvents([]);return;}let live=true;setEvents([]);
+  call18<{events:{action:string;at:string;from:string|null;to:string|null}[]}>(
+   "/support/admin/tickets/"+selected+"/activity")
+    .then(d=>{if(live)setEvents(d.events);}).catch(()=>{if(live)setEvents([])});
+  return()=>{live=false};
+ },[selected,signal]);
  useEffect(()=>{if(!selected)return;let live=true;setDetail(null);
   call18<Detail>("/support/tickets/"+selected).then(d=>{if(live){
     setDetail(d);setStatus(d.ticket.status);setAgentId(d.ticket.assignee_id||"");
