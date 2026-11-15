@@ -96,6 +96,9 @@ export function AdminCommandCenter({initialTab="search",onClose,compact=false}:{
  const inputRef=useRef<HTMLInputElement>(null),rootRef=useRef<HTMLElement>(null);
  useEffect(()=>{if(tab==="search")inputRef.current?.focus();},[tab]);
  useEffect(()=>{
+  if(compact&&initialTab!=="search")rootRef.current?.focus();
+ },[compact,initialTab]);
+ useEffect(()=>{
   if(!compact)return;
   const onKey=(event:KeyboardEvent)=>{
    if(event.key==="Escape"){event.preventDefault();onClose?.();}
@@ -161,7 +164,8 @@ export function AdminCommandCenter({initialTab="search",onClose,compact=false}:{
  }
  const close=()=>onClose?.();
  return <section ref={rootRef} className={"adm-e-center"+(compact?" adm-e-dialog":"")}
-  role={compact?"dialog":undefined} aria-modal={compact||undefined} aria-label={t("title")}>
+  role={compact?"dialog":undefined} tabIndex={compact?-1:undefined}
+  aria-modal={compact||undefined} aria-label={t("title")}>
   <header className="adm-e-head"><div>
    <span className="adm-e-eyebrow">DANDANLINK · OPERATIONS</span>
    <h1>{t("title")}</h1><p>{t("subtitle")}</p></div>
