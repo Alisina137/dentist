@@ -67,6 +67,9 @@ export function supportRouter(){
   res.json({role:actor.role,mfaRequired:actor.role!=="user"&&!actor.mfa,
    displayName:actor.name});
  }));
+ router.get("/identity",opsTask(async(req,res)=>{
+  opsStaff(req);privateOps(res);res.json({id:req.opsActor!.id});
+ }));
  router.post("/tickets",opsTask(async(req,res)=>{
   if(req.opsActor!.role!=="user")opsFail(403,"SUPPORT_STAFF_CANNOT_OPEN");
   const category=code(req.body?.category);
@@ -202,8 +205,9 @@ export function supportRouter(){
   const messages=await sqlClient`SELECT id,author_role,body,created_at FROM support_ticket_messages
    WHERE ticket_id=${ticket.id} ORDER BY created_at,id LIMIT 300`;
   privateOps(res);
-  const {requester_id:_omit,assignee_id:_assignee,...safe}=ticket;
-  res.json({ticket:safe,messages});
+  const {requester_id:_omit,assignee_id:assigned,...safe}=ticket;
+  const isStaff=req.opsActor!.role!=="user";
+  res.json({ticket:isStaff?{...safe,assignee_id:assigned}:safe,messages});
  }));
  router.post("/tickets/:ticketId/messages",opsTask(async(req,res)=>{
   const ticket=await ticketAccess(req,textId(req.params.ticketId));
