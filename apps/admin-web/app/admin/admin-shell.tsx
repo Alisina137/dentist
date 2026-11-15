@@ -73,6 +73,8 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  const [mobileOpen,setMobileOpen]=useState(false);
  const [navPending,setNavPending]=useState(false);
  const mobileToggleRef=useRef<HTMLButtonElement>(null);
+ const drawerRef=useRef<HTMLElement>(null);
+ const mobileCloseRef=useRef<HTMLButtonElement>(null);
  const isPublic=PUBLIC_ADMIN_PATH.test(pathname);
  const t=(key:string)=>TRANSLATIONS[locale]?.[key]||TRANSLATIONS.en[key]||key;
  useEffect(()=>{
@@ -93,8 +95,17 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  useEffect(()=>{setMobileOpen(false);setNavPending(false);},[pathname]);
  useEffect(()=>{
   if(!mobileOpen)return;
+  mobileCloseRef.current?.focus();
   const key=(event:KeyboardEvent)=>{
-   if(event.key==="Escape"){setMobileOpen(false);mobileToggleRef.current?.focus();}
+   if(event.key==="Escape"){setMobileOpen(false);mobileToggleRef.current?.focus();return;}
+   if(event.key!=="Tab")return;
+   const tabbable=Array.from(drawerRef.current?.querySelectorAll<HTMLElement>(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled])')||[]
+   ).filter(node=>node.getClientRects().length>0);
+   if(!tabbable.length)return;
+   const first=tabbable[0],last=tabbable[tabbable.length-1];
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
   };
   const oldOverflow=document.body.style.overflow;
   if(window.matchMedia("(max-width: 900px)").matches)document.body.style.overflow="hidden";
@@ -145,9 +156,10 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  return <PersistentAdminShellProvider>
   <div className={"work-layout phase-layout admin-persistent-shell"+(collapsed?" admin-sidebar-collapsed":"")+
     (mobileOpen?" admin-mobile-open":"")}>
-   {mobileOpen&&<button type="button" className="admin-mobile-backdrop" onClick={()=>setMobileOpen(false)}
+   {mobileOpen&&<button type="button" className="admin-mobile-backdrop" onClick={()=>{setMobileOpen(false);mobileToggleRef.current?.focus();}}
     aria-label={t("closeMenu")} tabIndex={-1}/>}
-   <aside className="card side-panel admin-persistent-sidebar" id="admin-workspace-navigation"
+   <aside ref={drawerRef} className="card side-panel admin-persistent-sidebar" id="admin-workspace-navigation"
+    role={mobileOpen?"dialog":undefined} aria-modal={mobileOpen||undefined}
     aria-label={t("navigation")}>
     <div className="admin-sidebar-head">
      <span className="admin-sidebar-emblem" aria-hidden="true"><CareIcon name="sparkle" size={20}/></span>
@@ -157,7 +169,7 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
       aria-label={collapsed?t("expand"):t("collapse")} aria-expanded={!collapsed}>
       <CareIcon name="panel" size={18}/>
      </button>
-     <button className="admin-sidebar-mobile-close" type="button" onClick={()=>setMobileOpen(false)}
+     <button ref={mobileCloseRef} className="admin-sidebar-mobile-close" type="button" onClick={()=>{setMobileOpen(false);mobileToggleRef.current?.focus();}}
       aria-label={t("closeMenu")}><CareIcon name="close" size={19}/></button>
     </div>
     <nav className="side-nav admin-persistent-nav" aria-label={t("navigation")}>
