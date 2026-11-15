@@ -33,11 +33,11 @@ export async function opsIdentity(req:OpsRequest,_res:Response,next:NextFunction
 }
 export function opsStaff(req:OpsRequest){
  if(req.opsActor?.role!=="admin"&&req.opsActor?.role!=="support")opsFail(403,"SUPPORT_DENIED");
- if(!req.opsActor.mfa)opsFail(403,"MFA_REQUIRED");
+ if(!req.opsActor?.mfa)opsFail(403,"MFA_REQUIRED");
 }
 export function opsAdmin(req:OpsRequest){
  if(req.opsActor?.role!=="admin")opsFail(403,"ADMIN_DENIED");
- if(!req.opsActor.mfa)opsFail(403,"MFA_REQUIRED");
+ if(!req.opsActor?.mfa)opsFail(403,"MFA_REQUIRED");
 }
 export async function opsAudit(actorId:string,action:string,subjectType:string,subjectId?:string){
  await db.insert(schema.auditEvent).values({id:randomUUID(),actorId,action,subjectType,
