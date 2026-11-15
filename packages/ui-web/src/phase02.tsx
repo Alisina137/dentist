@@ -5,6 +5,7 @@ import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls 
 import { AdminModerationPortal } from "./phase12";
 import {ReviewModerationPage} from "./phase17";
 import {usePersistentAdminShell} from "./admin-shell-context";
+import {QueueTools,QueuePager,QueueEmpty,useModerationWords} from "./admin-moderation";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 async function send(path:string,method="GET",body?:unknown):Promise<any> {
@@ -888,37 +889,47 @@ function ClinicSubscription(){
  </div>;
 }
 function AdminClinics(){
- const l=useText();
+ const l=useText(),{w}=useModerationWords();
  const [status,setStatus]=useState("pending"),[page,setPage]=useState(1);
  const [draft,setDraft]=useState(""),[term,setTerm]=useState("");
- const {data,error,refresh}=useResource("/admin/clinics?status="+status+"&page="+page+"&q="+encodeURIComponent(term));
+ const [sort,setSort]=useState<"newest"|"oldest">("newest");
+ const {data,error,refresh}=useResource("/admin/clinics?"+new URLSearchParams({
+  status,page:String(page),q:term,sort
+ }));
  useEffect(()=>{
   const fromUrl=new URLSearchParams(window.location.search).get("status");
-  if(fromUrl&&["pending","needs_info","approved","rejected","suspended"].includes(fromUrl))setStatus(fromUrl);
+  if(fromUrl&&["all","pending","needs_info","approved","rejected","suspended"].includes(fromUrl))setStatus(fromUrl);
  },[]);
+ function selectStatus(value:string){setStatus(value);setPage(1);}
+ function search(){setTerm(draft.trim());setPage(1);}
  if(error)return <DataError message={error} retry={refresh}/>;
- return <div><h1 className="phase-title">{l("titleClinics")}</h1>
-  <div className="phase-tabs" role="tablist" aria-label={l("status")}>
-    {["pending","approved","suspended","rejected"].map(s=><button key={s} role="tab"
-      aria-selected={status===s} className={status===s?"current":""} onClick={()=>{setStatus(s);setPage(1);}}>
-      {l(s)}</button>)}
-  </div>
+ return <div className="adm-c-stack">
+  <div><h1 className="phase-title">{l("titleClinics")}</h1>
+   <p className="muted">{l("verifiedNote")}</p></div>
+  <nav className="phase-tabs" role="tablist" aria-label={l("status")}>
+   {["pending","needs_info","approved","suspended","rejected","all"].map(s=>
+    <button type="button" key={s} role="tab" aria-selected={status===s}
+     className={status===s?"current":""} onClick={()=>selectStatus(s)}>{s==="all"?w("result"):l(s)}</button>)}
+  </nav>
+  <QueueTools draft={draft} onDraftChange={setDraft} onSubmit={search}
+   onClear={()=>{setDraft("");setTerm("");setPage(1);}} sort={sort}
+   onSortChange={value=>{setSort(value);setPage(1);}}/>
   <section className="card panel">
-    <form className="phase-search" onSubmit={e=>{e.preventDefault();setTerm(draft.trim());setPage(1);}}>
-      <label className="field"><span>{l("search")}</span>
-        <input type="search" value={draft} maxLength={80} onChange={e=>setDraft(e.target.value)}/></label>
-      <button type="submit" className="btn btn-secondary">{l("filter")}</button>
-    </form>
-    {!data?<InlineAlert>{l("loading")}</InlineAlert>:!data.clinics?.length?<Empty>{l("noRecords")}</Empty>:
-      <Rows>{data.clinics.map((c:any)=><a className="phase-row phase-list-item" href={"/admin/clinics/"+c.id} key={c.id}>
-        <div><strong>{c.displayName}</strong><p className="muted">{c.city} · {c.province} · {short(c.submittedAt)}</p></div>
-        <div><Status value={c.status} l={l}/><span className="phase-arrow"> › </span></div>
-      </a>)}</Rows>}
-    <div className="phase-pagination">
-      <button className="btn btn-secondary" disabled={page<2} onClick={()=>setPage(v=>v-1)}>{l("previous")}</button>
-      <span>{page} / {Math.max(1,Math.ceil((data?.total||0)/20))}</span>
-      <button className="btn btn-secondary" disabled={page*20>=(data?.total||0)} onClick={()=>setPage(v=>v+1)}>{l("next")}</button>
-    </div>
+   <div className="adm-c-queue-summary"><strong>{l("titleClinics")}</strong>
+    <p>{data?data.total+" "+w("items"):l("loading")}</p></div>
+   {!data?<div className="admin-page-loading" role="status" aria-label={l("loading")}>
+    <div className="admin-loading-card admin-loading-wide"/></div>:
+   !data.clinics?.length?<QueueEmpty/>:
+   <div className="adm-c-table-wrap"><table className="adm-c-table">
+    <thead><tr><th scope="col">{l("organization")}</th><th scope="col">{l("province")}</th>
+     <th scope="col">{l("status")}</th><th scope="col">{l("review")}</th></tr></thead>
+    <tbody>{data.clinics.map((clinic:any)=><tr key={clinic.id}>
+     <td><strong>{clinic.displayName}</strong><small>{clinic.legalName||"—"}</small></td>
+     <td>{clinic.city} · {clinic.province}<small>{short(clinic.submittedAt||clinic.updatedAt)}</small></td>
+     <td><Status value={clinic.status} l={l}/></td>
+     <td><a className="adm-c-review-link" href={"/admin/clinics/"+clinic.id}>{l("review")} →</a></td>
+    </tr>)}</tbody></table></div>}
+   <QueuePager page={page} total={data?.total??0} pageSize={data?.pageSize??10} onPage={setPage} loading={!data}/>
   </section>
  </div>;
 }
@@ -981,8 +992,11 @@ function AdminReview(){
     </div>
   </section>}
   <section className="card panel"><h2>{l("history")}</h2>
-    {data.history?.length?data.history.map((h:any)=><p key={h.id}>{short(h.createdAt)} · {l(h.action)||h.action} · {h.reason||"—"}</p>):
-      <Empty>{l("noRecords")}</Empty>}
+    {data.history?.length?<ol className="adm-c-history">{data.history.map((h:any)=><li key={h.id}>
+      <span className="adm-c-history-indicator" aria-hidden="true"/>
+      <div><strong>{l(h.action)||h.action}</strong><time>{short(h.createdAt)}</time>
+       {h.reason&&<p>{h.reason}</p>}</div>
+     </li>)}</ol>:<Empty>{l("noRecords")}</Empty>}
   </section>
   {failure&&<Alert message={failure}/>}
   {message&&<Alert message={message} ok/>}
