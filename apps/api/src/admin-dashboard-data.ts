@@ -74,6 +74,8 @@ export async function platformDashboard(days:DashboardDays){
     count(*) FILTER (WHERE status='waiting_user')::int AS waiting,
     count(*) FILTER (WHERE priority='high' AND status IN ('open','in_progress','waiting_user'))::int AS high_priority,
     count(*) FILTER (WHERE status IN ('open','in_progress') AND updated_at<now()-interval '48 hours')::int AS overdue,
+    count(*) FILTER (WHERE status IN ('open','in_progress') AND
+      (priority='high' OR updated_at<now()-interval '48 hours'))::int AS urgent,
     count(*) FILTER (WHERE created_at>=(${from}::date::timestamp AT TIME ZONE 'Asia/Kabul')
       AND created_at<((${to}::date+1)::timestamp AT TIME ZONE 'Asia/Kabul'))::int AS created,
     count(*) FILTER (WHERE created_at>=(${prevFrom}::date::timestamp AT TIME ZONE 'Asia/Kabul')
@@ -140,7 +142,7 @@ export async function platformDashboard(days:DashboardDays){
    previousCreated:asNumber(b.previous_created)},
   support:{open:asNumber(t.open),inProgress:asNumber(t.in_progress),
    waiting:asNumber(t.waiting),highPriority:asNumber(t.high_priority),
-   overdue:asNumber(t.overdue),created:asNumber(t.created),
+   overdue:asNumber(t.overdue),urgent:asNumber(t.urgent),created:asNumber(t.created),
    previousCreated:asNumber(t.previous_created)},
   operations:{databaseResponsive:true,delayedOutbox:asNumber(o.delayed_outbox),
    failedNotifications:asNumber(o.failed_notifications),
