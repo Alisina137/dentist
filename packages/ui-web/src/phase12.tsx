@@ -727,7 +727,8 @@ function AdminDentistQueue(){
    onClear={()=>{setQ("");setSearch("");setPage(1);}} sort={sort}
    onSortChange={v=>{setSort(v);setPage(1);}}/>
   {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:
-   !rows.data?<Busy/>:\n   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminDentists")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.dentists.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
+   !rows.data?<Busy/>:
+   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminDentists")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.dentists.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
     <table className="phase12-table adm-c-table"><thead><tr>
      <th>{t("professional")}</th><th>{t("clinic")}</th>
      <th>{t("credentialType")}</th><th>{t("submittedAt")}</th>
@@ -836,7 +837,8 @@ function AdminListingQueue(){
   <QueueTools draft={q} onDraftChange={setQ} onSubmit={()=>{setSearch(q.trim());setPage(1);}}
    onClear={()=>{setQ("");setSearch("");setPage(1);}} sort={sort}
    onSortChange={v=>{setSort(v);setPage(1);}}/>
-  {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:!rows.data?<Busy/>:\n   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminListings")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.listings.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
+  {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:!rows.data?<Busy/>:
+   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminListings")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.listings.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
     <table className="phase12-table adm-c-table"><thead><tr>
      <th>{t("clinic")}</th><th>{t("city")}</th><th>{t("changes")}</th>
      <th>{t("submittedAt")}</th><th>{t("status")}</th><th>{t("action")}</th>
