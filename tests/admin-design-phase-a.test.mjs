@@ -35,6 +35,9 @@ test("Phase A: navigation remains persistent, collapsible, keyboard accessible, 
  assert.match(source,/aria-current=\{active\(item\.href\)/);
  assert.match(source,/aria-controls="admin-workspace-navigation"/);
  assert.match(source,/event\.key==="Escape"/);
+ assert.match(source,/event\.key!=="Tab"/);
+ assert.match(source,/mobileCloseRef\.current\?\.focus\(\)/);
+ assert.match(source,/role=\{mobileOpen\?"dialog":undefined\}/);
  assert.match(source,/event\.metaKey\|\|event\.ctrlKey/);
  assert.match(source,/link\.hasAttribute\("download"\)/);
  assert.match(source,/router\.push\(url\.pathname/);
