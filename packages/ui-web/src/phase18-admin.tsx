@@ -132,6 +132,7 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
  const [categories,setCategories]=useState<{code:string;label_en:string;label_fa:string;label_ps:string}[]>([]);
  const [category,setCategory]=useState("all"),[age,setAge]=useState("0"),[assigned,setAssigned]=useState("all");
  const [agents,setAgents]=useState<{id:string;name:string}[]>([]);
+ const [templates,setTemplates]=useState<Template[]>([]);
  const [agentId,setAgentId]=useState(""),[myId,setMyId]=useState("");
  const [note,setNote]=useState(""),[notes,setNotes]=useState<{id:string;body:string;created_at:string;author_name:string}[]>([]);
  useEffect(()=>{const match=location.pathname.match(/^\/admin\/support\/([A-Za-z0-9_-]{8,100})$/);
@@ -140,8 +141,8 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
  useEffect(()=>{let alive=true;Promise.all([
   call18<{agents:{id:string;name:string}[]}>("/support/admin/agents"),
   call18<{faq:any[];categories:typeof categories}>("/support/public/help"),
-  call18<{role:string;displayName:string}>("/support/me")
- ]).then(([a,b])=>{if(alive){setAgents(a.agents);setCategories(b.categories)}})
+  call18<{templates:Template[]}>("/support/admin/templates")
+ ]).then(([a,b,c])=>{if(alive){setAgents(a.agents);setCategories(b.categories);setTemplates(c.templates)}})
   .catch(e=>{if(alive)message(e.message)});return()=>{alive=false};
  },[signal]);
  useEffect(()=>{let alive=true;call18<{id:string}>("/support/identity")
@@ -247,6 +248,14 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
       <button disabled={busy||status===detail.ticket.status} className="btn btn-secondary"
        onClick={changeStatus}>{o("updateStatus")}</button></div>
      {!["closed","resolved"].includes(detail.ticket.status)&&<form className="p18-form" onSubmit={respond}>
+      {templates.length>0&&<label>{o("template")}<select value="" onChange={e=>{
+       const found=templates.find(x=>x.id===e.target.value);
+       if(found)setReply(lang==="fa-AF"?found.body_fa:lang==="ps-AF"?found.body_ps:found.body_en);
+      }}>
+       <option value="">— {o("none")} —</option>
+       {templates.map(item=><option key={item.id} value={item.id}>
+        {lang==="fa-AF"?item.title_fa:lang==="ps-AF"?item.title_ps:item.title_en}</option>)}
+      </select></label>}
       <label>{o("reply")}<textarea required minLength={5} maxLength={2000} rows={4}
        value={reply} onChange={e=>setReply(e.target.value)}/></label>
       <button disabled={busy} className="btn btn-primary">{t("reply")}</button>
