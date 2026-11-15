@@ -5,6 +5,7 @@ import {sqlClient} from "@dandanlink/db";
 import {auth} from "./auth.js";
 import {authStaff,scope,fail,type StaffRequest,type AccessFault} from "./staff-access.js";
 import {opsIdentity,opsAdmin,opsTask} from "./ops-access.js";
+import {getPilotReadiness} from "./pilot-gate.js";
 
 const task=(f:(req:StaffRequest,res:Response)=>Promise<void>)=>
  (req:StaffRequest,res:Response,next:NextFunction)=>f(req,res).catch(next);
@@ -53,22 +54,7 @@ export function portabilityRouter(){
  const r=Router();
  r.get("/admin/readiness",opsIdentity,opsTask(async(req,res)=>{
   opsAdmin(req);
-  const controls=[
-   ["legalPrivacy","PH19_LEGAL_PRIVACY_APPROVED"],
-   ["clinicalReview","PH19_CLINICAL_REVIEW_APPROVED"],
-   ["hostingEncryption","PH19_HOSTING_SECURITY_APPROVED"],
-   ["backupRestore","PH19_BACKUP_RESTORE_APPROVED"],
-   ["penetrationTest","PH19_PENETRATION_TEST_APPROVED"],
-   ["accessReview","PH19_ACCESS_REVIEW_APPROVED"],
-   ["criticalAlerts","PH19_ALERTS_APPROVED"],
-   ["accessibilityRTL","PH19_ACCESSIBILITY_RTL_APPROVED"],
-   ["pilotRoster","PH19_PILOT_ROSTER_APPROVED"]
-  ].map(([id,key])=>({id,complete:process.env[key]==="true"}));
-  const approved=controls.every(x=>x.complete);
-  secure(res);res.json({controls,passCount:controls.filter(x=>x.complete).length,
-   overall:approved&&process.env.PH19_PILOT_RELEASE_ENABLED==="true"?"operator_marked_pass":"blocked",
-   releaseEnabled:process.env.PH19_PILOT_RELEASE_ENABLED==="true"&&approved,
-   caveat:"Operator-set status is NOT an independent legal, clinical, security or provider certification. Attach dated evidence in the controlled release worksheet."});
+  secure(res);res.json(getPilotReadiness());
  }));
  r.use(authStaff);
  r.get("/clinics/:clinicId/exports",task(async(req,res)=>{
