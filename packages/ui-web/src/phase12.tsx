@@ -716,6 +716,10 @@ function AdminDentistQueue(){
  const [status,setStatus]=useState("pending"),[q,setQ]=useState(""),[search,setSearch]=useState("");
  const [sort,setSort]=useState<"newest"|"oldest">("newest"),[page,setPage]=useState(1);
  const rows=load(adminPath("/dentists?")+new URLSearchParams({status,q:search,sort,page:String(page)}));
+ useEffect(()=>{
+  const fromUrl=new URLSearchParams(location.search).get("status");
+  if(fromUrl&&["pending","verified","rejected","needs_changes","revoked","all"].includes(fromUrl))setStatus(fromUrl);
+ },[]);
  return <div className="phase12-stack">
   <div className="phase12-section-title"><div><h1>{t("adminDentists")}</h1>
    <p>{t("confirmReview")}</p></div></div>
@@ -826,6 +830,10 @@ function AdminListingQueue(){
   [q,setQ]=useState(""),[search,setSearch]=useState("");
  const [sort,setSort]=useState<"newest"|"oldest">("newest"),[page,setPage]=useState(1);
  const rows=load(adminPath("/listings?")+new URLSearchParams({status,q:search,sort,page:String(page)}));
+ useEffect(()=>{
+  const fromUrl=new URLSearchParams(location.search).get("status");
+  if(fromUrl&&["pending","published","hidden","all"].includes(fromUrl))setStatus(fromUrl);
+ },[]);
  return <div className="phase12-stack">
   <div className="phase12-section-title"><div><h1>{t("adminListings")}</h1>
    <p>{t("publicPatient")}</p></div></div>
