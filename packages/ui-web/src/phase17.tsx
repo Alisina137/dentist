@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useState} from "react";
 import {usePreferences,InlineAlert} from "./index";
+import {QueueTools,QueuePager,QueueEmpty,useModerationWords} from "./admin-moderation";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -173,55 +174,119 @@ export function PatientReviewsPage(){
 }
 const reasons=["personal_data","clinical_details","harassment","spam","unrelated"] as const;
 export function ReviewModerationPage(){
- const {lang,t}=useT();
+ const {lang,t}=useT(),{w}=useModerationWords();
  const [tab,setTab]=useState<"queue"|"reports"|"appeals">("queue"),[items,setItems]=useState<Array<Pending|Report|Appeal>>([]);
+ const [page,setPage]=useState(1),[total,setTotal]=useState(0),[sort,setSort]=useState<"oldest"|"newest">("oldest");
+ const [draft,setDraft]=useState(""),[search,setSearch]=useState("");
  const [error,setError]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
- const [reason,setReason]=useState(""),[category,setCategory]=useState<(typeof reasons)[number]>("personal_data"),[reload,setReload]=useState(0);
+ const [reason,setReason]=useState(""),[category,setCategory]=useState<""|(typeof reasons)[number]>("");
+ const [selected,setSelected]=useState<{id:string;action:string}|null>(null),[confirmed,setConfirmed]=useState(false);
+ const [reload,setReload]=useState(0),[success,setSuccess]=useState("");
+ const [history,setHistory]=useState<Array<{action:string;version:number;at:string}>>([]);
+ useEffect(()=>{
+  let mounted=true;
+  call<{events:{action:string;version:number;at:string}[]}>("/admin/history")
+   .then(result=>{if(mounted)setHistory(result.events);})
+   .catch(()=>{if(mounted)setHistory([]);});
+  return()=>{mounted=false};
+ },[reload]);
  useEffect(()=>{let active=true;setLoading(true);setError("");
-  call<Record<string,any[]>>("/admin/"+(tab==="queue"?"queue":tab)).then(data=>{
-   if(active)setItems(data[tab==="queue"?"pending":tab]||[])})
-   .catch(e=>{if(active)setError(e.message)})
-   .finally(()=>{if(active)setLoading(false)});
+  const params=new URLSearchParams({page:String(page),sort,q:search});
+  call<Record<string,any>>("/admin/"+(tab==="queue"?"queue":tab)+"?"+params)
+   .then(data=>{if(active){setItems(data[tab==="queue"?"pending":tab]||[]);setTotal(data.total??0);}})
+   .catch(e=>{if(active){setItems([]);setError(e.message);}})
+   .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false};
- },[tab,reload]);
+ },[tab,page,sort,search,reload]);
+ function chooseTab(key:"queue"|"reports"|"appeals"){
+  setTab(key);setPage(1);setSelected(null);setReason("");setCategory("");setConfirmed(false);setSuccess("");
+ }
  async function decide(item:Pending|Report|Appeal,action:string){
-  setBusy(true);setError("");
+  if(busy||!confirmed||selected?.id!==item.id||selected.action!==action)return;
+  if(action!=="approve"&&reason.trim().length<15)return;
+  if((action==="reject"||action==="remove")&&!category)return;
+  setBusy(true);setError("");setSuccess("");
   try{
    if(tab==="queue")await call("/admin/"+(item as Pending).id+"/decision","POST",{
     version:(item as Pending).version,action,category,reason});
    if(tab==="reports")await call("/admin/reports/"+item.id+"/decision","POST",{
     action,reason,category});
    if(tab==="appeals")await call("/admin/appeals/"+item.id+"/decision","POST",{action,reason});
-   setReason("");setReload(x=>x+1);
+   setSelected(null);setConfirmed(false);setReason("");setSuccess(t("success"));
+   // When last item on a page is decided, navigate back rather than display a false empty state.
+   if(page>1&&items.length===1)setPage(n=>n-1);
+   else setReload(x=>x+1);
   }catch(e){setError(e instanceof Error?e.message:"REVIEW_SERVICE_UNAVAILABLE")}
   finally{setBusy(false)}
  }
- return <main className="p17-wrap" dir={lang==="en"?"ltr":"rtl"}>
-  <div className="p17-heading"><span>DANDANLINK · MODERATION</span><h1>{t("title")}</h1>
-   <p>{t("reviewRules")}</p></div>
-  <div className="p17-tabs">{(["queue","reports","appeals"] as const).map(key=>
-   <Choice key={key} selected={tab===key} onClick={()=>setTab(key)}>{t(key)}</Choice>)}</div>
+ const actions=(tab==="queue"?["approve","reject"]:tab==="reports"?["dismiss","remove"]:["uphold","overturn"]);
+ return <main className="p17-wrap adm-c-stack" dir={lang==="en"?"ltr":"rtl"}>
+  <header className="p17-heading"><span>DANDANLINK · MODERATION</span><h1>{t("title")}</h1>
+   <p>{t("reviewRules")}</p></header>
+  <nav className="p17-tabs" role="tablist" aria-label={t("title")}>
+   {(["queue","reports","appeals"] as const).map(key=>
+    <button type="button" key={key} role="tab" aria-selected={tab===key}
+     className={"p17-pill"+(tab===key?" active":"")} onClick={()=>chooseTab(key)}>
+     {t(key)}</button>)}
+  </nav>
+  <QueueTools draft={draft} onDraftChange={setDraft}
+   onSubmit={()=>{setSearch(draft.trim());setPage(1);setSelected(null);}}
+   onClear={()=>{setDraft("");setSearch("");setPage(1);}}
+   sort={sort} onSortChange={v=>{setSort(v);setPage(1);setSelected(null);}}/>
   <ErrorBlock error={error} retry={()=>setReload(x=>x+1)}/>
-  <div className="p17-moderation-controls">
-   <label>{t("category")}<select value={category} onChange={e=>setCategory(e.target.value as typeof category)}>
-    {reasons.map(x=><option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}</select></label>
-   <label>{t("modNote")}<textarea minLength={15} maxLength={500} value={reason}
-    onChange={e=>setReason(e.target.value)}/></label>
-  </div>
-  {loading?<p role="status">{t("loading")}</p>:!items.length?<p className="p17-card">{t("empty")}</p>:
-   <div className="p17-list">{items.map(item=><article key={item.id} className="p17-card">
-    <span className="p17-verified">✓ {t("verified")}</span>
-    <h2>{item.headline}</h2>
-    <p>{"★".repeat(item.stars||0)}</p><p>{item.feedback}</p>
-    {"note" in item&&<p className="p17-reason">{item.category}: {item.note}</p>}
-    {"reason" in item&&<p className="p17-reason">{item.reason}</p>}
-    <div className="p17-card-actions">
-     {(tab==="queue"?["approve","reject"]:tab==="reports"?["dismiss","remove"]:["uphold","overturn"])
-      .map(action=><button type="button" key={action} disabled={busy||(action!=="approve"&&reason.trim().length<15)}
-       className={action==="approve"?"p17-action":""} onClick={()=>void decide(item,action)}>
+  {success&&<InlineAlert kind="success">{success}</InlineAlert>}
+  <section className="adm-c-moderation-list" aria-label={t(tab==="queue"?"queue":tab)}>
+   {loading?<div className="admin-page-loading" role="status" aria-label={t("loading")}>
+    <div className="admin-loading-card admin-loading-wide"/></div>:
+    !items.length?<QueueEmpty/>:items.map(item=><article key={item.id} className="adm-c-moderation-card">
+     <div className="adm-c-moderation-meta">
+      <span className="p17-verified">✓ {t("verified")}</span>
+      <span className="adm-c-highlight">{item.stars||0} / 5 ★</span>
+     </div>
+     <h2>{item.headline}</h2><p>{item.feedback}</p>
+     {"note" in item&&<p className="p17-reason">{item.category}: {item.note}</p>}
+     {"reason" in item&&<p className="p17-reason">{item.reason}</p>}
+     <div className="adm-c-moderation-actions">
+      {actions.map(action=><button key={action} type="button" disabled={busy}
+       className={"btn "+(action==="approve"?"btn-primary":"btn-secondary")}
+       aria-expanded={selected?.id===item.id&&selected.action===action}
+       onClick={()=>{setSelected({id:item.id,action});setConfirmed(false);setReason("");setCategory("");}}>
        {t(action as keyof Trans)}</button>)}
-    </div>
-   </article>)}</div>}
+     </div>
+     {selected?.id===item.id&&<form className="adm-c-decision-panel" onSubmit={e=>{e.preventDefault();void decide(item,selected!.action);}}>
+      <strong>{t(selected.action as keyof Trans)}</strong>
+      {(selected.action==="reject"||selected.action==="remove")&&
+       <label>{t("category")}<select value={category}
+        onChange={e=>setCategory(e.target.value as typeof category)}>
+        <option value="" disabled>{t("category")}</option>{reasons.map(code=><option key={code} value={code}>{code.replaceAll("_"," ")}</option>)}</select></label>}
+      {selected.action!=="approve"&&<label>{t("modNote")}
+       <textarea required minLength={15} maxLength={500} value={reason}
+        onChange={e=>setReason(e.target.value)}/></label>}
+      <label className="adm-c-confirm"><input type="checkbox" checked={confirmed}
+       onChange={e=>setConfirmed(e.target.checked)} required/>
+       {t("confirm")} — {t(selected.action as keyof Trans)}</label>
+      <div className="adm-c-decision-buttons">
+       <button type="button" className="btn btn-secondary" disabled={busy}
+        onClick={()=>{setSelected(null);setConfirmed(false);setCategory("");}}>{w("reset")}</button>
+       <button type="submit" className="btn btn-primary"
+        disabled={busy||!confirmed||(selected.action!=="approve"&&reason.trim().length<15)||
+         ((selected.action==="reject"||selected.action==="remove")&&!category)}>
+        {busy?t("loading"):t("confirm")}</button>
+      </div>
+     </form>}
+    </article>)}
+  </section>
+  <QueuePager page={page} total={total} pageSize={10} onPage={p=>{setPage(p);setSelected(null);}}
+   loading={loading}/>
+  <details className="card phase12-panel adm-c-review-history">
+   <summary>{w("confirmed")} ({history.length})</summary>
+   {!history.length?<QueueEmpty/>:<ol className="adm-c-history">{history.map((event,i)=><li key={i}>
+    <span className="adm-c-history-indicator" aria-hidden="true"/>
+    <div><strong>{event.action.replaceAll("_"," ")} · v{event.version}</strong>
+     <time>{new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",dateStyle:"medium",timeStyle:"short"})
+      .format(new Date(event.at))}</time></div>
+   </li>)}</ol>}
+  </details>
  </main>;
 }
 export function PublicVerifiedReviews({clinicId,dentistId}:{clinicId:string;dentistId?:string}){

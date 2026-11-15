@@ -16,6 +16,15 @@ const task=<T extends Request>(fn:(req:T,res:Response)=>Promise<void>)=>
  (req:T,res:Response,next:NextFunction)=>{fn(req,res).catch(next)};
 const cId=(r:Request)=>String(r.params.clinicId);
 const noStore=(r:Response)=>r.setHeader("Cache-Control","private, no-store");
+// Shared, strictly bounded queue pagination for admin moderation endpoints.
+const adminPage=(req:Request)=>{
+ const raw=String(req.query.page??"1"),sort=String(req.query.sort??"newest");
+ if(!/^[1-9]\d{0,4}$/.test(raw))fail(422,"INVALID_PAGE");
+ if(!["newest","oldest"].includes(sort))fail(422,"INVALID_SORT");
+ const page=Number(raw),pageSize=10;
+ return {page,pageSize,offset:(page-1)*pageSize,sort};
+};
+
 const pubCache=(r:Response)=>r.setHeader("Cache-Control","public, max-age=30");
 const string=(v:unknown,min:number,max:number,name:string)=>{
  if(typeof v!=="string"||v.trim().length<min||v.trim().length>max)fail(422,"INVALID_"+name);
@@ -509,20 +518,32 @@ export function listingRouter(){
   if(!["all","pending","verified","rejected","needs_changes","revoked"].includes(filter))
    fail(422,"INVALID_STATUS");
   const q=String(req.query.q||"").trim().slice(0,100);
-  const rows=await sqlClient`SELECT v.membership_id,v.clinic_id,v.status,v.valid_until,v.reviewed_at,
-   v.current_submission_id,s.credential_type,s.credential_number,s.created_at AS submitted_at,
-   c.display_name AS clinic_name,c.city,c.province,d.display_name,d.specialty,
-   d.draft_version,m.status AS affiliation_status
-   FROM clinic_dentist_credential_cases v
-   JOIN clinics c ON c.id=v.clinic_id
-   JOIN clinic_memberships m ON m.id=v.membership_id AND m.clinic_id=v.clinic_id
-   JOIN clinic_dentist_drafts d ON d.membership_id=m.id
-   LEFT JOIN clinic_dentist_credential_submissions s ON s.id=v.current_submission_id
-   WHERE (${filter}='all' OR v.status=${filter}) AND
-    (${q}='' OR d.display_name ILIKE ${"%"+q+"%"} OR
-     c.display_name ILIKE ${"%"+q+"%"} OR c.city ILIKE ${"%"+q+"%"})
-   ORDER BY v.updated_at DESC,v.membership_id LIMIT 150`;
-  noStore(res);res.json({dentists:rows});
+  const {page,pageSize,offset,sort}=adminPage(req);
+  const [rows,count]=await Promise.all([
+   sqlClient`SELECT v.membership_id,v.clinic_id,v.status,v.valid_until,v.reviewed_at,
+    v.current_submission_id,s.credential_type,s.credential_number,s.created_at AS submitted_at,
+    c.display_name AS clinic_name,c.city,c.province,d.display_name,d.specialty,
+    d.draft_version,m.status AS affiliation_status
+    FROM clinic_dentist_credential_cases v
+    JOIN clinics c ON c.id=v.clinic_id
+    JOIN clinic_memberships m ON m.id=v.membership_id AND m.clinic_id=v.clinic_id
+    JOIN clinic_dentist_drafts d ON d.membership_id=m.id
+    LEFT JOIN clinic_dentist_credential_submissions s ON s.id=v.current_submission_id
+    WHERE (${filter}='all' OR v.status=${filter}) AND
+     (${q}='' OR d.display_name ILIKE ${"%"+q+"%"} OR
+      c.display_name ILIKE ${"%"+q+"%"} OR c.city ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN v.updated_at END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN v.updated_at END DESC NULLS LAST,
+     v.membership_id ASC LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM clinic_dentist_credential_cases v
+    JOIN clinics c ON c.id=v.clinic_id
+    JOIN clinic_memberships m ON m.id=v.membership_id AND m.clinic_id=v.clinic_id
+    JOIN clinic_dentist_drafts d ON d.membership_id=m.id
+    WHERE (${filter}='all' OR v.status=${filter}) AND
+     (${q}='' OR d.display_name ILIKE ${"%"+q+"%"} OR
+      c.display_name ILIKE ${"%"+q+"%"} OR c.city ILIKE ${"%"+q+"%"})`
+  ]);
+  noStore(res);res.json({dentists:rows,total:Number(count[0]?.total??0),page,pageSize,sort});
  }));
  admin.get("/dentists/:membershipId",task<AdminRequest>(async(req,res)=>{
   const id=String(req.params.membershipId);
@@ -615,27 +636,40 @@ export function listingRouter(){
   const status=String(req.query.status||"pending");
   if(!["all","pending","published","hidden"].includes(status))fail(422,"INVALID_STATUS");
   const q=String(req.query.q||"").trim().slice(0,100);
-  const rows=await sqlClient`SELECT h.*,c.display_name,c.city,c.province,c.status AS clinic_status,
-   pend.profile AS pending_profile,live.profile AS live_profile,
-   pend.submitted_at FROM clinic_listing_heads h
-   JOIN clinics c ON c.id=h.clinic_id
-   LEFT JOIN clinic_listing_versions pend ON pend.clinic_id=h.clinic_id
-    AND pend.version=h.pending_version
-   LEFT JOIN clinic_listing_versions live ON live.clinic_id=h.clinic_id
-    AND live.version=h.approved_version
-   WHERE (${status}='all' OR
-    (${status}='pending' AND h.pending_version IS NOT NULL) OR
-    (${status}='published' AND h.approved_version IS NOT NULL AND h.hidden=false) OR
-    (${status}='hidden' AND h.hidden=true))
-    AND (${q}='' OR c.display_name ILIKE ${"%"+q+"%"} OR c.city ILIKE ${"%"+q+"%"})
-   ORDER BY coalesce(pend.submitted_at,h.updated_at) DESC LIMIT 150`;
+  const {page,pageSize,offset,sort}=adminPage(req);
+  const [rows,count]=await Promise.all([
+   sqlClient`SELECT h.*,c.display_name,c.city,c.province,c.status AS clinic_status,
+    pend.profile AS pending_profile,live.profile AS live_profile,
+    pend.submitted_at FROM clinic_listing_heads h
+    JOIN clinics c ON c.id=h.clinic_id
+    LEFT JOIN clinic_listing_versions pend ON pend.clinic_id=h.clinic_id
+     AND pend.version=h.pending_version
+    LEFT JOIN clinic_listing_versions live ON live.clinic_id=h.clinic_id
+     AND live.version=h.approved_version
+    WHERE (${status}='all' OR
+     (${status}='pending' AND h.pending_version IS NOT NULL) OR
+     (${status}='published' AND h.approved_version IS NOT NULL AND h.hidden=false) OR
+     (${status}='hidden' AND h.hidden=true))
+     AND (${q}='' OR c.display_name ILIKE ${"%"+q+"%"} OR c.city ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN coalesce(pend.submitted_at,h.updated_at) END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN coalesce(pend.submitted_at,h.updated_at) END DESC NULLS LAST,
+     h.clinic_id ASC LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM clinic_listing_heads h
+    JOIN clinics c ON c.id=h.clinic_id
+    WHERE (${status}='all' OR
+     (${status}='pending' AND h.pending_version IS NOT NULL) OR
+     (${status}='published' AND h.approved_version IS NOT NULL AND h.hidden=false) OR
+     (${status}='hidden' AND h.hidden=true))
+     AND (${q}='' OR c.display_name ILIKE ${"%"+q+"%"} OR c.city ILIKE ${"%"+q+"%"})`
+  ]);
   noStore(res);res.json({listings:rows.map(x=>({clinicId:x.clinic_id,clinicName:x.display_name,
    city:x.city,province:x.province,clinicStatus:x.clinic_status,
    pendingVersion:x.pending_version,approvedVersion:x.approved_version,
    hidden:x.hidden,submittedAt:x.submitted_at,publishedAt:x.published_at,
    changedFields:x.pending_profile?
     Object.keys(x.pending_profile).filter(k=>JSON.stringify(x.pending_profile[k])!==
-     JSON.stringify(x.live_profile?.[k])):[]}))});
+     JSON.stringify(x.live_profile?.[k])):[]})),
+   total:Number(count[0]?.total??0),page,pageSize,sort});
  }));
  admin.get("/listings/:clinicId",task<AdminRequest>(async(req,res)=>{
   const id=cId(req),[c]=await sqlClient`SELECT id,display_name,status,city,province,address

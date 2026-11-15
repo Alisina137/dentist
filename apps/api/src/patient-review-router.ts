@@ -39,6 +39,15 @@ function safeText(value:unknown,min:number,max:number){
  return text;
 }
 const clean=(res:Response)=>res.setHeader("Cache-Control","private, no-store");
+// Verified admins only: scoped pagination; never allow arbitrary SQL sort clauses.
+const moderationPage=(req:Request)=>{
+ const raw=String(req.query.page??"1"),sort=String(req.query.sort??"oldest");
+ if(!/^[1-9]\d{0,4}$/.test(raw))fail(422,"INVALID_PAGE");
+ if(!["oldest","newest"].includes(sort))fail(422,"INVALID_SORT");
+ const page=Number(raw),pageSize=10,q=String(req.query.q??"").trim().slice(0,100);
+ return {page,pageSize,offset:(page-1)*pageSize,q,sort};
+};
+
 const publicCache=(res:Response)=>res.setHeader("Cache-Control","public, max-age=45");
 async function identity(req:ReviewedReq,res:Response,next:NextFunction){
  try{
@@ -239,15 +248,37 @@ export function patientReviewRouter(){
  }));
  router.use("/admin",adminArea);
  adminArea.use(identity,admin);
+ adminArea.get("/history",task(async(_req,res)=>{
+  // Moderation decision metadata only: never expose patient, clinic or actor identifiers.
+  const rows=await sqlClient`SELECT action,version,occurred_at
+   FROM patient_review_events WHERE action IN
+    ('approved','rejected','report_dismissed','report_removed','appeal_upheld','appeal_overturned')
+   ORDER BY occurred_at DESC,id DESC LIMIT 30`;
+  clean(res);res.json({events:rows.map(item=>({
+   action:item.action,version:item.version,at:item.occurred_at
+  }))});
+ }));
  adminArea.get("/queue",task(async(req,res)=>{
-  const rows=await sqlClient`SELECT r.id,r.clinic_id,r.dentist_id,r.owner_user_id,
-    v.version,v.stars,v.headline,v.feedback,v.submitted_at FROM patient_visit_reviews r
-   JOIN patient_review_versions v ON v.review_id=r.id AND v.version=r.current_version
-   WHERE v.state='pending' AND r.withdrawn_at IS NULL
-   ORDER BY v.submitted_at ASC LIMIT 100`;
+  const {page,pageSize,offset,q,sort}=moderationPage(req);
+  const [rows,total]=await Promise.all([
+   sqlClient`SELECT r.id,r.clinic_id,r.dentist_id,
+    v.version,v.stars,v.headline,v.feedback,v.submitted_at
+    FROM patient_visit_reviews r
+    JOIN patient_review_versions v ON v.review_id=r.id AND v.version=r.current_version
+    WHERE v.state='pending' AND r.withdrawn_at IS NULL
+     AND (${q}='' OR v.headline ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN v.submitted_at END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN v.submitted_at END DESC NULLS LAST,r.id
+    LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM patient_visit_reviews r
+    JOIN patient_review_versions v ON v.review_id=r.id AND v.version=r.current_version
+    WHERE v.state='pending' AND r.withdrawn_at IS NULL
+     AND (${q}='' OR v.headline ILIKE ${"%"+q+"%"})`
+  ]);
   clean(res);res.json({pending:rows.map(r=>({id:r.id,clinicId:r.clinic_id,
    dentistId:r.dentist_id,version:r.version,stars:r.stars,headline:r.headline,
-   feedback:r.feedback,submittedAt:r.submitted_at}))});
+   feedback:r.feedback,submittedAt:r.submitted_at})),
+   total:Number(total[0]?.total??0),page,pageSize,sort});
  }));
  adminArea.post("/:reviewId/decision",task(async(req,res)=>{
   const review=id(req.params.reviewId),version=req.body?.version,
@@ -276,21 +307,39 @@ export function patientReviewRouter(){
   });
   clean(res);res.json(result);
  }));
- adminArea.get("/reports",task(async(_req,res)=>{
-  const rows=await sqlClient`SELECT f.id,f.review_id,f.version,f.category,f.note,
+ adminArea.get("/reports",task(async(req,res)=>{
+  const {page,pageSize,offset,q,sort}=moderationPage(req);
+  const [rows,total]=await Promise.all([
+   sqlClient`SELECT f.id,f.review_id,f.version,f.category,f.note,
     f.reported_at,r.clinic_id,v.headline,v.feedback,v.stars
-   FROM patient_review_reports f JOIN patient_visit_reviews r ON r.id=f.review_id
-   JOIN patient_review_versions v ON v.review_id=f.review_id AND v.version=f.version
-   WHERE f.state='pending' ORDER BY f.reported_at ASC LIMIT 100`;
-  clean(res);res.json({reports:rows});
+    FROM patient_review_reports f JOIN patient_visit_reviews r ON r.id=f.review_id
+    JOIN patient_review_versions v ON v.review_id=f.review_id AND v.version=f.version
+    WHERE f.state='pending' AND (${q}='' OR v.headline ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN f.reported_at END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN f.reported_at END DESC NULLS LAST,f.id
+    LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM patient_review_reports f
+    JOIN patient_review_versions v ON v.review_id=f.review_id AND v.version=f.version
+    WHERE f.state='pending' AND (${q}='' OR v.headline ILIKE ${"%"+q+"%"})`
+  ]);
+  clean(res);res.json({reports:rows,total:Number(total[0]?.total??0),page,pageSize,sort});
  }));
- adminArea.get("/appeals",task(async(_req,res)=>{
-  const rows=await sqlClient`SELECT a.id,a.review_id,a.version,a.reason,
+ adminArea.get("/appeals",task(async(req,res)=>{
+  const {page,pageSize,offset,q,sort}=moderationPage(req);
+  const [rows,total]=await Promise.all([
+   sqlClient`SELECT a.id,a.review_id,a.version,a.reason,
     a.created_at,r.clinic_id,v.headline,v.feedback,v.stars,v.decision_note,v.decision_category
-   FROM patient_review_appeals a JOIN patient_visit_reviews r ON r.id=a.review_id
-   JOIN patient_review_versions v ON v.review_id=a.review_id AND v.version=a.version
-   WHERE a.state='pending' ORDER BY a.created_at ASC LIMIT 100`;
-  clean(res);res.json({appeals:rows});
+    FROM patient_review_appeals a JOIN patient_visit_reviews r ON r.id=a.review_id
+    JOIN patient_review_versions v ON v.review_id=a.review_id AND v.version=a.version
+    WHERE a.state='pending' AND (${q}='' OR v.headline ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN a.created_at END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN a.created_at END DESC NULLS LAST,a.id
+    LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM patient_review_appeals a
+    JOIN patient_review_versions v ON v.review_id=a.review_id AND v.version=a.version
+    WHERE a.state='pending' AND (${q}='' OR v.headline ILIKE ${"%"+q+"%"})`
+  ]);
+  clean(res);res.json({appeals:rows,total:Number(total[0]?.total??0),page,pageSize,sort});
  }));
  adminArea.post("/reports/:reportId/decision",task(async(req,res)=>{
   const report=id(req.params.reportId),action=req.body?.action;

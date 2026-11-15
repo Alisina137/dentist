@@ -1,0 +1,60 @@
+/* Phase C — Verification and moderation. Admin-only: no patient or clinic theme changes. */
+.shell-admin .adm-c-tools{display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 16px;margin-block:15px;background:#fff;border:1px solid #e0eaee;border-radius:15px}
+.shell-admin .adm-c-search{display:flex;gap:8px;align-items:center;flex:1;min-width:min(100%,290px)}
+.shell-admin .adm-c-search-field{display:flex;align-items:center;gap:9px;min-height:42px;flex:1;padding-inline:12px;border:1px solid #cddfe5;border-radius:10px;color:#698593;min-width:0}
+.shell-admin .adm-c-search-field:focus-within{border-color:#108291;box-shadow:0 0 0 3px #e6f4f6}
+.shell-admin .adm-c-search-field input{border:0!important;box-shadow:none!important;background:transparent!important;min-width:0;width:100%;min-height:38px;padding:0;font-size:13px}
+.shell-admin .adm-c-search-field input:focus{outline:0!important}
+.shell-admin .adm-c-sort{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.shell-admin .adm-c-sort label{font-size:11px;color:#4e6878;font-weight:700;display:grid;gap:3px}
+.shell-admin .adm-c-sort select{font-size:13px;min-height:42px;min-width:145px}
+.shell-admin .adm-c-pager{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid #e7eef2;padding:15px 2px 2px;margin-block-start:14px;font-size:12px;color:#597583}
+.shell-admin .adm-c-pager-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.shell-admin .adm-c-pager-actions strong{font-weight:750;color:#345566}
+.shell-admin .adm-c-pager .btn{min-height:36px;font-size:12px;padding:7px 11px}
+.shell-admin .adm-c-empty{display:grid;justify-items:center;text-align:center;gap:9px;padding:35px 18px;color:#5b7684;background:#f6fafb;border:1px dashed #ccdfe5;border-radius:13px;margin-block:12px}
+.shell-admin .adm-c-empty svg{color:#0f7887}
+.shell-admin .adm-c-empty p{font-size:13px;line-height:1.6;margin:0}
+.shell-admin .adm-c-stack{display:grid;gap:18px}
+.shell-admin .adm-c-queue-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.shell-admin .adm-c-queue-summary p{color:#617c89;font-size:12px;margin:0}
+.shell-admin .adm-c-table{width:100%;border-collapse:separate;border-spacing:0;text-align:start;font-size:13px;min-width:640px}
+.shell-admin .adm-c-table th{background:#f5fafb;color:#567181;font-size:11px;font-weight:800;letter-spacing:.015em;text-align:start;padding:13px 12px;border-bottom:1px solid #dce8ed}
+.shell-admin .adm-c-table td{padding:13px 12px;border-bottom:1px solid #edf2f4;vertical-align:middle;color:#3c5a6c}
+.shell-admin .adm-c-table tbody tr:hover{background:#fafcfd}
+.shell-admin .adm-c-table td strong{color:#234a5f;font-weight:760}
+.shell-admin .adm-c-table td small{display:block;font-size:11px;color:#607c89;margin-top:4px}
+.shell-admin .adm-c-review-link{display:inline-flex;gap:6px;align-items:center;font-weight:750;color:#087688;font-size:12px}
+.shell-admin .adm-c-review-link:hover{text-decoration:underline}
+.shell-admin .adm-c-diff{display:grid;gap:12px;margin-block:12px;padding:17px;border:1px solid #cae1e5;background:#f5fafb;border-radius:13px}
+.shell-admin .adm-c-diff h3{font-size:15px;margin:0;color:#1c5166}
+.shell-admin .adm-c-diff-count{font-size:11px;border-radius:99px;color:#087485;background:#dbf1f3;padding:3px 9px}
+.shell-admin .adm-c-diff-table{display:grid;overflow-x:auto;border:1px solid #d9e7eb;border-radius:10px}
+.shell-admin .adm-c-diff-table-head,.shell-admin .adm-c-diff-row{display:grid;grid-template-columns:minmax(120px,.72fr) repeat(2,minmax(150px,1fr));gap:0;min-width:440px}
+.shell-admin .adm-c-diff-table-head{background:#e9f3f6;color:#386577;font-size:11px;font-weight:800}
+.shell-admin .adm-c-diff-row{font-size:12px;line-height:1.55;background:#fff}
+.shell-admin .adm-c-diff-table-head>*,.shell-admin .adm-c-diff-row>*{padding:10px 12px;border-inline-end:1px solid #e3eef1;border-block-end:1px solid #e3eef1;overflow-wrap:anywhere;max-height:126px;overflow:auto}
+.shell-admin .adm-c-diff-row .adm-c-diff-new{background:#edf8f2;color:#23664c}
+.shell-admin .adm-c-history{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.shell-admin .adm-c-history li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:12px 14px;background:#f7fafb;border:1px solid #e1eaef;border-radius:11px}
+.shell-admin .adm-c-history-indicator{width:9px;height:9px;border-radius:50%;background:#168390;margin-top:5px}
+.shell-admin .adm-c-history strong{display:block;font-size:12px;color:#234e62}
+.shell-admin .adm-c-history time{display:block;font-size:11px;color:#627e8b}
+.shell-admin .adm-c-history p{font-size:12px;line-height:1.6;color:#506d7a;overflow-wrap:anywhere;white-space:pre-wrap}
+.shell-admin .adm-c-decision-note{font-size:12px;color:#6b4c29;background:#fff7e9;border:1px solid #f0dfc0;border-radius:10px;padding:10px 12px}
+.shell-admin .adm-c-moderation-list{display:grid;gap:12px}
+.shell-admin .adm-c-moderation-card{border:1px solid #e0eaee;border-radius:14px;background:#fff;box-shadow:0 3px 16px rgba(26,63,79,.035);padding:17px}
+.shell-admin .adm-c-moderation-card h2{font-size:15px;font-weight:780;margin-block:8px}
+.shell-admin .adm-c-moderation-card p{font-size:13px;line-height:1.65;color:#486675}
+.shell-admin .adm-c-moderation-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.shell-admin .adm-c-moderation-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}
+.shell-admin .adm-c-moderation-actions button{min-height:37px;padding:7px 12px;border-radius:9px;font-size:12px}
+.shell-admin .adm-c-decision-panel{display:grid;gap:10px;background:#f6fafb;border:1px solid #d5e6eb;border-radius:12px;padding:14px;margin-top:14px}
+.shell-admin .adm-c-decision-panel label{font-size:12px;font-weight:750;color:#3f6071}
+.shell-admin .adm-c-decision-panel textarea{min-height:90px}
+.shell-admin .adm-c-decision-panel .adm-c-decision-buttons{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.shell-admin .adm-c-decision-panel .adm-c-confirm{display:flex;align-items:center;gap:8px;line-height:1.6;font-weight:600}
+.shell-admin .adm-c-decision-panel .adm-c-confirm input{min-height:unset}
+.shell-admin .adm-c-highlight{background:#e9f6f6;border:1px solid #d0e8ec;border-radius:9px;padding:7px 10px;color:#207184}
+@media(max-width:740px){.shell-admin .adm-c-search{flex-basis:100%}.shell-admin .adm-c-tools{padding:12px;gap:10px}.shell-admin .adm-c-search .btn{padding-inline:12px}.shell-admin .adm-c-sort{width:100%}.shell-admin .adm-c-table-wrap{overflow-x:auto}.shell-admin .adm-c-pager{align-items:flex-start}.shell-admin .adm-c-diff{padding:10px}}
+@media(prefers-reduced-motion:reduce){.shell-admin .adm-c-review-link,.shell-admin .adm-c-search-field{transition:none}}

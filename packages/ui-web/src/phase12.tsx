@@ -2,6 +2,7 @@
 import React,{useEffect,useState,useMemo,type FormEvent,type ReactNode} from "react";
 import {authClient,InlineAlert,usePreferences} from "./index";
 import {Shell} from "./phase03";
+import {QueueTools,QueuePager,QueueEmpty,ListingDiff,useModerationWords} from "./admin-moderation";
 
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;membershipId:string;role:Role;
@@ -711,25 +712,28 @@ export function ClinicListingPortal(){
 
 type AdminView="dentists"|"dentistReview"|"listings"|"listingReview";
 function AdminDentistQueue(){
- const {t,date}=useWords();
+ const {t,date}=useWords(),{w}=useModerationWords();
  const [status,setStatus]=useState("pending"),[q,setQ]=useState(""),[search,setSearch]=useState("");
- const rows=load(adminPath("/dentists?")+new URLSearchParams({status,q:search}));
+ const [sort,setSort]=useState<"newest"|"oldest">("newest"),[page,setPage]=useState(1);
+ const rows=load(adminPath("/dentists?")+new URLSearchParams({status,q:search,sort,page:String(page)}));
+ useEffect(()=>{
+  const fromUrl=new URLSearchParams(location.search).get("status");
+  if(fromUrl&&["pending","verified","rejected","needs_changes","revoked","all"].includes(fromUrl))setStatus(fromUrl);
+ },[]);
  return <div className="phase12-stack">
   <div className="phase12-section-title"><div><h1>{t("adminDentists")}</h1>
    <p>{t("confirmReview")}</p></div></div>
   <nav className="phase12-tabs" role="tablist" aria-label={t("adminDentists")}>
    {(["pending","verified","rejected","needs_changes","revoked","all"]).map(x=>
     <button key={x} type="button" role="tab" aria-selected={status===x}
-     onClick={()=>setStatus(x)}>{t(x)}</button>)}</nav>
-  <form className="phase12-filter-form" onSubmit={e=>{e.preventDefault();setSearch(q)}}>
-   <input maxLength={100} aria-label={t("search")} value={q}
-    placeholder={t("search")} onChange={e=>setQ(e.target.value)}/>
-   <button className="btn btn-secondary" type="submit">{t("search")}</button>
-  </form>
+     onClick={()=>{setStatus(x);setPage(1);}}>{t(x)}</button>)}</nav>
+  <QueueTools draft={q} onDraftChange={setQ} onSubmit={()=>{setSearch(q.trim());setPage(1);}}
+   onClear={()=>{setQ("");setSearch("");setPage(1);}} sort={sort}
+   onSortChange={v=>{setSort(v);setPage(1);}}/>
   {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:
-   !rows.data?<Busy/>:!rows.data.dentists.length?<div className="card phase12-empty">{t("noData")}</div>:
-   <div className="card phase12-panel"><div className="phase12-table-wrap">
-    <table className="phase12-table"><thead><tr>
+   !rows.data?<Busy/>:
+   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminDentists")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.dentists.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
+    <table className="phase12-table adm-c-table"><thead><tr>
      <th>{t("professional")}</th><th>{t("clinic")}</th>
      <th>{t("credentialType")}</th><th>{t("submittedAt")}</th>
      <th>{t("status")}</th><th>{t("action")}</th>
@@ -738,13 +742,14 @@ function AdminDentistQueue(){
      <td>{x.clinic_name}<small>{x.city}</small></td>
      <td>{x.credential_type||"—"}</td><td>{date(x.submitted_at)}</td>
      <td><Label value={x.status}/></td>
-     <td><a className="phase12-text-link" href={"/admin/dentists/"+x.membership_id}>
+     <td><a className="adm-c-review-link" href={"/admin/dentists/"+x.membership_id}>
       {t("review")} →</a></td>
-    </tr>)}</tbody></table></div></div>}
+    </tr>)}</tbody></table></div>}
+    <QueuePager page={page} total={rows.data.total} pageSize={rows.data.pageSize} onPage={setPage}/></div>}
  </div>;
 }
 function AdminDentistReview({id}:{id:string}){
- const {t,date}=useWords();
+ const {t,date}=useWords(),{w}=useModerationWords();
  const data=load(adminPath("/dentists/"+id));
  const [action,setAction]=useState("approve"),[reason,setReason]=useState(""),
   [basis,setBasis]=useState(""),[confirmation,setConfirmation]=useState(false),
@@ -783,7 +788,7 @@ function AdminDentistReview({id}:{id:string}){
   <section className="card phase12-panel">
    <SectionTitle title={t("evidence")} desc={t("confirmReview")}/>
    {items.length?items.map((s:any)=><div className="phase12-evidence-row" key={s.id}>
-    <div><strong>{s.credential_type}</strong><p dir="ltr">{s.credential_number}</p>
+    <div><strong>{s.credential_type}</strong>{s.id===v.current_submission_id&&<span className="adm-c-highlight">{w("current")}</span>}<p dir="ltr">{s.credential_number}</p>
      <span>{t("validUntil")}: {s.valid_until} · {t("draftVersion")} {s.draft_version}</span>
      <small>{s.file_name} · {s.size_bytes} bytes · {date(s.created_at)}</small></div>
     <button type="button" className="btn btn-secondary" onClick={()=>privateFile(
@@ -821,25 +826,28 @@ function AdminDentistReview({id}:{id:string}){
  </div>;
 }
 function AdminListingQueue(){
- const {t,date}=useWords();const [status,setStatus]=useState("pending"),
+ const {t,date}=useWords(),{w}=useModerationWords();const [status,setStatus]=useState("pending"),
   [q,setQ]=useState(""),[search,setSearch]=useState("");
- const rows=load(adminPath("/listings?")+new URLSearchParams({status,q:search}));
+ const [sort,setSort]=useState<"newest"|"oldest">("newest"),[page,setPage]=useState(1);
+ const rows=load(adminPath("/listings?")+new URLSearchParams({status,q:search,sort,page:String(page)}));
+ useEffect(()=>{
+  const fromUrl=new URLSearchParams(location.search).get("status");
+  if(fromUrl&&["pending","published","hidden","all"].includes(fromUrl))setStatus(fromUrl);
+ },[]);
  return <div className="phase12-stack">
   <div className="phase12-section-title"><div><h1>{t("adminListings")}</h1>
    <p>{t("publicPatient")}</p></div></div>
   <nav className="phase12-tabs" role="tablist" aria-label={t("adminListings")}>
    {(["pending","published","hidden","all"] as const).map(x=><button type="button" key={x}
-    role="tab" aria-selected={status===x} onClick={()=>setStatus(x)}>
+    role="tab" aria-selected={status===x} onClick={()=>{setStatus(x);setPage(1);}}>
     {t(x==="pending"?"pendingRevisions":x==="published"?"publishedListings":
      x==="hidden"?"hiddenListings":"all")}</button>)}</nav>
-  <form className="phase12-filter-form" onSubmit={e=>{e.preventDefault();setSearch(q)}}>
-   <input maxLength={100} aria-label={t("search")} placeholder={t("search")}
-    value={q} onChange={e=>setQ(e.target.value)}/>
-   <button className="btn btn-secondary" type="submit">{t("search")}</button></form>
+  <QueueTools draft={q} onDraftChange={setQ} onSubmit={()=>{setSearch(q.trim());setPage(1);}}
+   onClear={()=>{setQ("");setSearch("");setPage(1);}} sort={sort}
+   onSortChange={v=>{setSort(v);setPage(1);}}/>
   {rows.error?<ErrorPanel code={rows.error} retry={rows.refresh}/>:!rows.data?<Busy/>:
-   !rows.data.listings.length?<div className="card phase12-empty">{t("noData")}</div>:
-   <div className="card phase12-panel"><div className="phase12-table-wrap">
-    <table className="phase12-table"><thead><tr>
+   <div className="card phase12-panel"><div className="adm-c-queue-summary"><strong>{t("adminListings")}</strong><p>{rows.data.total} {w("items")}</p></div>{!rows.data.listings.length?<QueueEmpty/>:<div className="phase12-table-wrap adm-c-table-wrap">
+    <table className="phase12-table adm-c-table"><thead><tr>
      <th>{t("clinic")}</th><th>{t("city")}</th><th>{t("changes")}</th>
      <th>{t("submittedAt")}</th><th>{t("status")}</th><th>{t("action")}</th>
     </tr></thead><tbody>{rows.data.listings.map((x:any)=><tr key={x.clinicId}>
@@ -847,9 +855,10 @@ function AdminListingQueue(){
      <td>{(x.changedFields||[]).map((s:string)=>s.replaceAll("_"," ")).join(", ")||"—"}</td>
      <td>{date(x.submittedAt)}</td>
      <td><Label value={x.hidden?"hidden":x.pendingVersion?"pending":"published"}/></td>
-     <td><a className="phase12-text-link" href={"/admin/listings/"+x.clinicId}>
+     <td><a className="adm-c-review-link" href={"/admin/listings/"+x.clinicId}>
       {t("review")} →</a></td>
-    </tr>)}</tbody></table></div></div>}
+    </tr>)}</tbody></table></div>}
+    <QueuePager page={page} total={rows.data.total} pageSize={rows.data.pageSize} onPage={setPage}/></div>}
  </div>;
 }
 function Timeline({rows}:{rows:any[]}){
@@ -927,6 +936,8 @@ function AdminListingReview({id}:{id:string}){
     <div><span>{t("revision")}</span><strong>{h.revision}</strong></div></div>
   </section>
   <section className="card phase12-panel"><SectionTitle title={t("compare")} desc={t("publicPatient")}/>
+    <ListingDiff approved={(x.approved?.profile as unknown as Record<string,unknown>)||null}
+     pending={(x.pending?.profile as unknown as Record<string,unknown>)||null}/>
    <div className="phase12-comparison-grid">
     <VersionCompare title={t("oldContent")} version={x.approved} clinicId={id}
      clinic={x.clinic} readiness={null}/>
