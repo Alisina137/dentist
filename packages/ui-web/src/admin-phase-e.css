@@ -1,0 +1,131 @@
+/* Phase E — actionable operations UI. Admin-only; never restyles patient or clinic portals. */
+.shell-admin .adm-e-header-controls{display:flex;align-items:center;gap:9px;position:relative}
+.shell-admin .adm-e-search-trigger,.shell-admin .adm-e-bell-trigger{border:1px solid #d9e6ea;background:#f8fbfc;color:#3d6274;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:39px;font-size:12px;font-weight:740;transition:background .14s,color .14s;cursor:pointer}
+.shell-admin .adm-e-search-trigger{padding:7px 11px;min-width:178px}
+.shell-admin .adm-e-search-trigger>span{flex:1;text-align:start}
+.shell-admin .adm-e-search-trigger kbd{font:700 10px/1.5 inherit;color:#7c919c;background:#eef3f5;border:1px solid #e1e9ed;padding:3px 7px;border-radius:6px;white-space:nowrap}
+.shell-admin .adm-e-bell-trigger{width:41px;min-width:41px;position:relative;padding:0}
+.shell-admin .adm-e-search-trigger:hover,.shell-admin .adm-e-bell-trigger:hover{color:#056f81;background:#eaf7f7;border-color:#b9dcdf}
+.shell-admin .adm-e-alert-badge,.shell-admin .adm-e-bell-failed{position:absolute;inset-block-start:-5px;inset-inline-end:-5px;border-radius:999px;min-width:20px;min-height:20px;display:grid;place-items:center;padding:2px 5px;background:#cb4a44;color:#fff;font-size:10px;font-weight:900;border:2px solid #fff;line-height:1}
+.shell-admin .adm-e-bell-failed{background:#b8782d}
+.shell-admin .adm-e-bell-wrapper{position:relative}
+.shell-admin .adm-e-bell-popover{position:absolute;inset-block-start:calc(100% + 12px);inset-inline-end:0;width:min(360px,calc(100vw - 25px));z-index:500;background:#fff;border:1px solid #d8e6ea;box-shadow:0 16px 50px rgba(21,57,73,.16);border-radius:14px;overflow:hidden}
+.shell-admin .adm-e-bell-popover header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #e6edef;color:#183f52}
+.shell-admin .adm-e-bell-popover header button{display:grid;place-items:center;width:30px;height:30px;border:0;background:transparent;border-radius:7px;color:#517383}
+.shell-admin .adm-e-bell-popover>p{margin:0;padding:19px 16px;color:#567482;font-size:12px}
+.shell-admin .adm-e-bell-list{max-height:310px;overflow:auto}
+.shell-admin .adm-e-bell-list a{display:flex;gap:11px;align-items:start;border-bottom:1px solid #f0f3f5;color:#214e62;text-decoration:none;padding:13px 16px}
+.shell-admin .adm-e-bell-list a:hover{background:#f2f9f9}
+.shell-admin .adm-e-bell-list a span:nth-child(2){display:grid;gap:2px;min-width:0}
+.shell-admin .adm-e-bell-list strong{font-size:12px;font-weight:760;line-height:1.4}
+.shell-admin .adm-e-bell-list small{font-size:10px;color:#668390}
+.shell-admin .adm-e-alert-dot{display:inline-block;width:9px;height:9px;flex:0 0 9px;margin-top:4px;border-radius:50%;background:#0c8392;box-shadow:0 0 0 3px #e4f5f5}
+.shell-admin .adm-e-alert-dot.is-critical{background:#c9544c;box-shadow:0 0 0 3px #ffeded}
+.shell-admin .adm-e-alert-dot.is-warning{background:#d49737;box-shadow:0 0 0 3px #fff1df}
+.shell-admin .adm-e-bell-footer{display:block;padding:13px 16px;background:#f0f8f8;text-decoration:none;font-size:12px;font-weight:820;color:#0d7585}
+.shell-admin .adm-e-overlay{position:fixed;z-index:1250;inset:0;background:rgba(16,36,48,.55);backdrop-filter:blur(3px);display:flex;justify-content:center;align-items:flex-start;padding:clamp(65px,13vh,145px) 17px 18px}
+.shell-admin .adm-e-command{width:min(660px,100%);max-height:min(620px,77vh);background:#fff;border-radius:17px;border:1px solid #c7e0e5;box-shadow:0 28px 75px rgba(9,37,54,.25);display:flex;flex-direction:column;overflow:hidden}
+.shell-admin .adm-e-command>header{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid #e4edef}
+.shell-admin .adm-e-command>header strong{font-size:15px;font-weight:820;color:#1e495f}
+.shell-admin .adm-e-command>header button{width:34px;height:34px;display:grid;place-items:center;border:1px solid transparent;border-radius:9px;background:#f5f8fa;color:#4d6b7a}
+.shell-admin .adm-e-command-input{display:flex;align-items:center;gap:12px;margin:15px 17px 8px;padding:0 13px;border:1px solid #c8dfe5;border-radius:11px;color:#0e8090;min-height:53px}
+.shell-admin .adm-e-command-input:focus-within{border-color:#0c8595;box-shadow:0 0 0 3px #e7f5f5}
+.shell-admin .adm-e-command-input input{border:0!important;outline:none!important;box-shadow:none!important;background:transparent!important;flex:1;min-width:0;min-height:50px;font-size:14px;color:#1c4c61}
+.shell-admin .adm-e-command-input kbd{padding:3px 7px;border:1px solid #e0e9ec;border-radius:6px;color:#6b8794;font-size:11px;background:#f4f7f8}
+.shell-admin .adm-e-command-hint{margin:0;padding:0 19px 14px;font-size:11px;color:#6b8390}
+.shell-admin .adm-e-command-results{overflow-y:auto;overscroll-behavior:contain;padding:9px 12px 14px;border-top:1px solid #edf2f4;min-height:95px}
+.shell-admin .adm-e-command-results>p{font-size:12px;margin:10px;padding:15px;text-align:center;color:#617c89}
+.shell-admin .adm-e-command-results a{display:flex;gap:10px;align-items:center;text-decoration:none;color:#235163;padding:10px 12px;border-radius:10px;min-height:63px}
+.shell-admin .adm-e-command-results a:hover,.shell-admin .adm-e-command-results a:focus-visible{background:#ecf7f8}
+.shell-admin .adm-e-result-icon{width:37px;height:37px;flex:0 0 37px;display:grid;place-items:center;border-radius:10px;background:#e7f4f5;color:#0d7e8c}
+.shell-admin .adm-e-result-copy{display:grid;gap:3px;flex:1;min-width:0}
+.shell-admin .adm-e-result-copy strong{font-size:13px;font-weight:760;overflow-wrap:anywhere}
+.shell-admin .adm-e-result-copy small{font-size:11px;color:#64808f;overflow-wrap:anywhere}
+.shell-admin .adm-e-result-status{font-size:10px;border-radius:7px;padding:4px 7px;background:#f0f5f6;color:#4e7280;white-space:nowrap}
+.shell-admin .adm-e-page{display:grid;gap:19px;min-width:0;color:#194153}
+.shell-admin .adm-e-page :is(h1,h2,p){margin:0}
+.shell-admin .adm-e-page-header{display:flex;align-items:end;justify-content:space-between;gap:17px;flex-wrap:wrap}
+.shell-admin .adm-e-page-header h1{font-size:clamp(24px,2.4vw,31px);font-weight:840;letter-spacing:-.026em;line-height:1.35;margin:3px 0 5px}
+.shell-admin .adm-e-page-header p{font-size:13px;line-height:1.65;color:#627c8a;max-width:70ch}
+.shell-admin .adm-e-eyebrow{font-size:10px;letter-spacing:.1em;color:#0b8491;font-weight:850}
+.shell-admin .adm-e-page-header button{display:flex;gap:7px;align-items:center}
+.shell-admin .adm-e-page-tabs{display:flex;gap:8px;border-bottom:1px solid #dce9ed;padding-bottom:8px;flex-wrap:wrap}
+.shell-admin .adm-e-page-tabs a{display:inline-flex;gap:8px;align-items:center;color:#547281;text-decoration:none;border-radius:10px;padding:10px 13px;font-size:12.5px;font-weight:760}
+.shell-admin .adm-e-page-tabs a[aria-selected=true]{background:#e3f3f4;color:#0a7583}
+.shell-admin .adm-e-updated{display:flex;gap:8px;align-items:center;font-size:11px;color:#68808c}
+.shell-admin .adm-e-alert-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.shell-admin .adm-e-count-card{display:grid;gap:6px;padding:18px 20px;border-radius:14px;border:1px solid #dce9ed;background:#fff;box-shadow:0 5px 19px rgba(27,64,83,.04)}
+.shell-admin .adm-e-count-card span{font-size:12px;color:#5d7b89;font-weight:700}
+.shell-admin .adm-e-count-card strong{font-size:31px;font-weight:850;line-height:1.2;color:#0f586e}
+.shell-admin .adm-e-count-card small{color:#7a8993;font-size:10.5px}
+.shell-admin .adm-e-count-card.is-critical strong{color:#b94a44}
+.shell-admin .adm-e-alert-filters{display:flex;gap:7px;flex-wrap:wrap}
+.shell-admin .adm-e-alert-filters button{min-height:37px;border-radius:10px;border:1px solid #dbe8eb;background:#fff;padding:7px 13px;color:#597584;font-size:12px;font-weight:760}
+.shell-admin .adm-e-alert-filters button[aria-pressed=true]{background:#e7f5f5;color:#0c7283;border-color:#b6dbe0}
+.shell-admin .adm-e-alert-list{display:grid;gap:11px}
+.shell-admin .adm-e-alert-card{display:flex;align-items:start;gap:14px;padding:19px 18px;border:1px solid #e0e9ed;background:#fff;border-radius:15px;box-shadow:0 4px 17px rgba(25,67,86,.045)}
+.shell-admin .adm-e-alert-card.is-critical{border-inline-start:4px solid #c84d49}
+.shell-admin .adm-e-alert-card.is-warning{border-inline-start:4px solid #d5a04b}
+.shell-admin .adm-e-alert-card.is-info{border-inline-start:4px solid #3b95a2}
+.shell-admin .adm-e-alert-card.is-snoozed{opacity:.72}
+.shell-admin .adm-e-alert-symbol{width:40px;height:40px;flex:0 0 40px;border-radius:11px;background:#eef7f7;color:#117a88;display:grid;place-items:center}
+.shell-admin .adm-e-alert-card.is-critical .adm-e-alert-symbol{background:#fceeee;color:#b6504b}
+.shell-admin .adm-e-alert-description{min-width:0;flex:1;display:grid;gap:5px}
+.shell-admin .adm-e-alert-title-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shell-admin .adm-e-alert-description h2{font-size:14px;font-weight:800;line-height:1.4}
+.shell-admin .adm-e-alert-description p{font-size:12px;line-height:1.65;color:#5c7583}
+.shell-admin .adm-e-alert-description small{font-size:11px;color:#657d87}
+.shell-admin .adm-e-alert-affected{font-size:11px;font-weight:760;color:#336e7b}
+.shell-admin .adm-e-severity{font-size:10px;padding:4px 8px;border-radius:999px;background:#e8f1f3;color:#3e7180;font-weight:760}
+.shell-admin .adm-e-severity.is-critical{background:#ffeaea;color:#a93f3b}
+.shell-admin .adm-e-severity.is-warning{background:#fff1df;color:#875d21}
+.shell-admin .adm-e-alert-actions{display:grid;justify-items:stretch;gap:7px;min-width:150px}
+.shell-admin .adm-e-alert-actions .btn{font-size:11px;padding:8px 11px;min-height:36px;text-align:center}
+.shell-admin .adm-e-card{border-radius:15px;background:#fff;border:1px solid #dde8eb;padding:20px;box-shadow:0 4px 18px rgba(24,67,86,.045)}
+.shell-admin .adm-e-card h2{font-size:17px;line-height:1.4;font-weight:800}
+.shell-admin .adm-e-card>header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:15px;flex-wrap:wrap}
+.shell-admin .adm-e-card>header p{font-size:12px;color:#64808c;margin-top:3px}
+.shell-admin .adm-e-card>header a,.shell-admin .adm-e-health>a{font-size:12px;font-weight:780;color:#0b798b}
+.shell-admin .adm-e-no-alert{text-align:center;padding:50px 24px;color:#167e89}
+.shell-admin .adm-e-no-alert p{font-size:12px;color:#637d8a;margin-top:7px}
+.shell-admin .adm-e-legal-note{display:flex;align-items:start;gap:8px;font-size:11.5px;line-height:1.6;color:#637b87}
+.shell-admin .adm-e-legal-note svg{flex-shrink:0;margin-top:2px}
+.shell-admin .adm-e-metric-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.shell-admin .adm-e-metric-tiles a{display:grid;gap:7px;text-decoration:none;background:#fff;border:1px solid #dfeaed;border-radius:14px;padding:16px;color:#1a4a5f}
+.shell-admin .adm-e-metric-tiles a:hover{border-color:#acd9df;background:#f6fbfc}
+.shell-admin .adm-e-metric-tiles a>span{color:#087789}
+.shell-admin .adm-e-metric-tiles a strong{font-size:28px;line-height:1.2;font-weight:840}
+.shell-admin .adm-e-metric-tiles a small{font-size:11.5px;color:#62808b;font-weight:700}
+.shell-admin .adm-e-monitor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:13px}
+.shell-admin .adm-e-health-status{display:flex;gap:10px;align-items:center;padding:12px 2px;border-bottom:1px solid #edf2f4;color:#21796b;font-size:12px}
+.shell-admin .adm-e-health-status>span{flex:1;color:#537887}
+.shell-admin .adm-e-health-status>strong{font-size:11px}
+.shell-admin .adm-e-health-status.is-warning{color:#b06d36}
+.shell-admin .adm-e-health .adm-e-legal-note{margin:15px 0}
+.shell-admin .adm-e-mini-alerts>a{display:flex;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid #edf2f4;text-decoration:none;font-size:12px;color:#2d6072}
+.shell-admin .adm-e-mini-alerts>a strong{flex:1;font-weight:740}
+.shell-admin .adm-e-mini-alerts>a span:last-child{font-size:12px;font-weight:770}
+.shell-admin .adm-e-mini-alerts p{font-size:12px;color:#66808e}
+.shell-admin .adm-e-trend-tabs{display:flex;gap:7px;flex-wrap:wrap}
+.shell-admin .adm-e-trend-tabs button{border:1px solid #dbe9ec;border-radius:9px;background:#f8fbfc;color:#5a7988;padding:8px 11px;min-height:37px;font-size:12px;font-weight:740}
+.shell-admin .adm-e-trend-tabs button[aria-pressed=true]{background:#e2f3f4;border-color:#b5dbe0;color:#0b7486}
+.shell-admin .adm-e-chip{font-size:10.5px;font-weight:750;background:#edf7f8;color:#247687;border-radius:7px;padding:5px 8px}
+.shell-admin .adm-e-chart{position:relative;margin-top:12px;min-width:0}
+.shell-admin .adm-e-chart svg{display:block;width:100%;height:auto;direction:ltr;min-height:180px;overflow:visible}
+.shell-admin .adm-e-chart-empty{position:absolute;inset-block-start:42%;inset-inline:0;text-align:center;font-size:12px;color:#738997}
+.shell-admin .adm-e-chart-table{border-top:1px solid #e3edef;margin-top:10px;padding-top:12px;color:#11788b;font-size:12px}
+.shell-admin .adm-e-chart-table summary{cursor:pointer;font-weight:740}
+.shell-admin .adm-e-chart-table>div{max-height:280px;overflow:auto;margin-top:10px;border:1px solid #d9e8ed;border-radius:9px}
+.shell-admin .adm-e-chart-table table{border-collapse:collapse;width:100%;text-align:start}
+.shell-admin .adm-e-chart-table th,.shell-admin .adm-e-chart-table td{padding:8px 12px;border-bottom:1px solid #edf2f3;text-align:start;font-size:12px}
+.shell-admin .adm-e-chart-table th{background:#f3f8f9}
+.shell-admin .adm-e-events ol{list-style:none;margin:0;padding:0}
+.shell-admin .adm-e-events li{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #edf2f4;padding:10px 0}
+.shell-admin .adm-e-events li strong{flex:1;font-size:12px;min-width:160px;font-weight:760}
+.shell-admin .adm-e-events li>span{font-size:11px;color:#567988}
+.shell-admin .adm-e-events li time{font-size:10.5px;color:#65818c}
+@media(max-width:1250px){.shell-admin .adm-e-metric-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.shell-admin .adm-e-monitor-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.shell-admin .adm-e-search-trigger{min-width:40px;width:40px;padding:0}.shell-admin .adm-e-search-trigger span,.shell-admin .adm-e-search-trigger kbd{display:none}}
+@media(max-width:720px){.shell-admin .adm-e-alert-top{grid-template-columns:repeat(2,minmax(0,1fr))}.shell-admin .adm-e-alert-card{flex-wrap:wrap}.shell-admin .adm-e-alert-actions{flex-basis:100%;display:flex;flex-wrap:wrap}.shell-admin .adm-e-alert-actions .btn{flex:1}.shell-admin .adm-e-count-card{padding:14px}.shell-admin .adm-e-command-results a{gap:8px}.shell-admin .adm-e-result-status{display:none}.shell-admin .adm-e-card{padding:15px}.shell-admin .adm-e-page-header h1{font-size:26px}}
+@media(max-width:480px){.shell-admin .adm-e-metric-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.shell-admin .adm-e-metric-tiles a{padding:12px}.shell-admin .adm-e-metric-tiles a strong{font-size:23px}.shell-admin .adm-e-alert-top{gap:8px}.shell-admin .adm-e-alert-card{padding:13px}.shell-admin .adm-e-alert-symbol{width:34px;height:34px;flex-basis:34px}.shell-admin .adm-e-overlay{padding:7vh 10px}.shell-admin .adm-e-command{max-height:85vh}}
+@media(prefers-reduced-motion:reduce){.shell-admin .adm-e-search-trigger,.shell-admin .adm-e-bell-trigger{transition:none}.shell-admin .adm-e-overlay{backdrop-filter:none}}
