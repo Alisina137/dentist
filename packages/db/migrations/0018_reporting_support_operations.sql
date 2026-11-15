@@ -67,19 +67,29 @@ CREATE TABLE support_ticket_events (
  id text PRIMARY KEY,
  ticket_id text NOT NULL REFERENCES support_tickets(id),
  actor_id text NOT NULL REFERENCES auth_users(id),
- action text NOT NULL CHECK(action IN ('opened','reply','status','assign')),
+ action text NOT NULL CHECK(action IN ('opened','reply','status','assign','escalate')),
  previous_state text,
  new_state text,
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX support_events_timeline_idx ON support_ticket_events(ticket_id,created_at,id);
-CREATE OR REPLACE FUNCTION support_history_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE TABLE support_ticket_internal_notes (
+ id text PRIMARY KEY,
+ ticket_id text NOT NULL REFERENCES support_tickets(id),
+ author_id text NOT NULL REFERENCES auth_users(id),
+ body text NOT NULL CHECK(length(trim(body)) BETWEEN 5 AND 1000),
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX support_internal_notes_ticket_idx ON support_ticket_internal_notes(ticket_id,created_at,id);
+CREATE OR REPLACE FUNCTION support_history_immutable() RETURNS trigger LANGUAGE plpgsql AS $
 BEGIN
  RAISE EXCEPTION 'Support conversations and events are append-only';
 END; $$;
 CREATE TRIGGER support_messages_immutable BEFORE UPDATE OR DELETE ON support_ticket_messages
  FOR EACH ROW EXECUTE FUNCTION support_history_immutable();
 CREATE TRIGGER support_events_immutable BEFORE UPDATE OR DELETE ON support_ticket_events
+ FOR EACH ROW EXECUTE FUNCTION support_history_immutable();
+CREATE TRIGGER support_notes_immutable BEFORE UPDATE OR DELETE ON support_ticket_internal_notes
  FOR EACH ROW EXECUTE FUNCTION support_history_immutable();
 CREATE INDEX IF NOT EXISTS clinic_payment_entries_reporting_idx
  ON clinic_payment_entries(clinic_id,occurred_at) WHERE kind<>'credit';
