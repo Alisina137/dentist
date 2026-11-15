@@ -162,7 +162,8 @@ export function adminCenterRouter(){
   opsAdmin(req);
   const origin=req.headers.origin;
   const allowed=[process.env.ADMIN_WEB_URL||"http://localhost:3000",
-   "http://localhost:3001"]; // dev admin origin may differ across local workspaces
+   ...(process.env.NODE_ENV==="production"?[]:["http://localhost:3001"])];
+  // Never grant an alternate local development origin in production.
   if(!origin||!allowed.includes(origin))opsFail(403,"ORIGIN_DENIED");
   const key=req.body?.key;
   if(typeof key!=="string"||!/^(?:queue:[a-z]+:[0-9]+:[a-z0-9]+|event:[\w-]{8,100})$/.test(key))
