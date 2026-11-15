@@ -247,22 +247,63 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
    reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
- return <div className="p18-panel"><div className="p18-toolbar">
-  <label>{t("status")}<select value={filter} onChange={e=>{setFilter(e.target.value);setSelected("");setDetail(null)}}>
+ return <div className="p18-panel">
+  <section className="adm-d-sla" aria-label={o("supportSummary")}>
+   {([
+     ["unassignedCases",deskStats?.unassigned],
+     ["highPriority",deskStats?.highPriority],
+     ["triageOverdue",deskStats?.triageOverdue],
+     ["firstReplyOverdue",deskStats?.firstReplyOverdue],
+     ["dueSoon",deskStats?.firstReplyDueSoon],
+     ["statusInProgress",deskStats?.inProgress]
+   ] as const).map(([key,value])=><div key={key} className={"adm-d-sla-item"+(
+     (key==="triageOverdue"||key==="firstReplyOverdue")&&Boolean(value)?" warning":"")}>
+     <span>{o(key)}</span><strong>{value==null?"—":num(value)}</strong>
+     <small>{o("supportSummary")}</small>
+    </div>)}
+  </section>
+  <p className="adm-d-sla-note">{o("slaNotice")}</p>
+  <div className="p18-toolbar">
+  <label>{t("status")}<select value={filter} onChange={e=>{setFilter(e.target.value);setPage(1);setSelected("");setDetail(null)}}>
    <option value="all">{o("all")}</option>
    {statusList.map(s=><option key={s} value={s}>{o("status"+s.charAt(0).toUpperCase()+s.slice(1).replace(/_(\w)/g,(_m,c:string)=>c.toUpperCase()))}</option>)}
   </select></label>
-  <label>{t("category")}<select value={category} onChange={e=>setCategory(e.target.value)}>
+  <label>{t("category")}<select value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}>
    <option value="all">{o("all")}</option>
    {categories.map(c=><option key={c.code} value={c.code}>{lang==="fa-AF"?c.label_fa:lang==="ps-AF"?c.label_ps:c.label_en}</option>)}
   </select></label>
-  <label>{o("assigned")}<select value={assigned} onChange={e=>setAssigned(e.target.value)}>
+  <label>{o("assigned")}<select value={assigned} onChange={e=>{setAssigned(e.target.value);setPage(1);}}>
    <option value="all">{o("all")}</option><option value="unassigned">{o("unassigned")}</option><option value="mine">{o("myAssignments")}</option>
   </select></label>
-  <label>{o("age")}<select value={age} onChange={e=>setAge(e.target.value)}>
+  <label>{o("age")}<select value={age} onChange={e=>{setAge(e.target.value);setPage(1);}}>
    {[0,3,7,30].map(x=><option key={x} value={x}>{x===0?o("all"):x+"+"}</option>)}
   </select></label>
-  <button className="btn btn-secondary" onClick={reload}>{t("refresh")}</button></div>
+  <label>{o("priorityFilter")}<select value={priority}
+   onChange={e=>{setPriority(e.target.value);setPage(1);}}>
+   <option value="all">{o("filterAll")}</option><option value="high">{o("high")}</option>
+   <option value="normal">{o("normal")}</option></select></label>
+  <label>{o("urgency")}<select value={urgency}
+   onChange={e=>{setUrgency(e.target.value);setPage(1);}}>
+   <option value="all">{o("filterAll")}</option>
+   <option value="triage">{o("urgentTriage")}</option>
+   <option value="response">{o("overdueResponse")}</option></select></label>
+  <label>{o("sortOrder")}<select value={sort}
+   onChange={e=>{setSort(e.target.value);setPage(1);}}>
+   <option value="priority">{o("priorityFirst")}</option>
+   <option value="newest">{o("newest")}</option><option value="oldest">{o("oldest")}</option></select></label>
+  <button className="btn btn-secondary" type="button" onClick={reload}>{t("refresh")}</button></div>
+  <form className="adm-d-support-controls" role="search"
+   onSubmit={e=>{e.preventDefault();setSearch(searchDraft.trim());setPage(1);}}>
+   <div className="adm-d-support-search">
+    <input type="search" value={searchDraft} maxLength={100}
+     aria-label={o("searchTicket")} placeholder={o("searchTicket")}
+     onChange={e=>setSearchDraft(e.target.value)}/>
+    <button className="btn btn-primary" type="submit">{o("searchButton")}</button>
+    {searchDraft&&<button className="btn btn-secondary" type="button"
+     onClick={()=>{setSearchDraft("");setSearch("");setPage(1);}}>{o("filterAll")}</button>}
+   </div>
+   <span className="muted">{total} {o("results")}</span>
+  </form>
   <div className="p18-split"><div className="p18-ticket-list" aria-label={o("desk")}>
    {loading?<p>{t("loading")}</p>:!tickets.length?<p className="muted">{o("noTickets")}</p>:
     tickets.map(ticket=><button type="button" className={"p18-ticket-option"+(selected===ticket.id?" selected":"")}
@@ -270,7 +311,16 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
      <bdi dir="ltr">{ticket.reference}</bdi><span>{ticket.title}</span>
      <small>{ticket.status} · {ticket.category_code} · {ticket.age_hours||0}h</small>
      {ticket.overdue_for_triage&&<small className="p18-priority">{o("overdue")}</small>}
+     {ticket.first_reply_overdue&&<small className="adm-d-sla-badge">{o("overdueResponse")}</small>}
      <small>{ticket.assignee_name||o("unassigned")} · {ticket.source}</small></button>)}
+   <nav className="adm-d-support-pager" aria-label={o("page")}>
+    <span>{o("page")} {page} / {Math.max(1,Math.ceil(total/15))}</span>
+    <div><button className="btn btn-secondary" type="button"
+      disabled={loading||page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>
+      {o("prevPage")}</button>
+     <button className="btn btn-secondary" type="button" disabled={loading||page*15>=total}
+      onClick={()=>setPage(p=>p+1)}>{o("nextPage")}</button></div>
+   </nav>
    </div>
    <div>{detail?<><h2>{detail.ticket.title}</h2>
     <p className="muted"><bdi dir="ltr">{detail.ticket.reference}</bdi> · {detail.ticket.category_code} · {detail.ticket.priority}</p>
@@ -287,6 +337,15 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
     <div className="p18-conversation">{detail.messages.map(m=><div key={m.id}
      className={"p18-message "+m.author_role}><small>{m.author_role} · {new Date(m.created_at).toLocaleString(lang)}</small>
      <p>{m.body}</p></div>)}</div>
+    <details className="adm-d-support-history">
+     <summary>{o("history")} ({events.length})</summary>
+     {events.length?<ol>{events.map((event,i)=><li key={i}>
+      <span>{event.action.replaceAll("_"," ")}
+       {event.from||event.to?" · "+(event.from||"—")+" → "+(event.to||"—"):""}</span>
+      <time dateTime={event.at}>{new Intl.DateTimeFormat(lang,{
+       timeZone:"Asia/Kabul",dateStyle:"short",timeStyle:"short"}).format(new Date(event.at))}</time>
+     </li>)}</ol>:<p className="muted">{o("noHistory")}</p>}
+    </details>
     {(role==="admin"||detail.ticket.assignee_id===myId)&&
       <section className="p18-private-notes"><h3>{o("internalNotes")}</h3>
        <p className="p18-footnote">{o("internalNotesHint")}</p>
