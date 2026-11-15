@@ -46,7 +46,7 @@ try{
   '"clinic_id"','"support_messages"','"clinical_note"','"email"'])
   assert.ok(!serialized.includes(disallowed),"dashboard leaks a private identifier: "+disallowed);
  assert.ok(live.activity.every(item=>Object.keys(item).every(key=>
-  ["action","outcome","subjectType","at"].includes(key)));
+  ["action","outcome","subjectType","at"].includes(key))));
  for(const length of [7,90]){
   const period=ok(await request(reports+"/platform/dashboard?days="+length,
    "GET",undefined,admin.session),[200],"dashboard "+length+" day period");
