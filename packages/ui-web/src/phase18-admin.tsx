@@ -8,7 +8,7 @@ import {AdminPilotReadiness} from "./phase19-admin";
 type View="support"|"analytics"|"security"|"settings"|"pilot";
 type Ticket={id:string;reference:string;title:string;category_code:string;status:string;
  priority:string;created_at:string;updated_at:string;assigned?:boolean;
- assignee_id?:string|null;assignee_name?:string|null;age_hours?:number;overdue_for_triage?:boolean;source?:string};
+ assignee_id?:string|null;assignee_name?:string|null;age_hours?:number;overdue_for_triage?:boolean;first_reply_overdue?:boolean;source?:string};
 type Detail={ticket:Ticket;messages:{id:string;author_role:string;body:string;created_at:string}[]};
 type Overview={period:string;suppression:string;clinics:Record<string,number|null>;
  patients:number|null;dentists:number|null;bookings:Record<string,number|null>;
@@ -23,7 +23,14 @@ type Template={id:string;title_en:string;title_fa:string;title_ps:string;
 type Agent={user_id:string;name:string;granted_at:string;revoked_at:string|null};
 type Settings={categories:Category[];templates:Template[];agents:Agent[]};
 const O:Record<string,Record<string,string>>={
- en:{desk:"Support desk",supportHint:"Booking, account and operational issues only — never clinical records.",
+ en:{supportSummary:"Queue health",firstReplyOverdue:"First response overdue",triageOverdue:"Triage overdue",
+ dueSoon:"First response due soon",unassignedCases:"Unassigned cases",highPriority:"High-priority cases",
+ slaNotice:"Operational targets: first reply within 24h and triage within 48h. These are internal indicators, not guaranteed service commitments.",
+ searchTicket:"Search title or reference",searchButton:"Search",sortOrder:"Order",priorityFilter:"Priority",urgency:"Attention",
+ overdueResponse:"First reply overdue",urgentTriage:"Triage overdue",newest:"Newest",oldest:"Oldest",priorityFirst:"Priority first",
+ prevPage:"Previous",nextPage:"Next",page:"Page",results:"matching cases",history:"Ticket activity",
+ noHistory:"No activity recorded.",filterAll:"All",normal:"Normal",high:"High",
+ desk:"Support desk",supportHint:"Booking, account and operational issues only — never clinical records.",
  metrics:"Privacy-safe platform metrics",agents:"Support agents",reply:"Reply to request",
  subject:"Title",updateStatus:"Update status",unassigned:"Unassigned",all:"All requests",
  statusOpen:"Open",statusInProgress:"In progress",statusWaiting:"Waiting for requester",
@@ -42,7 +49,14 @@ const O:Record<string,Record<string,string>>={
  mfaGate:"Enable and verify two-factor authentication to access support operations.",
  privacy:"All reporting is aggregate and suppresses small groups. Staff cannot access clinical records.",
  users:"Users",current:"Current",waiting:"Waiting"},
- "fa-AF":{desk:"میز پشتیبانی",supportHint:"فقط مشکلات ملاقات، حساب و عملیات؛ بدون اسناد صحی.",
+ "fa-AF":{supportSummary:"وضعیت صف پشتیبانی",firstReplyOverdue:"پاسخ اول با تأخیر",triageOverdue:"بررسی اولیه با تأخیر",
+ dueSoon:"پاسخ اول نزدیک به موعد",unassignedCases:"درخواست‌های بدون مسئول",highPriority:"درخواست‌های عاجل",
+ slaNotice:"هدف داخلی: پاسخ نخست طی ۲۴ ساعت و بررسی اولیه طی ۴۸ ساعت؛ این تعهد خدماتی تضمین‌شده نیست.",
+ searchTicket:"جستجوی عنوان یا مرجع",searchButton:"جستجو",sortOrder:"ترتیب",priorityFilter:"اولویت",urgency:"موارد ضروری",
+ overdueResponse:"پاسخ با تأخیر",urgentTriage:"بررسی با تأخیر",newest:"جدیدترین",oldest:"قدیمی‌ترین",priorityFirst:"عاجل در اول",
+ prevPage:"قبلی",nextPage:"بعدی",page:"صفحه",results:"درخواست مطابق",history:"تاریخچه درخواست",
+ noHistory:"هیچ فعالیتی ثبت نشده.",filterAll:"همه",normal:"عادی",high:"عاجل",
+ desk:"میز پشتیبانی",supportHint:"فقط مشکلات ملاقات، حساب و عملیات؛ بدون اسناد صحی.",
  metrics:"شاخص‌های محرمیت‌محور پلتفرم",agents:"کارمندان پشتیبانی",reply:"پاسخ به درخواست",
  subject:"عنوان",updateStatus:"تغییر حالت",unassigned:"بدون مسئول",all:"همه درخواست‌ها",
  statusOpen:"باز",statusInProgress:"در حال بررسی",statusWaiting:"منتظر درخواست‌کننده",
@@ -61,7 +75,14 @@ const O:Record<string,Record<string,string>>={
  mfaGate:"برای ورود به بخش پشتیبانی، تأیید دومرحله‌ای را فعال و تأیید کنید.",
  privacy:"گزارش‌ها مجموعی اند و گروه‌های کوچک پنهان می‌شوند. پشتیبانی به اسناد صحی دسترسی ندارد.",
  users:"کاربران",current:"فعلی",waiting:"منتظر"},
- "ps-AF":{desk:"د ملاتړ مرکز",supportHint:"یوازې د لیدنو، حسابونو او چارو ستونزې؛ طبي ریکارډونه نه.",
+ "ps-AF":{supportSummary:"د ملاتړ کتار حالت",firstReplyOverdue:"لومړی ځواب ځنډېدلی",triageOverdue:"لومړنۍ کتنه ځنډېدلې",
+ dueSoon:"لومړي ځواب وخت رانږدې دی",unassignedCases:"بې مسئوله غوښتنې",highPriority:"لوړ لومړیتوب غوښتنې",
+ slaNotice:"داخلي هدفونه: لومړی ځواب په ۲۴ ساعتونو او لومړنۍ کتنه په ۴۸ ساعتونو کې؛ تضمین شوې ژمنه نه ده.",
+ searchTicket:"د سرلیک یا مرجع لټون",searchButton:"لټون",sortOrder:"ترتیب",priorityFilter:"لومړیتوب",urgency:"بیړنۍ غوښتنې",
+ overdueResponse:"ځنډېدلی ځواب",urgentTriage:"ځنډېدلې کتنه",newest:"نوي",oldest:"زاړه",priorityFirst:"لوړ لومړی",
+ prevPage:"مخکینی",nextPage:"راتلونکی",page:"مخ",results:"اړوند غوښتنې",history:"د غوښتنې تاریخ",
+ noHistory:"فعالیت نشته.",filterAll:"ټول",normal:"عادي",high:"لوړ",
+ desk:"د ملاتړ مرکز",supportHint:"یوازې د لیدنو، حسابونو او چارو ستونزې؛ طبي ریکارډونه نه.",
  metrics:"د محرمیت خوندي شمېرې",agents:"د ملاتړ کارکوونکي",reply:"غوښتنې ته ځواب",
  subject:"سرلیک",updateStatus:"حالت بدل کړئ",unassigned:"بې مسووله",all:"ټولې غوښتنې",
  statusOpen:"پرانیستې",statusInProgress:"تر څېړنې لاندې",statusWaiting:"غوښتونکي ته منتظر",
