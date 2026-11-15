@@ -104,11 +104,98 @@ export function supportRouter(){
   opsStaff(req);
   const filter=String(req.query.status||"open");
   if(filter!=="all")status(filter);
-  const rows=await sqlClient`SELECT id,reference,title,category_code,status,priority,created_at,updated_at,
-    assignee_id IS NOT NULL AS assigned
-    FROM support_tickets WHERE (${filter}='all' OR status=${filter})
-    ORDER BY updated_at DESC LIMIT 100`;
+  const category=String(req.query.category||"all");
+  if(category!=="all")code(category);
+  const assigned=String(req.query.assigned||"all");
+  if(!["all","mine","unassigned"].includes(assigned))opsFail(422,"INVALID_ASSIGNEE_FILTER");
+  const age=Number(req.query.ageDays??0);
+  if(![0,3,7,30].includes(age))opsFail(422,"INVALID_AGE_FILTER");
+  const rows=await sqlClient`SELECT t.id,t.reference,t.title,t.category_code,t.status,t.source,
+    t.priority,t.created_at,t.updated_at,t.assignee_id,
+    u.name AS assignee_name,
+    round(extract(epoch FROM (now()-t.created_at))/3600)::int AS age_hours,
+    (t.status IN ('open','in_progress') AND t.created_at < now()-interval '48 hours')
+      AS overdue_for_triage
+    FROM support_tickets t LEFT JOIN auth_users u ON u.id=t.assignee_id
+    WHERE (${filter}='all' OR t.status=${filter})
+     AND (${category}='all' OR t.category_code=${category})
+     AND (${assigned}='all' OR (${assigned}='unassigned' AND t.assignee_id IS NULL)
+      OR (${assigned}='mine' AND t.assignee_id=${req.opsActor!.id}))
+     AND (${age}=0 OR t.created_at<now()-(${age} * interval '1 day'))
+    ORDER BY CASE WHEN t.priority='high' THEN 0 ELSE 1 END,t.updated_at DESC LIMIT 100`;
   privateOps(res);res.json({tickets:rows,filter});
+ }));
+ router.get("/admin/agents",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const agents=await sqlClient`SELECT a.user_id AS id,u.name
+   FROM platform_support_agents a JOIN auth_users u ON u.id=a.user_id
+   WHERE a.revoked_at IS NULL
+   ORDER BY u.name LIMIT 100`;
+  privateOps(res);res.json({agents:agents.concat([{id:req.opsActor!.id,name:req.opsActor!.name}])
+   .filter((entry,index,arr)=>arr.findIndex(x=>x.id===entry.id)===index)});
+ }));
+ router.post("/admin/tickets/:ticketId/assign",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const ticket=await ticketAccess(req,textId(req.params.ticketId));
+  if(ticket.status==="closed")opsFail(409,"TICKET_CLOSED");
+  const assigned=req.body?.agentId==null?null:textId(req.body.agentId);
+  if(req.opsActor!.role==="support"&&assigned!==req.opsActor!.id)
+   opsFail(403,"SUPPORT_CAN_ONLY_SELF_ASSIGN");
+  if(assigned){
+   if(assigned!==req.opsActor!.id||req.opsActor!.role!=="admin"){
+    const [agent]=await sqlClient`SELECT 1 FROM platform_support_agents
+     WHERE user_id=${assigned} AND revoked_at IS NULL`;
+    if(!agent)opsFail(404,"SUPPORT_AGENT_NOT_FOUND");
+   }
+  }
+  if(ticket.assignee_id===assigned)opsFail(409,"ASSIGNEE_UNCHANGED");
+  await sqlClient.begin(async tx=>{
+   const changed=await tx`UPDATE support_tickets
+    SET assignee_id=${assigned},updated_at=now()
+    WHERE id=${ticket.id} AND assignee_id IS NOT DISTINCT FROM ${ticket.assignee_id}
+    RETURNING id`;
+   if(!changed.length)opsFail(409,"STALE_TICKET");
+   await tx`INSERT INTO support_ticket_events(id,ticket_id,actor_id,action,previous_state,new_state)
+    VALUES(${randomUUID()},${ticket.id},${req.opsActor!.id},'assign',
+     ${ticket.assignee_id},${assigned})`;
+  });
+  privateOps(res);res.json({assignedTo:assigned});
+ }));
+ router.post("/admin/tickets/:ticketId/escalate",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const ticket=await ticketAccess(req,textId(req.params.ticketId));
+  if(ticket.priority==="high"||ticket.status==="closed")opsFail(409,"ESCALATION_UNAVAILABLE");
+  await sqlClient.begin(async tx=>{
+   const changed=await tx`UPDATE support_tickets
+    SET priority='high',updated_at=now() WHERE id=${ticket.id} AND priority='normal'
+    RETURNING id`;
+   if(!changed.length)opsFail(409,"STALE_TICKET");
+   await tx`INSERT INTO support_ticket_events(id,ticket_id,actor_id,action,previous_state,new_state)
+    VALUES(${randomUUID()},${ticket.id},${req.opsActor!.id},'escalate','normal','high')`;
+  });
+  privateOps(res);res.json({priority:"high"});
+ }));
+ router.get("/admin/tickets/:ticketId/notes",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const ticket=await ticketAccess(req,textId(req.params.ticketId));
+  if(req.opsActor!.role==="support"&&ticket.assignee_id!==req.opsActor!.id)
+   opsFail(403,"ASSIGNED_SUPPORT_ONLY");
+  const notes=await sqlClient`SELECT n.id,n.body,n.created_at,u.name AS author_name
+    FROM support_ticket_internal_notes n JOIN auth_users u ON u.id=n.author_id
+    WHERE n.ticket_id=${ticket.id} ORDER BY n.created_at,n.id LIMIT 100`;
+  privateOps(res);res.json({notes});
+ }));
+ router.post("/admin/tickets/:ticketId/notes",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const ticket=await ticketAccess(req,textId(req.params.ticketId));
+  if(req.opsActor!.role==="support"&&ticket.assignee_id!==req.opsActor!.id)
+   opsFail(403,"ASSIGNED_SUPPORT_ONLY");
+  const message=safeSupportText(req.body?.message,5,1000,"INTERNAL_NOTE");
+  const id=randomUUID();
+  await sqlClient`INSERT INTO support_ticket_internal_notes(id,ticket_id,author_id,body)
+   VALUES(${id},${ticket.id},${req.opsActor!.id},${message})`;
+  await opsAudit(req.opsActor!.id,"support.internal_note.created","support_ticket",ticket.id);
+  privateOps(res);res.status(201).json({id});
  }));
  router.get("/tickets/:ticketId",opsTask(async(req,res)=>{
   const ticket=await ticketAccess(req,textId(req.params.ticketId));
@@ -123,7 +210,11 @@ export function supportRouter(){
   const message=safeSupportText(req.body?.message,5,2000,"MESSAGE");
   if(["closed","resolved"].includes(ticket.status))opsFail(409,"TICKET_NOT_WRITABLE");
   const staff=req.opsActor!.role!=="user";
-  if(staff)opsStaff(req);
+  if(staff){
+   opsStaff(req);
+   if(req.opsActor!.role==="support"&&ticket.assignee_id!==req.opsActor!.id)
+    opsFail(403,"ASSIGNED_SUPPORT_ONLY");
+  }
   // Requesters reply only to their own tickets, staff reply exclusively through the support principal.
   const next=staff?"waiting_user":"in_progress",id=randomUUID();
   await sqlClient.begin(async tx=>{
@@ -140,6 +231,8 @@ export function supportRouter(){
  router.post("/admin/tickets/:ticketId/status",opsTask(async(req,res)=>{
   opsStaff(req);
   const ticket=await ticketAccess(req,textId(req.params.ticketId)),next=status(req.body?.status);
+  if(req.opsActor!.role==="support"&&ticket.assignee_id!==req.opsActor!.id)
+   opsFail(403,"ASSIGNED_SUPPORT_ONLY");
   if(ticket.status===next)opsFail(409,"STATUS_UNCHANGED");
   // Closed is terminal; resolved can be reopened for follow-up by a staff member.
   if(ticket.status==="closed")opsFail(409,"TICKET_CLOSED");
