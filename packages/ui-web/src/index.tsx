@@ -199,7 +199,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
   <footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
     <a href="/privacy" className="text-link">{t("privacy")}</a>
     <a href="/terms" className="text-link">{t("terms")}</a>
-    <a href="/help" className="text-link">{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</a>
+    <a href={audience==="admin"?"/admin/support":"/help"} className="text-link">{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</a>
   </div></footer>
   {audience==="patient"&&<PatientBottomNav path={path}/>}
  </div>;
@@ -282,11 +282,12 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
         if (result.error) throw result.error;
         const data = result.data as { twoFactorRedirect?: boolean } | null;
         const nextValue = new URLSearchParams(window.location.search).get("next");
-        const next = nextValue && nextValue.startsWith("/clinic/") && !nextValue.startsWith("//")
-          ? nextValue : base;
+        const next = nextValue && !nextValue.startsWith("//") &&
+          (audience === "admin" ? ["/admin/support","/admin/analytics"].includes(nextValue) :
+           nextValue.startsWith("/clinic/")) ? nextValue : base;
         window.location.assign(data?.twoFactorRedirect
           ? (audience === "admin" ? "/admin/2fa" : "/clinic/2fa") + "?next=" + encodeURIComponent(next)
-          : audience === "admin" ? base : next);
+          : next);
       } else if (mode === "forgot") {
         await authClient.requestPasswordReset({
           email: email.trim().toLowerCase(), redirectTo: window.location.origin + base + "/reset-password"
