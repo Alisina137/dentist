@@ -281,10 +281,10 @@ function OperationSettings({busy,setBusy,signal,reload,message}:DeskProps){
     <form className="p18-form" onSubmit={saveTemplate}>
      {field(o("templateId"),tpl.id,s=>setTpl(x=>({...x,id:s})),3,32)}
      {(["en","fa","ps"] as const).map(k=>
-      field(o("title"+k.charAt(0).toUpperCase()+k.slice(1)),tpl["title_"+k],s=>
+      field(o("title"+k.charAt(0).toUpperCase()+k.slice(1)),tpl[`title_${k}`],s=>
        setTpl(x=>({...x,["title_"+k]:s})),3,120))}
      {(["en","fa","ps"] as const).map(k=><label key={k}>{o("body"+k.charAt(0).toUpperCase()+k.slice(1))}
-      <textarea required rows={3} minLength={10} maxLength={1000} value={tpl["body_"+k]}
+      <textarea required rows={3} minLength={10} maxLength={1000} value={tpl[`body_${k}`]}
        onChange={e=>setTpl(x=>({...x,["body_"+k]:e.target.value}))}/></label>)}
      <label className="p18-check"><input type="checkbox" checked={tpl.active}
       onChange={e=>setTpl(x=>({...x,active:e.target.checked}))}/>{o("active")}</label>
