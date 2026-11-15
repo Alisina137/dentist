@@ -5,7 +5,8 @@ import {call18,useWords,Stat,ChipTabs,Notice,num} from "./phase18";
 
 type View="support"|"analytics"|"security"|"settings";
 type Ticket={id:string;reference:string;title:string;category_code:string;status:string;
- priority:string;created_at:string;updated_at:string;assigned?:boolean};
+ priority:string;created_at:string;updated_at:string;assigned?:boolean;
+ assignee_id?:string|null;assignee_name?:string|null;age_hours?:number;overdue_for_triage?:boolean;source?:string};
 type Detail={ticket:Ticket;messages:{id:string;author_role:string;body:string;created_at:string}[]};
 type Overview={period:string;suppression:string;clinics:Record<string,number|null>;
  patients:number|null;dentists:number|null;bookings:Record<string,number|null>;
@@ -34,7 +35,7 @@ const O:Record<string,Record<string,string>>={
  namePs:"Pashto name",templateId:"Template ID",titleEn:"English title",titleFa:"Dari title",titlePs:"Pashto title",
  bodyEn:"English response",bodyFa:"Dari response",bodyPs:"Pashto response",
  create:"Create / update",active:"Active",email:"Verified email",grant:"Grant support access",
- revoke:"Revoke",none:"None",roleGate:"This operation requires a platform administrator and verified MFA.",
+ revoke:"Revoke",none:"None",assigned:"Assignee",myAssignments:"Assigned to me",age:"Age (days)",overdue:"Needs urgent triage",openDetail:"Open direct link",assign:"Assign",escalate:"Escalate",internalNotes:"Internal notes",internalNotesHint:"Visible only to assigned support and administrators. No clinical information.",addNote:"Save private note",roleGate:"This operation requires a platform administrator and verified MFA.",
  supportGate:"Only authorized support agents or MFA-verified administrators can access this console.",
  mfaGate:"Enable and verify two-factor authentication to access support operations.",
  privacy:"All reporting is aggregate and suppresses small groups. Staff cannot access clinical records.",
@@ -53,7 +54,7 @@ const O:Record<string,Record<string,string>>={
  templateId:"شناسه پاسخ",titleEn:"عنوان انگلیسی",titleFa:"عنوان دری",titlePs:"عنوان پشتو",
  bodyEn:"پاسخ انگلیسی",bodyFa:"پاسخ دری",bodyPs:"پاسخ پشتو",
  create:"ایجاد / ویرایش",active:"فعال",email:"ایمیل تأییدشده",grant:"دادن دسترسی پشتیبانی",
- revoke:"لغو دسترسی",none:"هیچ",roleGate:"این بخش به مدیر پلتفرم با تأیید دومرحله‌ای نیاز دارد.",
+ revoke:"لغو دسترسی",none:"هیچ",assigned:"مسئول",myAssignments:"به من سپرده‌شده",age:"سن درخواست (روز)",overdue:"نیاز به بررسی فوری",openDetail:"بازکردن لینک مستقیم",assign:"سپردن",escalate:"ارجاع عاجل",internalNotes:"یادداشت داخلی",internalNotesHint:"فقط برای مسئول و مدیران؛ بدون معلومات صحی.",addNote:"ثبت یادداشت",roleGate:"این بخش به مدیر پلتفرم با تأیید دومرحله‌ای نیاز دارد.",
  supportGate:"فقط کارمند مجاز پشتیبانی یا مدیر دارای تأیید دومرحله‌ای.",
  mfaGate:"برای ورود به بخش پشتیبانی، تأیید دومرحله‌ای را فعال و تأیید کنید.",
  privacy:"گزارش‌ها مجموعی اند و گروه‌های کوچک پنهان می‌شوند. پشتیبانی به اسناد صحی دسترسی ندارد.",
@@ -72,7 +73,7 @@ const O:Record<string,Record<string,string>>={
  templateId:"د ځواب کوډ",titleEn:"انګلیسي سرلیک",titleFa:"دري سرلیک",titlePs:"پښتو سرلیک",
  bodyEn:"انګلیسي ځواب",bodyFa:"دري ځواب",bodyPs:"پښتو ځواب",
  create:"جوړول / بدلول",active:"فعال",email:"تایید شوی برېښنالیک",grant:"د ملاتړ اجازه ورکړئ",
- revoke:"اجازه ختمه کړئ",none:"هیڅ",roleGate:"دا برخه د MFA لرونکي مدیر لپاره ده.",
+ revoke:"اجازه ختمه کړئ",none:"هیڅ",assigned:"مسوول",myAssignments:"زما سپارل شوي",age:"د غوښتنې عمر (ورځې)",overdue:"بیړنۍ څېړنې ته اړتیا",openDetail:"مستقیم لینک",assign:"سپارل",escalate:"بیړنی کول",internalNotes:"داخلي یادښتونه",internalNotesHint:"یوازې مسوول او مدیر ته ښکاري. طبي معلومات مه لیکئ.",addNote:"یادښت خوندي",roleGate:"دا برخه د MFA لرونکي مدیر لپاره ده.",
  supportGate:"یوازې مجاز ملاتړ کارکوونکي یا MFA لرونکي مدیران دې برخې ته داخلېږي.",
  mfaGate:"د ملاتړ لپاره دوه پړاوه تایید فعال او بشپړ کړئ.",
  privacy:"شمېرې مجموعي دي او وړې ډلې پټې دي. ملاتړ طبي ریکارډونو ته لاسرسی نه لري.",
@@ -113,7 +114,7 @@ export function AdminOperationsPortal({view}:{view:View}){
     !permitted?<InlineAlert kind="error">{view==="settings"||view==="security"?o("roleGate"):o("supportGate")}
      <a href="/admin/login?next=/admin/support">{t("login")}</a></InlineAlert>:
     <><Notice error={error} success={success}/>{view==="support"?
-     <SupportDesk busy={busy} setBusy={setBusy} signal={reload} reload={()=>setReload(x=>x+1)}
+     <SupportDesk role={role as "admin"|"support"} busy={busy} setBusy={setBusy} signal={reload} reload={()=>setReload(x=>x+1)}
       message={(e,ok=false)=>{setError(ok?"":e);setSuccess(ok?e:"")}}/>:
      view==="analytics"?<PlatformAnalytics signal={reload}/>:
      view==="security"?<SecurityReview signal={reload}/>:
@@ -123,25 +124,66 @@ export function AdminOperationsPortal({view}:{view:View}){
 }
 type DeskProps={busy:boolean;setBusy:(v:boolean)=>void;signal:number;reload:()=>void;
  message:(value:string,ok?:boolean)=>void};
-function SupportDesk({busy,setBusy,signal,reload,message}:DeskProps){
+function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"admin"|"support"}){
  const {lang,t}=useWords();const o=(key:string)=>O[lang]?.[key]||O.en[key]||key;
  const [filter,setFilter]=useState("open"),[tickets,setTickets]=useState<Ticket[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Detail|null>(null);
  const [reply,setReply]=useState(""),[status,setStatus]=useState("open"),[loading,setLoading]=useState(false);
+ const [categories,setCategories]=useState<{code:string;label_en:string;label_fa:string;label_ps:string}[]>([]);
+ const [category,setCategory]=useState("all"),[age,setAge]=useState("0"),[assigned,setAssigned]=useState("all");
+ const [agents,setAgents]=useState<{id:string;name:string}[]>([]);
+ const [agentId,setAgentId]=useState(""),[myId,setMyId]=useState("");
+ const [note,setNote]=useState(""),[notes,setNotes]=useState<{id:string;body:string;created_at:string;author_name:string}[]>([]);
+ useEffect(()=>{const match=location.pathname.match(/^\/admin\/support\/([A-Za-z0-9_-]{8,100})$/);
+  if(match)setSelected(match[1]);
+ },[]);
+ useEffect(()=>{let alive=true;Promise.all([
+  call18<{agents:{id:string;name:string}[]}>("/support/admin/agents"),
+  call18<{faq:any[];categories:typeof categories}>("/support/public/help"),
+  call18<{role:string;displayName:string}>("/support/me")
+ ]).then(([a,b])=>{if(alive){setAgents(a.agents);setCategories(b.categories)}})
+  .catch(e=>{if(alive)message(e.message)});return()=>{alive=false};
+ },[signal]);
+ useEffect(()=>{let alive=true;call18<{id:string}>("/support/identity")
+  .then(d=>{if(alive)setMyId(d.id)}).catch(()=>{});
+  return()=>{alive=false};
+ },[]);
  useEffect(()=>{let live=true;setLoading(true);
-  call18<{tickets:Ticket[]}>("/support/admin/tickets?status="+filter).then(d=>{if(live)setTickets(d.tickets)})
+  const qs=new URLSearchParams({status:filter,category,assigned,ageDays:age});
+  call18<{tickets:Ticket[]}>("/support/admin/tickets?"+qs).then(d=>{if(live)setTickets(d.tickets)})
    .catch(e=>message(e.message)).finally(()=>{if(live)setLoading(false)});
   return()=>{live=false};
- },[filter,signal]);
+ },[filter,category,assigned,age,signal]);
  useEffect(()=>{if(!selected)return;let live=true;setDetail(null);
-  call18<Detail>("/support/tickets/"+selected).then(d=>{if(live){setDetail(d);setStatus(d.ticket.status)}})
-   .catch(e=>message(e.message));
+  call18<Detail>("/support/tickets/"+selected).then(d=>{if(live){
+    setDetail(d);setStatus(d.ticket.status);setAgentId(d.ticket.assignee_id||"");
+    call18<{notes:typeof notes}>("/support/admin/tickets/"+selected+"/notes")
+      .then(n=>{if(live)setNotes(n.notes)}).catch(()=>{if(live)setNotes([])});
+   }}).catch(e=>message(e.message));
   return()=>{live=false};
  },[selected,signal]);
  async function respond(e:FormEvent){
   e.preventDefault();if(!selected)return;setBusy(true);
   try{await call18("/support/tickets/"+selected+"/messages","POST",{message:reply});
    setReply("");reload();message(t("sendSuccess"),true)}
+  catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
+ }
+ async function assignAgent(){
+  if(!selected)return;setBusy(true);
+  try{await call18("/support/admin/tickets/"+selected+"/assign","POST",{agentId:agentId||null});
+   reload();message(t("save"),true)}
+  catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
+ }
+ async function escalate(){
+  if(!selected)return;setBusy(true);
+  try{await call18("/support/admin/tickets/"+selected+"/escalate","POST",{});
+   reload();message(o("escalate"),true)}
+  catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
+ }
+ async function addNote(e:FormEvent){
+  e.preventDefault();if(!selected)return;setBusy(true);
+  try{await call18("/support/admin/tickets/"+selected+"/notes","POST",{message:note});
+   setNote("");reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
  async function changeStatus(){
@@ -154,20 +196,52 @@ function SupportDesk({busy,setBusy,signal,reload,message}:DeskProps){
   <label>{t("status")}<select value={filter} onChange={e=>{setFilter(e.target.value);setSelected("");setDetail(null)}}>
    <option value="all">{o("all")}</option>
    {statusList.map(s=><option key={s} value={s}>{o("status"+s.charAt(0).toUpperCase()+s.slice(1).replace(/_(\w)/g,(_m,c:string)=>c.toUpperCase()))}</option>)}
-  </select></label><button className="btn btn-secondary" onClick={reload}>{t("refresh")}</button></div>
+  </select></label>
+  <label>{t("category")}<select value={category} onChange={e=>setCategory(e.target.value)}>
+   <option value="all">{o("all")}</option>
+   {categories.map(c=><option key={c.code} value={c.code}>{lang==="fa-AF"?c.label_fa:lang==="ps-AF"?c.label_ps:c.label_en}</option>)}
+  </select></label>
+  <label>{o("assigned")}<select value={assigned} onChange={e=>setAssigned(e.target.value)}>
+   <option value="all">{o("all")}</option><option value="unassigned">{o("unassigned")}</option><option value="mine">{o("myAssignments")}</option>
+  </select></label>
+  <label>{o("age")}<select value={age} onChange={e=>setAge(e.target.value)}>
+   {[0,3,7,30].map(x=><option key={x} value={x}>{x===0?o("all"):x+"+"}</option>)}
+  </select></label>
+  <button className="btn btn-secondary" onClick={reload}>{t("refresh")}</button></div>
   <div className="p18-split"><div className="p18-ticket-list" aria-label={o("desk")}>
    {loading?<p>{t("loading")}</p>:!tickets.length?<p className="muted">{o("noTickets")}</p>:
     tickets.map(ticket=><button type="button" className={"p18-ticket-option"+(selected===ticket.id?" selected":"")}
      key={ticket.id} onClick={()=>setSelected(ticket.id)}>
      <bdi dir="ltr">{ticket.reference}</bdi><span>{ticket.title}</span>
-     <small>{ticket.status} · {ticket.category_code}</small></button>)}
+     <small>{ticket.status} · {ticket.category_code} · {ticket.age_hours||0}h</small>
+     {ticket.overdue_for_triage&&<small className="p18-priority">{o("overdue")}</small>}
+     <small>{ticket.assignee_name||o("unassigned")} · {ticket.source}</small></button>)}
    </div>
    <div>{detail?<><h2>{detail.ticket.title}</h2>
-    <p className="muted"><bdi dir="ltr">{detail.ticket.reference}</bdi> · {detail.ticket.category_code}</p>
+    <p className="muted"><bdi dir="ltr">{detail.ticket.reference}</bdi> · {detail.ticket.category_code} · {detail.ticket.priority}</p>
+    <a href={"/admin/support/"+selected} className="p18-deeplink">{o("openDetail")}</a>
+    <div className="p18-toolbar">
+     <label>{o("assigned")}<select value={agentId} onChange={e=>setAgentId(e.target.value)}>
+      {role==="admin"&&<option value="">{o("unassigned")}</option>}
+      {agents.filter(a=>role==="admin"||a.id===myId).map(a=>
+       <option key={a.id} value={a.id}>{a.name}</option>)}
+     </select></label>
+     <button className="btn btn-secondary" disabled={busy||agentId===(detail.ticket.assignee_id||"")} onClick={assignAgent}>{o("assign")}</button>
+     <button className="btn btn-secondary" disabled={busy||detail.ticket.priority==="high"||detail.ticket.status==="closed"} onClick={escalate}>{o("escalate")}</button>
+    </div>
     <div className="p18-conversation">{detail.messages.map(m=><div key={m.id}
      className={"p18-message "+m.author_role}><small>{m.author_role} · {new Date(m.created_at).toLocaleString(lang)}</small>
      <p>{m.body}</p></div>)}</div>
-    {detail.ticket.status!=="closed"&&<>
+    {(role==="admin"||detail.ticket.assignee_id===myId)&&
+      <section className="p18-private-notes"><h3>{o("internalNotes")}</h3>
+       <p className="p18-footnote">{o("internalNotesHint")}</p>
+       {notes.map(n=><div className="p18-message" key={n.id}><small>{n.author_name}</small><p>{n.body}</p></div>)}
+       <form className="p18-form" onSubmit={addNote}>
+        <label>{o("internalNotes")}<textarea required minLength={5} maxLength={1000} rows={2}
+         value={note} onChange={e=>setNote(e.target.value)}/></label>
+        <button className="btn btn-secondary" disabled={busy}>{o("addNote")}</button>
+       </form></section>}
+    {detail.ticket.status!=="closed"&&(role==="admin"||detail.ticket.assignee_id===myId)&&<>
      <div className="p18-toolbar"><label>{t("status")}<select value={status} onChange={e=>setStatus(e.target.value)}>
       {statusList.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
       <button disabled={busy||status===detail.ticket.status} className="btn btn-secondary"
