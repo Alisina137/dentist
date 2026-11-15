@@ -179,7 +179,7 @@ export function ReviewModerationPage(){
  const [page,setPage]=useState(1),[total,setTotal]=useState(0),[sort,setSort]=useState<"oldest"|"newest">("oldest");
  const [draft,setDraft]=useState(""),[search,setSearch]=useState("");
  const [error,setError]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
- const [reason,setReason]=useState(""),[category,setCategory]=useState<(typeof reasons)[number]>("personal_data");
+ const [reason,setReason]=useState(""),[category,setCategory]=useState<""|(typeof reasons)[number]>("");
  const [selected,setSelected]=useState<{id:string;action:string}|null>(null),[confirmed,setConfirmed]=useState(false);
  const [reload,setReload]=useState(0),[success,setSuccess]=useState("");
  const [history,setHistory]=useState<Array<{action:string;version:number;at:string}>>([]);
@@ -199,11 +199,12 @@ export function ReviewModerationPage(){
   return()=>{active=false};
  },[tab,page,sort,search,reload]);
  function chooseTab(key:"queue"|"reports"|"appeals"){
-  setTab(key);setPage(1);setSelected(null);setReason("");setConfirmed(false);setSuccess("");
+  setTab(key);setPage(1);setSelected(null);setReason("");setCategory("");setConfirmed(false);setSuccess("");
  }
  async function decide(item:Pending|Report|Appeal,action:string){
   if(busy||!confirmed||selected?.id!==item.id||selected.action!==action)return;
   if(action!=="approve"&&reason.trim().length<15)return;
+  if((action==="reject"||action==="remove")&&!category)return;
   setBusy(true);setError("");setSuccess("");
   try{
    if(tab==="queue")await call("/admin/"+(item as Pending).id+"/decision","POST",{
@@ -249,7 +250,7 @@ export function ReviewModerationPage(){
       {actions.map(action=><button key={action} type="button" disabled={busy}
        className={"btn "+(action==="approve"?"btn-primary":"btn-secondary")}
        aria-expanded={selected?.id===item.id&&selected.action===action}
-       onClick={()=>{setSelected({id:item.id,action});setConfirmed(false);setReason("");}}>
+       onClick={()=>{setSelected({id:item.id,action});setConfirmed(false);setReason("");setCategory("");}}>
        {t(action as keyof Trans)}</button>)}
      </div>
      {selected?.id===item.id&&<form className="adm-c-decision-panel" onSubmit={e=>{e.preventDefault();void decide(item,selected!.action);}}>
@@ -257,7 +258,7 @@ export function ReviewModerationPage(){
       {(selected.action==="reject"||selected.action==="remove")&&
        <label>{t("category")}<select value={category}
         onChange={e=>setCategory(e.target.value as typeof category)}>
-        {reasons.map(code=><option key={code} value={code}>{code.replaceAll("_"," ")}</option>)}</select></label>}
+        <option value="" disabled>{t("category")}</option>{reasons.map(code=><option key={code} value={code}>{code.replaceAll("_"," ")}</option>)}</select></label>}
       {selected.action!=="approve"&&<label>{t("modNote")}
        <textarea required minLength={15} maxLength={500} value={reason}
         onChange={e=>setReason(e.target.value)}/></label>}
@@ -266,9 +267,10 @@ export function ReviewModerationPage(){
        {t("confirm")} — {t(selected.action as keyof Trans)}</label>
       <div className="adm-c-decision-buttons">
        <button type="button" className="btn btn-secondary" disabled={busy}
-        onClick={()=>{setSelected(null);setConfirmed(false);}}>{w("reset")}</button>
+        onClick={()=>{setSelected(null);setConfirmed(false);setCategory("");}}>{w("reset")}</button>
        <button type="submit" className="btn btn-primary"
-        disabled={busy||!confirmed||(selected.action!=="approve"&&reason.trim().length<15)}>
+        disabled={busy||!confirmed||(selected.action!=="approve"&&reason.trim().length<15)||
+         ((selected.action==="reject"||selected.action==="remove")&&!category)}>
         {busy?t("loading"):t("confirm")}</button>
       </div>
      </form>}
