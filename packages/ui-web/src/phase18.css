@@ -86,3 +86,12 @@
  .p18-toolbar .btn{flex:1 1 auto}
 }
 @media(prefers-reduced-motion:reduce){.p18-wrap *,.p18-admin-layout *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+
+.p18-priority{display:inline-flex;color:#a43927!important;background:#fff0eb;border:1px solid #f1c4b6;border-radius:99px;
+ padding:3px 10px;font-size:.75rem;font-weight:750;width:fit-content}
+.p18-deeplink{display:inline-block;margin-bottom:15px;color:#155e9d;font-size:.83rem;font-weight:700;text-underline-offset:4px}
+.p18-private-notes{border:1px solid #d9e3f1;background:#f8fafd;border-radius:15px;padding:15px;display:grid;gap:10px;margin:16px 0}
+.p18-private-notes h3{margin:0;color:#1e4f80}
+.p18-private-notes .p18-message{background:#fff;border-color:#dce4ee}
+.p18-private-notes .p18-form{border-top:1px solid #e1e9f2;padding-top:12px}
