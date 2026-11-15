@@ -1,0 +1,341 @@
+/*
+ * DandanLink Admin — Phase A design system, 2026-11.
+ * Scoped to the admin application: clinic/patient layouts are intentionally unchanged.
+ * Consistent typography, low-saturation clinical colors, logical (RTL/LTR) spacing,
+ * responsive navigation, collapsed desktop state and accessible motion.
+ */
+.shell-admin{
+ --admin-ink:#153446;
+ --admin-subtle:#506b7b;
+ --admin-muted:#526b79;
+ --admin-brand:#0b7383;
+ --admin-brand-strong:#075b6b;
+ --admin-brand-soft:#e7f5f5;
+ --admin-border:#dae5eb;
+ --admin-surface:#ffffff;
+ --admin-canvas:#f4f8fa;
+ --admin-soft:#f8fafc;
+ --admin-focus:#1298aa;
+ --admin-shadow:0 3px 12px rgba(28,67,81,.035),0 12px 38px rgba(28,67,81,.035);
+ --admin-radius:16px;
+ --admin-text-sm:13px;
+ --admin-text:14px;
+ --admin-text-lg:18px;
+ --admin-title:clamp(24px,2.3vw,29px);
+ --brand:var(--admin-brand);
+ --brand-hover:var(--admin-brand-strong);
+ --brand-pale:var(--admin-brand-soft);
+ --ink:var(--admin-ink);
+ --muted:var(--admin-muted);
+ --line:var(--admin-border);
+ --shadow:var(--admin-shadow);
+ color:var(--admin-ink);
+ background:var(--admin-canvas);
+ font-family:Inter,"Segoe UI","Noto Sans Arabic",Tahoma,system-ui,sans-serif;
+ font-size:15px;
+ line-height:1.6;
+}
+[dir="rtl"] .shell-admin{
+ font-family:"Vazirmatn","Noto Sans Arabic","Segoe UI",Tahoma,sans-serif;
+}
+.shell-admin .site-header{
+ position:sticky;inset-block-start:0;z-index:90;
+ min-height:66px;box-shadow:0 2px 9px rgba(21,55,75,.025);
+ border-block-end:1px solid var(--admin-border);
+ background:rgba(255,255,255,.97);padding:7px clamp(17px,2.7vw,38px);
+}
+.shell-admin .site-header-inner{max-width:1600px;min-height:58px}
+.shell-admin .site-header .brand{font-size:20px;letter-spacing:-.045em}
+.shell-admin .brand-symbol{width:40px;height:40px;flex-basis:40px;border-radius:12px;
+ background:linear-gradient(145deg,#0e8793,#0d5e72);box-shadow:0 6px 17px rgba(17,108,125,.14)}
+.shell-admin .brand-portal{font-size:11px;line-height:1.5;font-weight:750;
+ border:1px solid #dce9ed;background:#f1f7f8;color:#506e7b}
+.shell-admin .site-header .header-nav{display:none} /* Workspace navigation lives in the sidebar. */
+.shell-admin .site-header .header-menu-toggle{display:none}
+.shell-admin .site-main{width:100%;max-width:1600px;padding:clamp(14px,2.3vw,30px) clamp(15px,2.8vw,36px) 64px}
+.shell-admin .footer{min-height:58px;padding:16px clamp(16px,3vw,44px);
+ color:#526b79;border-color:#e3ebef;font-size:12px}
+.shell-admin .footer-links{gap:18px}
+.shell-admin .footer a:hover{color:var(--admin-brand);text-decoration:underline}
+.shell-admin :is(button,input,select,textarea){font-family:inherit}
+.shell-admin :is(button,a,input,select,textarea):focus-visible{
+ outline:3px solid var(--admin-focus);outline-offset:3px}
+.shell-admin button:disabled{opacity:.56;cursor:not-allowed}
+
+.admin-persistent-shell{
+ width:100%;max-width:1530px;min-height:600px;grid-template-columns:258px minmax(0,1fr);
+ gap:clamp(16px,2.1vw,30px);align-items:start;margin-inline:auto;
+}
+.admin-persistent-shell.admin-sidebar-collapsed{grid-template-columns:78px minmax(0,1fr)}
+.admin-persistent-sidebar{
+ min-height:580px;max-height:calc(100dvh - 104px);top:86px;overflow:auto;
+ padding:15px 12px 13px;border:1px solid #e0e9ec;border-radius:18px;
+ box-shadow:var(--admin-shadow);background:var(--admin-surface);
+ scrollbar-width:thin;scrollbar-color:#cbdce3 transparent;
+}
+.admin-sidebar-head{min-height:62px;display:flex;align-items:center;gap:10px;
+ border-block-end:1px solid #edf2f5;padding:4px 6px 13px;margin-block-end:8px}
+.admin-sidebar-emblem{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;
+ color:#fff;background:linear-gradient(145deg,#0d8b94,#0f6477);border-radius:11px;
+ box-shadow:0 7px 16px rgba(7,106,118,.12)}
+.admin-sidebar-identity{min-width:0;display:grid;gap:0;line-height:1.3}
+.admin-sidebar-identity strong{font-size:15px;font-weight:830;letter-spacing:-.025em;
+ color:var(--admin-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-sidebar-identity small{font-size:11px;font-weight:650;color:var(--admin-muted)}
+.admin-sidebar-collapse,.admin-sidebar-mobile-close,.admin-mobile-menu-btn{
+ border:1px solid transparent;color:var(--admin-muted);border-radius:10px;background:transparent;
+ display:inline-grid;place-items:center;flex:0 0 auto;
+ width:34px;height:34px;min-width:34px;min-height:34px;
+}
+.admin-sidebar-collapse{margin-inline-start:auto}
+.admin-sidebar-collapse:hover,.admin-sidebar-mobile-close:hover,.admin-mobile-menu-btn:hover{
+ background:#edf6f7;border-color:#d4e8ec;color:var(--admin-brand)}
+.admin-sidebar-mobile-close{display:none}
+.admin-persistent-nav{margin-block:5px 8px;gap:3px;display:grid}
+.admin-persistent-nav .admin-nav-group{
+ margin:15px 13px 5px;padding:0;font-size:10px;line-height:1.5;font-weight:800;
+ color:#526b79;letter-spacing:.08em;text-transform:uppercase;
+}
+[dir="rtl"] .admin-persistent-nav .admin-nav-group{letter-spacing:0;text-transform:none;font-size:11px}
+.admin-persistent-nav .admin-sidebar-link{
+ border:1px solid transparent;position:relative;min-width:0;min-height:43px;
+ padding:7px 11px!important;display:flex;align-items:center;gap:10px;
+ border-radius:10px;color:#506879;font-size:13.5px;line-height:1.4;
+ font-weight:670;background:transparent;transition:background .16s ease,color .16s ease,border .16s ease;
+}
+.admin-persistent-nav .admin-sidebar-link:hover{color:var(--admin-brand-strong);
+ background:#f0f7f8;border-color:#e5eff1}
+.admin-persistent-nav .admin-sidebar-link[aria-current="page"]{
+ color:var(--admin-brand-strong);background:var(--admin-brand-soft);
+ border-color:#d3e9e9;font-weight:820}
+.admin-persistent-nav .admin-sidebar-link .admin-sidebar-icon{
+ display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;
+ border-radius:9px;color:#6d8492;background:transparent;
+}
+.admin-persistent-nav .admin-sidebar-link:hover .admin-sidebar-icon{
+ color:var(--admin-brand)}
+.admin-persistent-nav .admin-sidebar-link[aria-current="page"] .admin-sidebar-icon{
+ color:var(--admin-brand-strong);background:#d4ecee}
+.admin-sidebar-link-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.admin-nav-selected-indicator{width:3px;height:22px;border-radius:999px;background:transparent;
+ position:absolute;inset-inline-start:0;inset-block-start:50%;transform:translateY(-50%)}
+.admin-sidebar-link[aria-current="page"] .admin-nav-selected-indicator{background:var(--admin-brand)}
+.admin-sidebar-preferences{margin-top:18px;padding:16px 5px 9px;border-block-start:1px solid #eaf0f3}
+.admin-sidebar-preferences .preferences{display:grid;gap:10px;grid-template-columns:1fr}
+.admin-sidebar-preferences .select-group{display:grid;gap:5px;color:#526b79;font-size:11px}
+.admin-sidebar-preferences .select-group select{
+ max-width:none;width:100%;height:38px;min-height:38px;font-size:12px;
+ color:var(--admin-ink);background:#f9fbfc;border:1px solid #d8e5e9;border-radius:9px;
+ padding:6px 10px}
+.admin-sidebar-tail{display:flex;align-items:center;gap:7px;padding:12px 8px 2px;
+ color:#526b79;font-size:11px;font-weight:650}
+.admin-sidebar-collapsed .admin-persistent-sidebar{padding-inline:9px}
+.admin-sidebar-collapsed .admin-sidebar-head{flex-direction:column;gap:5px;padding-inline:0}
+.admin-sidebar-collapsed .admin-sidebar-identity,
+.admin-sidebar-collapsed .admin-sidebar-link-label,
+.admin-sidebar-collapsed .admin-nav-group,
+.admin-sidebar-collapsed .admin-sidebar-preferences,
+.admin-sidebar-collapsed .admin-sidebar-tail{display:none}
+.admin-sidebar-collapsed .admin-sidebar-collapse{margin-inline-start:0}
+.admin-sidebar-collapsed .admin-persistent-nav .admin-sidebar-link{
+ min-width:0;padding:6px!important;justify-content:center;min-height:48px}
+.admin-sidebar-collapsed .admin-sidebar-link .admin-sidebar-icon{width:36px;height:36px;flex-basis:36px}
+.admin-sidebar-collapsed .admin-nav-selected-indicator{height:18px}
+.admin-sidebar-collapsed .admin-persistent-nav{margin-top:14px;gap:7px}
+.admin-sidebar-collapsed .admin-nav-no-access{font-size:0}
+
+.admin-persistent-content{min-height:560px;min-width:0}
+.admin-persistent-header{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;
+ margin-block-end:23px;padding:15px clamp(16px,2vw,24px);
+ background:var(--admin-surface);border:1px solid #e1eaee;
+ border-radius:16px;box-shadow:var(--admin-shadow);
+}
+.admin-header-leading{display:flex;align-items:center;gap:12px;min-width:0}
+.admin-header-page-info{min-width:0}
+.admin-breadcrumb{display:flex;align-items:center;gap:8px;
+ color:#607682;font-size:11.5px;line-height:1.5;font-weight:650}
+.admin-breadcrumb svg{opacity:.7}
+[dir="rtl"] .admin-breadcrumb svg{transform:rotate(180deg)}
+.admin-breadcrumb a:hover{color:var(--admin-brand);text-decoration:underline}
+.admin-header-current{display:flex;align-items:baseline;gap:13px;margin-block-start:2px}
+.admin-header-current strong{font-size:17px;color:var(--admin-ink);font-weight:800;letter-spacing:-.02em}
+.admin-header-current span{font-size:11px;color:#607682;font-weight:650}
+.admin-header-account{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.admin-account-identity{display:flex;align-items:center;gap:9px;min-width:0}
+.admin-user-avatar{width:36px;height:36px;display:grid;place-items:center;
+ border-radius:11px;background:#edf5f6;border:1px solid #d8eaed;color:#187a89;
+ font-size:15px;font-weight:830}
+.admin-user-copy{display:grid;gap:0;line-height:1.32;min-width:0;max-width:190px}
+.admin-user-copy strong{font-size:12px;font-weight:780;color:#243f4f;
+ text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.admin-user-copy small{font-size:10.5px;color:#607682}
+.shell-admin .admin-signout{min-height:38px;height:38px;padding:7px 12px;font-size:12px;
+ border:1px solid #d9e6ea;border-radius:9px;color:#416270;
+ background:#fff;box-shadow:none}
+.shell-admin .admin-signout:hover:not(:disabled){background:#edf7f7;color:#0b6475}
+.admin-mobile-menu-btn{display:none}
+.admin-mobile-backdrop{display:none}
+.admin-navigation-progress{height:3px;border-radius:99px;position:relative;
+ margin-block:-14px 15px;background:linear-gradient(90deg,#e2f2f4,#0c8390,#e2f2f4);
+ background-size:200% 100%;animation:admin-navigation-indeterminate 1.3s linear infinite}
+@keyframes admin-navigation-indeterminate{to{background-position-x:-200%}}
+.admin-route-content{min-height:300px;min-width:0;max-width:100%;overflow-wrap:break-word}
+
+/* Standardized content typography, controls and density across Phase02 and Phase18 pages. */
+.shell-admin .admin-route-content :is(h1,.phase-title){
+ font-size:var(--admin-title);font-weight:820;line-height:1.38;letter-spacing:-.025em;
+ color:var(--admin-ink);margin-block:0 19px}
+.shell-admin .admin-route-content h2{font-size:18px;line-height:1.45;color:var(--admin-ink);font-weight:780}
+.shell-admin .admin-route-content h3{font-size:16px;line-height:1.5;font-weight:750}
+.shell-admin .admin-route-content .lead{font-size:14px;line-height:1.75;color:var(--admin-subtle)}
+.shell-admin .admin-route-content :is(.muted,.p18-footnote){color:var(--admin-muted);font-size:13px;line-height:1.65}
+.shell-admin .admin-route-content .card,
+.shell-admin .admin-route-content .p18-panel{
+ background:#fff;border:1px solid #e0e8ed;border-radius:var(--admin-radius);
+ box-shadow:var(--admin-shadow)}
+.shell-admin .admin-route-content :is(.panel,.p18-panel){padding:clamp(17px,1.9vw,25px)}
+.shell-admin .admin-route-content .panel h2{margin-bottom:13px}
+.shell-admin .admin-route-content .phase-stats{gap:14px;margin-block:15px 22px}
+.shell-admin .admin-route-content .phase-stats .value-box{padding:18px 19px;min-height:110px}
+.shell-admin .admin-route-content .value-box strong{font-size:13px;font-weight:720;
+ color:#54717c;margin:0;line-height:1.5}
+.shell-admin .admin-route-content .phase-number{font-size:clamp(25px,2.4vw,32px);
+ color:#123b50;letter-spacing:-.03em;line-height:1.22}
+.shell-admin .admin-route-content :is(.phase-row,.p18-table-row){gap:12px;line-height:1.6}
+.shell-admin .admin-route-content .phase-list-item{border-color:#e6edf1}
+.shell-admin .admin-route-content :is(.phase-tabs,.p18-tabs){gap:6px}
+.shell-admin .admin-route-content :is(.phase-tabs button,.p18-tabs button){
+ font-size:13px;line-height:1.45;border-radius:9px;font-weight:720}
+.shell-admin .admin-route-content :is(.phase-tabs button.current,.p18-tabs button[aria-selected=true]){
+ color:var(--admin-brand-strong);background:#e6f5f5;border-color:#b9dddf}
+.shell-admin .admin-route-content :is(.field,.p18-form label){font-size:13px;font-weight:680;color:#345467}
+.shell-admin .admin-route-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+ border:1px solid #cddde4;background:#fff;color:var(--admin-ink);
+ border-radius:9px;min-height:42px;font-size:14px;line-height:1.5}
+.shell-admin .admin-route-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus{
+ border-color:var(--admin-brand)}
+.shell-admin .admin-route-content textarea{min-height:100px}
+.shell-admin .admin-route-content input::placeholder,
+.shell-admin .admin-route-content textarea::placeholder{color:#93a6b1}
+.shell-admin .admin-route-content .btn{min-height:40px;padding:9px 14px;
+ border-radius:9px;font-size:13px;font-weight:750;box-shadow:none}
+.shell-admin .admin-route-content .btn-primary{color:#fff;background:var(--admin-brand);border-color:var(--admin-brand)}
+.shell-admin .admin-route-content .btn-primary:hover:not(:disabled){
+ background:var(--admin-brand-strong);border-color:var(--admin-brand-strong)}
+.shell-admin .admin-route-content .btn-secondary{color:#2f6370;background:#fff;border-color:#ccdee5}
+.shell-admin .admin-route-content .btn-secondary:hover:not(:disabled){background:#eff8f8;border-color:#a9d4dc}
+.shell-admin .admin-route-content .p18-hero{
+ border-radius:18px;padding:clamp(20px,2.4vw,30px);
+ background:linear-gradient(122deg,#153a4e,#165b71 66%,#18808a);
+ box-shadow:0 10px 28px rgba(21,77,91,.1)}
+.shell-admin .admin-route-content .p18-hero h1{font-size:clamp(24px,2.3vw,30px);color:#fff;margin-block:8px}
+.shell-admin .admin-route-content .p18-hero p{font-size:13px;color:#dbedf2;max-width:78ch}
+.shell-admin .admin-route-content .p18-panel h2{color:#254b61;margin-block:0 13px}
+.shell-admin .admin-route-content .p18-stat{border:1px solid #e2eaef;
+ border-radius:14px;box-shadow:var(--admin-shadow);background:#fff}
+.shell-admin .admin-route-content .notice,
+.shell-admin .admin-route-content .p18-notice{border-radius:11px;font-size:13px}
+.shell-admin .admin-route-content :is(.p18-table,.phase-payment-item){max-width:100%}
+.shell-admin .admin-route-content .p18-table{overflow-x:auto;scrollbar-width:thin}
+.shell-admin .admin-route-content .phase-form-grid{gap:15px}
+.shell-admin .admin-route-content .phase-form{gap:15px}
+.shell-admin .admin-route-content .p18-admin-main{gap:18px}
+.shell-admin .admin-route-content .p18-admin-layout{display:block;padding:0;max-width:none}
+.shell-admin .admin-route-content .p18-admin-layout>.p18-admin-sidebar{display:none}
+
+/* Skeleton states should never collapse the content width or touch the persistent nav. */
+.shell-admin .admin-nav-skeleton span,.shell-admin .admin-loading-line,
+.shell-admin .admin-loading-card{background:#eaf1f4}
+.shell-admin .admin-page-loading{padding:12px 0;gap:17px}
+.shell-admin .admin-nav-skeleton{padding:9px 4px;gap:9px}
+.shell-admin .admin-nav-skeleton span{min-height:35px}
+.shell-admin .admin-persistent-sidebar .pill{display:none}
+.shell-admin .admin-route-content .phase-status-strip{gap:10px}
+
+/* Mid-screen adjustments; large tabs remain scrollable rather than crushed. */
+@media(max-width:1170px){
+ .admin-persistent-shell{grid-template-columns:228px minmax(0,1fr);gap:16px}
+ .admin-persistent-shell.admin-sidebar-collapsed{grid-template-columns:78px minmax(0,1fr)}
+ .admin-header-current span{display:none}
+ .admin-user-copy{max-width:118px}
+ .shell-admin .admin-route-content .phase-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){
+ .shell-admin .site-main{padding:13px 16px 45px}
+ .admin-persistent-shell,.admin-persistent-shell.admin-sidebar-collapsed{
+  grid-template-columns:minmax(0,1fr);min-height:420px}
+ .admin-persistent-content{min-height:430px}
+ .admin-persistent-sidebar{
+  position:fixed;inset-block:0;inset-inline-start:0;z-index:252;
+  width:min(314px,87vw);max-height:100dvh;min-height:0;
+  border-radius:0;overflow-y:auto;visibility:hidden;pointer-events:none;
+  transform:translateX(-110%);transition:transform .22s ease,visibility .22s ease;
+  box-shadow:0 30px 70px rgba(16,45,56,.18);padding:17px 14px;
+ }
+ [dir="rtl"] .admin-persistent-sidebar{transform:translateX(110%)}
+ .admin-mobile-open .admin-persistent-sidebar{
+  transform:translateX(0);visibility:visible;pointer-events:auto}
+ .admin-persistent-nav{display:grid;gap:3px}
+ .admin-persistent-nav .admin-nav-group{display:block;margin:14px 11px 5px}
+ .admin-persistent-nav .admin-sidebar-link{font-size:14px;min-height:43px}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-link-label,
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-identity,
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-nav-group,
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-preferences,
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-tail{display:initial}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-nav-group{display:block}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-identity{display:grid}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-preferences{display:block}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-tail{display:flex}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-link-label{display:inline}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-persistent-nav .admin-sidebar-link{
+  justify-content:flex-start;padding:7px 11px!important;min-height:43px}
+ .admin-persistent-shell.admin-sidebar-collapsed .admin-sidebar-link .admin-sidebar-icon{
+  width:32px;height:32px;flex-basis:32px}
+ .admin-sidebar-collapse{display:none}
+ .admin-sidebar-mobile-close{display:grid;margin-inline-start:auto}
+ .admin-mobile-menu-btn{display:grid;width:40px;height:40px;
+  background:#f3f9fa;border-color:#d9e9ed}
+ .admin-mobile-backdrop{
+  display:block;position:fixed;inset:0;z-index:245;border:0;border-radius:0;
+  background:rgba(14,37,48,.45);backdrop-filter:blur(2px)}
+ .admin-persistent-header{padding:12px 15px;gap:12px}
+ .admin-sidebar-collapsed .admin-sidebar-head{flex-direction:row;padding:4px 6px 13px}
+ .admin-header-page-info{min-width:0}
+ .admin-header-current strong{font-size:16px}
+ .admin-header-account{gap:8px}
+ .admin-user-avatar{width:34px;height:34px}
+ .admin-breadcrumb{font-size:11px}
+ .shell-admin .admin-route-content .phase-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:590px){
+ .shell-admin .site-main{padding:11px 12px 44px}
+ .shell-admin .site-header .brand{font-size:18px}
+ .shell-admin .brand-portal{font-size:10px}
+ .admin-persistent-header{margin-block-end:17px;border-radius:13px}
+ .admin-header-current strong{font-size:15px}
+ .admin-user-copy{display:none}
+ .admin-header-account{margin-inline-start:auto}
+ .admin-signout span{display:none}
+ .shell-admin .admin-signout{width:38px;padding:0}
+ .shell-admin .admin-route-content :is(h1,.phase-title){font-size:23px}
+ .shell-admin .admin-route-content .phase-stats{gap:9px}
+ .shell-admin .admin-route-content .phase-stats .value-box{padding:13px;min-height:96px}
+ .shell-admin .admin-route-content .phase-number{font-size:25px}
+ .shell-admin .admin-route-content .p18-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .shell-admin .admin-route-content :is(.panel,.p18-panel){padding:14px}
+ .shell-admin .admin-route-content .phase-form-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:380px){
+ .admin-header-account .admin-user-avatar{display:none}
+ .admin-persistent-header{padding-inline:10px}
+ .admin-header-leading{gap:7px}
+ .admin-breadcrumb{gap:4px}
+}
+@media(prefers-reduced-motion:reduce){
+ .shell-admin *{scroll-behavior:auto!important}
+ .admin-sidebar-link,.admin-persistent-sidebar,.admin-navigation-progress,
+ .admin-nav-skeleton span,.admin-loading-card,.admin-loading-line{
+  transition:none!important;animation:none!important}
+}

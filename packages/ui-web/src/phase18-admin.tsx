@@ -84,6 +84,14 @@ const O:Record<string,Record<string,string>>={
 const statusList=["open","in_progress","waiting_user","resolved","closed"] as const;
 const initialCategory:Category={code:"",label_en:"",label_fa:"",label_ps:"",active:true,sort_order:100};
 const initialTemplate:Template={id:"",title_en:"",title_fa:"",title_ps:"",body_en:"",body_fa:"",body_ps:"",active:true};
+function AdminLoadingSkeleton({label}:{label:string}){
+ return <section className="admin-page-loading" role="status" aria-label={label}>
+  <div className="admin-loading-line admin-loading-heading"/>
+  <div className="admin-loading-grid">{[1,2,3,4].map(index=>
+   <div className="admin-loading-card" key={index}/>)}</div>
+  <div className="admin-loading-card admin-loading-wide"/>
+ </section>;
+}
 export function AdminOperationsPortal({view}:{view:View}){
  const {lang,t}=useWords();
  const persistentAdminShell=usePersistentAdminShell();const o=(key:string)=>O[lang]?.[key]||O.en[key]||key;
@@ -110,7 +118,7 @@ export function AdminOperationsPortal({view}:{view:View}){
     <h1>{view==="support"?t("support"):view==="analytics"?t("analytics"):
      view==="security"?t("security"):view==="pilot"?(lang==="fa-AF"?"آمادگی آزمایشی":lang==="ps-AF"?"ازمایښتي چمتووالی":"Pilot readiness"):t("settings")}</h1>
     <p>{view==="support"?o("supportHint"):o("privacy")}</p></header>
-   {role===null?<InlineAlert>{t("loading")}</InlineAlert>:needsMfa?
+   {role===null?<AdminLoadingSkeleton label={t("loading")}/>:needsMfa?
     role==="support"?<AdminMfaSetup home="/admin/support"/>:
     <InlineAlert kind="warning">{o("mfaGate")} <a href="/admin/2fa">{t("security")}</a></InlineAlert>:
     !permitted?<InlineAlert kind="error">{view==="settings"||view==="security"?o("roleGate"):o("supportGate")}
@@ -274,7 +282,7 @@ function PlatformAnalytics({signal}:{signal:number}){
  useEffect(()=>{let live=true;setLoading(true);call18<Overview>("/insights/platform/overview")
   .then(x=>{if(live)setData(x)}).catch(e=>{if(live)setError(e.message)})
   .finally(()=>{if(live)setLoading(false)});return()=>{live=false};},[signal]);
- if(loading)return <InlineAlert>{t("loading")}</InlineAlert>;
+ if(loading)return <AdminLoadingSkeleton label={t("loading")}/>;
  if(error)return <InlineAlert kind="error">{error}</InlineAlert>;
  if(!data)return <InlineAlert>{t("noData")}</InlineAlert>;
  return <><div className="p18-stats">
@@ -297,7 +305,7 @@ function SecurityReview({signal}:{signal:number}){
  useEffect(()=>{let live=true;call18<Security>("/insights/platform/security")
   .then(d=>{if(live)setData(d)}).catch(e=>{if(live)setError(e.message)})
   .finally(()=>{if(live)setLoading(false)});return()=>{live=false};},[signal]);
- if(loading)return <InlineAlert>{t("loading")}</InlineAlert>;
+ if(loading)return <AdminLoadingSkeleton label={t("loading")}/>;
  if(error)return <InlineAlert kind="error">{error}</InlineAlert>;
  if(!data)return <InlineAlert>{t("noData")}</InlineAlert>;
  return <div className="p18-split">

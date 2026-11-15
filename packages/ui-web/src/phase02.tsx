@@ -236,7 +236,11 @@ export function Phase02Portal({audience,view}:{audience:Audience,view:View}){
   if(err==="AUTH_REQUIRED")return <section className="page-narrow"><InlineAlert kind="warning">{l("errorAuth")}</InlineAlert>
     <p><a className="btn btn-primary" href={audience==="clinic"?"/clinic/login":"/admin/login"}>{l("continue")}</a></p></section>;
   if(err)return <DataError message={l("failed")+": "+err} retry={()=>location.reload()}/>;
-  if(!me)return <div className="page-narrow"><InlineAlert>{l("loading")}</InlineAlert></div>;
+  if(!me)return audience==="admin"?<section className="admin-page-loading" role="status" aria-label={l("loading")}>
+    <div className="admin-loading-line admin-loading-heading"/>
+    <div className="admin-loading-grid">{[1,2,3,4].map(x=><div className="admin-loading-card" key={x}/>)}</div>
+    <div className="admin-loading-card admin-loading-wide"/>
+   </section>:<div className="page-narrow"><InlineAlert>{l("loading")}</InlineAlert></div>;
   if(audience==="clinic"&&me.isPlatformAdmin)return <InlineAlert kind="error">{l("errorAuth")}</InlineAlert>;
   if(audience==="admin"&&(!me.isPlatformAdmin||!me.adminMfaVerified))return <AccountStatus audience="admin"/>;
   return <Frame audience={audience} view={view} name={me.user.name}>

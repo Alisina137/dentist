@@ -6,7 +6,8 @@ export type CareIconName =
   | "menu" | "close" | "overview" | "profile" | "family" | "settings"
   | "privacy" | "security" | "logout" | "arrow" | "check" | "calendar"
   | "clock" | "edit" | "download" | "plus" | "mail" | "bell"
-  | "file" | "heart" | "chevron" | "sparkle" | "users";
+  | "file" | "heart" | "chevron" | "sparkle" | "users"
+  | "chart" | "star" | "layers" | "receipt" | "dental" | "clipboard" | "panel" | "activity";
 
 type Props={name:CareIconName;size?:number;className?:string};
 export function CareIcon({name,size=20,className}:Props){
@@ -39,7 +40,15 @@ export function CareIcon({name,size=20,className}:Props){
   heart:<><path d="M20.4 9.2c0 4.2-8.4 10-8.4 10S3.6 13.4 3.6 9.2a4.6 4.6 0 0 1 8.4-2.5 4.6 4.6 0 0 1 8.4 2.5Z"/></>,
   chevron:<><path d="m9 5 7 7-7 7"/></>,
   sparkle:<><path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8L12 2Z"/><path d="M20 2v4M18 4h4"/></>,
-  users:<><circle cx="9" cy="8" r="3.5"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M17 5.5a3.5 3.5 0 0 1 0 7M18 16a5.5 5.5 0 0 1 3.5 5"/></>
+  users:<><circle cx="9" cy="8" r="3.5"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0M17 5.5a3.5 3.5 0 0 1 0 7M18 16a5.5 5.5 0 0 1 3.5 5"/></>,
+  chart:<><path d="M3 3v18h18"/><path d="m6 15 5-5 4 3 5-7"/><path d="M17 6h3v3"/></>,
+  star:<path d="m12 2.8 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9z"/>,
+  layers:<><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 11 9 5 9-5M3 15l9 5 9-5"/></>,
+  receipt:<><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z"/><path d="M8 8h8M8 12h8M8 16h4"/></>,
+  dental:<><path d="M12 4c-2-1.3-4.1-2-6-1.1C3.3 4.2 3 7.3 4.1 10c1 2.2 1.4 6.4 2.6 9.2.4 1 1.6 1.1 2.1.2l2.2-6.5c.3-.9 1.7-.9 2 0l2.2 6.5c.5.9 1.7.8 2.1-.2 1.2-2.8 1.6-7 2.6-9.2C21 7.3 20.7 4.2 18 2.9c-1.9-.9-4 0-6 1.1Z"/></>,
+  clipboard:<><rect x="5" y="5" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M9 13h6M9 17h5"/></>,
+  panel:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M13 8h4M13 12h4"/></>,
+  activity:<><path d="M3 12h4l3-7 4 14 3-7h4"/></>
  };
  return <svg aria-hidden="true" focusable="false" className={className} width={size} height={size}
   viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
