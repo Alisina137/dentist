@@ -17,7 +17,7 @@ export function adminFinanceRouter(){
  router.get("/summary",opsTask(async(req,res)=>{
   opsAdmin(req);
   const [invoice,subscription]=await Promise.all([
-   sqlClient\`SELECT count(*) FILTER (WHERE status='awaiting')::int AS awaiting,
+   sqlClient`SELECT count(*) FILTER (WHERE status='awaiting')::int AS awaiting,
     count(*) FILTER (WHERE status='paid')::int AS paid,
     count(*) FILTER (WHERE status='void')::int AS voided,
     coalesce(sum(amount_afn) FILTER (WHERE status='paid'),0)::bigint::text AS lifetime_afn,
@@ -28,8 +28,8 @@ export function adminFinanceRouter(){
      AND verified_at<now()-interval '30 days'),0)::bigint::text AS previous30_afn,
     count(*) FILTER (WHERE status='awaiting'
      AND created_at<now()-interval '48 hours')::int AS awaiting_over48
-    FROM platform_subscription_invoices\`,
-   sqlClient\`SELECT count(*) FILTER (WHERE effective_status='active')::int AS active,
+    FROM platform_subscription_invoices`,
+   sqlClient`SELECT count(*) FILTER (WHERE effective_status='active')::int AS active,
     count(*) FILTER (WHERE effective_status='trialing')::int AS trialing,
     count(*) FILTER (WHERE effective_status='grace')::int AS grace,
     count(*) FILTER (WHERE effective_status='expired')::int AS expired,
@@ -45,7 +45,7 @@ export function adminFinanceRouter(){
        ELSE 'expired' END AS effective_status
       FROM clinic_subscriptions s
       JOIN platform_plan_versions p ON p.id=s.plan_version_id
-    ) x\`
+    ) x`
   ]);
   const a=invoice[0],s=subscription[0];
   privateOps(res);res.json({
@@ -62,23 +62,23 @@ export function adminFinanceRouter(){
   opsAdmin(req);
   const {status,sort,page,pageSize,offset,q}=filters(req,["all","awaiting","paid","void"]);
   const [rows,count]=await Promise.all([
-   sqlClient\`SELECT i.id,i.clinic_id,c.display_name AS clinic_name,c.city,
+   sqlClient`SELECT i.id,i.clinic_id,c.display_name AS clinic_name,c.city,
     i.amount_afn,i.status,i.evidence_reference,i.created_at,i.verified_at,i.period_ends_at,
     p.label AS plan_label,p.billing_period
     FROM platform_subscription_invoices i
     JOIN clinics c ON c.id=i.clinic_id
     JOIN platform_plan_versions p ON p.id=i.plan_version_id
-    WHERE (\${status}='all' OR i.status=\${status})
-     AND (\${q}='' OR c.display_name ILIKE \${"%"+q+"%"} OR
-      c.city ILIKE \${"%"+q+"%"} OR i.evidence_reference ILIKE \${"%"+q+"%"})
-    ORDER BY CASE WHEN \${sort}='oldest' THEN i.created_at END ASC NULLS LAST,
-     CASE WHEN \${sort}='newest' THEN i.created_at END DESC NULLS LAST,i.id
-    LIMIT \${pageSize} OFFSET \${offset}\`,
-   sqlClient\`SELECT count(*)::int AS total FROM platform_subscription_invoices i
+    WHERE (${status}='all' OR i.status=${status})
+     AND (${q}='' OR c.display_name ILIKE ${"%"+q+"%"} OR
+      c.city ILIKE ${"%"+q+"%"} OR i.evidence_reference ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN i.created_at END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN i.created_at END DESC NULLS LAST,i.id
+    LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM platform_subscription_invoices i
     JOIN clinics c ON c.id=i.clinic_id
-    WHERE (\${status}='all' OR i.status=\${status})
-     AND (\${q}='' OR c.display_name ILIKE \${"%"+q+"%"} OR
-      c.city ILIKE \${"%"+q+"%"} OR i.evidence_reference ILIKE \${"%"+q+"%"})\`
+    WHERE (${status}='all' OR i.status=${status})
+     AND (${q}='' OR c.display_name ILIKE ${"%"+q+"%"} OR
+      c.city ILIKE ${"%"+q+"%"} OR i.evidence_reference ILIKE ${"%"+q+"%"})`
   ]);
   privateOps(res);res.json({invoices:rows.map(x=>({
    id:x.id,clinicId:x.clinic_id,clinicName:x.clinic_name,city:x.city,
@@ -92,7 +92,7 @@ export function adminFinanceRouter(){
   const {status,sort,page,pageSize,offset,q}=filters(req,
    ["all","trialing","active","grace","expired","cancelled"]);
   const [rows,count]=await Promise.all([
-   sqlClient\`WITH current AS (
+   sqlClient`WITH current AS (
     SELECT s.clinic_id,c.display_name AS clinic_name,c.city,s.status,
      s.trial_ends_at,s.current_period_ends_at,s.updated_at,
      p.label AS plan_label,p.billing_period,
@@ -106,12 +106,12 @@ export function adminFinanceRouter(){
       ELSE 'expired' END AS effective_status
     FROM clinic_subscriptions s JOIN clinics c ON c.id=s.clinic_id
     JOIN platform_plan_versions p ON p.id=s.plan_version_id
-   ) SELECT * FROM current t WHERE (\${status}='all' OR t.effective_status=\${status})
-    AND (\${q}='' OR t.clinic_name ILIKE \${"%"+q+"%"} OR t.city ILIKE \${"%"+q+"%"})
-    ORDER BY CASE WHEN \${sort}='oldest' THEN t.updated_at END ASC NULLS LAST,
-     CASE WHEN \${sort}='newest' THEN t.updated_at END DESC NULLS LAST,t.clinic_id
-    LIMIT \${pageSize} OFFSET \${offset}\`,
-   sqlClient\`SELECT count(*)::int AS total FROM (
+   ) SELECT * FROM current t WHERE (${status}='all' OR t.effective_status=${status})
+    AND (${q}='' OR t.clinic_name ILIKE ${"%"+q+"%"} OR t.city ILIKE ${"%"+q+"%"})
+    ORDER BY CASE WHEN ${sort}='oldest' THEN t.updated_at END ASC NULLS LAST,
+     CASE WHEN ${sort}='newest' THEN t.updated_at END DESC NULLS LAST,t.clinic_id
+    LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`SELECT count(*)::int AS total FROM (
     SELECT c.display_name AS clinic_name,c.city,
      CASE WHEN s.status='cancelled' THEN 'cancelled'
       WHEN (CASE WHEN s.status='trialing' THEN s.trial_ends_at ELSE s.current_period_ends_at END) IS NULL
@@ -123,8 +123,8 @@ export function adminFinanceRouter(){
       ELSE 'expired' END AS effective_status
     FROM clinic_subscriptions s JOIN clinics c ON c.id=s.clinic_id
     JOIN platform_plan_versions p ON p.id=s.plan_version_id
-   ) t WHERE (\${status}='all' OR t.effective_status=\${status})
-    AND (\${q}='' OR t.clinic_name ILIKE \${"%"+q+"%"} OR t.city ILIKE \${"%"+q+"%"})\`
+   ) t WHERE (${status}='all' OR t.effective_status=${status})
+    AND (${q}='' OR t.clinic_name ILIKE ${"%"+q+"%"} OR t.city ILIKE ${"%"+q+"%"})`
   ]);
   privateOps(res);res.json({subscriptions:rows.map(x=>({
    clinicId:x.clinic_id,clinicName:x.clinic_name,city:x.city,
@@ -137,11 +137,11 @@ export function adminFinanceRouter(){
   opsAdmin(req);
   const id=String(req.params.id);
   if(!/^[\w-]{8,100}$/.test(id))opsFail(422,"INVALID_ID");
-  const [inv]=await sqlClient\`SELECT id FROM platform_subscription_invoices WHERE id=\${id}\`;
+  const [inv]=await sqlClient`SELECT id FROM platform_subscription_invoices WHERE id=${id}`;
   if(!inv)opsFail(404,"INVOICE_NOT_FOUND");
-  const events=await sqlClient\`SELECT action,outcome,created_at FROM audit_events
-   WHERE subject_id=\${id} AND action IN ('subscription.invoice.confirm','subscription.invoice.reject')
-   ORDER BY created_at DESC,id DESC LIMIT 20\`;
+  const events=await sqlClient`SELECT action,outcome,created_at FROM audit_events
+   WHERE subject_id=${id} AND action IN ('subscription.invoice.confirm','subscription.invoice.reject')
+   ORDER BY created_at DESC,id DESC LIMIT 20`;
   privateOps(res);res.json({events:events.map(x=>({action:x.action,outcome:x.outcome,at:x.created_at}))});
  }));
  router.use((e:unknown,_req:Request,res:Response,next:NextFunction)=>{
