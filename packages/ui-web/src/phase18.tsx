@@ -19,7 +19,7 @@ export const phrases:Record<Lang,Record<string,string>>={
   receiptsHint:"Manual net ledger payments minus posted reversals. Credits excluded. Not certified profit.",
   bookingHint:"Appointments are counted by their scheduled date in Asia/Kabul, including cancellations.",
   faq:"Frequently asked questions",privacy:"Do not include names, phone numbers, diagnoses, medical records or private clinical details in any ticket.",
-  createTicket:"Create a support ticket",category:"Category",title:"Brief title",message:"Message",send:"Submit request",
+  createTicket:"Create a support ticket",selectClinic:"Clinic (optional)",generalSupport:"General request",category:"Category",title:"Brief title",message:"Message",send:"Submit request",
   myTickets:"My requests",conversation:"Conversation",reply:"Send reply",status:"Status",
   emptyTickets:"You have not opened a support request.",openTicket:"View conversation",
   ticketSaved:"Support request sent.",sendSuccess:"Reply sent.",supportNeedsLogin:"Sign in with a verified account to send a ticket or view replies.",
@@ -44,7 +44,7 @@ export const phrases:Record<Lang,Record<string,string>>={
   receiptsHint:"دریافت‌های خالص دفتر پرداخت پس از کسر برگشت؛ اعتبار نقد نیست. این سود حسابداری نیست.",
   bookingHint:"ملاقات‌ها بر اساس تاریخ برنامه‌ریزی‌شده در کابل شمرده می‌شوند؛ لغوشده‌ها نیز شامل اند.",
   faq:"پرسش‌های متداول",privacy:"نام، شماره، تشخیص، اسناد صحی یا جزئیات خصوصی مریض را در درخواست نفرستید.",
-  createTicket:"درخواست پشتیبانی جدید",category:"دسته",title:"عنوان مختصر",message:"پیام",send:"ارسال درخواست",
+  createTicket:"درخواست پشتیبانی جدید",selectClinic:"کلینیک (اختیاری)",generalSupport:"درخواست عمومی",category:"دسته",title:"عنوان مختصر",message:"پیام",send:"ارسال درخواست",
   myTickets:"درخواست‌های من",conversation:"گفتگو",reply:"ارسال پاسخ",status:"حالت",
   emptyTickets:"هنوز درخواست پشتیبانی ندارید.",openTicket:"دیدن گفتگو",
   ticketSaved:"درخواست ثبت شد.",sendSuccess:"پاسخ فرستاده شد.",supportNeedsLogin:"برای درخواست و دیدن پاسخ‌ها به حساب تأییدشده وارد شوید.",
@@ -69,7 +69,7 @@ export const phrases:Record<Lang,Record<string,string>>={
   receiptsHint:"له لاسي تادیاتو څخه د بېرته ګرځولو وروسته خالص پیسې؛ کریډیټ نه شمېرل کېږي. دا ګټه نه ده.",
   bookingHint:"لیدنې د کابل د مهال‌وېش نېټې پر بنسټ شمېرل کېږي، لغوه شوې هم پکې دي.",
   faq:"عامې پوښتنې",privacy:"نوم، تلیفون، تشخیص او طبي اسناد د ملاتړ په غوښتنه کې مه لیکئ.",
-  createTicket:"د ملاتړ نوې غوښتنه",category:"ډول",title:"لنډ سرلیک",message:"پیغام",send:"غوښتنه ولېږئ",
+  createTicket:"د ملاتړ نوې غوښتنه",selectClinic:"کلینیک (اختیاري)",generalSupport:"عمومي غوښتنه",category:"ډول",title:"لنډ سرلیک",message:"پیغام",send:"غوښتنه ولېږئ",
   myTickets:"زما غوښتنې",conversation:"خبرې",reply:"ځواب ولېږئ",status:"حالت",
   emptyTickets:"تاسو تر اوسه غوښتنه نه ده ثبت کړې.",openTicket:"خبرې وګورئ",
   ticketSaved:"غوښتنه ثبت شوه.",sendSuccess:"ځواب ولېږل شو.",supportNeedsLogin:"د غوښتنې او ځوابونو لپاره تایید شوي حساب ته ننوځئ.",
@@ -233,6 +233,7 @@ export function HelpPortal({audience="patient"}:{audience?:"patient"|"clinic"}){
  const [auth,setAuth]=useState(false),[tickets,setTickets]=useState<Ticket[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<{ticket:Ticket;messages:Message[]}|null>(null);
  const [category,setCategory]=useState(""),[title,setTitle]=useState(""),[message,setMessage]=useState("");
+ const [clinicChoices,setClinicChoices]=useState<{clinicId:string;clinicName:string}[]>([]),[clinicId,setClinicId]=useState("");
  const [reply,setReply]=useState(""),[error,setError]=useState(""),[success,setSuccess]=useState(""),[busy,setBusy]=useState(false);
  const [reload,setReload]=useState(0);
  useEffect(()=>{let live=true;call18<{faq:Faq[];categories:Category[]}>("/support/public/help")
@@ -243,6 +244,14 @@ export function HelpPortal({audience="patient"}:{audience?:"patient"|"clinic"}){
    .catch(()=>{if(live)setAuth(false)});
   return()=>{live=false};
  },[reload]);
+ useEffect(()=>{if(!auth||audience!=="clinic")return;let live=true;
+  call18<{clinics:{clinicId:string;clinicName:string}[]}>("/team/context")
+   .then(x=>{if(live){setClinicChoices(x.clinics);
+    const param=new URLSearchParams(location.search).get("clinic");
+    setClinicId(x.clinics.find(c=>c.clinicId===param)?.clinicId||x.clinics[0]?.clinicId||"");
+   }}).catch(()=>{if(live)setClinicChoices([])});
+  return()=>{live=false};
+ },[auth,audience]);
  useEffect(()=>{if(!auth)return;let live=true;call18<{tickets:Ticket[]}>("/support/tickets/mine")
   .then(d=>{if(live)setTickets(d.tickets)}).catch(e=>{if(live)setError(e.message)});
   return()=>{live=false};
@@ -254,7 +263,7 @@ export function HelpPortal({audience="patient"}:{audience?:"patient"|"clinic"}){
  },[selected,reload]);
  async function create(e:FormEvent){
   e.preventDefault();setBusy(true);setError("");setSuccess("");
-  try{const d=await call18<{id:string}>("/support/tickets","POST",{category,title,message});
+  try{const d=await call18<{id:string}>("/support/tickets","POST",{category,title,message,...(audience==="clinic"&&clinicId?{clinicId}:{})});
    setTitle("");setMessage("");setSelected(d.id);setSuccess(t("ticketSaved"));setReload(x=>x+1)}
   catch(e){setError(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
@@ -279,6 +288,10 @@ export function HelpPortal({audience="patient"}:{audience?:"patient"|"clinic"}){
   <div className="p18-split">
    <section className="p18-panel"><h2>{t("createTicket")}</h2>
     <form className="p18-form" onSubmit={create}>
+     {audience==="clinic"&&clinicChoices.length>0&&<label>{t("selectClinic")}<select value={clinicId} onChange={e=>setClinicId(e.target.value)}>
+       <option value="">{t("generalSupport")}</option>
+       {clinicChoices.map(x=><option key={x.clinicId} value={x.clinicId}>{x.clinicName}</option>)}
+      </select></label>}
      <label>{t("category")}<select value={category} required onChange={e=>setCategory(e.target.value)}>
       {categories.map(c=><option key={c.code} value={c.code}>{label(c)}</option>)}</select></label>
      <label>{t("title")}<input minLength={5} maxLength={120} required value={title} onChange={e=>setTitle(e.target.value)}/></label>
