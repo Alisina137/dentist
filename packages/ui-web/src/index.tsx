@@ -176,10 +176,15 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
         onClick={closeMenu}><span>★</span><span>{locale==="ps-AF"?"نظرونه":locale==="fa-AF"?"نظرات":"Reviews"}</span></a>
        <a className="nav-link" href="/appointments" aria-current={active("/appointments")?"page":undefined}
         onClick={closeMenu}><CareIcon name="calendar" size={17}/><span>{locale==="ps-AF"?"ملاقاتونه":locale==="fa-AF"?"ملاقات‌ها":"Appointments"}</span></a>
+       <a className="nav-link" href="/help" aria-current={active("/help")?"page":undefined}
+        onClick={closeMenu}><CareIcon name="about" size={17}/><span>{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</span></a>
        <a className="nav-link" href="/about" aria-current={active("/about")?"page":undefined}
         onClick={closeMenu}><CareIcon name="about" size={17}/><span>{t("aboutDandanLink")}</span></a>
        <PatientAccountNavLink active={active("/account")} closeMenu={closeMenu}/>
       </>}
+      {audience==="clinic"&&<a className="nav-link" href="/help"
+       aria-current={active("/help")?"page":undefined} onClick={closeMenu}>
+       <CareIcon name="about" size={17}/><span>{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</span></a>}
       {audience==="clinic"&&<a className="nav-link" href="/pricing"
        aria-current={active("/pricing")?"page":undefined} onClick={closeMenu}>
        <CareIcon name="file" size={17}/><span>{t("pricing")}</span></a>}
@@ -194,6 +199,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
   <footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
     <a href="/privacy" className="text-link">{t("privacy")}</a>
     <a href="/terms" className="text-link">{t("terms")}</a>
+    <a href="/help" className="text-link">{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</a>
   </div></footer>
   {audience==="patient"&&<PatientBottomNav path={path}/>}
  </div>;
