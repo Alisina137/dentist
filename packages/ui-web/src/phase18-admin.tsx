@@ -111,7 +111,7 @@ export function AdminOperationsPortal({view}:{view:View}){
     role==="support"?<AdminMfaSetup home="/admin/support"/>:
     <InlineAlert kind="warning">{o("mfaGate")} <a href="/admin/2fa">{t("security")}</a></InlineAlert>:
     !permitted?<InlineAlert kind="error">{view==="settings"||view==="security"?o("roleGate"):o("supportGate")}
-     <a href="/admin/login">{t("login")}</a></InlineAlert>:
+     <a href="/admin/login?next=/admin/support">{t("login")}</a></InlineAlert>:
     <><Notice error={error} success={success}/>{view==="support"?
      <SupportDesk busy={busy} setBusy={setBusy} signal={reload} reload={()=>setReload(x=>x+1)}
       message={(e,ok=false)=>{setError(ok?"":e);setSuccess(ok?e:"")}}/>:
