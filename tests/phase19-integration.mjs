@@ -6,6 +6,10 @@ const require=createRequire(new URL("../packages/db/package.json",import.meta.ur
 const postgres=require("postgres"),db=postgres(process.env.DATABASE_URL,{max:3});
 const root="/v1/portability/clinics/"+clinic.id;
 try{
+ const gate=ok(await request("/v1/portability/admin/readiness","GET",undefined,admin.session),[200],"MFA admin checks pilot approval");
+ assert.equal(gate.releaseEnabled,false,"release defaults to no-go without human signoff");
+ assert.ok(gate.controls.length>=8);
+ ok(await request("/v1/portability/admin/readiness","GET",undefined,owner.session),[403],"clinic owner cannot see admin release gate");
  ok(await request(root+"/exports"),[401],"export history needs a session");
  ok(await request(root+"/exports","GET",undefined,stranger.session),[404],"stranger cannot find clinic export");
  ok(await request(root+"/exports","GET",undefined,reception.session),[403],"non-owner cannot export patient data");
