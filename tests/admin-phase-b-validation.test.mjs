@@ -8,7 +8,7 @@ test("Phase B dashboard uses actual platform data with validated Kabul dates",()
   "status='approved'","status='pending'","status='awaiting'","status='paid'",
   "status='active'","current_period_ends_at","clinic_appointments",
   "patient_review_versions","patient_review_reports","patient_review_appeals",
-  "support_tickets","clinic_listing_heads","clinic_dentist_credential_cases",
+  "support_tickets","AS urgent","clinic_listing_heads","clinic_dentist_credential_cases",
   "platform_subscription_invoices","verified_at","outbox_events",
   "patient_booking_notifications","count(*)","GROUP BY 1","previousRegistered","previousReceiptsAfn",
   "receiptsAfn","trend","activity"])
