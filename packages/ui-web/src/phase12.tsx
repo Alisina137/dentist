@@ -745,7 +745,7 @@ function AdminDentistQueue(){
  </div>;
 }
 function AdminDentistReview({id}:{id:string}){
- const {t,date}=useWords();
+ const {t,date}=useWords(),{w}=useModerationWords();
  const data=load(adminPath("/dentists/"+id));
  const [action,setAction]=useState("approve"),[reason,setReason]=useState(""),
   [basis,setBasis]=useState(""),[confirmation,setConfirmation]=useState(false),
@@ -784,7 +784,7 @@ function AdminDentistReview({id}:{id:string}){
   <section className="card phase12-panel">
    <SectionTitle title={t("evidence")} desc={t("confirmReview")}/>
    {items.length?items.map((s:any)=><div className="phase12-evidence-row" key={s.id}>
-    <div><strong>{s.credential_type}</strong><p dir="ltr">{s.credential_number}</p>
+    <div><strong>{s.credential_type}</strong>{s.id===v.current_submission_id&&<span className="adm-c-highlight">{w("current")}</span>}<p dir="ltr">{s.credential_number}</p>
      <span>{t("validUntil")}: {s.valid_until} · {t("draftVersion")} {s.draft_version}</span>
      <small>{s.file_name} · {s.size_bytes} bytes · {date(s.created_at)}</small></div>
     <button type="button" className="btn btn-secondary" onClick={()=>privateFile(
