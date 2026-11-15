@@ -182,6 +182,14 @@ export function ReviewModerationPage(){
  const [reason,setReason]=useState(""),[category,setCategory]=useState<(typeof reasons)[number]>("personal_data");
  const [selected,setSelected]=useState<{id:string;action:string}|null>(null),[confirmed,setConfirmed]=useState(false);
  const [reload,setReload]=useState(0),[success,setSuccess]=useState("");
+ const [history,setHistory]=useState<Array<{action:string;version:number;at:string}>>([]);
+ useEffect(()=>{
+  let mounted=true;
+  call<{events:{action:string;version:number;at:string}[]}>("/admin/history")
+   .then(result=>{if(mounted)setHistory(result.events);})
+   .catch(()=>{if(mounted)setHistory([]);});
+  return()=>{mounted=false};
+ },[reload]);
  useEffect(()=>{let active=true;setLoading(true);setError("");
   const params=new URLSearchParams({page:String(page),sort,q:search});
   call<Record<string,any>>("/admin/"+(tab==="queue"?"queue":tab)+"?"+params)
@@ -268,6 +276,15 @@ export function ReviewModerationPage(){
   </section>
   <QueuePager page={page} total={total} pageSize={10} onPage={p=>{setPage(p);setSelected(null);}}
    loading={loading}/>
+  <details className="card phase12-panel adm-c-review-history">
+   <summary>{w("confirmed")} ({history.length})</summary>
+   {!history.length?<QueueEmpty/>:<ol className="adm-c-history">{history.map((event,i)=><li key={i}>
+    <span className="adm-c-history-indicator" aria-hidden="true"/>
+    <div><strong>{event.action.replaceAll("_"," ")} · v{event.version}</strong>
+     <time>{new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",dateStyle:"medium",timeStyle:"short"})
+      .format(new Date(event.at))}</time></div>
+   </li>)}</ol>}
+  </details>
  </main>;
 }
 export function PublicVerifiedReviews({clinicId,dentistId}:{clinicId:string;dentistId?:string}){
