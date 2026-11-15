@@ -18,7 +18,7 @@ test("Admin segment owns a persistent sidebar shared by every tab route",()=>{
  assert.match(shell,/className="admin-route-content"/);
  assert.match(shell,/role==="loading"/);
  assert.match(shell,/PUBLIC_ADMIN_PATH/);
- assert.match(shell,/path\.startsWith/);
+ assert.match(shell,/pathname\.startsWith/);
  assert.match(shell,/router\.push\(url\.pathname/);
  assert.match(shell,/aria-current=\{active\(item\.href\)/);
  for(const path of ["clinics","dentists","listings","reviews","subscriptions","plans",
