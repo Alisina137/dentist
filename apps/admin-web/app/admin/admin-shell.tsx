@@ -84,7 +84,8 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
   if(!(link instanceof HTMLAnchorElement)||link.target&&link.target!=="_self"||
    link.hasAttribute("download")||link.hasAttribute("data-hard-navigation"))return;
   const url=new URL(link.href,location.href);
-  if(url.origin!==location.origin||!url.pathname.startsWith("/admin/")||
+  if(url.origin!==location.origin||
+    !(url.pathname==="/admin"||url.pathname.startsWith("/admin/"))||
     PUBLIC_ADMIN_PATH.test(url.pathname))return;
   event.preventDefault();
   router.push(url.pathname+url.search+url.hash);
