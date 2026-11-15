@@ -10,6 +10,7 @@ import "@dandanlink/ui/admin-design.css";
 import "@dandanlink/ui/admin-dashboard.css";
 import "@dandanlink/ui/admin-moderation.css";
 import "@dandanlink/ui/admin-phase-d.css";
+import "@dandanlink/ui/admin-phase-e.css";
 
 export const metadata: Metadata = {
   title: "DandanLink Administration",
