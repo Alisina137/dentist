@@ -7,6 +7,7 @@
 
 ## Delivered implementation
 
+- **Production fail-closed gate:** Patient booking, registry, clinical, billing and other private health-data mutations return `503 PILOT_RELEASE_BLOCKED` until all nine operator approval switches AND `PH19_PILOT_RELEASE_ENABLED` are true. The admin-only `/admin/pilot` dashboard shows the current 9-gate status in three languages. Flags are *operator attestations* only; signed external evidence remains mandatory. Local development and synthetic CI test routes are not blocked.
 - C35 is a dedicated responsive **Export requests / Retention preference / Access history** workspace, reachable from owner sidebar and clinic settings, with English, Dari, Pashto and RTL support. Staff with non-owner roles do not see the navigation item; the server separately enforces the grant.
 - Owner identity, active tenant membership, verified authenticator enrollment and **fresh sign-in (last 10 minutes)** are checked on mutations and downloads. The owner must sign out and sign back in for a new high-risk export when the session ages out; this is deliberate reauthentication, not an unchecked UI checkbox.
 - JSON export grants contain 256-bit random capability tokens; **SHA-256 hash only** is stored. Files are **generated on authorized download**, not uploaded to public storage or cached in the database. Each link expires in **5 minutes**, requires the original owner account and clinic, and is atomically **single-use**. The UI downloads with authenticated `fetch` and `no-referrer`, without putting a token in navigation history.
@@ -32,6 +33,7 @@
 | Export audit immutability, throttling and non-destructive retention | `tests/phase19-validation.test.mjs`, `phase19-integration.mjs` | **CI-gated** |
 | 100 simultaneous bookings for one verified slot → exactly one reservation | `tests/phase19-integration.mjs` | **CI-gated** |
 | Restorable synthetic backup with booking constraint, row checks and elapsed time | `scripts/verify-test-backup-restore.mjs` in CI | **CI-gated; production drill outstanding** |
+| Production protected-data write gates default NO-GO | `pilot-gate.ts`, `GET /v1/portability/admin/readiness`, `/admin/pilot` | **CI-gated; operator approvals missing** |
 | Legal privacy/consent text, data retention/deletion policy, hosting jurisdiction and data-processing agreements | Written owner/legal approval and provider evidence | **BLOCKED — external approvals** |
 | Clinical workflow and chart privacy, exported clinical data policy, consent/guardian law | Qualified clinical/legal reviewer | **BLOCKED — external approvals** |
 | Production environment secrets, TLS, encryption, storage malware scanning and access review | Security owner and provider screenshots/reports | **BLOCKED — manual** |
