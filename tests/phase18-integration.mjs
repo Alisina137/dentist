@@ -293,5 +293,88 @@ try{
  assert.equal(far.tickets.length,0);
  console.log("ADMIN_PHASE_D_OK — private finance totals, 10-row paging, invoice audit and 24h/48h support targets");
 
+// Phase E: privileged global navigation, real incident alerts, per-admin snoozes.
+ const opsRoot="/v1/admin/operations";
+ ok(await request(opsRoot+"/overview"),[401],"anonymous monitoring denied");
+ ok(await request(opsRoot+"/search?q=clinic"),[401],"anonymous global search denied");
+ ok(await request(opsRoot+"/overview","GET",undefined,owner.session),[403],
+  "clinic owner cannot access platform monitoring");
+ ok(await request(opsRoot+"/search?q=clinic","GET",undefined,owner.session),[403],
+  "clinic owner cannot enumerate platform directory");
+ ok(await request(opsRoot+"/overview","GET",undefined,requester.session),[403],
+  "non-admin cannot see alert signal metadata");
+ for(const q of ["","x"," ","a".repeat(81)]){
+  ok(await request(opsRoot+"/search?q="+encodeURIComponent(q),"GET",undefined,admin.session),
+   [422],"validated global search length");
+ }
+ ok(await request(opsRoot+"/search?q=aa&q=bb","GET",undefined,admin.session),[422],
+  "multi-value global query rejected");
+ const searchResponse=await request(opsRoot+"/search?q="+encodeURIComponent(aged.reference),
+  "GET",undefined,admin.session);
+ const search=ok(searchResponse,[200],"find test support ticket by reference");
+ assert.match(searchResponse.headers.get("cache-control")||"",/no-store/);
+ assert.ok(search.results.some(x=>x.type==="tickets"&&x.id===aged.id));
+ assert.ok(search.results.length<=25);
+ assert.ok(search.results.every(x=>["clinics","dentists","listings","invoices","tickets"].includes(x.type)));
+ assert.ok(search.results.every(x=>x.href.startsWith("/admin/")&&
+  !x.href.includes("//")&&!x.href.includes("javascript:")));
+ assert.ok(!JSON.stringify(search).includes("requester_id"));
+ assert.ok(!JSON.stringify(search).includes("medical_record"));
+ const [clinicRow]=await db`SELECT display_name FROM clinics WHERE id=${clinic.id}`;
+ const clinicResults=ok(await request(opsRoot+"/search?q="+
+  encodeURIComponent(clinicRow.display_name.slice(0,15)),"GET",undefined,admin.session),
+  [200],"search registered clinic name");
+ assert.ok(clinicResults.results.some(x=>x.type==="clinics"&&x.id===clinic.id));
+ const statusResponse=await request(opsRoot+"/overview","GET",undefined,admin.session);
+ const summaryE=ok(statusResponse,[200],"MFA admin sees derived monitoring data");
+ assert.match(statusResponse.headers.get("cache-control")||"",/no-store/);
+ assert.equal(summaryE.timezone,"Asia/Kabul");
+ assert.equal(summaryE.activityTrend.length,14);
+ assert.ok(summaryE.activityTrend.every((day,i)=>/^\d{4}-\d{2}-\d{2}$/.test(day.day)
+  &&typeof day.supportOpened==="number"
+  &&typeof day.invoicesConfirmed==="number"
+  &&typeof day.accessFailures==="number"));
+ assert.equal(summaryE.checks.databaseResponsive,true);
+ assert.equal(typeof summaryE.checks.pilotReleaseEnabled,"boolean");
+ const [clinicPending]=await db`SELECT count(*)::int AS n FROM clinics WHERE status='pending'`;
+ assert.equal(summaryE.metrics.pendingClinics,clinicPending.n);
+ const ageSignal=summaryE.alerts.find(x=>x.key==="support_first_reply_overdue");
+ assert.ok(ageSignal&&ageSignal.count>=1&&ageSignal.severity==="warning",
+  "live first-reply alert based on synthetic aged case");
+ assert.equal(summaryE.activeCount,summaryE.alerts.filter(x=>!x.snoozedUntil).length);
+ for(const forbidden of ["patient_id","requester_id","assignee_id","actor_id",
+  "clinical_note","evidence_reference","email","password","support_ticket_messages"]){
+  assert.ok(!JSON.stringify(summaryE).includes('"'+forbidden+'"'),"monitoring leaks "+forbidden);
+ }
+ ok(await request(opsRoot+"/alerts/not_real/snooze","POST",{},admin.session),
+  [422],"unrecognized alert cannot be acknowledged");
+ ok(await request(opsRoot+"/alerts/support_first_reply_overdue/snooze","POST",{},owner.session),
+  [403],"clinic owner cannot snooze platform issue");
+ const muted=ok(await request(opsRoot+"/alerts/support_first_reply_overdue/snooze",
+  "POST",{},admin.session),[200],"admin temporarily acknowledges alert");
+ assert.equal(muted.snoozedHours,12);
+ const [ack]=await db`SELECT user_id,until_at FROM platform_admin_alert_snoozes
+  WHERE alert_key='support_first_reply_overdue'`;
+ assert.ok(ack&&new Date(ack.until_at).getTime()>Date.now());
+ const snoozedState=ok(await request(opsRoot+"/overview","GET",undefined,admin.session),
+  [200],"snooze persisted across requests");
+ assert.ok(snoozedState.alerts.find(x=>x.key==="support_first_reply_overdue")?.snoozedUntil);
+ assert.equal(snoozedState.activeCount,summaryE.activeCount-1);
+ const unmuted=ok(await request(opsRoot+"/alerts/support_first_reply_overdue/snooze",
+  "DELETE",undefined,admin.session),[200],"restore notification");
+ assert.equal(unmuted.snoozed,false);
+ const unsnoozed=ok(await request(opsRoot+"/overview","GET",undefined,admin.session),
+  [200],"restored alert no longer snoozed");
+ assert.equal(unsnoozed.activeCount,summaryE.activeCount);
+ // Fixing the underlying ticket (not snoozing) reduces the current derived alert.
+ ok(await request(root+"/tickets/"+aged.id+"/messages","POST",{
+  message:"Your synthetic account request is being reviewed by the support desk."
+ },admin.session),[201],"first staff response clears overdue first-reply condition");
+ const afterReply=ok(await request(opsRoot+"/overview","GET",undefined,admin.session),
+  [200],"operational alerts recompute after actual workflow completion");
+ const afterCount=afterReply.alerts.find(x=>x.key==="support_first_reply_overdue")?.count??0;
+ assert.equal(afterCount,ageSignal.count-1);
+ console.log("ADMIN_PHASE_E_OK — MFA search, 14-day monitoring, live alerts and expiring personal snoozes");
+
  console.log("PH18_INTEGRATION_OK — ledger reconciliation, Kabul reporting, isolated support tickets and MFA privileges.");
 }finally{await db.end({timeout:2})}
