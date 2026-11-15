@@ -185,5 +185,113 @@ try{
  assert.equal(overview.platformReceipts.totalAfn>=0,true);
  ok(await request(reports+"/platform/security","GET",undefined,admin.session),
   [200],"admin audit group summary");
+
+ // Phase D: real finance and support management with MFA gates and auditable metadata.
+ const finance="/v1/admin/finance";
+ ok(await request(finance+"/summary"),[401],"anonymous finance summary denied");
+ ok(await request(finance+"/summary","GET",undefined,owner.session),[403],
+  "clinic owner denied global finance");
+ ok(await request(finance+"/invoices","GET",undefined,owner.session),[403],
+  "non-platform admin cannot enumerate manual payment references");
+ const financialResponse=await request(finance+"/summary","GET",undefined,admin.session);
+ const financial=ok(financialResponse,[200],"MFA verified platform finance summary");
+ assert.match(financialResponse.headers.get("cache-control")||"",/no-store/);
+ assert.equal(typeof financial.invoices.awaiting,"number");
+ assert.equal(typeof financial.subscriptions.active,"number");
+ assert.ok(financial.invoices.last30Afn>=0);
+ const [paidTotal]=await db`SELECT coalesce(sum(amount_afn),0)::bigint::text AS receipts
+  FROM platform_subscription_invoices WHERE status='paid'`;
+ assert.equal(financial.invoices.lifetimeAfn,Number(paidTotal.receipts),
+  "finance totals reflect ONLY confirmed platform subscriptions");
+ for(const endpoint of ["invoices","subscriptions"]){
+  for(const invalid of ["page=0","page=-2","page=1.5","sort=amount","status=malicious"]){
+   ok(await request(finance+"/"+endpoint+"?"+invalid,"GET",undefined,admin.session),
+    [422],"strict finance validation "+endpoint+"/"+invalid);
+  }
+  const newest=ok(await request(finance+"/"+endpoint+"?page=1&sort=newest",
+    "GET",undefined,admin.session),[200],"finance page "+endpoint);
+  const oldest=ok(await request(finance+"/"+endpoint+"?page=1&sort=oldest",
+    "GET",undefined,admin.session),[200],"finance reverse sort "+endpoint);
+  assert.equal(newest.total,oldest.total);
+  assert.equal(newest.pageSize,10);
+  assert.ok(newest[endpoint].length<=10);
+  const missing=ok(await request(finance+"/"+endpoint+"?q=unique-never-matches-143992",
+   "GET",undefined,admin.session),[200],"finance search "+endpoint);
+  assert.equal(missing.total,0);
+  const empty=ok(await request(finance+"/"+endpoint+"?page=99999",
+   "GET",undefined,admin.session),[200],"empty finance page");
+  assert.equal(empty[endpoint].length,0);
+ }
+ const [payment]=await db`SELECT id FROM platform_subscription_invoices
+  WHERE evidence_reference='bank-transfer-12345' ORDER BY created_at DESC LIMIT 1`;
+ assert.ok(payment?.id,"PH02 synthetic verified invoice exists");
+ const auditResponse=await request(finance+"/invoices/"+payment.id+"/history",
+   "GET",undefined,admin.session);
+ const audit=ok(auditResponse,[200],"MFA administrator sees only finance decision metadata");
+ assert.match(auditResponse.headers.get("cache-control")||"",/no-store/);
+ assert.ok(audit.events.some(x=>x.action==="subscription.invoice.confirm"));
+ assert.ok(audit.events.every(row=>Object.keys(row).every(k=>["action","outcome","at"].includes(k))));
+ ok(await request(finance+"/invoices/"+payment.id+"/history","GET",undefined,owner.session),
+  [403],"clinic owner denied payment decision audit");
+
+ const summaryResponse=await request(root+"/admin/desk-summary","GET",undefined,admin.session);
+ const summary=ok(summaryResponse,[200],"operational support SLA targets");
+ assert.match(summaryResponse.headers.get("cache-control")||"",/no-store/);
+ assert.equal(summary.targets.initialResponseHours,24);
+ assert.equal(summary.targets.triageHours,48);
+ for(const metric of ["open","inProgress","waiting","unassigned","highPriority",
+  "triageOverdue","firstReplyOverdue","firstReplyDueSoon","recentResolved"]){
+  assert.ok(Number.isInteger(summary[metric])&&summary[metric]>=0,metric);
+ }
+ ok(await request(root+"/admin/desk-summary","GET",undefined,requester.session),
+  [403],"ordinary requester denied platform SLA overview");
+ ok(await request(root+"/admin/tickets/"+ticket.id+"/activity","GET",undefined,requester.session),
+  [403],"requester cannot read internal case activity");
+ const eventResult=ok(await request(root+"/admin/tickets/"+ticket.id+"/activity",
+  "GET",undefined,admin.session),[200],"admin support case activity");
+ for(const action of ["opened","assign","escalate","reply","status"]){
+  assert.ok(eventResult.events.some(x=>x.action===action),"missing support timeline "+action);
+ }
+ assert.ok(eventResult.events.every(x=>Object.keys(x).every(k=>
+  ["action","at","from","to"].includes(k))));
+ const assignment=eventResult.events.find(x=>x.action==="assign");
+ assert.equal(assignment?.to,"assigned","event never exposes support agent ID");
+ for(const value of ["page=0","page=-1","sort=unknown","priority=invalid",
+  "urgency=invalid","ageDays=99"]){
+  ok(await request(root+"/admin/tickets?"+value,"GET",undefined,admin.session),
+   [422],"support filter rejects "+value);
+ }
+ // A deliberately aged test-only support request verifies the 24h first-response
+ // and 48h triage monitors (it has a requester message but NO staff reply).
+ const aged=ok(await request(root+"/tickets","POST",{
+  category:"account",title:"Synthetic account login issue awaiting triage",
+  message:"A test-only account access request is awaiting a first staff response."
+ },requester.session),[201],"synthetic support SLA fixture");
+ await db`UPDATE support_tickets SET created_at=now()-interval '51 hours',
+  updated_at=now()-interval '51 hours' WHERE id=${aged.id}`;
+ const overdue=ok(await request(root+"/admin/desk-summary","GET",undefined,admin.session),
+  [200],"aged case counted in support metrics");
+ assert.ok(overdue.firstReplyOverdue>=1&&overdue.triageOverdue>=1);
+ const triage=ok(await request(root+"/admin/tickets?status=all&urgency=triage&q="+
+  encodeURIComponent("Synthetic account login issue"),"GET",undefined,admin.session),
+  [200],"triage threshold and indexed search");
+ assert.ok(triage.tickets.some(x=>x.id===aged.id));
+ assert.ok(triage.tickets.every(x=>x.overdue_for_triage));
+ const firstReply=ok(await request(root+"/admin/tickets?status=all&urgency=response&q="+
+  encodeURIComponent(aged.reference),"GET",undefined,admin.session),
+  [200],"first-response overdue filter");
+ assert.equal(firstReply.total,1);
+ assert.equal(firstReply.tickets[0].first_reply_overdue,true);
+ for(const sort of ["priority","newest","oldest"]){
+  const result=ok(await request(root+"/admin/tickets?status=all&sort="+sort+
+   "&q="+encodeURIComponent(aged.reference),"GET",undefined,admin.session),
+    [200],"ticket sorting "+sort);
+  assert.equal(result.total,1);assert.equal(result.pageSize,15);
+ }
+ const far=ok(await request(root+"/admin/tickets?status=all&page=99999",
+  "GET",undefined,admin.session),[200],"last empty ticket page");
+ assert.equal(far.tickets.length,0);
+ console.log("ADMIN_PHASE_D_OK — private finance totals, 10-row paging, invoice audit and 24h/48h support targets");
+
  console.log("PH18_INTEGRATION_OK — ledger reconciliation, Kabul reporting, isolated support tickets and MFA privileges.");
 }finally{await db.end({timeout:2})}

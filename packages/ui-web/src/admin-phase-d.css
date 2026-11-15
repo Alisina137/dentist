@@ -1,0 +1,81 @@
+/* Phase D — platform-only finance & support operations; scoped to persistent admin shell. */
+.shell-admin .adm-d-finance{display:grid;gap:18px;min-width:0;color:#1a4659}
+.shell-admin .adm-d-finance h1{font-size:clamp(24px,2.4vw,32px);line-height:1.22;letter-spacing:-.03em;color:#153f52;margin:5px 0 7px}
+.shell-admin .adm-d-finance h2{font-size:16px;font-weight:800;margin:0}
+.shell-admin .adm-d-finance h3{font-size:13px;font-weight:760;margin:0}
+.shell-admin .adm-d-finance p{margin:0;line-height:1.6}
+.shell-admin .adm-d-eyebrow{font-size:10px;font-weight:900;color:#087e91;letter-spacing:.12em}
+.shell-admin .adm-d-finance-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.shell-admin .adm-d-finance-head>div{max-width:700px}
+.shell-admin .adm-d-finance-head p{font-size:13px;color:#607d8b}
+.shell-admin .adm-d-finance-head button{display:flex;align-items:center;gap:7px}
+.shell-admin .adm-d-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px}
+.shell-admin .adm-d-stat{background:#fff;border:1px solid #dfebee;border-radius:14px;min-width:0;padding:15px 15px 18px;display:grid;gap:6px;box-shadow:0 4px 16px rgba(22,70,89,.04)}
+.shell-admin .adm-d-stat-icon{width:35px;height:35px;display:grid;place-items:center;border-radius:10px;color:#0e7f8d;background:#eaf5f5}
+.shell-admin .adm-d-stat>span:nth-child(2){font-size:11px;line-height:1.4;color:#5a7888;font-weight:710}
+.shell-admin .adm-d-stat strong{font-weight:830;font-size:clamp(20px,2vw,29px);letter-spacing:-.025em;color:#163c52;overflow-wrap:anywhere}
+.shell-admin .adm-d-stat small{font-size:10px;color:#647c8a;font-weight:760}
+.shell-admin .adm-d-privacy{display:flex;gap:8px;align-items:start;border:1px solid #cae3e6;border-radius:11px;padding:12px 14px;color:#346e7e;font-size:11px;background:#f3faf9}
+.shell-admin .adm-d-privacy svg{flex-shrink:0;margin-top:2px}
+.shell-admin .adm-d-tabs{display:flex;gap:6px;border-bottom:1px solid #dfe9ec;padding-bottom:8px;flex-wrap:wrap}
+.shell-admin .adm-d-tabs button{border:0;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:750;color:#557484;background:transparent}
+.shell-admin .adm-d-tabs button[aria-selected=true]{color:#0c7283;background:#e5f4f5}
+.shell-admin .adm-d-filters{display:grid;gap:11px;min-width:0}
+.shell-admin .adm-d-filters .adm-c-tools{margin:0}
+.shell-admin .adm-d-pills{display:flex;flex-wrap:wrap;gap:7px}
+.shell-admin .adm-d-pills button{padding:8px 13px;min-height:36px;background:#fff;border:1px solid #dce8ec;border-radius:10px;font-size:12px;font-weight:750;color:#5d7584}
+.shell-admin .adm-d-pills button[aria-pressed=true]{background:#e1f3f4;border-color:#aad5da;color:#076a7a}
+.shell-admin .adm-d-records{background:#fff;border:1px solid #dfe9ed;border-radius:16px;padding:17px 18px;min-width:0;box-shadow:0 4px 22px rgba(25,65,81,.045)}
+.shell-admin .adm-d-records-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}
+.shell-admin .adm-d-records-head span{font-size:12px;color:#64808e}
+.shell-admin .adm-d-rows{display:grid;gap:11px}
+.shell-admin .adm-d-record{background:#fbfdfd;border:1px solid #e2ecef;border-radius:13px;padding:15px;min-width:0}
+.shell-admin .adm-d-record-top{display:flex;align-items:start;justify-content:space-between;gap:14px}
+.shell-admin .adm-d-record-top strong{font-size:14px;color:#1d4a5e;font-weight:790}
+.shell-admin .adm-d-record-top p{font-size:11px;color:#6a8290;margin-top:5px}
+.shell-admin .adm-d-status{border-radius:999px;background:#f0f4f6;color:#567280;padding:5px 10px;font-size:11px;white-space:nowrap;font-weight:780}
+.shell-admin .adm-d-status.is-awaiting,.shell-admin .adm-d-status.is-grace{background:#fff0df;color:#925d1f}
+.shell-admin .adm-d-status.is-paid,.shell-admin .adm-d-status.is-active{background:#dff4ea;color:#256850}
+.shell-admin .adm-d-status.is-trialing{background:#e8f3fb;color:#326c94}
+.shell-admin .adm-d-status.is-void,.shell-admin .adm-d-status.is-expired,.shell-admin .adm-d-status.is-cancelled{background:#f9e6e6;color:#994a50}
+.shell-admin .adm-d-record-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:15px}
+.shell-admin .adm-d-record-grid span{min-width:0;display:grid;gap:6px;font-size:11px;color:#63808e}
+.shell-admin .adm-d-record-grid strong,.shell-admin .adm-d-record-grid bdi{font-size:12px;color:#31586b;overflow-wrap:anywhere;font-weight:770}
+.shell-admin .adm-d-record-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;border-top:1px solid #e5ecef;padding-top:12px;margin-top:14px}
+.shell-admin .adm-d-record-actions .btn{padding:8px 12px;min-height:38px;font-size:12px}
+.shell-admin .adm-d-link{font-size:12px;font-weight:760;color:#08798b;margin-inline-end:auto;text-decoration:none}
+.shell-admin .adm-d-link:hover{text-decoration:underline}
+.shell-admin .adm-d-decision{margin-top:14px;border:1px solid #c7e3e7;background:#f4f9fa;padding:16px;border-radius:12px;display:grid;gap:11px}
+.shell-admin .adm-d-decision h3{font-size:14px}
+.shell-admin .adm-d-decision label{font-size:12px;display:grid;gap:6px;color:#476575;font-weight:720}
+.shell-admin .adm-d-decision textarea{width:100%;min-height:94px;resize:vertical}
+.shell-admin .adm-d-decision input:not([type=checkbox]){min-height:42px;font-size:13px;max-width:480px;width:100%}
+.shell-admin .adm-d-decision label.adm-d-check{display:flex;gap:9px;align-items:start;line-height:1.55;font-weight:620}
+.shell-admin .adm-d-decision .adm-d-check input{min-height:unset;margin-top:3px}
+.shell-admin .adm-d-decision .adm-d-warning{border:1px solid #f0dfbb;color:#81602c;border-radius:9px;padding:10px;font-size:12px;background:#fffaee}
+.shell-admin .adm-d-decision-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.shell-admin .adm-d-audit{padding:12px 16px;margin-top:12px;background:#f4faf9;border-radius:11px;border:1px solid #d8ebed}
+.shell-admin .adm-d-audit h3{margin:0 0 9px}
+.shell-admin .adm-d-audit p{font-size:12px;padding:5px 0;color:#567381}
+.shell-admin .adm-d-sla{margin-bottom:15px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.shell-admin .adm-d-sla-item{background:#f8fbfc;border:1px solid #dce8ed;padding:13px;border-radius:12px;display:grid;gap:4px;min-width:0}
+.shell-admin .adm-d-sla-item span{font-size:11px;font-weight:720;color:#5e7c8a;line-height:1.4}
+.shell-admin .adm-d-sla-item strong{font-size:24px;color:#12465b;line-height:1.2}
+.shell-admin .adm-d-sla-item small{font-size:10px;color:#708895}
+.shell-admin .adm-d-sla-item.warning{background:#fff8ec;border-color:#efdcb6}
+.shell-admin .adm-d-sla-item.warning strong{color:#945c22}
+.shell-admin .adm-d-support-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.shell-admin .adm-d-support-search{min-width:min(100%,250px);flex:1;display:flex;gap:8px;align-items:center}
+.shell-admin .adm-d-support-search input{flex:1;min-height:40px;min-width:0}
+.shell-admin .adm-d-support-search button{min-height:40px}
+.shell-admin .adm-d-support-pager{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;border-top:1px solid #e6edef;margin-top:10px;padding-top:10px;font-size:12px;color:#5e7886}
+.shell-admin .adm-d-support-pager button{min-height:34px;padding:6px 10px;font-size:12px}
+.shell-admin .adm-d-sla-badge{display:inline-block;border-radius:7px;background:#f9edda;color:#8e5920;font-weight:760;padding:4px 7px;font-size:11px}
+.shell-admin .adm-d-support-history{padding:14px;border:1px solid #dee9ee;border-radius:12px;background:#f9fcfc;margin-block:13px}
+.shell-admin .adm-d-support-history summary{cursor:pointer;font-size:12px;font-weight:760;color:#0a7585}
+.shell-admin .adm-d-support-history ol{padding:0;margin-top:12px;list-style:none;display:grid;gap:6px}
+.shell-admin .adm-d-support-history li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:7px;font-size:12px;border-bottom:1px solid #e5edef;padding:7px 0}
+.shell-admin .adm-d-sla-note{font-size:11px;color:#667d88;line-height:1.65;margin:10px 0}
+@media(max-width:1160px){.shell-admin .adm-d-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.shell-admin .adm-d-sla{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:660px){.shell-admin .adm-d-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.shell-admin .adm-d-record-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shell-admin .adm-d-records{padding:12px}.shell-admin .adm-d-record{padding:12px}.shell-admin .adm-d-support-controls{align-items:stretch}.shell-admin .adm-d-support-search{flex-basis:100%}.shell-admin .adm-d-finance-head h1{font-size:25px}}
+@media(prefers-reduced-motion:reduce){.shell-admin .adm-d-pills button,.shell-admin .adm-d-tabs button{transition:none}}

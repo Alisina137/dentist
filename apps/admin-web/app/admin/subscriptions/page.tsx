@@ -1,2 +1,2 @@
-import { Phase02Portal } from "@dandanlink/ui/phase02";
-export default function Page(){return <Phase02Portal audience="admin" view="subscriptions"/>;}
+import {AdminFinancePortal} from "@dandanlink/ui/admin-finance";
+export default function Page(){return <AdminFinancePortal/>;}

@@ -8,7 +8,7 @@ import {AdminPilotReadiness} from "./phase19-admin";
 type View="support"|"analytics"|"security"|"settings"|"pilot";
 type Ticket={id:string;reference:string;title:string;category_code:string;status:string;
  priority:string;created_at:string;updated_at:string;assigned?:boolean;
- assignee_id?:string|null;assignee_name?:string|null;age_hours?:number;overdue_for_triage?:boolean;source?:string};
+ assignee_id?:string|null;assignee_name?:string|null;age_hours?:number;overdue_for_triage?:boolean;first_reply_overdue?:boolean;source?:string};
 type Detail={ticket:Ticket;messages:{id:string;author_role:string;body:string;created_at:string}[]};
 type Overview={period:string;suppression:string;clinics:Record<string,number|null>;
  patients:number|null;dentists:number|null;bookings:Record<string,number|null>;
@@ -23,7 +23,14 @@ type Template={id:string;title_en:string;title_fa:string;title_ps:string;
 type Agent={user_id:string;name:string;granted_at:string;revoked_at:string|null};
 type Settings={categories:Category[];templates:Template[];agents:Agent[]};
 const O:Record<string,Record<string,string>>={
- en:{desk:"Support desk",supportHint:"Booking, account and operational issues only — never clinical records.",
+ en:{supportSummary:"Queue health",firstReplyOverdue:"First response overdue",triageOverdue:"Triage overdue",
+ dueSoon:"First response due soon",unassignedCases:"Unassigned cases",highPriority:"High-priority cases",
+ slaNotice:"Operational targets: first reply within 24h and triage within 48h. These are internal indicators, not guaranteed service commitments.",
+ searchTicket:"Search title or reference",searchButton:"Search",sortOrder:"Order",priorityFilter:"Priority",urgency:"Attention",
+ overdueResponse:"First reply overdue",urgentTriage:"Triage overdue",newest:"Newest",oldest:"Oldest",priorityFirst:"Priority first",
+ prevPage:"Previous",nextPage:"Next",page:"Page",results:"matching cases",history:"Ticket activity",
+ noHistory:"No activity recorded.",filterAll:"All",normal:"Normal",high:"High",
+ desk:"Support desk",supportHint:"Booking, account and operational issues only — never clinical records.",
  metrics:"Privacy-safe platform metrics",agents:"Support agents",reply:"Reply to request",
  subject:"Title",updateStatus:"Update status",unassigned:"Unassigned",all:"All requests",
  statusOpen:"Open",statusInProgress:"In progress",statusWaiting:"Waiting for requester",
@@ -42,7 +49,14 @@ const O:Record<string,Record<string,string>>={
  mfaGate:"Enable and verify two-factor authentication to access support operations.",
  privacy:"All reporting is aggregate and suppresses small groups. Staff cannot access clinical records.",
  users:"Users",current:"Current",waiting:"Waiting"},
- "fa-AF":{desk:"میز پشتیبانی",supportHint:"فقط مشکلات ملاقات، حساب و عملیات؛ بدون اسناد صحی.",
+ "fa-AF":{supportSummary:"وضعیت صف پشتیبانی",firstReplyOverdue:"پاسخ اول با تأخیر",triageOverdue:"بررسی اولیه با تأخیر",
+ dueSoon:"پاسخ اول نزدیک به موعد",unassignedCases:"درخواست‌های بدون مسئول",highPriority:"درخواست‌های عاجل",
+ slaNotice:"هدف داخلی: پاسخ نخست طی ۲۴ ساعت و بررسی اولیه طی ۴۸ ساعت؛ این تعهد خدماتی تضمین‌شده نیست.",
+ searchTicket:"جستجوی عنوان یا مرجع",searchButton:"جستجو",sortOrder:"ترتیب",priorityFilter:"اولویت",urgency:"موارد ضروری",
+ overdueResponse:"پاسخ با تأخیر",urgentTriage:"بررسی با تأخیر",newest:"جدیدترین",oldest:"قدیمی‌ترین",priorityFirst:"عاجل در اول",
+ prevPage:"قبلی",nextPage:"بعدی",page:"صفحه",results:"درخواست مطابق",history:"تاریخچه درخواست",
+ noHistory:"هیچ فعالیتی ثبت نشده.",filterAll:"همه",normal:"عادی",high:"عاجل",
+ desk:"میز پشتیبانی",supportHint:"فقط مشکلات ملاقات، حساب و عملیات؛ بدون اسناد صحی.",
  metrics:"شاخص‌های محرمیت‌محور پلتفرم",agents:"کارمندان پشتیبانی",reply:"پاسخ به درخواست",
  subject:"عنوان",updateStatus:"تغییر حالت",unassigned:"بدون مسئول",all:"همه درخواست‌ها",
  statusOpen:"باز",statusInProgress:"در حال بررسی",statusWaiting:"منتظر درخواست‌کننده",
@@ -61,7 +75,14 @@ const O:Record<string,Record<string,string>>={
  mfaGate:"برای ورود به بخش پشتیبانی، تأیید دومرحله‌ای را فعال و تأیید کنید.",
  privacy:"گزارش‌ها مجموعی اند و گروه‌های کوچک پنهان می‌شوند. پشتیبانی به اسناد صحی دسترسی ندارد.",
  users:"کاربران",current:"فعلی",waiting:"منتظر"},
- "ps-AF":{desk:"د ملاتړ مرکز",supportHint:"یوازې د لیدنو، حسابونو او چارو ستونزې؛ طبي ریکارډونه نه.",
+ "ps-AF":{supportSummary:"د ملاتړ کتار حالت",firstReplyOverdue:"لومړی ځواب ځنډېدلی",triageOverdue:"لومړنۍ کتنه ځنډېدلې",
+ dueSoon:"لومړي ځواب وخت رانږدې دی",unassignedCases:"بې مسئوله غوښتنې",highPriority:"لوړ لومړیتوب غوښتنې",
+ slaNotice:"داخلي هدفونه: لومړی ځواب په ۲۴ ساعتونو او لومړنۍ کتنه په ۴۸ ساعتونو کې؛ تضمین شوې ژمنه نه ده.",
+ searchTicket:"د سرلیک یا مرجع لټون",searchButton:"لټون",sortOrder:"ترتیب",priorityFilter:"لومړیتوب",urgency:"بیړنۍ غوښتنې",
+ overdueResponse:"ځنډېدلی ځواب",urgentTriage:"ځنډېدلې کتنه",newest:"نوي",oldest:"زاړه",priorityFirst:"لوړ لومړی",
+ prevPage:"مخکینی",nextPage:"راتلونکی",page:"مخ",results:"اړوند غوښتنې",history:"د غوښتنې تاریخ",
+ noHistory:"فعالیت نشته.",filterAll:"ټول",normal:"عادي",high:"لوړ",
+ desk:"د ملاتړ مرکز",supportHint:"یوازې د لیدنو، حسابونو او چارو ستونزې؛ طبي ریکارډونه نه.",
  metrics:"د محرمیت خوندي شمېرې",agents:"د ملاتړ کارکوونکي",reply:"غوښتنې ته ځواب",
  subject:"سرلیک",updateStatus:"حالت بدل کړئ",unassigned:"بې مسووله",all:"ټولې غوښتنې",
  statusOpen:"پرانیستې",statusInProgress:"تر څېړنې لاندې",statusWaiting:"غوښتونکي ته منتظر",
@@ -148,6 +169,13 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
  const [templates,setTemplates]=useState<Template[]>([]);
  const [agentId,setAgentId]=useState(""),[myId,setMyId]=useState("");
  const [note,setNote]=useState(""),[notes,setNotes]=useState<{id:string;body:string;created_at:string;author_name:string}[]>([]);
+ const [searchDraft,setSearchDraft]=useState(""),[search,setSearch]=useState("");
+ const [page,setPage]=useState(1),[total,setTotal]=useState(0);
+ const [sort,setSort]=useState("priority"),[priority,setPriority]=useState("all"),[urgency,setUrgency]=useState("all");
+ const [deskStats,setDeskStats]=useState<{open:number;inProgress:number;waiting:number;unassigned:number;
+  highPriority:number;triageOverdue:number;firstReplyOverdue:number;firstReplyDueSoon:number;
+  recentResolved:number;targets:{initialResponseHours:number;triageHours:number}}|null>(null);
+ const [events,setEvents]=useState<{action:string;at:string;from:string|null;to:string|null}[]>([]);
  useEffect(()=>{const match=location.pathname.match(/^\/admin\/support\/([A-Za-z0-9_-]{8,100})$/);
   if(match)setSelected(match[1]);
  },[]);
@@ -162,12 +190,25 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
   .then(d=>{if(alive)setMyId(d.id)}).catch(()=>{});
   return()=>{alive=false};
  },[]);
- useEffect(()=>{let live=true;setLoading(true);
-  const qs=new URLSearchParams({status:filter,category,assigned,ageDays:age});
-  call18<{tickets:Ticket[]}>("/support/admin/tickets?"+qs).then(d=>{if(live)setTickets(d.tickets)})
-   .catch(e=>message(e.message)).finally(()=>{if(live)setLoading(false)});
+ useEffect(()=>{let live=true;setLoading(true);setTickets([]);
+  const qs=new URLSearchParams({status:filter,category,assigned,ageDays:age,priority,urgency,
+   sort,q:search,page:String(page)});
+  call18<{tickets:Ticket[];total:number}>("/support/admin/tickets?"+qs).then(d=>{
+   if(live){setTickets(d.tickets);setTotal(d.total);}})
+   .catch(e=>{if(live){setTotal(0);message(e.message);}}).finally(()=>{if(live)setLoading(false)});
   return()=>{live=false};
- },[filter,category,assigned,age,signal]);
+ },[filter,category,assigned,age,priority,urgency,sort,search,page,signal]);
+ useEffect(()=>{let live=true;
+  call18<typeof deskStats>("/support/admin/desk-summary").then(d=>{if(live)setDeskStats(d);})
+    .catch(e=>{if(live){setDeskStats(null);message(e.message);}});
+  return()=>{live=false};
+ },[signal]);
+ useEffect(()=>{if(!selected){setEvents([]);return;}let live=true;setEvents([]);
+  call18<{events:{action:string;at:string;from:string|null;to:string|null}[]}>(
+   "/support/admin/tickets/"+selected+"/activity")
+    .then(d=>{if(live)setEvents(d.events);}).catch(()=>{if(live)setEvents([])});
+  return()=>{live=false};
+ },[selected,signal]);
  useEffect(()=>{if(!selected)return;let live=true;setDetail(null);
   call18<Detail>("/support/tickets/"+selected).then(d=>{if(live){
     setDetail(d);setStatus(d.ticket.status);setAgentId(d.ticket.assignee_id||"");
@@ -206,22 +247,63 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
    reload();message(t("save"),true)}
   catch(e){message(e instanceof Error?e.message:t("error"))}finally{setBusy(false)}
  }
- return <div className="p18-panel"><div className="p18-toolbar">
-  <label>{t("status")}<select value={filter} onChange={e=>{setFilter(e.target.value);setSelected("");setDetail(null)}}>
+ return <div className="p18-panel">
+  <section className="adm-d-sla" aria-label={o("supportSummary")}>
+   {([
+     ["unassignedCases",deskStats?.unassigned],
+     ["highPriority",deskStats?.highPriority],
+     ["triageOverdue",deskStats?.triageOverdue],
+     ["firstReplyOverdue",deskStats?.firstReplyOverdue],
+     ["dueSoon",deskStats?.firstReplyDueSoon],
+     ["statusInProgress",deskStats?.inProgress]
+   ] as const).map(([key,value])=><div key={key} className={"adm-d-sla-item"+(
+     (key==="triageOverdue"||key==="firstReplyOverdue")&&Boolean(value)?" warning":"")}>
+     <span>{o(key)}</span><strong>{value==null?"—":num(value)}</strong>
+     <small>{o("supportSummary")}</small>
+    </div>)}
+  </section>
+  <p className="adm-d-sla-note">{o("slaNotice")}</p>
+  <div className="p18-toolbar">
+  <label>{t("status")}<select value={filter} onChange={e=>{setFilter(e.target.value);setPage(1);setSelected("");setDetail(null)}}>
    <option value="all">{o("all")}</option>
    {statusList.map(s=><option key={s} value={s}>{o("status"+s.charAt(0).toUpperCase()+s.slice(1).replace(/_(\w)/g,(_m,c:string)=>c.toUpperCase()))}</option>)}
   </select></label>
-  <label>{t("category")}<select value={category} onChange={e=>setCategory(e.target.value)}>
+  <label>{t("category")}<select value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}>
    <option value="all">{o("all")}</option>
    {categories.map(c=><option key={c.code} value={c.code}>{lang==="fa-AF"?c.label_fa:lang==="ps-AF"?c.label_ps:c.label_en}</option>)}
   </select></label>
-  <label>{o("assigned")}<select value={assigned} onChange={e=>setAssigned(e.target.value)}>
+  <label>{o("assigned")}<select value={assigned} onChange={e=>{setAssigned(e.target.value);setPage(1);}}>
    <option value="all">{o("all")}</option><option value="unassigned">{o("unassigned")}</option><option value="mine">{o("myAssignments")}</option>
   </select></label>
-  <label>{o("age")}<select value={age} onChange={e=>setAge(e.target.value)}>
+  <label>{o("age")}<select value={age} onChange={e=>{setAge(e.target.value);setPage(1);}}>
    {[0,3,7,30].map(x=><option key={x} value={x}>{x===0?o("all"):x+"+"}</option>)}
   </select></label>
-  <button className="btn btn-secondary" onClick={reload}>{t("refresh")}</button></div>
+  <label>{o("priorityFilter")}<select value={priority}
+   onChange={e=>{setPriority(e.target.value);setPage(1);}}>
+   <option value="all">{o("filterAll")}</option><option value="high">{o("high")}</option>
+   <option value="normal">{o("normal")}</option></select></label>
+  <label>{o("urgency")}<select value={urgency}
+   onChange={e=>{setUrgency(e.target.value);setPage(1);}}>
+   <option value="all">{o("filterAll")}</option>
+   <option value="triage">{o("urgentTriage")}</option>
+   <option value="response">{o("overdueResponse")}</option></select></label>
+  <label>{o("sortOrder")}<select value={sort}
+   onChange={e=>{setSort(e.target.value);setPage(1);}}>
+   <option value="priority">{o("priorityFirst")}</option>
+   <option value="newest">{o("newest")}</option><option value="oldest">{o("oldest")}</option></select></label>
+  <button className="btn btn-secondary" type="button" onClick={reload}>{t("refresh")}</button></div>
+  <form className="adm-d-support-controls" role="search"
+   onSubmit={e=>{e.preventDefault();setSearch(searchDraft.trim());setPage(1);}}>
+   <div className="adm-d-support-search">
+    <input type="search" value={searchDraft} maxLength={100}
+     aria-label={o("searchTicket")} placeholder={o("searchTicket")}
+     onChange={e=>setSearchDraft(e.target.value)}/>
+    <button className="btn btn-primary" type="submit">{o("searchButton")}</button>
+    {searchDraft&&<button className="btn btn-secondary" type="button"
+     onClick={()=>{setSearchDraft("");setSearch("");setPage(1);}}>{o("filterAll")}</button>}
+   </div>
+   <span className="muted">{total} {o("results")}</span>
+  </form>
   <div className="p18-split"><div className="p18-ticket-list" aria-label={o("desk")}>
    {loading?<p>{t("loading")}</p>:!tickets.length?<p className="muted">{o("noTickets")}</p>:
     tickets.map(ticket=><button type="button" className={"p18-ticket-option"+(selected===ticket.id?" selected":"")}
@@ -229,7 +311,16 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
      <bdi dir="ltr">{ticket.reference}</bdi><span>{ticket.title}</span>
      <small>{ticket.status} · {ticket.category_code} · {ticket.age_hours||0}h</small>
      {ticket.overdue_for_triage&&<small className="p18-priority">{o("overdue")}</small>}
+     {ticket.first_reply_overdue&&<small className="adm-d-sla-badge">{o("overdueResponse")}</small>}
      <small>{ticket.assignee_name||o("unassigned")} · {ticket.source}</small></button>)}
+   <nav className="adm-d-support-pager" aria-label={o("page")}>
+    <span>{o("page")} {page} / {Math.max(1,Math.ceil(total/15))}</span>
+    <div><button className="btn btn-secondary" type="button"
+      disabled={loading||page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>
+      {o("prevPage")}</button>
+     <button className="btn btn-secondary" type="button" disabled={loading||page*15>=total}
+      onClick={()=>setPage(p=>p+1)}>{o("nextPage")}</button></div>
+   </nav>
    </div>
    <div>{detail?<><h2>{detail.ticket.title}</h2>
     <p className="muted"><bdi dir="ltr">{detail.ticket.reference}</bdi> · {detail.ticket.category_code} · {detail.ticket.priority}</p>
@@ -246,6 +337,15 @@ function SupportDesk({busy,setBusy,signal,reload,message,role}:DeskProps&{role:"
     <div className="p18-conversation">{detail.messages.map(m=><div key={m.id}
      className={"p18-message "+m.author_role}><small>{m.author_role} · {new Date(m.created_at).toLocaleString(lang)}</small>
      <p>{m.body}</p></div>)}</div>
+    <details className="adm-d-support-history">
+     <summary>{o("history")} ({events.length})</summary>
+     {events.length?<ol>{events.map((event,i)=><li key={i}>
+      <span>{event.action.replaceAll("_"," ")}
+       {event.from||event.to?" · "+(event.from||"—")+" → "+(event.to||"—"):""}</span>
+      <time dateTime={event.at}>{new Intl.DateTimeFormat(lang,{
+       timeZone:"Asia/Kabul",dateStyle:"short",timeStyle:"short"}).format(new Date(event.at))}</time>
+     </li>)}</ol>:<p className="muted">{o("noHistory")}</p>}
+    </details>
     {(role==="admin"||detail.ticket.assignee_id===myId)&&
       <section className="p18-private-notes"><h3>{o("internalNotes")}</h3>
        <p className="p18-footnote">{o("internalNotesHint")}</p>

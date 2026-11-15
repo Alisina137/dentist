@@ -103,6 +103,36 @@ export function supportRouter(){
    ORDER BY updated_at DESC LIMIT 100`;
   privateOps(res);res.json({tickets:rows});
  }));
+ router.get("/admin/desk-summary",opsTask(async(req,res)=>{
+  opsStaff(req);
+  // Operational targets for open cases; not contractual response commitments.
+  const [row]=await sqlClient`WITH tagged AS (
+   SELECT t.id,t.status,t.priority,t.assignee_id,t.created_at,
+    NOT EXISTS(SELECT 1 FROM support_ticket_messages m WHERE m.ticket_id=t.id
+      AND m.author_role='support') AS without_first_response
+   FROM support_tickets t
+  ) SELECT
+   count(*) FILTER (WHERE status='open')::int AS open,
+   count(*) FILTER (WHERE status='in_progress')::int AS in_progress,
+   count(*) FILTER (WHERE status='waiting_user')::int AS waiting,
+   count(*) FILTER (WHERE status NOT IN ('closed','resolved') AND assignee_id IS NULL)::int AS unassigned,
+   count(*) FILTER (WHERE status NOT IN ('closed','resolved') AND priority='high')::int AS high_priority,
+   count(*) FILTER (WHERE status IN ('open','in_progress')
+     AND created_at<now()-interval '48 hours')::int AS triage_overdue,
+   count(*) FILTER (WHERE status NOT IN ('closed','resolved') AND without_first_response
+     AND created_at<now()-interval '24 hours')::int AS first_reply_overdue,
+   count(*) FILTER (WHERE status NOT IN ('closed','resolved') AND without_first_response
+     AND created_at BETWEEN now()-interval '24 hours' AND now()-interval '20 hours')::int AS first_reply_due_soon,
+   count(*) FILTER (WHERE status='resolved' AND created_at>now()-interval '7 days')::int AS recent_resolved
+   FROM tagged`;
+  privateOps(res);res.json({open:Number(row.open),inProgress:Number(row.in_progress),
+   waiting:Number(row.waiting),unassigned:Number(row.unassigned),
+   highPriority:Number(row.high_priority),triageOverdue:Number(row.triage_overdue),
+   firstReplyOverdue:Number(row.first_reply_overdue),firstReplyDueSoon:Number(row.first_reply_due_soon),
+   recentResolved:Number(row.recent_resolved),targets:{initialResponseHours:24,triageHours:48},
+   generatedAt:new Date().toISOString(),
+   note:"Internal monitoring targets only, not a guaranteed response SLA or clinical safety certification."});
+ }));
  router.get("/admin/tickets",opsTask(async(req,res)=>{
   opsStaff(req);
   const filter=String(req.query.status||"open");
@@ -113,20 +143,73 @@ export function supportRouter(){
   if(!["all","mine","unassigned"].includes(assigned))opsFail(422,"INVALID_ASSIGNEE_FILTER");
   const age=Number(req.query.ageDays??0);
   if(![0,3,7,30].includes(age))opsFail(422,"INVALID_AGE_FILTER");
-  const rows=await sqlClient`SELECT t.id,t.reference,t.title,t.category_code,t.status,t.source,
-    t.priority,t.created_at,t.updated_at,t.assignee_id,
-    u.name AS assignee_name,
-    round(extract(epoch FROM (now()-t.created_at))/3600)::int AS age_hours,
-    (t.status IN ('open','in_progress') AND t.created_at < now()-interval '48 hours')
-      AS overdue_for_triage
+  const priority=String(req.query.priority??"all"),urgency=String(req.query.urgency??"all");
+  if(!["all","high","normal"].includes(priority))opsFail(422,"INVALID_PRIORITY");
+  if(!["all","triage","response"].includes(urgency))opsFail(422,"INVALID_URGENCY");
+  const sort=String(req.query.sort??"priority"),raw=String(req.query.page??"1");
+  if(!["priority","newest","oldest"].includes(sort))opsFail(422,"INVALID_SORT");
+  if(!/^[1-9]\d{0,4}$/.test(raw))opsFail(422,"INVALID_PAGE");
+  const page=Number(raw),pageSize=15,offset=(page-1)*pageSize;
+  const q=String(req.query.q??"").trim().slice(0,100);
+  const [rows,count]=await Promise.all([
+   sqlClient`WITH matched AS(
+    SELECT t.id,t.reference,t.title,t.category_code,t.status,t.source,
+      t.priority,t.created_at,t.updated_at,t.assignee_id,u.name AS assignee_name,
+      round(extract(epoch FROM (now()-t.created_at))/3600)::int AS age_hours,
+      (t.status IN ('open','in_progress') AND t.created_at<now()-interval '48 hours')
+       AS overdue_for_triage,
+      (t.status NOT IN ('resolved','closed') AND t.created_at<now()-interval '24 hours'
+       AND NOT EXISTS (SELECT 1 FROM support_ticket_messages m
+        WHERE m.ticket_id=t.id AND m.author_role='support')) AS first_reply_overdue
     FROM support_tickets t LEFT JOIN auth_users u ON u.id=t.assignee_id
     WHERE (${filter}='all' OR t.status=${filter})
-     AND (${category}='all' OR t.category_code=${category})
-     AND (${assigned}='all' OR (${assigned}='unassigned' AND t.assignee_id IS NULL)
-      OR (${assigned}='mine' AND t.assignee_id=${req.opsActor!.id}))
-     AND (${age}=0 OR t.created_at<now()-(${age} * interval '1 day'))
-    ORDER BY CASE WHEN t.priority='high' THEN 0 ELSE 1 END,t.updated_at DESC LIMIT 100`;
-  privateOps(res);res.json({tickets:rows,filter});
+      AND (${category}='all' OR t.category_code=${category})
+      AND (${assigned}='all' OR (${assigned}='unassigned' AND t.assignee_id IS NULL)
+       OR (${assigned}='mine' AND t.assignee_id=${req.opsActor!.id}))
+      AND (${age}=0 OR t.created_at<now()-${age}*interval '1 day')
+      AND (${priority}='all' OR t.priority=${priority})
+      AND (${q}='' OR t.title ILIKE ${"%"+q+"%"} OR t.reference ILIKE ${"%"+q+"%"})
+   ) SELECT * FROM matched
+     WHERE (${urgency}='all' OR (${urgency}='triage' AND overdue_for_triage)
+      OR (${urgency}='response' AND first_reply_overdue))
+     ORDER BY CASE WHEN ${sort}='priority' THEN CASE WHEN priority='high' THEN 0 ELSE 1 END END,
+      CASE WHEN ${sort}<>'oldest' THEN updated_at END DESC NULLS LAST,
+      CASE WHEN ${sort}='oldest' THEN updated_at END ASC NULLS LAST,id
+     LIMIT ${pageSize} OFFSET ${offset}`,
+   sqlClient`WITH matched AS (
+    SELECT t.id,t.status,t.created_at,
+     (t.status IN ('open','in_progress') AND t.created_at<now()-interval '48 hours')
+       AS overdue_for_triage,
+     (t.status NOT IN ('resolved','closed') AND t.created_at<now()-interval '24 hours'
+      AND NOT EXISTS (SELECT 1 FROM support_ticket_messages m
+       WHERE m.ticket_id=t.id AND m.author_role='support')) AS first_reply_overdue
+    FROM support_tickets t
+    WHERE (${filter}='all' OR t.status=${filter})
+      AND (${category}='all' OR t.category_code=${category})
+      AND (${assigned}='all' OR (${assigned}='unassigned' AND t.assignee_id IS NULL)
+       OR (${assigned}='mine' AND t.assignee_id=${req.opsActor!.id}))
+      AND (${age}=0 OR t.created_at<now()-${age}*interval '1 day')
+      AND (${priority}='all' OR t.priority=${priority})
+      AND (${q}='' OR t.title ILIKE ${"%"+q+"%"} OR t.reference ILIKE ${"%"+q+"%"})
+   ) SELECT count(*)::int AS total FROM matched
+      WHERE (${urgency}='all' OR (${urgency}='triage' AND overdue_for_triage)
+       OR (${urgency}='response' AND first_reply_overdue))`
+  ]);
+  privateOps(res);res.json({tickets:rows,total:Number(count[0]?.total??0),
+   filter,sort,page,pageSize,targets:{initialResponseHours:24,triageHours:48}});
+ }));
+ router.get("/admin/tickets/:ticketId/activity",opsTask(async(req,res)=>{
+  opsStaff(req);
+  const ticket=await ticketAccess(req,textId(req.params.ticketId));
+  const events=await sqlClient`SELECT action,previous_state,new_state,created_at
+   FROM support_ticket_events WHERE ticket_id=${ticket.id}
+   ORDER BY created_at DESC,id DESC LIMIT 100`;
+  // Assignment events contain principal IDs: collapse those into booleans.
+  privateOps(res);res.json({events:events.map(x=>({
+   action:x.action,at:x.created_at,
+   from:x.action==="assign"?(x.previous_state?"assigned":"unassigned"):x.previous_state,
+   to:x.action==="assign"?(x.new_state?"assigned":"unassigned"):x.new_state
+  }))});
  }));
  router.get("/admin/templates",opsTask(async(req,res)=>{
   opsStaff(req);
