@@ -4,6 +4,7 @@ import {fromNodeHeaders} from "better-auth/node";
 import {sqlClient} from "@dandanlink/db";
 import {auth} from "./auth.js";
 import {authStaff,scope,fail,type StaffRequest,type AccessFault} from "./staff-access.js";
+import {opsIdentity,opsAdmin,opsTask} from "./ops-access.js";
 
 const task=(f:(req:StaffRequest,res:Response)=>Promise<void>)=>
  (req:StaffRequest,res:Response,next:NextFunction)=>f(req,res).catch(next);
@@ -49,7 +50,27 @@ async function buildExport(cid:string){
   patients,appointments,invoices,payments};
 }
 export function portabilityRouter(){
- const r=Router();r.use(authStaff);
+ const r=Router();
+ r.get("/admin/readiness",opsIdentity,opsTask(async(req,res)=>{
+  opsAdmin(req);
+  const controls=[
+   ["legalPrivacy","PH19_LEGAL_PRIVACY_APPROVED"],
+   ["clinicalReview","PH19_CLINICAL_REVIEW_APPROVED"],
+   ["hostingEncryption","PH19_HOSTING_SECURITY_APPROVED"],
+   ["backupRestore","PH19_BACKUP_RESTORE_APPROVED"],
+   ["penetrationTest","PH19_PENETRATION_TEST_APPROVED"],
+   ["accessReview","PH19_ACCESS_REVIEW_APPROVED"],
+   ["criticalAlerts","PH19_ALERTS_APPROVED"],
+   ["accessibilityRTL","PH19_ACCESSIBILITY_RTL_APPROVED"],
+   ["pilotRoster","PH19_PILOT_ROSTER_APPROVED"]
+  ].map(([id,key])=>({id,complete:process.env[key]==="true"}));
+  const approved=controls.every(x=>x.complete);
+  secure(res);res.json({controls,passCount:controls.filter(x=>x.complete).length,
+   overall:approved&&process.env.PH19_PILOT_RELEASE_ENABLED==="true"?"operator_marked_pass":"blocked",
+   releaseEnabled:process.env.PH19_PILOT_RELEASE_ENABLED==="true"&&approved,
+   caveat:"Operator-set status is NOT an independent legal, clinical, security or provider certification. Attach dated evidence in the controlled release worksheet."});
+ }));
+ r.use(authStaff);
  r.get("/clinics/:clinicId/exports",task(async(req,res)=>{
   const cid=await owner(req);
   const rows=await sqlClient`SELECT id,status,reason,created_at,expires_at,downloaded_at
@@ -111,7 +132,11 @@ export function portabilityRouter(){
   const id=req.params.exportId,token=req.query.token,actor=req.actor!.id;
   if(!validId(id)||typeof token!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(token))
    fail(404,"EXPORT_LINK_NOT_FOUND");
-  // Generate before atomic token consumption; no partial exports or silent row truncation.
+  const grant=await sqlClient`SELECT id FROM clinic_export_jobs
+    WHERE id=${id} AND clinic_id=${cid} AND actor_id=${actor}
+     AND token_hash=${hash(token)} AND status='ready' AND expires_at>now()`;
+  if(!grant.length)fail(410,"EXPORT_LINK_EXPIRED_OR_USED");
+  // Build only for a validated capability; validate again during atomic consumption.
   const payload=await buildExport(cid);
   const updated=await sqlClient`UPDATE clinic_export_jobs
     SET status='downloaded',downloaded_at=now()
