@@ -5,17 +5,17 @@ type L="en"|"fa-AF"|"ps-AF";
 const t:Record<L,Record<string,string>>={
  en:{search:"Search",searchHint:"Search name, clinic or city",sort:"Sort by",newest:"Newest first",oldest:"Oldest first",
   reset:"Clear search",prev:"Previous",next:"Next",items:"records",of:"of",page:"Page",
-  result:"Search results",count:"results",noItems:"No matching records. Adjust your filters.",
+  all:"All",result:"Search results",count:"results",noItems:"No matching records. Adjust your filters.",
   changed:"Changed fields",unchanged:"Not changed",old:"Published",proposed:"Submitted",
   noPrevious:"Not previously published",confirmed:"Decision history",current:"Current"},
  "fa-AF":{search:"جستجو",searchHint:"نام، کلینیک یا شهر را جستجو کنید",sort:"ترتیب",newest:"جدیدترین",oldest:"قدیمی‌ترین",
   reset:"پاک‌کردن جستجو",prev:"قبلی",next:"بعدی",items:"مورد",of:"از",page:"صفحه",
-  result:"نتایج جستجو",count:"نتیجه",noItems:"موردی یافت نشد؛ فیلترها را تغییر دهید.",
+  all:"همه",result:"نتایج جستجو",count:"نتیجه",noItems:"موردی یافت نشد؛ فیلترها را تغییر دهید.",
   changed:"موارد تغییریافته",unchanged:"بدون تغییر",old:"منتشرشده",proposed:"پیشنهادی",
   noPrevious:"قبلاً نشر نشده",confirmed:"تاریخچه تصمیم",current:"فعلی"},
  "ps-AF":{search:"لټون",searchHint:"نوم، کلینیک یا ښار ولټوئ",sort:"ترتیب",newest:"نوي لومړی",oldest:"زاړه لومړی",
   reset:"لټون پاکول",prev:"مخکینی",next:"راتلونکی",items:"موردونه",of:"له",page:"مخ",
-  result:"د لټون پایلې",count:"پایلې",noItems:"هیڅ مورد ونه موندل شو؛ فلټر بدل کړئ.",
+  all:"ټول",result:"د لټون پایلې",count:"پایلې",noItems:"هیڅ مورد ونه موندل شو؛ فلټر بدل کړئ.",
   changed:"بدل شوي برخې",unchanged:"بدلون نشته",old:"خپور شوی",proposed:"سپارل شوی",
   noPrevious:"پخوا نه دی خپور شوی",confirmed:"د پریکړې تاریخ",current:"اوسنی"}
 };
