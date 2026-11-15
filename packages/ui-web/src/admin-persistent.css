@@ -1,0 +1,36 @@
+.admin-persistent-shell{max-width:1340px;align-items:start;min-height:520px}
+.admin-persistent-sidebar{min-height:540px;max-height:calc(100dvh - 112px);position:sticky;top:94px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+.admin-persistent-nav{margin-block:16px 6px;gap:4px}
+.admin-persistent-nav .admin-sidebar-link{min-height:43px}
+.admin-persistent-nav .admin-nav-group{margin-top:10px}
+.admin-persistent-content{min-height:560px}
+.admin-persistent-header{margin-block-end:20px}
+.admin-route-content{min-height:300px;min-width:0}
+.admin-sidebar-preferences{margin-top:20px}
+.admin-nav-skeleton{display:grid;gap:12px;padding:12px 8px}
+.admin-nav-skeleton span{display:block;height:35px;background:#eff3f6;border-radius:8px;animation:admin-shell-pulse 1.5s ease-in-out infinite}
+.admin-nav-skeleton span:nth-child(3n){width:75%}
+.admin-nav-no-access{font-size:13px;line-height:1.6;padding:8px}
+.admin-nav-no-access .btn{font-size:13px}
+.admin-page-loading{display:grid;gap:18px;padding-block:24px}
+.admin-loading-line,.admin-loading-card{background:#edf3f6;border:1px solid #e4ecf0;border-radius:14px;animation:admin-shell-pulse 1.5s ease-in-out infinite}
+.admin-loading-heading{height:36px;width:min(45%,270px)}
+.admin-loading-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.admin-loading-card{min-height:105px}
+.admin-loading-wide{min-height:220px}
+@keyframes admin-shell-pulse{50%{opacity:.5}}
+@media(max-width:900px){
+ .admin-persistent-shell{grid-template-columns:minmax(0,1fr);gap:16px}
+ .admin-persistent-sidebar{position:static;max-height:none;min-height:unset;overflow:visible}
+ .admin-persistent-nav{display:flex;flex-wrap:wrap;gap:6px}
+ .admin-persistent-nav .admin-nav-group{display:none}
+ .admin-persistent-nav .admin-sidebar-link{font-size:13px;min-height:40px}
+ .admin-persistent-content{min-height:360px}
+ .admin-loading-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:550px){
+ .admin-persistent-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-persistent-nav .admin-sidebar-link{min-width:0}
+ .admin-persistent-content .phase-work-heading{gap:10px}
+}
+@media(prefers-reduced-motion:reduce){.admin-nav-skeleton span,.admin-loading-line,.admin-loading-card{animation:none}}

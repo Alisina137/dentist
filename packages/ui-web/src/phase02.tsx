@@ -4,6 +4,7 @@ import React, { useEffect, useState, type FormEvent, type ReactNode } from "reac
 import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index";
 import { AdminModerationPortal } from "./phase12";
 import {ReviewModerationPage} from "./phase17";
+import {usePersistentAdminShell} from "./admin-shell-context";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 async function send(path:string,method="GET",body?:unknown):Promise<any> {
@@ -180,6 +181,9 @@ function DataError({message,retry}:{message:string,retry:()=>void}){
 function Frame({audience,view,children,name}:{audience:Audience,view:View,children:ReactNode,name:string}){
   const l=useText();
   const {locale}=usePreferences();
+  const persistentAdminShell=usePersistentAdminShell();
+  // Layout owns the admin navigation. Page data may load independently without hiding it.
+  if(audience==="admin"&&persistentAdminShell)return <>{children}</>;
   const extraLabels:Record<string,Record<string,string>>={
    en:{reports:"Reports",support:"Support",analytics:"Analytics",platformSecurity:"Security",platformSettings:"Settings",pilot:"Pilot readiness"},
    "fa-AF":{reports:"گزارش‌ها",support:"پشتیبانی",analytics:"تحلیل‌ها",platformSecurity:"امنیت",platformSettings:"تنظیمات",pilot:"آمادگی آزمایشی"},

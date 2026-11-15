@@ -2,6 +2,7 @@
 import React,{useEffect,useState,type FormEvent} from "react";
 import {InlineAlert,AdminMfaSetup} from "./index";
 import {call18,useWords,Stat,ChipTabs,Notice,num} from "./phase18";
+import {usePersistentAdminShell} from "./admin-shell-context";
 import {AdminPilotReadiness} from "./phase19-admin";
 
 type View="support"|"analytics"|"security"|"settings"|"pilot";
@@ -84,7 +85,8 @@ const statusList=["open","in_progress","waiting_user","resolved","closed"] as co
 const initialCategory:Category={code:"",label_en:"",label_fa:"",label_ps:"",active:true,sort_order:100};
 const initialTemplate:Template={id:"",title_en:"",title_fa:"",title_ps:"",body_en:"",body_fa:"",body_ps:"",active:true};
 export function AdminOperationsPortal({view}:{view:View}){
- const {lang,t}=useWords();const o=(key:string)=>O[lang]?.[key]||O.en[key]||key;
+ const {lang,t}=useWords();
+ const persistentAdminShell=usePersistentAdminShell();const o=(key:string)=>O[lang]?.[key]||O.en[key]||key;
  const [role,setRole]=useState<"admin"|"support"|"user"|null>(null),[needsMfa,setNeedsMfa]=useState(false);
  const [error,setError]=useState(""),[success,setSuccess]=useState(""),[busy,setBusy]=useState(false);
  const [reload,setReload]=useState(0);
@@ -96,15 +98,14 @@ export function AdminOperationsPortal({view}:{view:View}){
  const permitted=role==="admin"||role==="support"&&["support","analytics"].includes(view);
  const links=[{id:"support",label:t("support")},{id:"analytics",label:t("analytics")},
   ...(role==="admin"?[{id:"security",label:t("security")},{id:"settings",label:t("settings")},{id:"pilot",label:lang==="fa-AF"?"آمادگی آزمایشی":lang==="ps-AF"?"ازمایښتي چمتووالی":"Pilot readiness"}]:[])];
- return <div className="p18-admin-layout">
-  <aside className="p18-admin-sidebar">
+ const sidebar=<aside className="p18-admin-sidebar">
    <span className="p18-kicker">DANDANLINK · OPERATIONS</span><h2>{o("desk")}</h2>
    {role==="admin"&&<a href="/admin">← {t("back")}</a>}
    <nav aria-label={o("desk")}>{links.map(x=>
     <a key={x.id} aria-current={view===x.id?"page":undefined} href={"/admin/"+x.id}>{x.label}</a>)}</nav>
    <a href="/admin/support">{t("help")}</a>
-  </aside>
-  <div className="p18-admin-main">
+  </aside>;
+ const main=<div className="p18-admin-main">
    <header className="p18-hero"><span className="p18-kicker">PH18 · PLATFORM OPERATIONS</span>
     <h1>{view==="support"?t("support"):view==="analytics"?t("analytics"):
      view==="security"?t("security"):view==="pilot"?(lang==="fa-AF"?"آمادگی آزمایشی":lang==="ps-AF"?"ازمایښتي چمتووالی":"Pilot readiness"):t("settings")}</h1>
@@ -122,7 +123,9 @@ export function AdminOperationsPortal({view}:{view:View}){
      view==="pilot"?<AdminPilotReadiness/>:
       <OperationSettings busy={busy} setBusy={setBusy} signal={reload} reload={()=>setReload(x=>x+1)}
        message={(e,ok=false)=>{setError(ok?"":e);setSuccess(ok?e:"")}}/>}</>}
-  </div></div>;
+  </div>;
+ // The Next.js /admin layout holds the navigation, so only this route body changes.
+ return persistentAdminShell?main:<div className="p18-admin-layout">{sidebar}{main}</div>;
 }
 type DeskProps={busy:boolean;setBusy:(v:boolean)=>void;signal:number;reload:()=>void;
  message:(value:string,ok?:boolean)=>void};
