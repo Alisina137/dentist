@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { fromNodeHeaders } from "better-auth/node";
 import type { Request, Response, NextFunction } from "express";
-import { db, schema } from "@dandanlink/db";
+import { db, schema, sqlClient } from "@dandanlink/db";
 import { auth } from "./auth.js";
 import { permitsUnverifiedEmail } from "./email-policy.js";
 
@@ -42,6 +42,8 @@ export async function authStaff(req:StaffRequest,res:Response,next:NextFunction)
     if(!session?.user||!permitsUnverifiedEmail(session.user.emailVerified))fail(401,"AUTH_REQUIRED");
     const admin=await db.query.platformAdmin.findFirst({where:eq(schema.platformAdmin.userId,session.user.id)});
     if(admin&&!admin.revokedAt)fail(403,"PLATFORM_WORKSPACE_ONLY");
+    const support=await sqlClient`SELECT 1 FROM platform_support_agents WHERE user_id=${session.user.id} AND revoked_at IS NULL`;
+    if(support.length)fail(403,"PLATFORM_WORKSPACE_ONLY");
     const factor=await db.query.twoFactor.findFirst({where:eq(schema.twoFactor.userId,session.user.id)});
     req.actor={id:session.user.id,name:session.user.name,email:session.user.email,
       mfa:Boolean(session.user.twoFactorEnabled&&factor?.verified)};

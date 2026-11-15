@@ -277,3 +277,12 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - Native push/SMS are **not** advertised or enabled without provider and opt-in. Existing signed/shared records remain individually clinic-controlled; the optional patient web records link does not expose any unapproved data.
 - CI adds `tests/phase16-validation.test.mjs` and `tests/phase16-integration.mjs`; see `docs/PH16-ACCEPTANCE.md`.
 - Production clinical data, regulatory, retention and full physical-device Android/iOS acceptance still require PH19 human review.
+
+
+## PH18 — Role-safe reporting, nonclinical support, platform operations
+
+- Clinic reports at `/clinic/reports` with Appointments / Patients / Revenue, Kabul-local dates and aggregate-only CSV; PH10 manual net payment ledger (credit excluded) reconciled by method, issued invoices and posted expenses shown as different measures.
+- English/Dari/Pashto public Help, private verified-user support tickets, messages and resolutions. Platform Support, Analytics, Security and Settings screens, bounded taxonomy/template configuration, MFA-only delegated nonclinical support agents.
+- `0018_reporting_support_operations.sql`, `insights-router.ts`, `support-router.ts`, `ops-access.ts`, `phase18.tsx`, `phase18-admin.tsx`, `phase18.css`. Support history immutable; suppressed 1–4 aggregate platform counts; support prohibited from clinic/medical endpoints.
+- Validation/integration: `tests/phase18-validation.test.mjs`, `tests/phase18-integration.mjs` and CI PH18 integration. Requires applying `pnpm db:migrate` before services start. See `docs/PH18-ACCEPTANCE.md`.
+- **Not approved for live patient data:** PH19 production readiness, privacy and legal gate remains. No certified financial statements, PHI export, cross-branch accounting or diagnosis is implemented.

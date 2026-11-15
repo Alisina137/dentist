@@ -176,10 +176,15 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
         onClick={closeMenu}><span>★</span><span>{locale==="ps-AF"?"نظرونه":locale==="fa-AF"?"نظرات":"Reviews"}</span></a>
        <a className="nav-link" href="/appointments" aria-current={active("/appointments")?"page":undefined}
         onClick={closeMenu}><CareIcon name="calendar" size={17}/><span>{locale==="ps-AF"?"ملاقاتونه":locale==="fa-AF"?"ملاقات‌ها":"Appointments"}</span></a>
+       <a className="nav-link" href="/help" aria-current={active("/help")?"page":undefined}
+        onClick={closeMenu}><CareIcon name="about" size={17}/><span>{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</span></a>
        <a className="nav-link" href="/about" aria-current={active("/about")?"page":undefined}
         onClick={closeMenu}><CareIcon name="about" size={17}/><span>{t("aboutDandanLink")}</span></a>
        <PatientAccountNavLink active={active("/account")} closeMenu={closeMenu}/>
       </>}
+      {audience==="clinic"&&<a className="nav-link" href="/help"
+       aria-current={active("/help")?"page":undefined} onClick={closeMenu}>
+       <CareIcon name="about" size={17}/><span>{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</span></a>}
       {audience==="clinic"&&<a className="nav-link" href="/pricing"
        aria-current={active("/pricing")?"page":undefined} onClick={closeMenu}>
        <CareIcon name="file" size={17}/><span>{t("pricing")}</span></a>}
@@ -194,6 +199,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
   <footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
     <a href="/privacy" className="text-link">{t("privacy")}</a>
     <a href="/terms" className="text-link">{t("terms")}</a>
+    <a href={audience==="admin"?"/admin/support":"/help"} className="text-link">{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</a>
   </div></footer>
   {audience==="patient"&&<PatientBottomNav path={path}/>}
  </div>;
@@ -276,11 +282,16 @@ export function AuthPanel({ mode, audience }: { mode: "login" | "signup" | "forg
         if (result.error) throw result.error;
         const data = result.data as { twoFactorRedirect?: boolean } | null;
         const nextValue = new URLSearchParams(window.location.search).get("next");
-        const next = nextValue && nextValue.startsWith("/clinic/") && !nextValue.startsWith("//")
-          ? nextValue : base;
+        const safeNext = nextValue && !nextValue.startsWith("//") &&
+          (audience === "admin" ? ["/admin/support","/admin/analytics"].includes(nextValue) :
+           nextValue.startsWith("/clinic/")) ? nextValue : base;
+        // Delegated PH18 agents sign in through the admin portal but do not have platform-admin access.
+        const supportIdentity=audience==="admin"&&!nextValue
+         ? await request<{role:string}>("/v1/support/me").catch(()=>null) : null;
+        const next=supportIdentity?.role==="support"?"/admin/support":safeNext;
         window.location.assign(data?.twoFactorRedirect
           ? (audience === "admin" ? "/admin/2fa" : "/clinic/2fa") + "?next=" + encodeURIComponent(next)
-          : audience === "admin" ? base : next);
+          : next);
       } else if (mode === "forgot") {
         await authClient.requestPasswordReset({
           email: email.trim().toLowerCase(), redirectTo: window.location.origin + base + "/reset-password"
@@ -535,9 +546,11 @@ export function MfaChallenge({ home = "/admin" }: { home?: string } = {}) {
       const response = await authClient.twoFactor.verifyTotp({ code });
       if (response.error) throw response.error;
       const nextValue = new URLSearchParams(window.location.search).get("next");
-      const next = nextValue && nextValue.startsWith("/clinic/") && !nextValue.startsWith("//")
+      const next = nextValue && !nextValue.startsWith("//") &&
+        (home === "/admin" ? ["/admin/support","/admin/analytics"].includes(nextValue) : nextValue.startsWith("/clinic/"))
         ? nextValue : home;
-      window.location.assign(home === "/admin" ? "/admin" : next);
+      window.location.assign(home === "/admin" && !["/admin/support","/admin/analytics"].includes(nextValue||"")
+        ? "/admin" : next);
     } catch { setError(t("generalError")); setBusy(false); }
   }
   return <div className="auth-wrap"><div className="card auth-card">

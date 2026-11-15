@@ -24,6 +24,8 @@ import { patientAccountRouter } from "./patient-account-router.js";
 import { patientBookingRouter } from "./patient-booking-router.js";
 import { patientFavoritesRouter } from "./patient-favorites-router.js";
 import { patientReviewRouter } from "./patient-review-router.js";
+import { insightsRouter } from "./insights-router.js";
+import { supportRouter } from "./support-router.js";
 import { startBookingNotificationWorker } from "./booking-notifications.js";
 
 const app = express();
@@ -55,6 +57,8 @@ app.use("/v1/patients", patientAccountRouter());
 app.use("/v1/booking", patientBookingRouter());
 app.use("/v1/patient-favorites", patientFavoritesRouter());
 app.use("/v1/reviews", patientReviewRouter());
+app.use("/v1/insights", insightsRouter());
+app.use("/v1/support", supportRouter());
 app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
 // PH07 private clinical files have their own strictly bounded body parser.
@@ -72,7 +76,7 @@ app.get("/ready", async (_req, res) => {
   }
 });
 app.get("/v1/public/status", (_req, res) => res.json({
-  product: "DandanLink", release: "PH17", marketplaceAvailable: true, patientAccountsEnabled: true,
+  product: "DandanLink", release: "PH18", marketplaceAvailable: true, patientAccountsEnabled: true,
   patientWebBookingEnabled: true, nativeBookingEnabled: true,
   emailVerificationRequired: !devEmailVerificationDisabled
 }));

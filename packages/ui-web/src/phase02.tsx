@@ -179,27 +179,36 @@ function DataError({message,retry}:{message:string,retry:()=>void}){
 }
 function Frame({audience,view,children,name}:{audience:Audience,view:View,children:ReactNode,name:string}){
   const l=useText();
+  const {locale}=usePreferences();
+  const extraLabels:Record<string,Record<string,string>>={
+   en:{reports:"Reports",support:"Support",analytics:"Analytics",platformSecurity:"Security",platformSettings:"Settings"},
+   "fa-AF":{reports:"گزارش‌ها",support:"پشتیبانی",analytics:"تحلیل‌ها",platformSecurity:"امنیت",platformSettings:"تنظیمات"},
+   "ps-AF":{reports:"راپورونه",support:"ملاتړ",analytics:"شننې",platformSecurity:"امنیت",platformSettings:"تنظیمات"}
+  };
+  const label=(key:string)=>extraLabels[locale]?.[key]||l(key);
   const nav=audience==="clinic"?[
     ["dashboard","/clinic"],["appointments","/clinic/appointments"],["patients","/clinic/patients"],["staffWorkspace","/clinic/staff"],
     ["resources","/clinic/resources"],["services","/clinic/services"],["hours","/clinic/settings/hours"],
+     ["reports","/clinic/reports"],
     ["onboarding","/clinic/onboarding"],
     ["accessSecurity","/clinic/settings/security"],["settings","/clinic/settings"],
     ["subscription","/clinic/settings/subscription"]
-  ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["dentists","/admin/dentists"],["listings","/admin/listings"],["reviews","/admin/reviews"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"]];
+  ]:[["dashboard","/admin"],["clinics","/admin/clinics"],["dentists","/admin/dentists"],["listings","/admin/listings"],["reviews","/admin/reviews"],["subscriptions","/admin/subscriptions"],["plans","/admin/plans"],
+    ["support","/admin/support"],["analytics","/admin/analytics"],["platformSecurity","/admin/security"],["platformSettings","/admin/settings"]];
   const active=view==="review"?"clinics":view==="dentistReview"?"dentists":view==="listingReview"?"listings":view;
   return <div className="work-layout phase-layout">
     <aside className="card side-panel">
       <div className="pill">{audience==="clinic"?l("clinic"):l("verification")}</div>
       <nav className="side-nav" style={{marginBlockStart:18}} aria-label={l("dashboard")}>
         {nav.map(([key,link],index)=><React.Fragment key={key}>
-        {audience==="clinic"&&(index===0||index===3||index===7)&&
-          <span className="phase04-side-group">{l(index===0?"workspace":index===3?"operations":"management")}</span>}
+        {audience==="clinic"&&(key==="dashboard"||key==="staffWorkspace"||key==="onboarding")&&
+          <span className="phase04-side-group">{l(key==="dashboard"?"workspace":key==="staffWorkspace"?"operations":"management")}</span>}
         <a href={link} className="phase04-side-link" aria-current={active===key?"page":undefined}>
          <span className="phase04-side-icon" aria-hidden="true">
           {({dashboard:"⌂",appointments:"▦",patients:"♧",staffWorkspace:"◉",resources:"▦",services:"✦",hours:"◷",
-            onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",
+            onboarding:"⊞",settings:"⚙",accessSecurity:"⛨",subscription:"◇",reports:"▥",support:"✉",analytics:"▤",platformSecurity:"⛨",platformSettings:"⚙",
             clinics:"▤",dentists:"✚",listings:"◈",reviews:"★",plans:"▧",subscriptions:"◇"} as Record<string,string>)[key]||"•"}</span>
-         <span>{l(key)}</span></a>
+         <span>{label(key)}</span></a>
        </React.Fragment>)}
       </nav>
       <div className="phase-sidebar-bottom"><LocaleControls/></div>
