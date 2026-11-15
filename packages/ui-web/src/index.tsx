@@ -542,9 +542,11 @@ export function MfaChallenge({ home = "/admin" }: { home?: string } = {}) {
       const response = await authClient.twoFactor.verifyTotp({ code });
       if (response.error) throw response.error;
       const nextValue = new URLSearchParams(window.location.search).get("next");
-      const next = nextValue && nextValue.startsWith("/clinic/") && !nextValue.startsWith("//")
+      const next = nextValue && !nextValue.startsWith("//") &&
+        (home === "/admin" ? ["/admin/support","/admin/analytics"].includes(nextValue) : nextValue.startsWith("/clinic/"))
         ? nextValue : home;
-      window.location.assign(home === "/admin" ? "/admin" : next);
+      window.location.assign(home === "/admin" && !["/admin/support","/admin/analytics"].includes(nextValue||"")
+        ? "/admin" : next);
     } catch { setError(t("generalError")); setBusy(false); }
   }
   return <div className="auth-wrap"><div className="card auth-card">
