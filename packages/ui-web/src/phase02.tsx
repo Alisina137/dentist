@@ -259,7 +259,7 @@ function useResource(path:string){
   const [tick,setTick]=useState(0);
   const refresh=()=>setTick(v=>v+1);
   useEffect(()=>{
-    let alive=true;setError("");
+    let alive=true;setError("");setData(null);
     send(path).then(v=>{if(alive)setData(v);}).catch(e=>{if(alive)setError(e.message);});
     return()=>{alive=false;};
   },[path,tick]);
