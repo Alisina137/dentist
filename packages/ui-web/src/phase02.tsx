@@ -810,6 +810,7 @@ function ClinicSettings(){
     {!["pending","suspended"].includes(detail?.clinic.status)&&
     <button className="btn btn-primary" disabled={busy}>{l("update")}</button>}
   </form>}
+  <div className="phase-actions"><a className="btn btn-secondary" href={"/clinic/settings/export?clinic="+selected}>Data export & retention →</a></div>
   {failure&&<Alert message={failure}/>}
   {message&&<Alert message={message} ok/>}
  </section>;
