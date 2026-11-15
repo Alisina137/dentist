@@ -81,7 +81,7 @@ CREATE TABLE support_ticket_internal_notes (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX support_internal_notes_ticket_idx ON support_ticket_internal_notes(ticket_id,created_at,id);
-CREATE OR REPLACE FUNCTION support_history_immutable() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE OR REPLACE FUNCTION support_history_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  RAISE EXCEPTION 'Support conversations and events are append-only';
 END; $$;
