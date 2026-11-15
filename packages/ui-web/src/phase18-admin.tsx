@@ -2,8 +2,9 @@
 import React,{useEffect,useState,type FormEvent} from "react";
 import {InlineAlert,AdminMfaSetup} from "./index";
 import {call18,useWords,Stat,ChipTabs,Notice,num} from "./phase18";
+import {AdminPilotReadiness} from "./phase19-admin";
 
-type View="support"|"analytics"|"security"|"settings";
+type View="support"|"analytics"|"security"|"settings"|"pilot";
 type Ticket={id:string;reference:string;title:string;category_code:string;status:string;
  priority:string;created_at:string;updated_at:string;assigned?:boolean;
  assignee_id?:string|null;assignee_name?:string|null;age_hours?:number;overdue_for_triage?:boolean;source?:string};
@@ -94,7 +95,7 @@ export function AdminOperationsPortal({view}:{view:View}){
  },[]);
  const permitted=role==="admin"||role==="support"&&["support","analytics"].includes(view);
  const links=[{id:"support",label:t("support")},{id:"analytics",label:t("analytics")},
-  ...(role==="admin"?[{id:"security",label:t("security")},{id:"settings",label:t("settings")}]:[])];
+  ...(role==="admin"?[{id:"security",label:t("security")},{id:"settings",label:t("settings")},{id:"pilot",label:lang==="fa-AF"?"آمادگی آزمایشی":lang==="ps-AF"?"ازمایښتي چمتووالی":"Pilot readiness"}]:[])];
  return <div className="p18-admin-layout">
   <aside className="p18-admin-sidebar">
    <span className="p18-kicker">DANDANLINK · OPERATIONS</span><h2>{o("desk")}</h2>
@@ -106,7 +107,7 @@ export function AdminOperationsPortal({view}:{view:View}){
   <div className="p18-admin-main">
    <header className="p18-hero"><span className="p18-kicker">PH18 · PLATFORM OPERATIONS</span>
     <h1>{view==="support"?t("support"):view==="analytics"?t("analytics"):
-     view==="security"?t("security"):t("settings")}</h1>
+     view==="security"?t("security"):view==="pilot"?(lang==="fa-AF"?"آمادگی آزمایشی":lang==="ps-AF"?"ازمایښتي چمتووالی":"Pilot readiness"):t("settings")}</h1>
     <p>{view==="support"?o("supportHint"):o("privacy")}</p></header>
    {role===null?<InlineAlert>{t("loading")}</InlineAlert>:needsMfa?
     role==="support"?<AdminMfaSetup home="/admin/support"/>:
@@ -118,6 +119,7 @@ export function AdminOperationsPortal({view}:{view:View}){
       message={(e,ok=false)=>{setError(ok?"":e);setSuccess(ok?e:"")}}/>:
      view==="analytics"?<PlatformAnalytics signal={reload}/>:
      view==="security"?<SecurityReview signal={reload}/>:
+     view==="pilot"?<AdminPilotReadiness/>:
       <OperationSettings busy={busy} setBusy={setBusy} signal={reload} reload={()=>setReload(x=>x+1)}
        message={(e,ok=false)=>{setError(ok?"":e);setSuccess(ok?e:"")}}/>}</>}
   </div></div>;

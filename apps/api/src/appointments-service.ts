@@ -155,24 +155,60 @@ async function event(tx:any,cid:string,actorId:string,a:Appointment,action:strin
  await tx.insert(schema.outboxEvent).values({id:randomUUID(),kind:"appointment."+action,
   state:"pending",safePayload:JSON.stringify({clinicId:cid,appointmentId:a.id})});
 }
+const alternativeCache=new Map<string,{until:number;promise:Promise<{date:string;start:string;resourceId:string|null}[]>}>();
 async function nextAlternatives(cid:string,input:{date:string;serviceId:string;providerId:string;resourceId:string|null},
  after:string,excludeId?:string):Promise<{date:string;start:string;resourceId:string|null}[]>{
- const found:{date:string;start:string;resourceId:string|null}[]=[];
- for(let n=0;n<10&&found.length<3;n++){
-  const date=shiftDay(input.date,n);
-  try{
-   const view=await availabilityPreview(cid,{date,serviceId:input.serviceId,
-    providerId:input.providerId,resourceId:input.resourceId??undefined,excludeAppointmentId:excludeId});
-   for(const x of view.slots){
-    if(n===0&&x.start<=after)continue;
-    found.push({date,start:x.start,resourceId:x.resourceId});
-    if(found.length===3)break;
-   }
-  }catch{/* No suggestions for a closed/non-operational day. */}
- }
- return found;
+ // Conflict responses from the same slot share a small advisory-only suggestion lookup.
+ const cacheKey=JSON.stringify([cid,input.date,input.serviceId,input.providerId,input.resourceId,after,excludeId||null]);
+ const cached=alternativeCache.get(cacheKey);
+ if(cached&&cached.until>Date.now())return cached.promise;
+ const promise=(async()=>{
+  const found:{date:string;start:string;resourceId:string|null}[]=[];
+  for(let n=0;n<10&&found.length<3;n++){
+   const date=shiftDay(input.date,n);
+   try{
+    const view=await availabilityPreview(cid,{date,serviceId:input.serviceId,
+     providerId:input.providerId,resourceId:input.resourceId??undefined,excludeAppointmentId:excludeId});
+    for(const x of view.slots){
+     if(n===0&&x.start<=after)continue;
+     found.push({date,start:x.start,resourceId:x.resourceId});
+     if(found.length===3)break;
+    }
+   }catch{/* No suggestions for a closed/non-operational day. */}
+  }
+  return found;
+ })();
+ alternativeCache.set(cacheKey,{until:Date.now()+5000,promise});
+ if(alternativeCache.size>150)alternativeCache.clear();
+ try{return await promise;}catch(error){alternativeCache.delete(cacheKey);throw error;}
 }
-export async function createAppointment(ctx:ActorContext,cid:string,actorId:string,raw:any){
+// Queue same-tenant appointment creates BEFORE opening a database transaction.
+// Without this application-side lane, >pool-size requests can each occupy a
+// connection waiting on a clinic row lock while the lock holder itself needs a
+// second connection for availabilityPreview/requirePatient: pool starvation.
+// Database exclusion constraints and row locks still arbitrate cross-process races.
+const clinicCreateTails=new Map<string,Promise<void>>();
+const clinicCreateCounts=new Map<string,number>();
+async function queueClinicCreate<T>(cid:string,work:()=>Promise<T>):Promise<T>{
+ const count=(clinicCreateCounts.get(cid)||0)+1;
+ if(count>150)fail(429,"BOOKING_QUEUE_BUSY");
+ clinicCreateCounts.set(cid,count);
+ const before=clinicCreateTails.get(cid)||Promise.resolve();
+ let release!:()=>void;
+ const own=new Promise<void>(resolve=>{release=resolve;});
+ clinicCreateTails.set(cid,own);
+ try{
+  await before;
+  return await work();
+ }finally{
+  release();
+  if(clinicCreateTails.get(cid)===own)clinicCreateTails.delete(cid);
+  const remaining=(clinicCreateCounts.get(cid)||1)-1;
+  if(remaining>0)clinicCreateCounts.set(cid,remaining);
+  else clinicCreateCounts.delete(cid);
+ }
+}
+async function createAppointmentSerial(ctx:ActorContext,cid:string,actorId:string,raw:any){
  const input=appointmentInput(raw);
  if(!mayScheduleProvider(ctx,input.providerId))fail(403,"PROVIDER_SCOPE_DENIED");
  const key=uuidLike(raw.idempotencyKey,"IDEMPOTENCY_KEY");
@@ -186,6 +222,17 @@ export async function createAppointment(ctx:ActorContext,cid:string,actorId:stri
     where:and(eq(schema.clinicAppointment.id,replay.found.appointmentId),
      eq(schema.clinicAppointment.clinicId,cid))}))!;}
    await requirePatient(cid,input.patientId);
+   // PH19 contention hardening: after the clinic lock, short-circuit an
+   // already booked exact slot instead of repeating expensive calendar evaluation.
+   // Overlap exclusion constraints remain the final authority for partial overlaps.
+   const minute=Number(input.start.slice(0,2))*60+Number(input.start.slice(3));
+   const booked=await tx.query.clinicAppointment.findFirst({where:and(
+    eq(schema.clinicAppointment.clinicId,cid),
+    eq(schema.clinicAppointment.providerMembershipId,input.providerId),
+    eq(schema.clinicAppointment.startAt,new Date(localToUtc(input.date,minute))),
+    inArray(schema.clinicAppointment.status,blocksResource as ("confirmed"|"arrived"|"in_treatment"|"completed")[])
+   )});
+   if(booked)fail(409,"APPOINTMENT_SLOT_UNAVAILABLE");
    const view=await availabilityPreview(cid,{date:input.date,serviceId:input.serviceId,
     providerId:input.providerId,resourceId:input.resourceId??undefined});
    const resourceChosen=view.slots.find(x=>x.start===input.start&&
@@ -218,6 +265,9 @@ export async function createAppointment(ctx:ActorContext,cid:string,actorId:stri
   throw e;
  }
  return {appointment:created,replayed:reused,conflict:false};
+}
+export async function createAppointment(ctx:ActorContext,cid:string,actorId:string,raw:any){
+ return queueClinicCreate(cid,()=>createAppointmentSerial(ctx,cid,actorId,raw));
 }
 export async function rescheduleAppointment(ctx:ActorContext,cid:string,actorId:string,id:string,raw:any){
  const input=changeInput(raw),key=uuidLike(raw.idempotencyKey,"IDEMPOTENCY_KEY");

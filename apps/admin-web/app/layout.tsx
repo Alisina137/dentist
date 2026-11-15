@@ -3,6 +3,7 @@ import { PreferencesProvider, SiteLayout } from "@dandanlink/ui";
 import "@dandanlink/ui/styles.css";
 import "@dandanlink/ui/polish.css";
 import "@dandanlink/ui/phase18.css";
+import "@dandanlink/ui/phase19.css";
 import "@dandanlink/ui/phase17.css";
 
 export const metadata: Metadata = {

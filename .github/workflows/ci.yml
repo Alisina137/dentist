@@ -32,6 +32,8 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - name: Install PostgreSQL backup clients for PH19 restore drill
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
@@ -76,4 +78,6 @@ jobs:
           node tests/phase16-integration.mjs
           node tests/phase17-integration.mjs
           node tests/phase18-integration.mjs
+          node tests/phase19-integration.mjs
+          NODE_ENV=test node scripts/verify-test-backup-restore.mjs
           node tests/dev-no-email-integration.mjs
