@@ -909,7 +909,7 @@ function AdminClinics(){
   <nav className="phase-tabs" role="tablist" aria-label={l("status")}>
    {["pending","needs_info","approved","suspended","rejected","all"].map(s=>
     <button type="button" key={s} role="tab" aria-selected={status===s}
-     className={status===s?"current":""} onClick={()=>selectStatus(s)}>{s==="all"?w("result"):l(s)}</button>)}
+     className={status===s?"current":""} onClick={()=>selectStatus(s)}>{s==="all"?w("all"):l(s)}</button>)}
   </nav>
   <QueueTools draft={draft} onDraftChange={setDraft} onSubmit={search}
    onClear={()=>{setDraft("");setTerm("");setPage(1);}} sort={sort}
