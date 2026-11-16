@@ -5,6 +5,7 @@ import "./clinic-design.css";
 import "./clinic-ux.css";
 import "./clinic-dashboard.css";
 import "./clinic-scheduling.css";
+import "./clinic-reception.css";
 
 // Next App Router preserves the clinic sidebar, header and clinic selector
 // while only the active page segment changes.
