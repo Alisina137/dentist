@@ -208,7 +208,7 @@ function Tabs({space,patientId,current}:{space:Space;patientId:string;current:Vi
  </nav>;
 }
 export function ClinicalPortal({view}:{view:View}){
- const {t}=useW();
+ const {t}=useW(),{t:feedback}=useClinicFeedback();
  const [ctx,setCtx]=useState<Context|null>(null),[error,setError]=useState("");
  const [selected,setSelected]=useState<string|null|undefined>(undefined);
  useEffect(()=>{
@@ -219,7 +219,7 @@ export function ClinicalPortal({view}:{view:View}){
    .catch(e=>setError(e.message||"NETWORK_ERROR"));
  },[]);
  if(error==="AUTH_REQUIRED")return <div className="card panel"><Banner kind="warning">{t("forbidden")}</Banner>
-  <a href="/clinic/login" className="btn btn-primary">Login</a></div>;
+  <a href="/clinic/login" className="btn btn-primary">{feedback("signIn")}</a></div>;
  if(error)return <ErrorBox error={error} retry={()=>location.reload()}/>;
  if(!ctx||selected===undefined)return <Loading/>;
  const space=selected?ctx.clinics.find(s=>s.clinicId===selected):ctx.clinics[0];
