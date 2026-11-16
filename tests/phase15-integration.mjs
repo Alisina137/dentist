@@ -105,6 +105,14 @@ const confirmed=ok(await request(root+"/my/"+created.id,"GET",undefined,patient.
  [200],"confirmed state visible in account").booking;
 assert.equal(confirmed.status,"confirmed");
 assert.equal(confirmed.revision,created.revision+1);
+const timelineAfterApproval=ok(await request(root+"/my/"+created.id,"GET",undefined,patient.session),
+ [200],"private booking chronology after clinic approval");
+assert.deepEqual(timelineAfterApproval.timeline.map(x=>x.action),["created","accepted"]);
+assert.deepEqual(timelineAfterApproval.timeline.map(x=>x.status),["requested","confirmed"]);
+assert.equal(timelineAfterApproval.timelineTruncated,false);
+assert.ok(timelineAfterApproval.timeline.every(x=>x.occurredAt&&x.appointmentAt));
+assert.ok(timelineAfterApproval.timeline.every(x=>!("reason" in x)&&!("actorId" in x)&&!("clinicId" in x)),
+ "private booking chronology must not expose staff identity or medical narrative");
 
 const modified=ok(await request(root+"/my/"+created.id+"/reschedule","POST",{
  startAt:alternative.startAt,reason:"I would prefer the following available appointment slot",
@@ -121,6 +129,17 @@ const cancelled=ok(await request(root+"/my/"+created.id+"/cancel","POST",{
  revision:modified.revision,reason:"Patient has made alternative arrangements and needs to cancel"
 },patient.session),[200],"cancel confirmed reservation within policy");
 assert.equal(cancelled.status,"cancelled");
+const finalDetail=ok(await request(root+"/my/"+created.id,"GET",undefined,patient.session),
+ [200],"patient own booking detail after cancel");
+assert.equal(finalDetail.booking.status,"cancelled");
+assert.deepEqual(finalDetail.timeline.map(x=>x.action),
+ ["created","accepted","rescheduled","cancelled"]);
+assert.equal(finalDetail.timeline.at(-1).status,"cancelled");
+assert.equal(finalDetail.timeline.at(-2).appointmentAt,alternative.startAt);
+assert.ok(finalDetail.timeline.every(x=>!JSON.stringify(x).includes(patient.email)),
+ "booking chronology excludes private account identity");
+ok(await request(root+"/my/"+created.id,"GET",undefined,other.session),
+ [404],"foreign patient cannot enumerate appointment status history");
 ok(await request(root+"/my/"+created.id+"/cancel","POST",{
  revision:modified.revision,reason:"Trying to cancel the same booking two times"
 },patient.session),[409],"cannot repeatedly cancel");
