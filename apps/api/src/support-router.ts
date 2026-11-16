@@ -59,10 +59,13 @@ export function supportRouter(){
    process.env.PATIENT_WEB_URL||"http://localhost:3002"];
   if(origin&&allowed.includes(origin))return next();
   const bearer=typeof req.headers.authorization==="string"&&
-   /^Bearer [A-Za-z0-9._~-]{12,512}$/.test(req.headers.authorization);
+   /^Bearer \S{12,2048}$/.test(req.headers.authorization);
   const nativePatientWrite=req.method==="POST"&&
    (req.path==="/tickets"||/^\/tickets\/[a-zA-Z0-9_-]{8,100}\/messages$/.test(req.path));
-  if(!origin&&bearer&&nativePatientWrite&&!req.headers["sec-fetch-site"])return next();
+  // React Native / Node fetch can send Sec-Fetch-Site: none; browsers using
+  // cross-site fetch send cross-site and are rejected by the global guard.
+  const fetchSite=req.headers["sec-fetch-site"];
+  if(!origin&&bearer&&nativePatientWrite&&(!fetchSite||fetchSite==="none"))return next();
   res.status(403).json({code:"ORIGIN_DENIED"});
  });
  router.get("/public/help",opsTask(async(_req,res)=>{
