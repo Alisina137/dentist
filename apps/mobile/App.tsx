@@ -1,10 +1,10 @@
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth} from "./native-auth";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
- ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,
+ AccessibilityInfo,ActivityIndicator,Animated,Image,Linking,Pressable,RefreshControl,ScrollView,
  StatusBar,StyleSheet,Text,TextInput,View
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -321,22 +321,31 @@ async function fetchPublic<T>(path:string,signal?:AbortSignal):Promise<T>{
  return response.json() as Promise<T>;
 }
 function usePublic<T>(path:string|null):Remote<T>{
- const [state,setState]=useState<{loading:boolean;data:T|null;error:string|null}>({
- loading:!!path,data:null,error:null});
+ // Bind every public result to its current filters and location; a stale clinic
+ // list must not appear for one frame when a user changes a search facet.
+ const [state,setState]=useState<{path:string|null;loading:boolean;data:T|null;error:string|null}>({
+  path:null,loading:!!path,data:null,error:null
+ });
  const [reload,setReload]=useState(0);
  useEffect(()=>{
-  if(path===null){setState({loading:false,data:null,error:null});return}
+  if(path===null){setState({path:null,loading:false,data:null,error:null});return}
   let active=true;const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),9000);
-  setState({loading:true,data:null,error:null});
+  setState({path,loading:true,data:null,error:null});
   void fetchPublic<T>(path,controller.signal).then(data=>{
-   if(active)setState({loading:false,data,error:null});
+   if(active)setState({path,loading:false,data,error:null});
   }).catch(e=>{
-   if(active)setState({loading:false,data:null,error:e instanceof Error?e.message:"SERVICE_UNAVAILABLE"});
+   if(active)setState({path,loading:false,data:null,
+    error:e instanceof Error?e.message:"SERVICE_UNAVAILABLE"});
   }).finally(()=>clearTimeout(timer));
   return ()=>{active=false;clearTimeout(timer);controller.abort()};
  },[path,reload]);
- return {...state,refresh:()=>setReload(x=>x+1)};
+ return {
+  data:state.path===path?state.data:null,
+  error:state.path===path?state.error:null,
+  loading:state.path===path?state.loading:!!path,
+  refresh:()=>setReload(x=>x+1)
+ };
 }
 function urlSearch(fields:Record<string,string|number|undefined>){
  const params=new URLSearchParams();
@@ -382,15 +391,35 @@ function SectionHead({ui,title,sub,action}:{ui:UI;title:string;sub?:string;actio
  </View>;
 }
 function LoadingCards({ui}:{ui:UI}){
- return <View style={s.cardList}><View style={{alignItems:"center",paddingVertical:9}}>
-  <ActivityIndicator color={colors.blue}/><Text style={s.helpText}>{ui.t("loading")}</Text></View>
-  {[0,1].map(i=><View key={i} style={s.skeletonCard}>
-   <View style={[s.row,{flexDirection:ui.flow,gap:12}]}>
-    <View style={s.skeletonImage}/><View style={{flex:1,gap:12}}>
-     <View style={[s.skeletonLine,{width:"80%"}]}/><View style={[s.skeletonLine,{width:"52%"}]}/>
-     <View style={[s.skeletonLine,{width:"66%"}]}/></View></View>
-   <View style={[s.skeletonLine,{width:"100%",height:38,marginTop:18}]}/>
-  </View>)}</View>;
+ const fade=useRef(new Animated.Value(1)).current;
+ useEffect(()=>{
+  let active=true,loop:Animated.CompositeAnimation|null=null;
+  // Respect accessibility settings and clean up the native-driver loop.
+  void AccessibilityInfo.isReduceMotionEnabled().then(reduced=>{
+   if(!active||reduced)return;
+   loop=Animated.loop(Animated.sequence([
+    Animated.timing(fade,{toValue:.65,duration:850,useNativeDriver:true}),
+    Animated.timing(fade,{toValue:1,duration:850,useNativeDriver:true})
+   ]));loop.start();
+  }).catch(()=>{});
+  return ()=>{active=false;loop?.stop()};
+ },[fade]);
+ return <View style={s.cardList}>
+  <View accessibilityRole="progressbar" accessibilityLabel={ui.t("loading")}
+   style={{alignItems:"center",paddingVertical:9}}>
+   <ActivityIndicator color={colors.blue}/><Text style={s.helpText}>{ui.t("loading")}</Text>
+  </View>
+  <Animated.View style={{opacity:fade,gap:13}} importantForAccessibility="no-hide-descendants">
+   {[0,1,2].map(i=><View key={i} style={s.skeletonCard}>
+    <View style={[s.row,{flexDirection:ui.flow,gap:12}]}>
+     <View style={s.skeletonImage}/><View style={{flex:1,gap:12}}>
+      <View style={[s.skeletonLine,{width:"80%"}]}/>
+      <View style={[s.skeletonLine,{width:"52%"}]}/>
+      <View style={[s.skeletonLine,{width:"66%"}]}/></View></View>
+    <View style={[s.skeletonLine,{width:"100%",height:38,marginTop:18}]}/>
+   </View>)}
+  </Animated.View>
+ </View>;
 }
 function Failure({ui,error,retry}:{ui:UI;error:string|null;retry:()=>void}){
  return <CardShell style={s.blank}>
