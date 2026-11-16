@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {patientError} from "./patient-errors";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
@@ -1032,11 +1033,15 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
 }
 function PatientApp(){
  const native=useNativeAuth();
- const [favorites,setFavorites]=useState<Favorite[]>([]);
+ const patientId=native.account?.registered?native.account.user.id:null;
+ const [favoriteSnapshot,setFavoriteSnapshot]=useState<{patientId:string;rows:Favorite[]}|null>(null);
+ const favorites=favoriteSnapshot?.patientId===patientId?favoriteSnapshot.rows:[];
  const [favoritesRefresh,setFavoritesRefresh]=useState(0);
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
+ const [viewIdentity,setViewIdentity]=useState<string|null>(patientId);
+ const previousIdentity=useRef<string|null>(patientId);
  const [accountSection,setAccountSection]=useState<"profile"|"reviews"|"settings">("profile");
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
@@ -1046,8 +1051,17 @@ function PatientApp(){
  const [checking,setChecking]=useState(false);
  const ui=useUI(locale,calendar);
  useEffect(()=>{
-  if(!native.account?.registered){setFavorites([]);return;}
+  if(previousIdentity.current!==patientId){
+   previousIdentity.current=patientId;
+   // Never display a previous user's booking route while another user signs in.
+   setRoute(null);setAccountSection("profile");setTab("account");
+   setViewIdentity(patientId);
+  }
+ },[patientId]);
+ useEffect(()=>{
+  if(!patientId){setFavoriteSnapshot(null);return;}
   let active=true;
+  setFavoriteSnapshot(null);
   void native.request<{favorites:Favorite[]}>("/v1/patient-favorites")
    .then(async current=>{
     if(!active)return;
@@ -1058,13 +1072,13 @@ function PatientApp(){
       await Promise.allSettled(missing.map(clinicId=>native.request(
        "/v1/patient-favorites","POST",{clinicId})));
       const updated=await native.request<{favorites:Favorite[]}>("/v1/patient-favorites");
-      if(active)setFavorites(updated.favorites);return;
+      if(active)setFavoriteSnapshot({patientId,rows:updated.favorites});return;
      }
     }
-    setFavorites(current.favorites);
+    if(active)setFavoriteSnapshot({patientId,rows:current.favorites});
    }).catch(()=>{});
   return()=>{active=false};
- },[native.account?.user.id,ready,favoritesRefresh]);
+ },[patientId,ready,favoritesRefresh,native.request]);
  useEffect(()=>{
   let live=true;
   void Promise.all([AsyncStorage.getItem(PREF_KEY),AsyncStorage.getItem(SAVED_KEY)]).then(([prefs,saved])=>{
@@ -1122,7 +1136,7 @@ function PatientApp(){
   void native.request("/v1/patient-favorites",exists?"DELETE":"POST",
    {clinicId,dentistId:dentistId||null})
    .then(()=>setFavoritesRefresh(n=>n+1))
-   .catch(err=>Alert.alert("DandanLink",err instanceof Error?err.message:"SERVICE_UNAVAILABLE"));
+   .catch(err=>Alert.alert("DandanLink",patientError(err,locale)));
  }
  function save(id:string){
   if(native.account?.registered){toggleFavorite(id);return;}
@@ -1147,6 +1161,12 @@ function PatientApp(){
  },[route,tab,accountSection]);
  const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
   (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
+ // Block even a single render of a stale, private route during an account switch.
+ if(viewIdentity!==patientId)return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
+  <View style={{flex:1,alignItems:"center",justifyContent:"center"}}>
+   <ActivityIndicator color={colors.blue}/>
+  </View>
+ </SafeAreaView>;
  return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
   <StatusBar barStyle={route?"dark-content":"light-content"}
    backgroundColor={route?colors.white:colors.blue}/>
@@ -1165,7 +1185,7 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion}
+  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(patientId||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
