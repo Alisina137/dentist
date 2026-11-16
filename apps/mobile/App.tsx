@@ -6,6 +6,10 @@ import {patientError} from "./patient-errors";
 import {patientTheme} from "./patient-theme";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {NativeReviews} from "./native-reviews";
+import {NativeFamilyManager} from "./native-family";
+import {NativeReleasedRecords} from "./native-records";
+import {NativePatientSupport} from "./native-support";
+import {NativePublishedReviews} from "./native-public-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
  AccessibilityInfo,ActivityIndicator,Animated,Image,Linking,Pressable,RefreshControl,ScrollView,
@@ -617,8 +621,8 @@ function DentistCard({dentist,ui,onPress}:{dentist:Dentist;ui:UI;onPress:()=>voi
   </View><Text style={s.forward}>›</Text>
  </Pressable>;
 }
-function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicId:string;ui:UI;
- onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void;onBook:()=>void}){
+function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook,onReview}:{clinicId:string;ui:UI;
+ onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void;onBook:()=>void;onReview:()=>void}){
  const detail=usePublic<ClinicDetail>("/clinics/"+encodeURIComponent(clinicId));
  const [tab,setTab]=useState<"overview"|"dentists"|"services"|"times">("overview");
  const [photo,setPhoto]=useState(0),[showAllPhotos,setShowAllPhotos]=useState(false);
@@ -726,6 +730,7 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicI
      </Pressable>):<TextLine ui={ui}>{ui.t("photosEmpty")}</TextLine>}
    </CardShell>
    <HoursCard hours={hours} ui={ui}/>
+   <NativePublishedReviews clinicId={clinicId} locale={ui.locale} onWrite={onReview}/>
   </>}
   {tab==="times"&&<Availability ui={ui} clinicId={clinicId}
    dentists={p.dentists} services={p.services} horizon={p.bookingRules.horizonDays}/>}
@@ -733,8 +738,9 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicI
    {ui.t("noFake")} {ui.t("pending")}</TextLine></View>
  </View>;
 }
-function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSave}:{clinicId:string;
- dentistId:string;ui:UI;onBackToClinic:()=>void;onBook:()=>void;isSaved:boolean;onSave:()=>void}){
+function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSave,onReview}:{clinicId:string;
+ dentistId:string;ui:UI;onBackToClinic:()=>void;onBook:()=>void;isSaved:boolean;onSave:()=>void;
+ onReview:()=>void}){
  const response=usePublic<DentistDetail>("/clinics/"+encodeURIComponent(clinicId)+
   "/dentists/"+encodeURIComponent(dentistId));
  const [tab,setTab]=useState<"overview"|"services"|"times">("overview");
@@ -797,6 +803,8 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
      </View>)}
    </CardShell>
    <HoursCard ui={ui} hours={hours}/>
+   <NativePublishedReviews clinicId={clinicId} dentistId={dentistId}
+    locale={ui.locale} onWrite={onReview}/>
   </>}
   {tab==="services"&&<ServicesCard ui={ui} services={services}/>}
   {tab==="times"&&<Availability ui={ui} clinicId={clinicId}
@@ -1306,6 +1314,7 @@ function PatientApp(){
   void checkApi().finally(()=>setPullRefreshing(false));
  },[checkApi]);
  function select(next:Tab){setRoute(null);setTab(next);setAccountSection("overview")}
+ function accountPage(section:AccountSection){setRoute(null);setTab("account");setAccountSection(section)}
  function book(clinicId:string,dentistId?:string,booking?:Booking){
   setRoute({kind:"booking",clinicId,dentistId,booking,
    fromDentistId:route?.kind==="dentist"?route.dentistId:undefined,
@@ -1378,9 +1387,16 @@ function PatientApp(){
      <View><Text style={s.brandText}>DandanLink</Text>
       <Text style={s.brandSmall}>{ui.t("intro")}</Text></View>
     </View>
+    <View style={[s.row,{flexDirection:ui.flow,gap:8}]}>
+     {native.account?.registered&&<Pressable onPress={()=>accountPage("notifications")}
+      accessibilityRole="button" accessibilityLabel={accountWords[locale].notifications}
+      style={s.headerAccount}>
+      <PatientIcon name="bell" size={24} color={colors.white}/>
+     </Pressable>}
     <Pressable onPress={()=>select("account")} accessibilityLabel={ui.t("openSettings")}
      accessibilityRole="button" style={s.headerAccount}>
      <PatientIcon name="user" size={25} color={colors.white}/></Pressable>
+    </View>
    </View>}
   <ScrollView key={(route?route.kind+":"+(route.kind==="appointment"?route.bookingId:route.clinicId)+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
@@ -1396,12 +1412,14 @@ function PatientApp(){
     onAccount={()=>select("account")} onDone={()=>select("appointments")}/>:
     route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
      isSaved={isSaved(route.clinicId)} onSave={()=>save(route.clinicId)} onBook={()=>book(route.clinicId)}
-     onOpenDentist={dentistId=>openDentist(route.clinicId,dentistId)}/>:
+     onOpenDentist={dentistId=>openDentist(route.clinicId,dentistId)}
+     onReview={()=>accountPage("reviews")}/>:
     route?.kind==="dentist"?<DentistScreen clinicId={route.clinicId}
      dentistId={route.dentistId} ui={ui} onBackToClinic={()=>openClinic(route.clinicId)}
      onBook={()=>book(route.clinicId,route.dentistId)}
      isSaved={isSavedDentist(route.clinicId,route.dentistId)}
-     onSave={()=>saveDentist(route.clinicId,route.dentistId)}/>:
+     onSave={()=>saveDentist(route.clinicId,route.dentistId)}
+     onReview={()=>accountPage("reviews")}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
      onAppointment={openAppointment} onAppointments={()=>select("appointments")} onSaved={()=>select("saved")}
      onSearch={q=>{setSearchSeed(q.trim());setSpecialtySeed("");select("explore")}}
@@ -1425,12 +1443,15 @@ function PatientApp(){
      {accountSection==="overview"?<AccountHub ui={ui} account={native.account}
       onSection={setAccountSection} onAppointments={()=>select("appointments")} onExplore={()=>select("explore")}/>:
       accountSection==="reviews"?<NativeReviews locale={locale}/>:
+      accountSection==="family"?<NativeFamilyManager locale={locale}/>:
+      accountSection==="records"?<NativeReleasedRecords locale={locale} calendar={calendar}/>:
+      accountSection==="support"?<NativePatientSupport locale={locale}/>:
       accountSection==="settings"?<AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
        signedIn={Boolean(native.account?.registered)}
        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
        checkApi={()=>{void checkApi()}} onOpenProfile={()=>setAccountSection("profile")}
        connection={connection} checking={checking}/>:
-      accountSection==="records"||accountSection==="security"||accountSection==="support"?
+      accountSection==="security"?
        <AccountWebSection ui={ui} section={accountSection}
         registered={Boolean(native.account?.registered)}
         onBack={()=>setAccountSection("overview")} onProfile={()=>setAccountSection("profile")}/>:
