@@ -2,6 +2,8 @@
 import React,{useCallback,useEffect,useMemo,useState,type FormEvent} from "react";
 import {usePreferences,InlineAlert} from "./index";
 import {Shell} from "./phase03";
+import {CareIcon} from "./care-icons";
+import {clinicErrorText} from "./clinic-feedback";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -73,6 +75,23 @@ const vocab:Record<Lang,Record<string,string>>={
   deliveryNoPush:"SMS and push are not available in this release.",
   deliveryPage:"Page",deliverySync:"Automatically checks for updates while this tab is open.",
   requestRefresh:"Refresh requests",requestSynced:"Current clinic data refreshed.",
+  deskTitle:"Reception inbox",deskIntro:"Review real online appointment requests, then coordinate arrivals in the clinic queue.",
+  deskCalendar:"Calendar",deskQueue:"Today's queue",deskNew:"New appointment",
+  deskSearch:"Search requests",deskSearchHint:"Search patient or service",deskSort:"Sort",
+  deskNewest:"Newest request",deskSoonest:"Earliest appointment",deskPage:"Page",
+  deskPrev:"Previous",deskNext:"Next",deskCount:"Showing",deskOf:"of",
+  deskLimit:"Showing up to the latest 100 requests. Older records may not appear.",
+  deskConfirmAccept:"Confirm booking acceptance",deskConfirmReject:"Confirm booking rejection",
+  deskAcceptInfo:"This confirms the requested time only after the server rechecks the clinician and availability.",
+  deskRejectInfo:"Enter a reason of at least 10 characters. The patient will receive the recorded decision.",
+  deskExplain:"Reason for rejection",deskDismiss:"Keep request",deskApproved:"Booking request accepted.",
+  deskRejected:"Booking request rejected.",deskStale:"This request changed elsewhere. Refresh before deciding again.",
+  deskNoMatch:"No requests match this search. Clear the search to review the loaded requests.",
+  deskClear:"Clear search",deskLinks:"Identity verification requests",
+  deskLinksHelp:"Review record-link identity checks separately from appointment decisions.",
+  deskShowLinks:"Show identity requests",deskHideLinks:"Hide identity requests",
+  deskSynced:"Updated",deskStatus:"Appointment status",deskCreated:"Received",
+  deskDetails:"Open appointment",deskPending:"Pending requests",deskProcessed:"Processed requests",
  noneProcessed:"No requests in this category",signClinic:"Sign in to the clinic workspace",
  overview:"Appointments calendar",settings:"Clinic notifications",details:"Details",
  network:"Network connection is unavailable",noFamily:"No authorized family members available.",
@@ -127,6 +146,23 @@ const vocab:Record<Lang,Record<string,string>>={
   deliveryNoPush:"پیامک و پوش در این نسخه فعال نیست.",
   deliveryPage:"صفحه",deliverySync:"وقتی این صفحه باز باشد، تغییرات تازه‌سازی می‌شوند.",
   requestRefresh:"تازه‌سازی درخواست‌ها",requestSynced:"معلومات فعلی کلینیک تازه شد.",
+  deskTitle:"صندوق درخواست‌های پذیرش",deskIntro:"درخواست‌های واقعی آنلاین را بررسی کنید و حضور مریضان را در صف کلینیک تنظیم کنید.",
+  deskCalendar:"تقویم",deskQueue:"صف امروز",deskNew:"ثبت ملاقات",
+  deskSearch:"جستجوی درخواست‌ها",deskSearchHint:"نام مریض یا خدمت",deskSort:"ترتیب",
+  deskNewest:"جدیدترین درخواست",deskSoonest:"نزدیک‌ترین ملاقات",deskPage:"صفحه",
+  deskPrev:"قبلی",deskNext:"بعدی",deskCount:"نمایش",deskOf:"از",
+  deskLimit:"حداکثر ۱۰۰ درخواست اخیر نمایش داده می‌شود. ممکن است موارد قدیمی‌تر موجود نباشد.",
+  deskConfirmAccept:"تأیید پذیرش درخواست",deskConfirmReject:"تأیید رد درخواست",
+  deskAcceptInfo:"وقت تنها پس از بررسی دوبارۀ موجودیت داکتر و ساعت توسط سرور تأیید می‌شود.",
+  deskRejectInfo:"دلیل حداقل ۱۰ حرف وارد کنید. تصمیم ثبت‌شده به مریض ارسال خواهد شد.",
+  deskExplain:"دلیل رد درخواست",deskDismiss:"نگه‌داشتن درخواست",deskApproved:"درخواست وقت پذیرفته شد.",
+  deskRejected:"درخواست وقت رد شد.",deskStale:"این درخواست در جای دیگر تغییر کرده است. دوباره تازه‌سازی کنید.",
+  deskNoMatch:"درخواستی مطابق جستجو پیدا نشد. برای نمایش همه جستجو را پاک کنید.",
+  deskClear:"پاک‌کردن جستجو",deskLinks:"درخواست‌های تأیید هویت",
+  deskLinksHelp:"تأیید هویت برای وصل سوابق را جدا از تصمیم ملاقات بررسی کنید.",
+  deskShowLinks:"نمایش درخواست‌های هویت",deskHideLinks:"پنهان‌کردن درخواست‌های هویت",
+  deskSynced:"به‌روز",deskStatus:"حالت ملاقات",deskCreated:"دریافت‌شده",
+  deskDetails:"جزئیات ملاقات",deskPending:"در انتظار",deskProcessed:"پردازش‌شده",
  noneProcessed:"درخواستی در این بخش نیست",signClinic:"وارد حساب کلینیک شوید",
  overview:"تقویم ملاقات‌ها",settings:"اطلاعیه‌های کلینیک",details:"جزئیات",
  network:"ارتباط با سرور برقرار نشد",noFamily:"عضو مجاز خانواده موجود نیست",
@@ -181,6 +217,23 @@ const vocab:Record<Lang,Record<string,string>>={
   deliveryNoPush:"SMS او push په دې نسخه کې نشته.",
   deliveryPage:"مخ",deliverySync:"کله چې دا پاڼه خلاصه وي، معلومات تازه کېږي.",
   requestRefresh:"غوښتنې تازه کړئ",requestSynced:"د کلینیک اوسني معلومات تازه شول.",
+  deskTitle:"د منلو غوښتنې",deskIntro:"رښتینې آنلاین غوښتنې وڅېړئ او د ناروغانو راتګ د کلینیک په کتار کې تنظیم کړئ.",
+  deskCalendar:"مهالوېش",deskQueue:"د نن کتار",deskNew:"نوی ملاقات",
+  deskSearch:"غوښتنې ولټوئ",deskSearchHint:"د ناروغ نوم یا خدمت",deskSort:"ترتیب",
+  deskNewest:"نوې غوښتنې",deskSoonest:"نږدې ملاقات",deskPage:"پاڼه",
+  deskPrev:"مخکې",deskNext:"راتلونکی",deskCount:"ښودل",deskOf:"له",
+  deskLimit:"یوازې تر ۱۰۰ وروستۍ غوښتنې ښودل کېږي. زاړه ریکارډونه ښايي پکې نه وي.",
+  deskConfirmAccept:"د غوښتنې منل تایید کړئ",deskConfirmReject:"د غوښتنې رد تایید کړئ",
+  deskAcceptInfo:"وخت یوازې د ډاکټر او مهالویش له بیا کتلو وروسته تاییدېږي.",
+  deskRejectInfo:"لږ تر لږه ۱۰ توري دلیل ولیکئ. ثبت شوې پرېکړه ناروغ ته لېږل کېږي.",
+  deskExplain:"د رد دلیل",deskDismiss:"غوښتنه وساتئ",deskApproved:"د ملاقات غوښتنه ومنل شوه.",
+  deskRejected:"د ملاقات غوښتنه رد شوه.",deskStale:"دا غوښتنه بل ځای بدله شوې. له پرېکړې مخکې تازه یې کړئ.",
+  deskNoMatch:"ستاسې له پلټنې سره سمې غوښتنې نشته. پلټنه پاکه کړئ.",
+  deskClear:"پلټنه پاکه کړئ",deskLinks:"د هویت تایید غوښتنې",
+  deskLinksHelp:"د ریکارډ د نښلولو هویت له ملاقاتونو جلا وڅېړئ.",
+  deskShowLinks:"د هویت غوښتنې وښایئ",deskHideLinks:"د هویت غوښتنې پټې کړئ",
+  deskSynced:"تازه شوی",deskStatus:"د ملاقات حالت",deskCreated:"رارسېدلي",
+  deskDetails:"ملاقات پرانیزئ",deskPending:"منتظر",deskProcessed:"پروسس شوي",
  noneProcessed:"دلته غوښتنه نشته",signClinic:"د کلینیک حساب ته ننوځه",
  overview:"د ملاقات جدول",settings:"د کلینیک خبرتیاوې",details:"جزئیات",
  network:"د سرور سره اړیکه نشته",noFamily:"د کورنۍ اجازه لرونکی غړی نشته",
@@ -227,10 +280,10 @@ function Spinner({kind="list"}:{kind?:"list"|"slots"|"form"}){
  </div>;
 }
 function Badge({status}:{status:string}){const {t}=useWords();return <span className={"p15-badge p15-status-"+status}>{t(status)}</span>}
-function Page({heading,sub,children}:{heading:string;sub?:string;children:React.ReactNode}){
+function Page({heading,sub,overline,children}:{heading:string;sub?:string;overline?:string;children:React.ReactNode}){
  const {lang}=useWords();
  return <section className="p15-page" dir={lang==="en"?"ltr":"rtl"}>
-  <div className="p15-heading"><span className="p15-overline">DandanLink · Patient care</span>
+  <div className="p15-heading"><span className="p15-overline">{overline||"DandanLink · Patient care"}</span>
    <h1>{heading}</h1>{sub&&<p>{sub}</p>}</div>{children}</section>;
 }
 function SafePhone({value}:{value:string}){return /^\+?[0-9\- ]{7,22}$/.test(value)?
@@ -545,7 +598,7 @@ function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,chil
     (activeKey==="bookingRequests"&&!["owner","manager","receptionist","dentist"].includes(space.role)))
   return <Page heading={title}><Banner text={t("roleRestricted")}/></Page>;
  return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
-  <Page heading={title} sub={space.clinicName}>
+  <Page heading={title} sub={space.clinicName} overline="DandanLink · Clinic workspace">
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
     {["owner","manager"].includes(space.role)&&
