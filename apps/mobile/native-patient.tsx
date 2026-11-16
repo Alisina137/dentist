@@ -131,10 +131,30 @@ function Button({title,onPress,secondary=false,disabled=false}:{title:string;onP
   onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText]}>{title}</Text></Pressable>;
 }
 function ErrorBox({message}:{message:string}){return <View style={p.errorBox}><Text style={p.errorText}>{message}</Text></View>}
-function formatDate(iso:string,lang:Language){
+function formatDate(iso:string,lang:Language,calendar:Calendar="gregorian"){
  return new Intl.DateTimeFormat(lang==="en"?"en-GB":lang,{
-  timeZone:"Asia/Kabul",dateStyle:"medium",timeStyle:"short"
+  timeZone:"Asia/Kabul",calendar:calendar==="solar_hijri"?"persian":"gregory",
+  dateStyle:"medium",timeStyle:"short"
  }).format(new Date(iso));
+}
+function formatDay(day:string,lang:Language,calendar:Calendar){
+ return new Intl.DateTimeFormat(lang==="en"?"en-GB":lang,{
+  timeZone:"Asia/Kabul",calendar:calendar==="solar_hijri"?"persian":"gregory",
+  month:"short",day:"numeric"
+ }).format(new Date(day+"T12:00:00Z"));
+}
+function appointmentStatus(status:string,lang:Language){
+ const extra:Record<Language,Record<string,string>>={
+  en:{completed:"Completed",checked_in:"Checked in",in_progress:"In progress",
+   cancelled:"Cancelled",no_show:"Did not attend",rescheduled:"Rescheduled"},
+  "fa-AF":{completed:"تکمیل‌شده",checked_in:"حاضر شده",in_progress:"در جریان",
+   cancelled:"لغوشده",no_show:"حاضر نشده",rescheduled:"وقت تغییر یافته"},
+  "ps-AF":{completed:"بشپړ شوی",checked_in:"حاضر شوی",in_progress:"روان",
+   cancelled:"لغوه شوی",no_show:"نه دی حاضر شوی",rescheduled:"وخت بدل شوی"}
+ };
+ const t=tr(lang);
+ return status==="requested"?t.requested:status==="confirmed"?t.confirmed:
+  status==="rejected"?t.rejected:extra[lang][status]||status.replace(/_/g," ");
 }
 function isoDay(instant=new Date()){
  const x=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
@@ -222,6 +242,8 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
     termsVersion:versions.termsVersion,privacyVersion:versions.privacyVersion
    });await auth.refresh();
   })}/>
+  <Button secondary title={t.signout} disabled={busy}
+   onPress={()=>void run(async()=>await auth.signOut())}/>
  </Block>;
  const profile=auth.account.profile;
  return <View style={{gap:13}}>
@@ -281,11 +303,11 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
   {error&&<ErrorBox message={error}/>}
  </View>;
 }
-export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Language;
- onExplore:()=>void;onReschedule:(b:Booking)=>void}){
+export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
+ calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [rows,setRows]=useState<Booking[]>([]),[filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
- const [busy,setBusy]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(false),[reload,setReload]=useState(0);
+ const [busy,setBusy]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(true),[reload,setReload]=useState(0);
  const refresh=useCallback(async()=>{
   if(!auth.account?.registered)return;
   setLoading(true);setError("");
@@ -297,8 +319,12 @@ export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Langu
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
-  filter==="past"?new Date(b.startAt).getTime()<Date.now()&&!["cancelled","rejected","no_show"].includes(b.status):
-  new Date(b.startAt).getTime()>=Date.now()&&!["cancelled","rejected","no_show"].includes(b.status));
+  filter==="past"?new Date(b.startAt).getTime()<Date.now()||
+   ["completed","checked_in","in_progress"].includes(b.status):
+  new Date(b.startAt).getTime()>=Date.now()&&
+   ["requested","confirmed"].includes(b.status))
+  .sort((a,b)=>filter==="upcoming"?Date.parse(a.startAt)-Date.parse(b.startAt):
+   Date.parse(b.startAt)-Date.parse(a.startAt));
  const cancel=(b:Booking)=>Alert.alert(t.cancel,t.cancelHint,[
   {text:t.back,style:"cancel"},{text:t.cancel,style:"destructive",onPress:()=>void(async()=>{
    setBusy(b.id);setError("");
@@ -308,9 +334,9 @@ export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Langu
    }catch(e){setError(e instanceof Error?e.message:t.error)}
    finally{setBusy("")}
   })()}]);
- return <View style={{gap:12}}>
+ return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{t.appointments}</Text>
-  <View style={p.filters}>{(["upcoming","past","cancelled"] as const).map(key=>
+  <View style={[p.filters,{flexDirection:locale==="en"?"row":"row-reverse"}]}>{(["upcoming","past","cancelled"] as const).map(key=>
    <Pressable key={key} onPress={()=>setFilter(key)}
     style={[p.filter,filter===key&&p.filterOn]} accessibilityRole="tab"
     accessibilityState={{selected:filter===key}}>
@@ -319,20 +345,23 @@ export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Langu
   <Button secondary title={t.refresh} onPress={()=>setReload(x=>x+1)}/>
   {loading&&<ActivityIndicator color={blue}/>}
   {error&&<ErrorBox message={error}/>}
-  {!loading&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
+  {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {current.map(b=><Block key={b.id}>
    <View style={p.between}><Text style={p.title}>{b.clinicName}</Text>
-    <Text style={p.badge}>{b.status==="requested"?t.requested:
-     b.status==="confirmed"?t.confirmed:b.status==="rejected"?t.rejected:t.cancelledStatus}</Text>
+    <Text style={p.badge}>{appointmentStatus(b.status,locale)}</Text>
    </View>
    <Text style={p.copy}>{b.serviceName} · {b.patientName}</Text>
-   <Text style={p.label}>{formatDate(b.startAt,locale)}</Text>
+   <Text style={p.label}>{formatDate(b.startAt,locale,calendar)}</Text>
    <Text style={p.copy}>{b.priceAfn.toLocaleString("en")} AFN</Text>
    <Text style={p.small}>{t.reference}: {b.id.slice(0,12)}</Text>
-   {["confirmed","requested"].includes(b.status)&&<>
-    <Button secondary title={t.reschedule} disabled={busy===b.id} onPress={()=>onReschedule(b)}/>
-    <Button secondary title={t.cancel} disabled={busy===b.id} onPress={()=>cancel(b)}/>
+   {["confirmed","requested"].includes(b.status)&&Date.parse(b.startAt)>Date.now()&&<>
+    {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
+     <Button secondary title={t.reschedule} disabled={!!busy} onPress={()=>onReschedule(b)}/>}
+    {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
+     <Button secondary title={t.cancel} disabled={!!busy} onPress={()=>cancel(b)}/>}
+    {b.status==="confirmed"&&Date.parse(b.cancelUntil)<=Date.now()&&
+     <Text style={p.copy}>{t.cancelHint}</Text>}
    </>}
   </Block>)}
  </View>;
