@@ -484,10 +484,22 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
       <div className="clinic-header-copy">
        <nav className="clinic-breadcrumb" aria-label={t("breadcrumb")}>
         <Link href={hrefFor("/clinic")} prefetch={false} data-next-nav>{t("clinic")}</Link>
-        <CareIcon name="chevron" size={13}/>
-        <span aria-current="page">{activeTitle}</span>
+        {activeSection&&<React.Fragment>
+         <CareIcon name="chevron" size={13}/>
+         <span className="clinic-breadcrumb-section">{t(activeSection)}</span>
+        </React.Fragment>}
+        {current?.key!=="overview"&&<React.Fragment>
+         <CareIcon name="chevron" size={13}/>
+         {navDetails?<Link href={hrefFor(current?.path||"/clinic")} prefetch={false}
+          data-next-nav>{activeTitle}</Link>:
+          <span aria-current="page">{activeTitle}</span>}
+        </React.Fragment>}
+        {navDetails&&<React.Fragment>
+         <CareIcon name="chevron" size={13}/>
+         <span aria-current="page">{navDetails}</span>
+        </React.Fragment>}
        </nav>
-       <strong>{activeTitle}</strong>
+       <strong>{navDetails||activeTitle}</strong>
       </div>
      </div>
      <div className="clinic-header-actions">
@@ -508,6 +520,16 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
      </div>
     </header>
     {signOutError&&<div role="alert" className="clinic-shell-error">{t("signOutFailed")}</div>}
+    {showPage&&selected&&quickLinks.length>0&&<nav className="clinic-header-quick-links"
+     aria-label={t("navigateQuickly")}>
+     <span className="clinic-quick-label">{t("navigateQuickly")}</span>
+     {quickLinks.map(item=><Link key={item.key} href={hrefFor(item.path)}
+      prefetch={false} data-next-nav
+      aria-current={pathActive(pathname,item.path)?"page":undefined}
+      onClick={()=>setMobileOpen(false)}>
+      <CareIcon name={item.icon} size={16}/><span>{t(item.key)}</span>
+     </Link>)}
+    </nav>}
     {navigationPending&&<div role="status" className="clinic-route-progress"
      aria-label={t("loading")}/>}
     <div className="clinic-route-content" id="clinic-route-content" tabIndex={-1}
