@@ -1,6 +1,7 @@
 import type {ReactNode} from "react";
 import {ClinicPersistentShell} from "./clinic-shell";
 import "./clinic-shell.css";
+import "./clinic-design.css";
 
 // Next App Router preserves the clinic sidebar, header and clinic selector
 // while only the active page segment changes.
