@@ -1260,23 +1260,14 @@ function PatientApp(){
   if(!patientId){setFavoriteSnapshot(null);return;}
   let active=true;
   setFavoriteSnapshot(null);
+  // Device-local guest bookmarks are never imported into a signed-in
+  // patient's server-owned favorites. Shared devices must not silently grant
+  // one account the previous guest's browsing choices or alter saved data.
   void native.request<{favorites:Favorite[]}>("/v1/patient-favorites")
-   .then(async current=>{
-    if(!active)return;
-    if(ready&&savedIds.length){
-     const missing=savedIds.filter(clinicId=>
-      !current.favorites.some(f=>!f.dentistId&&f.clinicId===clinicId));
-     if(missing.length){
-      await Promise.allSettled(missing.map(clinicId=>native.request(
-       "/v1/patient-favorites","POST",{clinicId})));
-      const updated=await native.request<{favorites:Favorite[]}>("/v1/patient-favorites");
-      if(active)setFavoriteSnapshot({patientId,rows:updated.favorites});return;
-     }
-    }
-    if(active)setFavoriteSnapshot({patientId,rows:current.favorites});
-   }).catch(()=>{});
+   .then(current=>{if(active)setFavoriteSnapshot({patientId,rows:current.favorites})})
+   .catch(()=>{if(active)setFavoriteSnapshot(null)});
   return()=>{active=false};
- },[patientId,ready,favoritesRefresh,native.request]);
+ },[patientId,favoritesRefresh,native.request]);
  useEffect(()=>{
   let live=true;
   void Promise.all([AsyncStorage.getItem(PREF_KEY),AsyncStorage.getItem(SAVED_KEY)]).then(([prefs,saved])=>{
