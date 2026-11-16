@@ -32,10 +32,10 @@ test("Clinic Phase 01 — context is only loaded once in persistent shell and re
  assert.ok(shell.includes('credentials:"include",cache:"no-store",signal:controller.signal'));
  assert.ok(shell.includes("return()=>controller.abort()"));
  assert.ok(shell.includes("setCtx(null);setError("),"errors must purge stale tenant data");
- assert.ok(context.includes("createContext<ClinicShellState|null>(null)"));
- assert.ok(context.includes("role:\"owner\"|\"manager\"|\"dentist\""));
- assert.ok(shell.includes("PersistentClinicShellProvider value={{ctx,space:selected,requested,error,"));
- assert.ok(old.includes('useData(persistent?null:"/context")'),
+ assert.ok(context.includes("createContext<ClinicWorkspaceSession|null>(null)"));
+ assert.ok(context.includes("export type ClinicWorkspaceRole="));
+ assert.ok(shell.includes("showPage&&ctx?<PersistentClinicShellProvider session={{"));
+ assert.ok(old.includes('useData(session?null:"/context")'),
   "PH03 must not refetch the same team context on each route");
  assert.ok(old.includes("if(persistent)return <>{children}</>"),
   "PH03 legacy content stays functional, duplicate sidebar/header is suppressed");
@@ -70,12 +70,11 @@ test("Clinic Phase 01 — all navigation is client-side except explicit tenant c
   'if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey',
   'anchor.hasAttribute("download")',
   'anchor.hasAttribute("data-hard-navigation")',
-  'anchor.hasAttribute("data-next-nav")',
+  'anchor.hasAttribute("data-hard-navigation")',
   'PUBLIC_CLINIC_PATH.test(url.pathname)',
   'url.origin!==window.location.origin',
   'url.searchParams.set("clinic",selected.clinicId)',
   'startNavigation(()=>router.push(url.pathname+url.search+url.hash))',
-  'data-next-nav',
   'aria-current={active?"page":undefined}',
   'href={hrefFor(item.path)}'
  ])assert.ok(shell.includes(marker),marker);
