@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
+import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
 
 declare const process:{readonly env:{readonly EXPO_PUBLIC_API_URL?:string;readonly EXPO_PUBLIC_PATIENT_WEB_URL?:string}};
@@ -24,7 +24,8 @@ type Family={members:{id:string;displayName:string;memberType:"minor"|"adult";
  eligibleForFutureBooking:boolean}[];policy:{guardianPolicyVersion:string}};
 type Prefs={revision:number;notifications:{emailBookings:boolean;emailUpdates:boolean;
  emailDeliveryConfigured:boolean;pushEnabled:false;smsEnabled:false}};
-type Note={eventName:string;status:string;createdAt:string};
+type Note={event_name:string;status:string;attempt_count:number;created_at:string;sent_at:string|null};
+type NotificationFeed={events:Note[];emailConfigured:boolean;smsConfigured:boolean;pushConfigured:boolean};
 const words={
  en:{login:"Sign in",signup:"Create account",name:"Full name",email:"Email",password:"Password",
  loginHelp:"Use your verified patient account to manage appointments securely.",
@@ -47,6 +48,12 @@ const words={
  favorites:"Saved clinics and dentists",noFavorites:"No saved public profiles yet.",
  remove:"Remove",view:"View",preferences:"Email notifications",bookingEmail:"Booking emails",
  updatesEmail:"Appointment updates",emailNote:"Email only when configured and opted in. No SMS/push.",
+ notificationHistory:"My booking updates",notificationIntro:"Recent email delivery status. Open Appointments for secure details.",
+ notificationEmpty:"No booking updates have been queued.",notificationRefresh:"Refresh updates",
+ notificationQueued:"Queued",notificationSent:"Sent",notificationFailed:"Failed",notificationSkipped:"Email disabled",
+ notificationRequest:"Booking requested",notificationAccepted:"Booking confirmed",notificationRejected:"Request rejected",
+ notificationRescheduled:"Appointment rescheduled",notificationCancelled:"Appointment cancelled",
+ notificationChannelOff:"Email is not configured. SMS and push are unavailable.",notificationChannelOn:"SMS and push are unavailable.",
  error:"Request failed",linkedRecords:"My clinic records",visitWeb:"Open secure web records",
  settings:"Account settings",reason:"Reason",saving:"Saving…",
  date:"Date",minor:"Child",adultDelegate:"Authorized adult",adding:"Add",
@@ -76,6 +83,12 @@ const words={
  favorites:"کلینیک‌ها و داکتران ذخیره‌شده",noFavorites:"هنوز پروفایل ذخیره نشده است.",
  remove:"حذف",view:"مشاهده",preferences:"اطلاع‌رسانی ایمیل",bookingEmail:"ایمیل رزرو",
  updatesEmail:"تغییرات نوبت",emailNote:"ایمیل فقط با اجازه و تنظیمات ارسال می‌شود. پیامک و پوش فعال نیست.",
+ notificationHistory:"تازه‌های رزرو من",notificationIntro:"وضعیت ارسال ایمیل اخیر؛ جزئیات محفوظ را در نوبت‌ها ببینید.",
+ notificationEmpty:"هنوز خبر رزرو ثبت نشده است.",notificationRefresh:"تازه‌سازی خبرها",
+ notificationQueued:"در صف",notificationSent:"ارسال‌شده",notificationFailed:"ناکام",notificationSkipped:"ایمیل غیرفعال",
+ notificationRequest:"درخواست نوبت",notificationAccepted:"نوبت تأیید شد",notificationRejected:"درخواست رد شد",
+ notificationRescheduled:"وقت ملاقات تغییر کرد",notificationCancelled:"نوبت لغو شد",
+ notificationChannelOff:"ایمیل تنظیم نشده است؛ پیامک و پوش فعال نیست.",notificationChannelOn:"پیامک و پوش فعال نیست.",
  error:"درخواست انجام نشد",linkedRecords:"سوابق کلینیک",visitWeb:"بازکردن سوابق در وبسایت مصون",
  settings:"تنظیمات حساب",reason:"دلیل",saving:"در حال ذخیره…",
  date:"تاریخ",minor:"طفل",adultDelegate:"بزرگسال مجاز",adding:"افزودن",
@@ -105,6 +118,12 @@ const words={
  favorites:"ساتل شوي کلینیکونه او ډاکټران",noFavorites:"لا پروفایل نه دی ساتل شوی.",
  remove:"لرې کول",view:"کتل",preferences:"د ایمیل خبرتیاوې",bookingEmail:"د ملاقات ایمیل",
  updatesEmail:"د ملاقات بدلونونه",emailNote:"ایمیل د اجازې سره، SMS او push فعال نه دي.",
+ notificationHistory:"زما د ملاقات خبرونه",notificationIntro:"د برېښنالیک وروستی حالت؛ خوندي جزئیات په لیدنو کې وګورئ.",
+ notificationEmpty:"تر اوسه د ملاقات خبر نشته.",notificationRefresh:"خبرونه تازه کړئ",
+ notificationQueued:"په کتار کې",notificationSent:"لېږل شوی",notificationFailed:"ناکام",notificationSkipped:"برېښنالیک بند دی",
+ notificationRequest:"د ملاقات غوښتنه",notificationAccepted:"ملاقات تایید شو",notificationRejected:"غوښتنه رد شوه",
+ notificationRescheduled:"د ملاقات وخت بدل شو",notificationCancelled:"ملاقات لغوه شو",
+ notificationChannelOff:"برېښنالیک نه دی تنظیم شوی؛ SMS او push نشته.",notificationChannelOn:"SMS او push نشته.",
  error:"غوښتنه ناکامه شوه",linkedRecords:"د کلینیک ریکارډونه",visitWeb:"په خوندي وېب کې ریکارډونه",
  settings:"د حساب تنظیمات",reason:"دلیل",saving:"ساتل کېږي…",
  date:"نېټه",minor:"ماشوم",adultDelegate:"اجازه لرونکی بالغ",adding:"زیاتول",
@@ -300,12 +319,74 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
     });setPrefs(await auth.request<Prefs>("/v1/patients/preferences"));
    })}/>
   </Block>
+  <NativePatientNotifications locale={locale} calendar={calendar}/>
   {WEB&&<Block><Text style={p.title}>{t.linkedRecords}</Text>
    <Text style={p.copy}>{t.visitWeb}</Text>
    <Button secondary title={t.visitWeb} onPress={()=>void Linking.openURL(WEB+"/account/records")}/>
   </Block>}
   {error&&<ErrorBox message={error}/>}
  </View>;
+}
+function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:Calendar}){
+ const t=tr(locale),auth=useNativeAuth();
+ const user=auth.account?.registered?auth.account.user.id:null;
+ const [revision,setRevision]=useState(0);
+ const [snapshot,setSnapshot]=useState<{user:string;data:NotificationFeed|null;
+  error:string;loading:boolean}|null>(null);
+ const reload=useCallback(()=>setRevision(x=>x+1),[]);
+ useEffect(()=>{
+  if(!user){setSnapshot(null);return;}
+  let live=true;
+  setSnapshot({user,data:null,error:"",loading:true});
+  auth.request<NotificationFeed>("/v1/booking/notifications").then(data=>{
+   if(live)setSnapshot({user,data,error:"",loading:false});
+  }).catch(e=>{
+   if(live)setSnapshot({user,data:null,error:e instanceof Error?e.message:t.error,loading:false});
+  });
+  return()=>{live=false};
+ },[user,auth.request,revision]);
+ useEffect(()=>{
+  if(!user)return;
+  const sub=AppState.addEventListener("change",state=>{
+   if(state==="active")reload();
+  });
+  return()=>sub.remove();
+ },[user,reload]);
+ if(!user)return null;
+ const view=snapshot?.user===user?snapshot:null;
+ const loading=view?.loading??true,data=view?.data,error=view?.error||"";
+ const label=(name:string)=>{
+  switch(name){
+   case "requested":return t.notificationRequest;
+   case "confirmed":case "accepted":return t.notificationAccepted;
+   case "rejected":return t.notificationRejected;
+   case "rescheduled":return t.notificationRescheduled;
+   case "cancelled":return t.notificationCancelled;
+   default:return name.replace(/_/g," ");
+  }
+ };
+ const status=(name:string)=>name==="sent"?t.notificationSent:
+  name==="failed"?t.notificationFailed:name==="skipped"?t.notificationSkipped:
+   t.notificationQueued;
+ return <Block>
+  <Text style={p.title}>{t.notificationHistory}</Text>
+  <Text style={p.copy}>{t.notificationIntro}</Text>
+  <Button secondary title={t.notificationRefresh} onPress={reload} disabled={loading}/>
+  {loading&&<ActivityIndicator color={blue}/>}
+  {error&&<ErrorBox message={error}/>}
+  {!loading&&!error&&data&&<>
+   <Text style={p.copy}>{data.emailConfigured?t.notificationChannelOn:t.notificationChannelOff}</Text>
+   {!data.events.length&&<Text style={p.copy}>{t.notificationEmpty}</Text>}
+   {data.events.slice(0,8).map((event,index)=><View key={event.created_at+":"+event.event_name+":"+index}
+    style={p.notificationItem} accessibilityRole="text">
+    <View style={p.between}><Text style={p.label}>{label(event.event_name)}</Text>
+     <Text style={[p.notificationBadge,
+      event.status==="failed"?p.badgeDanger:event.status==="sent"?p.badge: p.badgePending]}>
+      {status(event.status)}</Text></View>
+    <Text style={p.small}>{formatDate(event.created_at,locale,calendar)}</Text>
+   </View>)}
+  </>}
+ </Block>;
 }
 export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
  calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
@@ -560,6 +641,8 @@ const p=StyleSheet.create({
  errorText:{color:"#9A2530",fontSize:13},
  success:{color:"#137655",fontWeight:"700"},
  item:{paddingVertical:7,borderBottomWidth:1,borderBottomColor:"#F0F4FA",color:dark},
+ notificationItem:{paddingVertical:9,borderTopWidth:1,borderTopColor:"#EDF2F8",gap:5},
+ notificationBadge:{fontSize:11,fontWeight:"800",padding:6,borderRadius:16,overflow:"hidden"},
  check:{paddingVertical:10,minHeight:42},
  filters:{flexDirection:"row",gap:7},
  filter:{flex:1,borderRadius:12,backgroundColor:"#EFF4FB",padding:10,alignItems:"center"},
