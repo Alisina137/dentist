@@ -382,17 +382,27 @@ async function registry(cid:string,body:unknown){
  return x;
 }
 function useData(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Bind every response to the requested clinic, filters and date.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [version,setVersion]=useState(0);
- const refresh=()=>{setVersion(x=>x+1);setError("");setData(null);};
+ const refresh=()=>setVersion(x=>x+1);
  useEffect(()=>{
-  if(!path)return;
-  let live=true;setData(null);setError("");
-  call(path).then(x=>{if(live)setData(x);})
-   .catch(e=>{if(live)setError(e.message||"NETWORK_ERROR");});
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let live=true;
+  setSnapshot({path,data:null,error:""});
+  call(path).then(x=>{if(live)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(live)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{live=false;};
  },[path,version]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
+}
+function validIsoDay(value:string){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const parsed=new Date(value+"T12:00:00Z");
+ return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
 }
 function dayKabul(){
  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
@@ -571,7 +581,7 @@ function CalendarPanel({space}:{space:Space}){
   const q=new URLSearchParams(location.search);
   const queryDate=q.get("date");
   const queryView=q.get("view");
-  if(queryDate&&/^\d{4}-\d\d-\d\d$/.test(queryDate))setDate(queryDate);
+  if(queryDate&&validIsoDay(queryDate))setDate(queryDate);
   if(["day","week","month"].includes(queryView||""))setMode(queryView as ViewMode);
   else if(window.innerWidth<=740)setMode("day");
   setReady(true);
@@ -873,7 +883,7 @@ function QueuePanel({space}:{space:Space}){
  useEffect(()=>{
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
-  if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDay(requested);
+  if(requested&&validIsoDay(requested))setDay(requested);
  },[]);
  const base="/clinics/"+space.clinicId;
  const {data,error,refresh}=useData(base+"/queue?date="+day);
@@ -923,7 +933,7 @@ function QueuePanel({space}:{space:Space}){
      </div>;
     })}
    </section>}
-  {filtered.some(a=>a.status==="no_show")&&
+  {Boolean(data)&&!error&&filtered.some(a=>a.status==="no_show")&&
    <section className="phase06-no-show card">
     <h3>{t("noShowToday")} · {filtered.filter(a=>a.status==="no_show").length}</h3>
     <div>{filtered.filter(a=>a.status==="no_show").map(a=>
@@ -962,7 +972,7 @@ function BookingWizard({space}:{space:Space}){
  useEffect(()=>{
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
-  if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDate(requested);
+  if(requested&&validIsoDay(requested)&&requested>=dayKabul()&&requested<=advance(dayKabul(),365))setDate(requested);
   const patientId=q.get("patientId");
   if(patientId&&patientId.length>=8){
    call("/clinics/"+space.clinicId+"/patients/"+encodeURIComponent(patientId)+"/appointments")
