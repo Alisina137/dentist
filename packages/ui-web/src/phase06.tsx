@@ -524,7 +524,7 @@ export function AppointmentsPortal({view}:{view:Page}){
  if(!["owner","manager","receptionist","dentist","assistant"].includes(space.role))
   return <Problem error={t("forbidden")}/>;
  if(view==="new"&&!canBook(space))return <Problem error={t("forbidden")}/>;
- return <Shell ctx={ctx} space={space} active="appointments">
+ return <Shell ctx={ctx} space={space} active={view==="queue"?"queue":"appointments"}>
   <div className="phase06-workspace">
    <Header view={view} space={space}/>
    <MainTabs space={space} view={view}/>
