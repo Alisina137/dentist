@@ -249,9 +249,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  }
  const restricted=error==="AUTH_REQUIRED"||requestedInvalid;
  const showPage=!loading&&!error&&!requestedInvalid;
- return <PersistentClinicShellProvider value={{ctx,space:selected,requested,error,
-  reload:()=>setRequestIndex(x=>x+1)}}>
-  <div className={"work-layout phase-layout staff-shell clinic-persistent-shell"+
+ return <div className={"work-layout phase-layout staff-shell clinic-persistent-shell"+
    (collapsed?" clinic-sidebar-collapsed":"")+(mobileOpen?" clinic-mobile-open":"")}>
    {mobileOpen&&<button type="button" className="clinic-mobile-backdrop"
     aria-label={t("closeMenu")} tabIndex={-1}
@@ -351,9 +349,11 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
       error?<div className="clinic-access-card card panel" role="alert">
        <h2>{t("connection")}</h2><button type="button" className="btn btn-secondary"
         onClick={()=>setRequestIndex(x=>x+1)}>{t("retry")}</button></div>:
-      showPage?<div key={selected?.clinicId||"unregistered"}>{children}</div>:null}
+      showPage&&ctx?<PersistentClinicShellProvider session={{
+       ctx,space:selected,requested:requested??null}}>
+       <div key={selected?.clinicId||"unregistered"}>{children}</div>
+      </PersistentClinicShellProvider>:null}
     </div>
    </section>
-  </div>
- </PersistentClinicShellProvider>;
+  </div>;
 }
