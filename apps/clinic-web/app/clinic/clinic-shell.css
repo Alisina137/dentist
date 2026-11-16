@@ -129,6 +129,11 @@
  .clinic-sidebar-group,.clinic-sidebar-footer,
  .clinic-sidebar-tenant{display:initial}
  .clinic-sidebar-tenant{display:flex}
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-label,
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-group,
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-footer{display:initial}
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-tenant{display:flex}
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-brand{display:grid}
  .clinic-sidebar-brand{display:grid}
  .clinic-persistent-shell .clinic-sidebar-header{flex-direction:row}
  .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-brand,
