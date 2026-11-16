@@ -94,3 +94,17 @@
 .h-request-count{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:13px;background:#eff8f6}
 .h-request-count strong{font-size:25px;color:#0c7b78;line-height:1.3}
 .h-request-count span{font-size:12px;font-weight:750;color:#4a7883}
+
+/* Stage I: patient appointment history controls remain usable on small clinic screens. */
+.phase06-patient-history{display:grid;gap:13px;min-width:0}
+.phase06-patient-history-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.phase06-patient-history-tabs{display:flex;gap:7px;flex-wrap:wrap;min-width:0}
+.phase06-history-tab{border:1px solid #d5e7eb;background:#f9fcfd;color:#4e6e7e;
+ font-size:12px;font-weight:750;min-height:39px;padding:8px 13px;border-radius:12px}
+.phase06-history-tab:hover{background:#eff8f7;border-color:#b6dcd9}
+.phase06-history-tab.is-active{background:#e9f6f3;border-color:#a1d8cb;color:#08726b}
+.phase06-history-tab:focus-visible{outline:3px solid #127f90;outline-offset:2px}
+.phase06-patient-history .phase-pagination{display:flex;justify-content:flex-end;gap:12px;align-items:center;flex-wrap:wrap}
+.phase06-patient-history .phase-pagination span{font-size:12px;font-weight:750;color:#4f7180}
+@media(max-width:600px){.phase06-patient-history-controls>.btn{width:100%}
+ .phase06-history-tab{flex:1 1 auto;text-align:center}}

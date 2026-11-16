@@ -361,7 +361,7 @@ function useWords(){
  };
  const time=(value:unknown)=>fmt(value,{year:undefined,month:undefined,day:undefined,
   hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
- return {t,fmt,time,lang};
+ return {t,fmt,time,lang,calendar};
 }
 async function call(path:string,method="GET",body?:unknown):Promise<any>{
  const r=await fetch(API+"/v1/appointments"+path,{method,credentials:"include",
@@ -382,17 +382,27 @@ async function registry(cid:string,body:unknown){
  return x;
 }
 function useData(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Bind every response to the requested clinic, filters and date.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [version,setVersion]=useState(0);
- const refresh=()=>{setVersion(x=>x+1);setError("");setData(null);};
+ const refresh=()=>setVersion(x=>x+1);
  useEffect(()=>{
-  if(!path)return;
-  let live=true;setData(null);setError("");
-  call(path).then(x=>{if(live)setData(x);})
-   .catch(e=>{if(live)setError(e.message||"NETWORK_ERROR");});
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let live=true;
+  setSnapshot({path,data:null,error:""});
+  call(path).then(x=>{if(live)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(live)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{live=false;};
  },[path,version]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
+}
+function validIsoDay(value:string){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const parsed=new Date(value+"T12:00:00Z");
+ return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
 }
 function dayKabul(){
  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
@@ -416,10 +426,10 @@ function moveMonth(date:string,delta:number){
  return d.toISOString().slice(0,10);
 }
 const weekLabels=["daySat","daySun","dayMon","dayTue","dayWed","dayThu","dayFri"] as const;
-function dateTitle(value:string,lang:Lang){
+function dateTitle(value:string,lang:Lang,calendar:"solar_hijri"|"gregorian"){
  const date=new Date(value+"T12:00:00Z");
  return new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",day:"numeric",
-  calendar:"gregory"}).format(date);
+  calendar:calendar==="solar_hijri"?"persian":"gregory"}).format(date);
 }
 function dateRange(date:string,view:ViewMode){
  if(view==="day")return {from:date,to:date};
@@ -562,7 +572,7 @@ function CalendarCard({space,a,compact=false}:{space:Space;a:Appointment;compact
  </a>;
 }
 function CalendarPanel({space}:{space:Space}){
- const {t,fmt,lang}=useWords();
+ const {t,fmt,lang,calendar}=useWords();
  const [date,setDate]=useState(dayKabul());
  const [mode,setMode]=useState<ViewMode>(space.role==="receptionist"?"day":"week");
  const [doctor,setDoctor]=useState(""),[chair,setChair]=useState(""),[status,setStatus]=useState("all");
@@ -571,7 +581,7 @@ function CalendarPanel({space}:{space:Space}){
   const q=new URLSearchParams(location.search);
   const queryDate=q.get("date");
   const queryView=q.get("view");
-  if(queryDate&&/^\d{4}-\d\d-\d\d$/.test(queryDate))setDate(queryDate);
+  if(queryDate&&validIsoDay(queryDate))setDate(queryDate);
   if(["day","week","month"].includes(queryView||""))setMode(queryView as ViewMode);
   else if(window.innerWidth<=740)setMode("day");
   setReady(true);
@@ -600,8 +610,8 @@ function CalendarPanel({space}:{space:Space}){
   return grouped;
  },[appointments]);
  const counts=overview?.counts||{};
- const dateLabel=mode==="day"?dateTitle(date,lang):
-  mode==="week"?dateTitle(period.from,lang)+" — "+dateTitle(period.to,lang):
+ const dateLabel=mode==="day"?dateTitle(date,lang,calendar):
+  mode==="week"?dateTitle(period.from,lang,calendar)+" — "+dateTitle(period.to,lang,calendar):
   new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",
    calendar:"gregory"}).format(new Date(date.slice(0,7)+"-01T12:00:00Z"));
  const next=()=>navigate(mode==="day"?advance(date,1):mode==="week"?advance(date,7):moveMonth(date,1));
@@ -673,7 +683,7 @@ function CalendarPanel({space}:{space:Space}){
  </div>;
 }
 function DayGrid({space,date,appointments}:{space:Space;date:string;appointments:Appointment[]}){
- const {t,lang}=useWords();
+ const {t,lang,calendar}=useWords();
  const earliest=appointments.length?Math.max(0,Math.floor(Math.min(...appointments.map(a=>
   Number(localClock(a.startAt).slice(0,2)))))-1):8;
  const latest=appointments.length?Math.min(23,Math.ceil(Math.max(...appointments.map(a=>
@@ -688,7 +698,7 @@ function DayGrid({space,date,appointments}:{space:Space;date:string;appointments
   <div className="phase06-day-heading">
    <div><span className="phase06-day-number">
     {new Date(date+"T12:00:00Z").getUTCDate()}</span>
-    <div><strong>{dateTitle(date,lang)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
+    <div><strong>{dateTitle(date,lang,calendar)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
    </div>
    {canBook(space)&&<a className="phase06-text-action"
      href={appHref(space.clinicId,"new")+"&date="+date}>{t("newAppointment")} ↗</a>}
@@ -868,12 +878,12 @@ function QueueCard({space,a,changed}:{space:Space;a:Appointment;changed:()=>void
  </article>;
 }
 function QueuePanel({space}:{space:Space}){
- const {t,fmt,lang}=useWords();
+ const {t,fmt,lang,calendar}=useWords();
  const [day,setDay]=useState(dayKabul()),[provider,setProvider]=useState("");
  useEffect(()=>{
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
-  if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDay(requested);
+  if(requested&&validIsoDay(requested))setDay(requested);
  },[]);
  const base="/clinics/"+space.clinicId;
  const {data,error,refresh}=useData(base+"/queue?date="+day);
@@ -890,7 +900,7 @@ function QueuePanel({space}:{space:Space}){
  return <div className="phase06-queue-page">
   <section className="phase06-queue-intro card">
    <div><span className="phase06-eyebrow">{t("queueToday")}</span>
-    <h2>{dateTitle(day,lang)}</h2><p>{t("queueDateHint")}</p></div>
+    <h2>{dateTitle(day,lang,calendar)}</h2><p>{t("queueDateHint")}</p></div>
    <div className="phase06-queue-controls">
     <button className="btn btn-secondary" onClick={()=>setDay(dayKabul())}>{t("today")}</button>
     <label className="phase06-field"><span>{t("queuePast")}</span>
@@ -923,7 +933,7 @@ function QueuePanel({space}:{space:Space}){
      </div>;
     })}
    </section>}
-  {filtered.some(a=>a.status==="no_show")&&
+  {Boolean(data)&&!error&&filtered.some(a=>a.status==="no_show")&&
    <section className="phase06-no-show card">
     <h3>{t("noShowToday")} · {filtered.filter(a=>a.status==="no_show").length}</h3>
     <div>{filtered.filter(a=>a.status==="no_show").map(a=>
@@ -962,7 +972,7 @@ function BookingWizard({space}:{space:Space}){
  useEffect(()=>{
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
-  if(requested&&/^\d{4}-\d\d-\d\d$/.test(requested))setDate(requested);
+  if(requested&&validIsoDay(requested)&&requested>=dayKabul()&&requested<=advance(dayKabul(),365))setDate(requested);
   const patientId=q.get("patientId");
   if(patientId&&patientId.length>=8){
    call("/clinics/"+space.clinicId+"/patients/"+encodeURIComponent(patientId)+"/appointments")
@@ -989,6 +999,8 @@ function BookingWizard({space}:{space:Space}){
  const {data:available,error:slotError,refresh:refreshSlots}=useData(slotQuery?
   base+"/slots?"+slotQuery:null);
  const slots:Slot[]=(available?.slots||[]).filter((s:Slot)=>Date.parse(s.startAt)>Date.now()-30000);
+ const selectedSlotValid=Boolean(slot&&available&&slots.some(s=>
+  s.startAt===slot.startAt&&s.endAt===slot.endAt&&s.resourceId===slot.resourceId));
  useEffect(()=>{
   if(initialStart&&slots.length){
    const selected=slots.find(x=>x.start===initialStart);
@@ -1004,6 +1016,7 @@ function BookingWizard({space}:{space:Space}){
  function chooseChair(id:string){setChair(id);resetRequest();}
  function chooseSlot(s:Slot){setSlot(s);setIdempotencyKey(crypto.randomUUID());
   setError("");setAlternatives([]);}
+ function recheckSlots(){setSlot(null);setIdempotencyKey(crypto.randomUUID());refreshSlots();}
  async function addInline(event:FormEvent){
   event.preventDefault();setPatientBusy(true);setPatientError("");setCandidate([]);
   try{
@@ -1019,7 +1032,7 @@ function BookingWizard({space}:{space:Space}){
  }
  async function submit(event:FormEvent){
   event.preventDefault();
-  if(!patient||!slot||!selectedService||!providerId)return;
+  if(!patient||!slot||!selectedSlotValid||!selectedService||!providerId)return;
   setBusy(true);setError("");setAlternatives([]);
   try{
    const response=await call(base+"/appointments","POST",{
@@ -1030,7 +1043,7 @@ function BookingWizard({space}:{space:Space}){
   }catch(e:any){
    setError(e.message);setAlternatives(e.alternatives||[]);
    if(e.message==="APPOINTMENT_SLOT_UNAVAILABLE"){
-    setStep(2);setSlot(null);refreshSlots();
+    setStep(2);recheckSlots();
    }
   }finally{setBusy(false);}
  }
@@ -1170,7 +1183,7 @@ function BookingWizard({space}:{space:Space}){
      <div className="phase06-slot-section">
       <div className="phase06-between"><div><h3>{t("slots")}</h3>
        <p>{t("timeZone")} · {t("candidateOnly")||t("noPublic")}</p></div>
-       <button type="button" className="btn btn-secondary" onClick={refreshSlots}>
+       <button type="button" className="btn btn-secondary" onClick={recheckSlots}>
         {t("checkAvailability")} ↻</button></div>
       {slotError?<Problem error={slotError} retry={refreshSlots}/>:!available?<Busy/>:
        !slots.length?<div className="phase06-slot-empty"><span aria-hidden="true">◷</span>
@@ -1194,7 +1207,7 @@ function BookingWizard({space}:{space:Space}){
        <span>{t("chooseAlternative")} ↗</span></button>)}</div></div>}
      <div className="phase06-form-footer">
       <button type="button" className="btn btn-secondary" onClick={()=>setStep(1)}>{t("back")}</button>
-      <button type="button" className="btn btn-primary" disabled={!slot||!selectedService||!providerId}
+      <button type="button" className="btn btn-primary" disabled={!selectedSlotValid||!selectedService||!providerId}
        onClick={()=>setStep(3)}>{t("continue")} →</button>
      </div>
     </section>}
@@ -1222,7 +1235,7 @@ function BookingWizard({space}:{space:Space}){
      <form onSubmit={submit}><div className="phase06-form-footer">
       <button type="button" className="btn btn-secondary" onClick={()=>setStep(2)}
        disabled={busy}>{t("back")}</button>
-      <button className="btn btn-primary" disabled={busy||!slot||!patient}>
+      <button className="btn btn-primary" disabled={busy||!selectedSlotValid||!patient}>
        {busy?t("saving"):t("book")}</button>
      </div></form>
     </section>}
