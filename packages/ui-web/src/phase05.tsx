@@ -597,7 +597,6 @@ function PatientFields({form,setForm,editing=false}:{
   </section>
   <section className="phase05-form-section"><h2>{t("intake")}</h2>
    <Notice>{t("clinicalPrivacy")}</Notice><p className="muted">{t("clinicalUnavailable")}</p>
-   <p className="muted">{t("noFinancial")}</p>
   </section>
   <section className="phase05-form-section"><h2>{t("consent")}</h2>
    <label className="phase05-check"><input type="checkbox"
@@ -757,8 +756,8 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
      {canEdit&&p.status==="active"&&<a className="btn btn-primary"
       href={"/clinic/appointments/new?clinic="+encodeURIComponent(space.clinicId)+
        "&patientId="+encodeURIComponent(p.id)}>
-      <CareIcon name="calendar" size={16}/>{t("directoryBook")}</a>
-     {canEdit&&<a className="btn btn-secondary" href={"/clinic/patients/"+p.id+"/edit?clinic="+space.clinicId}>
+      <CareIcon name="calendar" size={16}/>{t("directoryBook")}</a>}
+     {canEdit&&<a className="btn btn-secondary" href={"/clinic/patients/"+p.id+"/edit?clinic="+encodeURIComponent(space.clinicId)}>
        {t("edit")}</a>}</div>
    </div>
    <Notice>{t("safeguard")}</Notice>
@@ -805,8 +804,7 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
     </div>
     {canEdit?<PatientBookings space={space} patientId={p.id}/>:
       <Notice kind="warning">{t("disabled")}</Notice>}
-    <Notice>{t("noFinancial")}</Notice>
-  </section>
+   </section>
   {["owner","manager"].includes(space.role)&&<section className="card panel">
     <h2>{t("setStatus")}</h2>
     <div className="phase05-filters">
