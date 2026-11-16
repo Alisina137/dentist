@@ -2,6 +2,8 @@
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences } from "./index";
 import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
+import {clinicValidDay,clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
+ type ClinicDateWindow} from "./clinic-scheduling-dates";
 import { Shell } from "./phase03";
 
 type Lang="fa-AF"|"ps-AF"|"en";
@@ -32,7 +34,7 @@ type Slot={start:string;end:string;resourceId:string|null;startAt:string;endAt:s
  durationMinutes:number;preparationMinutes:number};
 type Catalog={services:Service[];resources:Resource[];providers:Provider[];timezone:string};
 type ConflictOption={date:string;start:string;resourceId:string|null};
-type ViewMode="day"|"week"|"month";
+type ViewMode="day"|"week"|"month"|"agenda";
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const words:Record<Lang,Record<string,string>>={
  en:{
@@ -41,7 +43,7 @@ const words:Record<Lang,Record<string,string>>={
   queueIntro:"Today’s arrivals, treatment progress and completed appointments in one place.",
   newIntro:"Choose a real clinic patient, procedure, clinician and available time.",
   detailIntro:"Review details, appointment history and permitted actions.",
-  today:"Today",previous:"Previous",next:"Next",day:"Day",week:"Week",month:"Month",
+  today:"Today",previous:"Previous",next:"Next",day:"Day",week:"Week",month:"Month",agenda:"Agenda",
   search:"Search patients",searchHint:"Name, phone number or patient ID",searchPatient:"Find patient",
   addPatient:"Add patient",inlinePatient:"Register a new clinic patient",
   patientName:"Patient name",familyName:"Family name",phone:"Phone (optional)",
@@ -70,7 +72,10 @@ const words:Record<Lang,Record<string,string>>={
   completed:"Completed",no_show:"No-show",cancelled:"Cancelled",
   expected:"Expected",noAppointments:"No appointments on these dates",
   noAppointmentsHint:"Adjust your filters or create a booking for an active clinic patient.",
-  clearFilters:"Clear filters",viewDetails:"Details",openDetail:"Open details",
+  clearFilters:"Clear filters",activeFilters:"Active filters",outOfPeriod:"Outside selected month",
+  agendaHelp:"Seven days from the selected date. Open a booking for details or to change its status.",
+  candidateNotice:"Calendar gaps are not confirmed available slots. Booking rechecks the clinician and chair.",
+  viewDetails:"Details",openDetail:"Open details",
   patients:"Patients",services:"Services & Pricing",hours:"Hours & Holidays",
   resources:"Chairs & Rooms",staffLink:"Team & Dentists",manage:"Clinic operations",
   empty:"No results",count:"Appointments",status:"Status",started:"Start",finished:"End",
@@ -141,7 +146,7 @@ const words:Record<Lang,Record<string,string>>={
   queueIntro:"حضور مریضان، پیشرفت تداوی و تکمیل ملاقات‌ها در یک صفحه.",
   newIntro:"مریض، خدمت، داکتر و وقت واقعاً موجود را انتخاب کنید.",
   detailIntro:"معلومات، تاریخچه و عملیات مجاز وقت ملاقات.",
-  today:"امروز",previous:"قبلی",next:"بعدی",day:"روز",week:"هفته",month:"ماه",
+  today:"امروز",previous:"قبلی",next:"بعدی",day:"روز",week:"هفته",month:"ماه",agenda:"فهرست نوبت‌ها",
   search:"جستجوی مریض",searchHint:"نام، شماره تماس یا شماره مریض",
   searchPatient:"یافتن مریض",addPatient:"افزودن مریض",inlinePatient:"ثبت مریض جدید",
   patientName:"نام مریض",familyName:"تخلص",phone:"شماره تماس (اختیاری)",
@@ -173,7 +178,10 @@ const words:Record<Lang,Record<string,string>>={
   in_treatment:"در تداوی",completed:"تکمیل",no_show:"حاضر نشد",cancelled:"لغو شد",
   expected:"در انتظار",noAppointments:"برای این روز وقت ملاقات نیست",
   noAppointmentsHint:"فیلتر را تغییر دهید یا برای مریض فعال وقت ثبت کنید.",
-  clearFilters:"پاک‌کردن فیلتر",viewDetails:"جزئیات",openDetail:"مشاهده جزئیات",
+  clearFilters:"پاک‌کردن فیلتر",activeFilters:"فیلترهای فعال",outOfPeriod:"بیرون از ماه انتخاب‌شده",
+  agendaHelp:"هفت روز از تاریخ انتخاب‌شده؛ برای جزئیات یا تغییر وضعیت، نوبت را باز کنید.",
+  candidateNotice:"جای خالی تقویم به معنی موجودبودن قطعی وقت نیست. هنگام ثبت دوباره بررسی می‌شود.",
+  viewDetails:"جزئیات",openDetail:"مشاهده جزئیات",
   patients:"مریضان",services:"خدمات و قیمت‌ها",hours:"ساعات و رخصتی‌ها",
   resources:"چوکی‌ها و اتاق‌ها",staffLink:"کارمندان و داکتران",manage:"عملیات کلینیک",
   empty:"نتیجه‌ای نیست",count:"ملاقات‌ها",status:"وضعیت",
@@ -247,7 +255,7 @@ const words:Record<Lang,Record<string,string>>={
   queueIntro:"د ناروغانو راتګ، درملنې او بشپړو شوو لیدنو یو ځای مدیریت.",
   newIntro:"ناروغ، خدمت، ډاکټر او شته وخت غوره کړئ.",
   detailIntro:"د لیدنې معلومات، تاریخچه او مجازې کړنې.",
-  today:"نن",previous:"مخکېنی",next:"راتلونکی",day:"ورځ",week:"اونۍ",month:"میاشت",
+  today:"نن",previous:"مخکېنی",next:"راتلونکی",day:"ورځ",week:"اونۍ",month:"میاشت",agenda:"د لیدنو لړلیک",
   search:"ناروغ ولټوئ",searchHint:"نوم، شمېره یا د ناروغ پېژند",
   searchPatient:"ناروغ پیدا کړئ",addPatient:"ناروغ اضافه کړئ",
   inlinePatient:"نوی ناروغ ثبت کړئ",patientName:"د ناروغ نوم",
@@ -279,7 +287,10 @@ const words:Record<Lang,Record<string,string>>={
   completed:"بشپړ",no_show:"نه دی راغلی",cancelled:"لغوه",
   expected:"په تمه",noAppointments:"په دې ورځو کې لیدنې نشته",
   noAppointmentsHint:"فلټر بدل کړئ یا د فعال ناروغ لپاره وخت وټاکئ.",
-  clearFilters:"فلټر پاک کړئ",viewDetails:"جزییات",openDetail:"جزییات وګورئ",
+  clearFilters:"فلټر پاک کړئ",activeFilters:"فعال فلټرونه",outOfPeriod:"له ټاکلې میاشتې بهر",
+  agendaHelp:"له ټاکلې نېټې اووه ورځې؛ د جزیاتو یا حالت بدلولو لپاره لیدنه پرانیزئ.",
+  candidateNotice:"په تقویم کې خالي ځای قطعي شته وخت نه دی؛ د ثبت پر مهال بیا کتل کېږي.",
+  viewDetails:"جزییات",openDetail:"جزییات وګورئ",
   patients:"ناروغان",services:"خدمتونه او بیې",hours:"وختونه او رخصتۍ",
   resources:"څوکۍ او خونې",staffLink:"کارکوونکي او ډاکټران",manage:"د کلینیک چارې",
   empty:"پایله نشته",count:"لیدنې",status:"حالت",started:"پیل",
@@ -400,11 +411,7 @@ function useData(path:string|null){
  return {data:snapshot.path===path?snapshot.data:null,
   error:snapshot.path===path?snapshot.error:"",refresh};
 }
-function validIsoDay(value:string){
- if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
- const parsed=new Date(value+"T12:00:00Z");
- return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
-}
+function validIsoDay(value:string){return clinicValidDay(value);}
 function dayKabul(){
  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
   year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
@@ -414,28 +421,11 @@ function dayKabul(){
 function advance(date:string,diff:number){
  return new Date(Date.parse(date+"T00:00:00Z")+diff*86400000).toISOString().slice(0,10);
 }
-function weekday(date:string){return (new Date(date+"T12:00:00Z").getUTCDay()+1)%7;}
-function saturday(date:string){return advance(date,-weekday(date));}
-function monthStart(date:string){return date.slice(0,7)+"-01";}
-function monthEnd(date:string){
- return new Date(Date.UTC(Number(date.slice(0,4)),Number(date.slice(5,7)),0))
-  .toISOString().slice(0,10);
-}
-function moveMonth(date:string,delta:number){
- const d=new Date(date.slice(0,7)+"-01T12:00:00Z");
- d.setUTCMonth(d.getUTCMonth()+delta);
- return d.toISOString().slice(0,10);
-}
 const weekLabels=["daySat","daySun","dayMon","dayTue","dayWed","dayThu","dayFri"] as const;
 function dateTitle(value:string,lang:Lang,calendar:"solar_hijri"|"gregorian"){
  const date=new Date(value+"T12:00:00Z");
  return new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",day:"numeric",
   calendar:calendar==="solar_hijri"?"persian":"gregory"}).format(date);
-}
-function dateRange(date:string,view:ViewMode){
- if(view==="day")return {from:date,to:date};
- if(view==="week"){const d=saturday(date);return {from:d,to:advance(d,6)};}
- return {from:monthStart(date),to:monthEnd(date)};
 }
 const appHref=(cid:string,view?:string)=>"/clinic/appointments"+(view?"/"+view:"")+"?clinic="+encodeURIComponent(cid);
 const patientHref=(cid:string,id:string)=>"/clinic/patients/"+id+"?clinic="+encodeURIComponent(cid);
