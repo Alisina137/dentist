@@ -629,7 +629,7 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
  const [page,setPage]=useState(1),[identityOpen,setIdentityOpen]=useState(false);
  const [confirm,setConfirm]=useState<RequestDecision|null>(null);
  const [snapshot,setSnapshot]=useState<{key:string;rows:StaffRequestRow[];
-  links:LinkRequest[];error:string;loading:boolean;syncedAt:string|null;
+  links:LinkRequest[];error:string;linkError:string;loading:boolean;syncedAt:string|null;
   limitReached:boolean}|null>(null);
  const [reasons,setReasons]=useState<Record<string,string>>({});
  const [patientIds,setPatientIds]=useState<Record<string,string>>({});
@@ -659,8 +659,11 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
   actionError?clinicErrorText(actionError,lang):"";
  useEffect(()=>{
   const controller=new AbortController();
-  setSnapshot({key,rows:[],links:[],error:"",loading:true,syncedAt:null,limitReached:false});
-  Promise.all([
+  setSnapshot({key,rows:[],links:[],error:"",linkError:"",loading:true,
+   syncedAt:null,limitReached:false});
+  // Identity-record verification is an independent task: a failed record-link
+  // endpoint must not hide a successful live booking inbox.
+  Promise.allSettled([
    api<RequestBatch>("/v1/booking/clinics/"+cid+"/requests?state="+filter,
     "GET",undefined,controller.signal),
    identityOpen&&canReviewLinks?
@@ -668,13 +671,19 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
      "GET",undefined,controller.signal):
     Promise.resolve({links:[] as LinkRequest[]})
   ]).then(([requests,records])=>{
-   if(!controller.signal.aborted)setSnapshot({key,rows:requests.requests,links:records.links,
-    error:"",loading:false,syncedAt:new Date().toISOString(),
-    limitReached:requests.limitReached===true||requests.requests.length===100});
-  }).catch(e=>{
-   if(!controller.signal.aborted)setSnapshot({key,rows:[],links:[],
-    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,
-    syncedAt:null,limitReached:false});
+   if(controller.signal.aborted)return;
+   if(requests.status==="rejected"){
+    const error=requests.reason instanceof Error?requests.reason.message:"NETWORK_UNAVAILABLE";
+    setSnapshot({key,rows:[],links:[],error,linkError:"",loading:false,
+     syncedAt:null,limitReached:false});
+    return;
+   }
+   const linkError=records.status==="rejected"?
+    (records.reason instanceof Error?records.reason.message:"NETWORK_UNAVAILABLE"):"";
+   setSnapshot({key,rows:requests.value.requests,
+    links:records.status==="fulfilled"?records.value.links:[],
+    error:"",linkError,loading:false,syncedAt:new Date().toISOString(),
+    limitReached:requests.value.limitReached===true||requests.value.requests.length===100});
   });
   return()=>controller.abort();
  },[cid,filter,revision,key,canReviewLinks,identityOpen]);
@@ -851,7 +860,13 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
    </button>
    {identityOpen&&!loading&&!loadError&&<div className="clinic-reception-identity-content"
     id="clinic-reception-identity-content">
-    {links.filter(l=>l.state==="pending").map(l=>
+    {current?.linkError&&<div className="clinic-reception-error" role="alert">
+     <CareIcon name="about" size={17}/>
+     <p>{clinicErrorText(current.linkError,lang)}</p>
+     <button type="button" className="p15-button p15-button-secondary" onClick={reload}>
+      {t("tryAgain")}</button>
+    </div>}
+    {!current?.linkError&&links.filter(l=>l.state==="pending").map(l=>
      <article className="p15-list-row" key={l.id}>
       <strong>{l.applicantName}</strong>
       <p>{t("number")}: <bdi dir="ltr">{l.suppliedPatientNumber}</bdi></p>
@@ -873,9 +888,9 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
         onClick={()=>void linkDecision(l,"reject")}>{t("rejectLink")}</button>
       </div>
      </article>)}
-    {links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
+    {!current?.linkError&&links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
      cid={cid} link={l} enabled={role==="dentist"||clinicianEnabled}/>)}
-    {!links.length&&<p className="clinic-reception-no-identity">{t("noLinks")}</p>}
+    {!current?.linkError&&!links.length&&<p className="clinic-reception-no-identity">{t("noLinks")}</p>}
    </div>}
   </section>}
   {confirm&&<div className="clinic-reception-modal-backdrop" onMouseDown={event=>{
