@@ -328,7 +328,9 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const sameTenant=(url:URL)=>!url.searchParams.has("clinic")||
   url.searchParams.get("clinic")===selected?.clinicId;
  function renderNavItem(item:Item,subItem=false){
-  const active=pathActive(pathname,item.path);
+  // Deepest matching route wins: /appointments/queue must not also highlight
+  // its /appointments parent, and /settings/security must not highlight Settings.
+  const active=current?.key===item.key;
   return <Link key={item.key} href={hrefFor(item.path)} prefetch={false} data-next-nav
    onClick={()=>{setMobileOpen(false);setNavSearch("")}}
    className={"phase04-side-link clinic-sidebar-link"+
@@ -525,7 +527,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
      <span className="clinic-quick-label">{t("navigateQuickly")}</span>
      {quickLinks.map(item=><Link key={item.key} href={hrefFor(item.path)}
       prefetch={false} data-next-nav
-      aria-current={pathActive(pathname,item.path)?"page":undefined}
+      aria-current={current?.key===item.key?"page":undefined}
       onClick={()=>setMobileOpen(false)}>
       <CareIcon name={item.icon} size={16}/><span>{t(item.key)}</span>
      </Link>)}
