@@ -723,7 +723,7 @@ function DayGrid({space,date,appointments}:{space:Space;date:string;appointments
  return <div className="phase06-day">
   <div className="phase06-day-heading">
    <div><span className="phase06-day-number">
-    {new Date(date+"T12:00:00Z").getUTCDate()}</span>
+    {clinicDayNumber(date,lang,calendar)}</span>
     <div><strong>{dateTitle(date,lang,calendar)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
    </div>
    {canBook(space)&&<a className="phase06-text-action"
@@ -754,7 +754,7 @@ function DayGrid({space,date,appointments}:{space:Space;date:string;appointments
 }
 function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
  byDate:Map<string,Appointment[]>;onSelect:(date:string)=>void}){
- const {t,lang}=useWords();
+ const {t,lang,calendar}=useWords();
  return <div className="phase06-week-scroll">
   <div className="phase06-week-grid">
   {Array.from({length:7},(_,weekday)=>{
@@ -763,7 +763,7 @@ function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
     <button className="phase06-week-day-head" onClick={()=>onSelect(date)}
      aria-label={t("selectDay")+" "+date}>
      <span>{t(weekLabels[weekday])}</span>
-     <strong>{Number(date.slice(-2))}</strong><small>{events.length} {t("count")}</small>
+     <strong>{clinicDayNumber(date,lang,calendar)}</strong><small>{events.length} {t("count")}</small>
     </button>
     <div className="phase06-week-content">
      {events.slice(0,7).map(a=><CalendarCard a={a} space={space} compact key={a.id}/>)}
@@ -776,38 +776,86 @@ function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
   </div>
  </div>;
 }
-function MonthGrid({space,date,byDate,onSelect}:{space:Space;date:string;
+
+/**
+ * A scannable 7-day agenda using the same API rows as day/week/month views.
+ * Appointment links navigate to the existing server-validated workflow.
+ */
+function AgendaGrid({space,period,byDate,onSelect}:{space:Space;period:ClinicDateWindow;
+ byDate:Map<string,Appointment[]>;onSelect:(day:string)=>void}){
+ const {t,lang,calendar}=useWords();
+ const dates=Array.from({length:7},(_,i)=>advance(period.from,i));
+ return <div className="clinic-schedule-agenda">
+  <p className="clinic-agenda-description">{t("agendaHelp")}</p>
+  {dates.map(day=>{
+   const events=byDate.get(day)||[];
+   return <section className={"clinic-agenda-day"+(day===dayKabul()?" is-today":"")} key={day}
+    aria-label={dateTitle(day,lang,calendar)}>
+    <div className="clinic-agenda-date">
+     <button type="button" className="clinic-agenda-day-button" onClick={()=>onSelect(day)}
+      aria-label={t("selectDay")+" "+dateTitle(day,lang,calendar)}>
+      <strong>{clinicDayNumber(day,lang,calendar)}</strong>
+      <span>{dateTitle(day,lang,calendar)}</span>
+     </button>
+     <span className="clinic-agenda-total" dir="auto">{events.length} {t("count")}</span>
+     {canBook(space)&&day>=dayKabul()&&<a className="clinic-agenda-create"
+      href={appHref(space.clinicId,"new")+"&date="+day}>{t("newAppointment")} ↗</a>}
+    </div>
+    {events.length?<div className="clinic-agenda-events">
+     {events.map(a=><a key={a.id} href={appHref(space.clinicId,a.id)}
+      className={"clinic-agenda-row clinic-agenda-"+a.status}>
+      <span className="clinic-agenda-time">
+       <time dateTime={a.startAt}><bdi dir="ltr">{localClock(a.startAt)}</bdi></time>
+       <span aria-hidden="true">–</span>
+       <time dateTime={a.endAt}><bdi dir="ltr">{localClock(a.endAt)}</bdi></time>
+      </span>
+      <span className="clinic-agenda-patient">
+       <strong>{patientDisplay(a)}</strong>
+       <small>{a.serviceName}</small>
+      </span>
+      <span className="clinic-agenda-provider">{a.providerName}
+       {a.resourceName&&<small>{a.resourceName}</small>}</span>
+      <Badge status={a.status}/>
+      <span className="clinic-agenda-arrow" aria-hidden="true">↗</span>
+     </a>)}
+    </div>:<p className="clinic-agenda-empty">{t("noAppointments")}</p>}
+   </section>;
+  })}
+ </div>;
+}
+/** Months are based on the *selected* display calendar, never a silently
+ * Gregorian month under a solar-Hijri title. Adjacent cells are not falsely
+ * shown as having zero bookings: the API has intentionally not fetched them. */
+function MonthGrid({space,period,byDate,onSelect}:{space:Space;period:ClinicDateWindow;
  byDate:Map<string,Appointment[]>;onSelect:(date:string)=>void}){
- const {t}=useWords();
- const start=saturday(monthStart(date));
- const end=monthEnd(date);
- const dayCount=Math.ceil((Math.ceil((Date.parse(end)-Date.parse(start))/86400000)+1)/7)*7;
- const cells=Array.from({length:Math.min(42,dayCount)},(_,i)=>advance(start,i));
+ const {t,lang,calendar}=useWords();
+ const cells=clinicMonthCells(period);
  return <div className="phase06-month">
   <div className="phase06-month-head">
    {weekLabels.map(key=><div key={key}>{t(key)}</div>)}
   </div>
   <div className="phase06-month-grid">
    {cells.map(day=>{
-    const events=byDate.get(day)||[],outside=day.slice(0,7)!==date.slice(0,7);
-    const counts=events.reduce<Record<string,number>>((a,e)=>{
-     a[e.status]=(a[e.status]||0)+1;return a;},{});
-    return <button key={day} className={"phase06-month-cell "+
+    const outside=day<period.from||day>period.to;
+    const events=outside?[]:byDate.get(day)||[];
+    return <button type="button" key={day} className={"phase06-month-cell "+
      (outside?"phase06-month-outside ":"")+(day===dayKabul()?"phase06-month-today":"")}
-     onClick={()=>onSelect(day)} aria-label={day+" · "+events.length+" "+t("count")}>
-      <strong>{Number(day.slice(-2))}</strong>
+     onClick={()=>onSelect(day)}
+     aria-label={day+" · "+(outside?t("outOfPeriod"):events.length+" "+t("count"))}>
+      <strong>{clinicDayNumber(day,lang,calendar)}</strong>
       <div className="phase06-month-bars">
-       {events.slice(0,3).map(a=><span key={a.id} className={"phase06-month-bar phase06-month-bar-"+a.status}>
+       {!outside&&events.slice(0,3).map(a=><span key={a.id}
+        className={"phase06-month-bar phase06-month-bar-"+a.status}>
         <bdi dir="ltr">{localClock(a.startAt)}</bdi> {patientDisplay(a,true)}</span>)}
-       {events.length>3&&<small>+{events.length-3} {t("moreInDay")}</small>}
+       {!outside&&events.length>3&&<small>+{events.length-3} {t("moreInDay")}</small>}
       </div>
-      {!events.length&&<span className="phase06-month-none">·</span>}
+      {!outside&&!events.length&&<span className="phase06-month-none">·</span>}
+      {outside&&<span className="clinic-month-not-loaded" aria-hidden="true">—</span>}
     </button>;
    })}
   </div>
  </div>;
 }
-
 
 type StatusAction="arrived"|"in_treatment"|"completed"|"cancelled"|"no_show";
 function actionsFor(space:Space,a:Appointment):StatusAction[]{
