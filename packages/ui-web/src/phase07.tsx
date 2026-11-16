@@ -20,6 +20,7 @@ const empty:Note={reason:"",findings:"",assessment:"",historySource:"",historyDa
 type Language="en"|"fa-AF"|"ps-AF";
 const labels:Record<Language,Record<string,string>>={
  en:{
+ page:"Page",previous:"Previous",next:"Next",
  clinical:"Clinical",operational:"Operational progress · aggregate counts only",scheduled:"Scheduled today",arrived:"Checked in",inTreatment:"In treatment",completed:"Completed today",pendingCount:"Pending notes",signedCount:"Signed encounters",worklist:"Clinical worklist",today:"Today",pending:"Pending Notes",cases:"My Cases",
  date:"Date",refresh:"Refresh",visits:"Visits",billing:"Billing",files:"Files",overview:"Overview",
  newVisit:"New visit",newVisitHint:"Open an unscheduled encounter or continue from an in-progress appointment.",
@@ -76,6 +77,7 @@ const labels:Record<Language,Record<string,string>>={
  handoffNeedsVerification:"Confirm the patient identity, clinical alerts and consent before documenting care.",
  },
  "fa-AF":{
+ page:"صفحه",previous:"قبلی",next:"بعدی",
  clinical:"کلینیکی",operational:"پیشرفت عملیاتی · فقط آمار کلی",scheduled:"وقت‌های امروز",arrived:"پذیرش‌شده",inTreatment:"در حال تداوی",completed:"تکمیل‌شده امروز",pendingCount:"یادداشت‌های ناتمام",signedCount:"معاینات امضاشده",worklist:"فهرست کارهای کلینیکی",today:"امروز",pending:"یادداشت‌های ناتمام",cases:"موارد من",
  date:"تاریخ",billing:"حساب مریض",refresh:"تازه‌سازی",visits:"معاینات",files:"فایل‌ها",overview:"نمای کلی",
  newVisit:"معاینه جدید",newVisitHint:"معاینه بدون نوبت بسازید یا از وقت ملاقات ادامه دهید.",
@@ -132,6 +134,7 @@ const labels:Record<Language,Record<string,string>>={
  handoffNeedsVerification:"قبل از ثبت تداوی، هویت مریض، هشدارهای صحی و رضایت را بررسی کنید.",
  },
  "ps-AF":{
+ page:"پاڼه",previous:"مخکې",next:"راتلونکی",
  clinical:"کلینیکي",operational:"د چارو لنډیز · یوازې شمېرې",scheduled:"نن ټاکل شوې",arrived:"رارسېدلي",inTreatment:"تر درملنې لاندې",completed:"نن بشپړ شوي",pendingCount:"پاتې یادښتونه",signedCount:"لاسلیک شوې معاینې",worklist:"د کلینیکي کارونو لړلیک",today:"نن",pending:"نیمګړې یادښتونه",cases:"زما قضیې",
  date:"نېټه",billing:"د ناروغ حساب",refresh:"بیا تازه کول",visits:"معاینې",files:"فایلونه",overview:"لنډیز",
  newVisit:"نوې معاینه",newVisitHint:"له نوبت پرته معاینه پیل کړئ یا ټاکلې لیدنه پرمخ یوسئ.",
@@ -564,10 +567,17 @@ function Visits({space,patientId}:{space:Space;patientId:string}){
   <aside className="card phase07-panel phase07-sidebar">
    <h2>{t("newVisit")}</h2><p className="muted">{t("newVisitHint")}</p>
    {canStart?<form className="phase07-form" onSubmit={create}>
-    {appointmentId&&<Banner>{t("chooseAppointment")}: <bdi dir="ltr">{appointmentId.slice(0,8)}</bdi></Banner>}
+    {appointmentId&&<div className="clinic-phase09-visit-origin">
+     <Banner>{t("chooseAppointment")}: <bdi dir="ltr">{appointmentId.slice(0,8)}</bdi></Banner>
+     <a className="clinic-phase09-textlink"
+      href={"/clinic/appointments/"+encodeURIComponent(appointmentId)+
+       "?clinic="+encodeURIComponent(space.clinicId)}>
+      <CareIcon name="calendar" size={16}/>{t("handoffOpenAppointment")}</a>
+     <p>{t("handoffNeedsVerification")}</p>
+    </div>}
     <label className="field"><span>{t("complaint")} *</span><textarea value={reason} required maxLength={2000}
      rows={4} onChange={e=>setReason(e.target.value)}/></label>
-    <button className="btn btn-primary" disabled={busy||!reason.trim()}>
+    <button className="btn btn-primary" disabled={busy||reason.trim().length<2}>
      {busy?t("busy"):t("newVisit")}</button>
     {failure&&<ErrorBox error={failure}/>}
    </form>:<Banner kind="warning">{t("assistantHint")}</Banner>}
@@ -634,6 +644,14 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       {data.patient.patientNumber}</bdi></span><h2>{patientName(data.patient)}</h2>
       <p className="muted">{fmt(e.createdAt)} · {t("revision")} {e.revision}</p></div>
      <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
+    <div className="clinic-phase09-visit-navigation">
+     <a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
+      <CareIcon name="account" size={16}/>{t("returnToPatient")}</a>
+     {e.appointmentId&&<a className="btn btn-secondary" href={
+      "/clinic/appointments/"+encodeURIComponent(e.appointmentId)+
+       "?clinic="+encodeURIComponent(space.clinicId)}>
+      <CareIcon name="calendar" size={16}/>{t("handoffOpenAppointment")}</a>}
+    </div>
     <Banner kind={e.status==="signed"?"success":"warning"}>
      {t(e.status==="signed"?"signedHint":"draftHint")}</Banner>
    </section>
