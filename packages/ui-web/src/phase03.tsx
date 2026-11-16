@@ -164,8 +164,8 @@ function useLang(){
    timeZone:"Asia/Kabul",year:"numeric",month:"short",day:"numeric"}).format(new Date(String(v))):"—";
  return {t,date,locale};
 }
-async function api(path:string,method="GET",body?:unknown):Promise<any>{
- const result=await fetch(base+"/v1/team"+path,{method,credentials:"include",
+async function api(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const result=await fetch(base+"/v1/team"+path,{method,credentials:"include",signal,
   cache:"no-store",headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await result.json().catch(()=>({}));
@@ -173,21 +173,38 @@ async function api(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useData(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // A response for a previous clinic or staff screen must never render here,
+ // including the React frame before the effect that clears the last result.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [number,setNumber]=useState(0);
- const reload=()=>{setData(null);setNumber(v=>v+1);};
+ const reload=()=>setNumber(v=>v+1);
  useEffect(()=>{
-  if(!path){setData(null);return;}
-  let alive=true;setData(null);setError("");
-  api(path).then(d=>{if(alive)setData(d);}).catch(e=>{if(alive)setError(e.message);});
-  return()=>{alive=false;};
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+  setSnapshot({path,data:null,error:""});
+  api(path,"GET",undefined,controller.signal).then(d=>{
+   if(!controller.signal.aborted)setSnapshot({path,data:d,error:""});
+  }).catch(e=>{
+   if(!controller.signal.aborted)setSnapshot({path,data:null,error:e?.message||"NETWORK"});
+  }).finally(()=>clearTimeout(timer));
+  return()=>{clearTimeout(timer);controller.abort()};
  },[path,number]);
- return {data,error,reload};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",reload};
 }
 function Banner({children,kind="info"}:{children:ReactNode,kind?:"info"|"warning"|"error"|"success"}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
-function Busy(){const {t}=useLang();return <div className="card panel"><Banner>{t("loading")}</Banner></div>;}
+function Busy(){const {t}=useLang();return <div className="card panel k-team-skeleton"
+ role="status" aria-label={t("loading")}>
+ <span className="k-skeleton-heading" aria-hidden="true">
+  <span className="h-skeleton"/><span className="h-skeleton"/></span>
+ {Array.from({length:3},(_,i)=><span className="k-skeleton-row" aria-hidden="true" key={i}>
+  <span className="h-skeleton"/><span className="h-skeleton"/></span>)}
+ <span className="sr-only">{t("loading")}</span>
+ </div>;}
 function ErrorBox({error,retry}:{error:string,retry:()=>void}){
  const {t}=useLang();return <div className="card panel"><Banner kind="error">{t("error")}: {error}</Banner>
    <button type="button" className="btn btn-secondary" onClick={retry}>{t("retry")}</button></div>;
