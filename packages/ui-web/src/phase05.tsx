@@ -17,6 +17,7 @@ type Patient={id:string;clinicId?:string;patientNumber:string;preferredName:stri
 const text:Record<string,Record<string,string>>={
  en:{visits:"Visits",files:"Files",chart:"Dental Chart",treatments:"Treatments",billing:"Billing",
 
+  visitFilter:"Filter visits",allVisits:"All visits",plannedVisits:"Scheduled",finishedVisits:"Completed",cancelledVisits:"Cancelled / no-show",visitsPage:"Page",
   appointmentHistory:"Appointment history",newAppointment:"New appointment",noBookedVisits:"No appointments for this clinic patient yet.",confirmed:"Scheduled",arrived:"Arrived",in_treatment:"In treatment",completed:"Completed",cancelled:"Cancelled",no_show:"No-show",patients:"Patients",directory:"Directory",import:"Import",newPatient:"Add patient",identity:"Identification",
   contact:"Contact",intake:"Medical intake",consent:"Consent",overview:"Overview",edit:"Edit demographics",
   preferredName:"Preferred name",familyName:"Family name",phone:"Phone (optional)",altContact:"Alternate contact",
@@ -77,6 +78,7 @@ const text:Record<string,Record<string,string>>={
  },
  "fa-AF":{visits:"معاینات",files:"فایل‌ها",chart:"چارت دندان",treatments:"پلان‌های تداوی",billing:"حساب مریض",
 
+  visitFilter:"فیلتر ملاقات‌ها",allVisits:"همه ملاقات‌ها",plannedVisits:"برنامه‌ریزی‌شده",finishedVisits:"تکمیل‌شده",cancelledVisits:"لغوشده / غیرحاضر",visitsPage:"صفحه",
   appointmentHistory:"تاریخچه ملاقات‌ها",newAppointment:"ثبت وقت جدید",noBookedVisits:"برای این مریض هنوز ملاقات ثبت نشده است.",confirmed:"وقت تعیین‌شده",arrived:"حاضر",in_treatment:"در تداوی",completed:"تکمیل",cancelled:"لغو",no_show:"غیرحاضر",patients:"مریضان",directory:"فهرست",import:"وارد کردن",newPatient:"افزودن مریض",
   identity:"معلومات هویت",contact:"تماس",intake:"معلومات صحی",consent:"رضایت و اطلاع",
   overview:"نمای کلی",edit:"ویرایش مشخصات",preferredName:"نام مورد استفاده",
@@ -138,6 +140,7 @@ const text:Record<string,Record<string,string>>={
  },
  "ps-AF":{visits:"معاینې",files:"فایلونه",chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",
 
+  visitFilter:"د لیدنو چاڼ",allVisits:"ټولې لیدنې",plannedVisits:"ټاکل شوې",finishedVisits:"بشپړې شوې",cancelledVisits:"لغوه / نه حاضر",visitsPage:"مخ",
   appointmentHistory:"د لیدنو تاریخچه",newAppointment:"نوی وخت ثبت کړئ",noBookedVisits:"د دې ناروغ لپاره تر اوسه لیدنه نشته.",confirmed:"ټاکل شوی",arrived:"راغلی",in_treatment:"درملنه",completed:"بشپړ",cancelled:"لغوه",no_show:"نه راغلی",patients:"ناروغان",directory:"نوملړ",import:"واردول",newPatient:"ناروغ ثبت کړئ",
   identity:"د پېژندنې معلومات",contact:"اړیکه",intake:"روغتیايي معلومات",consent:"خبرتیا او رضا",
   overview:"لنډیز",edit:"د معلوماتو سمون",preferredName:"د ناروغ نوم",familyName:"تخلص",
@@ -260,16 +263,21 @@ const importHref=(cid:string)=>"/clinic/patients/import?clinic="+encodeURICompon
 const emptyPatient={preferredName:"",familyName:"",dateOfBirth:"",ageEstimate:"",phone:"",alternateContact:"",
  province:"",city:"",address:"",emergencyContact:"",noticeAcknowledged:false};
 function useResource(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Never render records returned for another clinic or patient, even for one frame.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [tick,setTick]=useState(0);
- const retry=()=>{setData(null);setError("");setTick(v=>v+1);};
+ const retry=()=>setTick(v=>v+1);
  useEffect(()=>{
-  if(!path)return;
-  let mounted=true;setData(null);setError("");
-  api(path).then(d=>{if(mounted)setData(d);}).catch(e=>{if(mounted)setError(e.message);});
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let mounted=true;setSnapshot({path,data:null,error:""});
+  api(path).then(d=>{if(mounted)setSnapshot({path,data:d,error:""});})
+   .catch(e=>{if(mounted)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{mounted=false;};
  },[path,tick]);
- return {data,error,retry};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",retry};
 }
 export function PatientPortal({view}:{view:Page}){
  const {t}=useWords();
