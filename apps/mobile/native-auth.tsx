@@ -1,5 +1,7 @@
 import React,{createContext,useCallback,useContext,useEffect,useMemo,useRef,useState,type ReactNode} from "react";
 import * as SecureStore from "expo-secure-store";
+import {ApiError} from "./api-error";
+export {ApiError} from "./api-error";
 
 /**
  * Session token is an opaque Better Auth bearer session, stored only in
@@ -16,9 +18,7 @@ export type NativeAccount={
  profile:null|{preferredName:string;phone:string|null;city:string;revision:number};
  onboarding:{termsVersion:string;privacyVersion:string;requiresAdultAttestation:boolean};
 };
-export class ApiError extends Error{
- constructor(public status:number,public code:string){super(code);}
-}
+
 type HttpMethod="GET"|"POST"|"PUT"|"DELETE";
 type AccountContext={
  account:NativeAccount|null;loading:boolean;onlineError:string|null;tokenPresent:boolean;
