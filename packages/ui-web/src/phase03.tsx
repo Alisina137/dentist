@@ -250,7 +250,7 @@ function navigation(space:Space,t:(key:string)=>string){
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
  const {t}=useLang();const nav=navigation(space,t);
- const pageHasOwnHeading=["patients","services","resources","hours","appointments","queue","bookingRequests","notifications","clinical","finance","reports","export","listing","myVerification","subscription","settings"].includes(active);
+ const pageHasOwnHeading=["home","patients","services","resources","hours","appointments","queue","bookingRequests","notifications","clinical","finance","reports","export","listing","myVerification","subscription","settings"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
     <div className="pill">{t(space.role)}</div>
