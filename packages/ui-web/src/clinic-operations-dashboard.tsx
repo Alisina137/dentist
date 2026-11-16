@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useState} from "react";
 import {CareIcon,InlineAlert,usePreferences} from "./index";
+import {ClinicSectionHeading,ClinicMetricValue,ClinicEmptyState} from "./clinic-primitives";
 
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
@@ -241,29 +242,27 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
     {t("setup")}</a>}</div>}
   <section className="h-primary" aria-label={t("overview")}>
    {canSchedule&&<div className="h-card h-schedule">
-    <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="calendar" size={16}/>{t("overview")}</span>
-     <h2>{t("today")}</h2></div><a href={"/clinic/appointments?clinic="+prefix} className="h-more">
-     {t("appointments")} <CareIcon name="arrow" size={16}/></a></div>
+    <ClinicSectionHeading icon="calendar" eyebrow={t("overview")} title={t("today")}
+     actionLabel={t("appointments")} actionHref={"/clinic/appointments?clinic="+prefix}/>
     <PanelState loading={appointments.loading} error={appointments.error} retry={appointments.refresh} variant="metrics"/>
     {appointments.data&&<div className="h-metrics">
      {([{key:"todayTotal",label:"today"},{key:"confirmed",label:"confirmed"},
        {key:"arrived",label:"arrived"},{key:"in_treatment",label:"in_treatment"},
        {key:"completed",label:"completed"},{key:"no_show",label:"no_show"}] as const).map(item=>
       <div className="h-metric" key={item.key}><span>{t(item.label)}</span>
-       <strong>{item.key==="todayTotal"?appointments.data!.todayTotal:appointments.data!.counts[item.key]}</strong></div>)}
-     <div className="h-metric h-week"><span>{t("week")}</span><strong>{appointments.data.weekTotal}</strong></div>
+       <ClinicMetricValue value={item.key==="todayTotal"?appointments.data!.todayTotal:appointments.data!.counts[item.key]}/></div>)}
+     <div className="h-metric h-week"><span>{t("week")}</span><ClinicMetricValue value={appointments.data.weekTotal}/></div>
     </div>}
    </div>}
    {canPatients&&<div className="h-card h-patients">
-    <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="users" size={16}/>{t("patients")}</span>
-     <h2>{t("totalPatients")}</h2></div><a href={"/clinic/patients?clinic="+prefix} className="h-more">
-      {t("patientsLink")} <CareIcon name="arrow" size={16}/></a></div>
+    <ClinicSectionHeading icon="users" eyebrow={t("patients")} title={t("totalPatients")}
+     actionLabel={t("patientsLink")} actionHref={"/clinic/patients?clinic="+prefix}/>
     <PanelState loading={patients.loading} error={patients.error} retry={patients.refresh} variant="metrics"/>
     {patients.data&&<div className="h-metrics">
-     <div className="h-metric h-main-metric"><span>{t("totalPatients")}</span><strong>{patients.data.total}</strong></div>
-     <div className="h-metric"><span>{t("activePatients")}</span><strong>{patients.data.counts.active}</strong></div>
-     <div className="h-metric"><span>{t("inactive")}</span><strong>{patients.data.counts.inactive}</strong></div>
-     <div className="h-metric"><span>{t("archived")}</span><strong>{patients.data.counts.archived}</strong></div>
+     <div className="h-metric h-main-metric"><span>{t("totalPatients")}</span><ClinicMetricValue value={patients.data.total}/></div>
+     <div className="h-metric"><span>{t("activePatients")}</span><ClinicMetricValue value={patients.data.counts.active}/></div>
+     <div className="h-metric"><span>{t("inactive")}</span><ClinicMetricValue value={patients.data.counts.inactive}/></div>
+     <div className="h-metric"><span>{t("archived")}</span><ClinicMetricValue value={patients.data.counts.archived}/></div>
     </div>}
    </div>}
   </section>
@@ -326,7 +325,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
         <span className="h-upcoming-details"><strong>{a.serviceName||t("appointments")}</strong>
          <small><DateText iso={a.startAt}/></small></span>
         <span className="h-status h-approved">{t("confirmed")}</span>
-       </a>)}</div>:<p className="h-empty">{t("noUpcoming")}</p>)}
+       </a>)}</div>:<ClinicEmptyState message={t("noUpcoming")} icon="calendar"/>)}
      <p className="h-help">{t("timezone")}</p>
     </section>}
    </div>
