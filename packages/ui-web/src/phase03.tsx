@@ -3,7 +3,7 @@ import React, { useEffect, useState, type FormEvent, type ReactNode } from "reac
 import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls, CareIcon, type CareIconName } from "./index";
 import { ClinicOperationsOverview } from "./clinic-operations-dashboard";
 import { Phase02Portal } from "./phase02";
-import {usePersistentClinicShell} from "./clinic-shell-context";
+import {usePersistentClinicShell,useClinicWorkspaceSession} from "./clinic-shell-context";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
   membershipId:string;role:Role;clinicianEnabled:boolean;capabilities:string[]};
@@ -319,18 +319,21 @@ function NavLinks({nav,active}:{nav:{title:string;href:string;key:string;icon:st
  </nav>;
 }
 function useContextAndSpace(){
- const persistent=usePersistentClinicShell();
- // The /clinic layout fetched the role/tenant context once and stays mounted.
- // Do not repeat /v1/team/context on each new clinic screen.
- const {data,error,reload}=useData(persistent?null:"/context");
+ const session=useClinicWorkspaceSession();
+ // The Next clinic layout fetched the authenticated tenant context exactly
+ // once. Existing pages keep their own in-page data requests; no second
+ // /v1/team/context call or full navigation skeleton is needed.
+ const {data,error,reload}=useData(session?null:"/context");
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
- useEffect(()=>{if(!persistent)setRequested(new URLSearchParams(location.search).get("clinic"));},
-  [persistent]);
- if(persistent)return {ctx:persistent.ctx as Context|null,
-  space:persistent.space as Space|undefined,error:persistent.error,
-  reload:persistent.reload,requested:persistent.requested};
+ useEffect(()=>{
+  if(!session)setRequested(new URLSearchParams(location.search).get("clinic"));
+ },[session]);
+ if(session)return {ctx:session.ctx as Context|null,
+  space:session.space as Space|undefined,error:"",reload,
+  requested:session.requested};
  const spaces=(data as Context|undefined)?.clinics||[];
- const selected=requested===undefined?undefined:requested?spaces.find(x=>x.clinicId===requested):spaces[0];
+ const selected=requested===undefined?undefined:requested?
+  spaces.find(x=>x.clinicId===requested):spaces[0];
  return {ctx:data as Context|null,space:selected as Space|undefined,error,reload,requested};
 }
 function Guard({children}:{children:(ctx:Context,space:Space)=>ReactNode}){
