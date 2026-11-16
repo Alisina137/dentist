@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
+import {patientError,patientText,isSlotConflict} from "./patient-errors";
 
 declare const process:{readonly env:{readonly EXPO_PUBLIC_API_URL?:string;readonly EXPO_PUBLIC_PATIENT_WEB_URL?:string}};
 const API=(process.env.EXPO_PUBLIC_API_URL||"").replace(/\/+$/,"");
@@ -61,7 +62,9 @@ const words={
  close:"Close",ack:"I am the legal guardian of this minor.",
  reference:"Appointment reference",refresh:"Refresh",created:"Registered",
  cancelledStatus:"Cancelled",profileUpdate:"Update profile",
- verification:"Verify your email from the link before signing in."},
+ verification:"Verify your email from the link before signing in.",
+ resendVerification:"Resend verification email",backToLogin:"Back to sign in",resetPassword:"Send password reset link",
+ checkAppointments:"Check My appointments"},
  "fa-AF":{login:"ورود",signup:"ایجاد حساب",name:"نام مکمل",email:"ایمیل",password:"رمز عبور",
  loginHelp:"برای مدیریت مصون نوبت‌ها وارد حساب تأییدشده شوید.",
  signupHelp:"لینک تأیید به ایمیل ارسال می‌شود. پس از تأیید وارد شوید.",
@@ -96,7 +99,9 @@ const words={
  close:"بستن",ack:"من سرپرست قانونی این طفل هستم.",
  reference:"شماره نوبت",refresh:"تازه‌سازی",created:"ثبت شده",
  cancelledStatus:"لغو شده",profileUpdate:"ویرایش پروفایل",
- verification:"لینک ارسالی به ایمیل را تأیید کنید، سپس وارد شوید."},
+ verification:"لینک ارسالی به ایمیل را تأیید کنید، سپس وارد شوید.",
+ resendVerification:"ارسال دوباره ایمیل تأیید",backToLogin:"بازگشت به ورود",resetPassword:"ارسال لینک بازیابی رمز",
+ checkAppointments:"بررسی نوبت‌های من"},
  "ps-AF":{login:"ننوځئ",signup:"حساب جوړول",name:"بشپړ نوم",email:"ایمیل",password:"پټنوم",
  loginHelp:"د ملاقاتونو د سمبالولو لپاره تایید شوي حساب ته ننوځئ.",
  signupHelp:"د تایید لینک ایمیل ته استول کېږي؛ وروسته ننوځئ.",
@@ -131,7 +136,9 @@ const words={
  close:"بندول",ack:"زه د دې ماشوم قانوني سرپرست یم.",
  reference:"د ملاقات شمېره",refresh:"تازه کول",created:"ثبت شوی",
  cancelledStatus:"لغوه شوی",profileUpdate:"پروفایل سمول",
- verification:"په ایمیل کې لینک تایید کړئ، بیا ننوځئ."}
+ verification:"په ایمیل کې لینک تایید کړئ، بیا ننوځئ.",
+ resendVerification:"د تایید ایمیل بیا استول",backToLogin:"بېرته ننوتل",resetPassword:"د پټنوم لینک واستوئ",
+ checkAppointments:"زما ملاقاتونه وګورئ"}
 } as const;
 function tr(lang:Language){return words[lang]}
 const dark="#152b4c",blue="#075BF2",muted="#677a92";
@@ -218,7 +225,7 @@ async function publicGet<T>(path:string):Promise<T>{
 export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCity}:{locale:Language;calendar:Calendar;
  city:string;onLocale:(v:Language)=>void;onCalendar:(v:Calendar)=>void;onCity:(v:string)=>void}){
  const t=tr(locale),auth=useNativeAuth();
- const [mode,setMode]=useState<"login"|"signup">("login");
+ const [mode,setMode]=useState<"login"|"signup"|"recover">("login");
  const [name,setName]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");
  const [phone,setPhone]=useState(""),[accepted,setAccepted]=useState(false),[adult,setAdult]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -226,41 +233,61 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
  const [family,setFamily]=useState<Family|null>(null);
  const [child,setChild]=useState(""),[birth,setBirth]=useState(""),[guardian,setGuardian]=useState(false);
  const [localEmail,setLocalEmail]=useState(false),[updateEmail,setUpdateEmail]=useState(false);
+ const patientId=auth.account?.registered?auth.account.user.id:null;
  useEffect(()=>{
-  if(!auth.account?.registered)return;
+  // Account boundary: immediately clear all previous patient's family, notification
+  // settings, unsaved forms and errors before fetching for the new identity.
+  setPrefs(null);setFamily(null);setLocalEmail(false);setUpdateEmail(false);
+  setChild("");setBirth("");setGuardian(false);setAccepted(false);setAdult(false);
+  setNotice("");setError("");setPassword("");
+  if(!patientId)return;
   let live=true;
   Promise.all([auth.request<Prefs>("/v1/patients/preferences"),
    auth.request<Family>("/v1/patients/family")]).then(([p,f])=>{
     if(live){setPrefs(p);setFamily(f);setLocalEmail(p.notifications.emailBookings);
      setUpdateEmail(p.notifications.emailUpdates);}
-  }).catch(e=>{if(live)setError(String(e instanceof Error?e.message:e))});
+  }).catch(e=>{if(live)setError(patientError(e,locale))});
   return()=>{live=false};
- },[auth.account?.user.id,auth.account?.registered]);
+ },[patientId,auth.request]);
  const run=async(fn:()=>Promise<void>)=>{
   setBusy(true);setError("");setNotice("");
-  try{await fn()}catch(e){setError(e instanceof Error?e.message:t.error)}
+  try{await fn()}catch(e){setError(patientError(e,locale))}
   finally{setBusy(false)}
  };
  if(auth.loading)return <Block><Text>{t.checking}</Text><ActivityIndicator color={blue}/></Block>;
- if(auth.onlineError&&!auth.account)return <Block><ErrorBox message={auth.onlineError}/>
+ if(auth.onlineError&&!auth.account)return <Block><ErrorBox message={patientError(new ApiError(0,auth.onlineError),locale)}/>
   <Button title={t.retry} onPress={()=>void auth.refresh()}/></Block>;
- if(!auth.account)return <Block><Text style={p.title}>{mode==="login"?t.login:t.signup}</Text>
-  <Text style={p.copy}>{mode==="login"?t.loginHelp:t.signupHelp}</Text>
+ if(!auth.account)return <Block><Text style={p.title}>{mode==="login"?t.login:mode==="signup"?t.signup:t.forgot}</Text>
+  <Text style={p.copy}>{mode==="signup"?t.signupHelp:t.loginHelp}</Text>
   {mode==="signup"&&<Field label={t.name} value={name} onChangeText={setName}/>}
   <Field label={t.email} value={email} keyboardType="email-address" onChangeText={setEmail}/>
-  <Field label={t.password} value={password} secure onChangeText={setPassword}/>
+  {mode!=="recover"&&<Field label={t.password} value={password} secure onChangeText={setPassword}/>}
   {error&&<ErrorBox message={error}/>}
   {notice&&<Text style={p.success}>{notice}</Text>}
-  <Button title={busy?t.saving:mode==="login"?t.login:t.signup} disabled={busy}
+  <Button title={busy?t.saving:mode==="recover"?t.resetPassword:mode==="login"?t.login:t.signup} disabled={busy}
    onPress={()=>void run(async()=>{
-    if(!email.includes("@")||password.length<10||(mode==="signup"&&name.trim().length<2))
+    if(!email.includes("@")||(mode!=="recover"&&password.length<10)||(mode==="signup"&&name.trim().length<2))
      throw new Error(t.invalid);
+    if(mode==="recover"){
+     await auth.requestPasswordReset(email);
+     setNotice(patientText(locale,"resetSent"));setPassword("");return;
+    }
     if(mode==="signup"){await auth.signUp(name,email,password);
      setNotice(t.verification);setMode("login");setPassword("");}
     else await auth.signIn(email,password);
    })}/>
-  <Button secondary title={mode==="login"?t.signup:t.login} onPress={()=>{setMode(mode==="login"?"signup":"login");setError("");setNotice("")}}/>
-  {WEB&&<Button secondary title={t.forgot} onPress={()=>void Linking.openURL(WEB+"/forgot-password")}/>}
+  <Button secondary title={mode==="recover"?t.backToLogin:mode==="login"?t.signup:t.login}
+   disabled={busy} onPress={()=>{setMode(mode==="login"?"signup":"login");setError("");setNotice("");setPassword("")}}/>
+  {mode==="login"&&<Button secondary title={t.forgot} disabled={busy}
+   onPress={()=>{setMode("recover");setError("");setNotice("");setPassword("")}}/>}
+  {mode!=="recover"&&<Button secondary title={t.resendVerification}
+   disabled={busy||!email.includes("@")} onPress={()=>void run(async()=>{
+    // Always show the same outcome, regardless of whether this address exists.
+    await auth.resendVerification(email);
+    setNotice(patientText(locale,"verifySent"));
+   })}/>}
+  {error===patientText(locale,"mfaWeb")&&WEB&&<Button secondary title={t.login}
+   onPress={()=>void Linking.openURL(WEB+"/login")}/>}
  </Block>;
  if(!auth.account.registered)return <Block><Text style={p.title}>{t.onboard}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text>
@@ -289,7 +316,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
   <Block><Text style={p.title}>{t.profile}</Text>
    <Text style={p.copy}>{auth.account.user.email}</Text>
    <Text style={p.label}>{profile?.preferredName} · {profile?.city}</Text>
-   <Button secondary title={t.profileUpdate} onPress={()=>{setName(profile?.preferredName||"");setPhone(profile?.phone||"");setNotice("edit")}}/>
+   <Button secondary title={t.profileUpdate} onPress={()=>{setName(profile?.preferredName||"");setPhone(profile?.phone||"");onCity(profile?.city||city);setNotice("edit")}}/>
    {notice==="edit"&&<>
     <Field label={t.name} value={name} onChangeText={setName}/>
     <Field label={t.city} value={city} onChangeText={onCity}/>
