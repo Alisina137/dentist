@@ -32,23 +32,44 @@ import { adminCenterRouter } from "./admin-center-router.js";
 import { portabilityRouter } from "./portability-router.js";
 import { protectHealthWrites, getPilotReadiness } from "./pilot-gate.js";
 import { startBookingNotificationWorker } from "./booking-notifications.js";
+import { assertProductionConfiguration } from "./production-config.js";
+
+// Stop production startup before any HTTP listener or booking worker exists.
+assertProductionConfiguration();
 
 const app = express();
 app.disable("x-powered-by");
 app.use(helmet());
 const trusted = [
-  process.env.CLINIC_WEB_URL || "http://localhost:3000",
-  process.env.ADMIN_WEB_URL || "http://localhost:3001",
+  process.env.CLINIC_WEB_URL || "http://localhost:3001",
+  process.env.ADMIN_WEB_URL || "http://localhost:3000",
   process.env.PATIENT_WEB_URL || "http://localhost:3002"
 ];
 app.use(cors({ origin: trusted, credentials: true }));
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.locals.requestId = randomUUID();
   res.setHeader("X-Request-ID", res.locals.requestId);
+  // Sensitive identities, role grants, bookings and patient/clinical records
+  // must not be cached in shared proxies or a prior user's browser session.
+  if(req.path.startsWith("/v1/")||req.path.startsWith("/api/auth/")){
+    res.setHeader("Cache-Control","private, no-store, max-age=0");
+    res.setHeader("Pragma","no-cache");
+  }
   next();
 });
 // Better Auth needs the original raw request, before the JSON parser.
 app.all("/api/auth/*", toNodeHandler(auth));
+// A browser must not perform cookie-authenticated state changes from an
+// untrusted Origin. Native bearer clients and non-browser tools omit Origin.
+app.use("/v1",(req,res,next)=>{
+  const origin=req.headers.origin;
+  if(!["GET","HEAD","OPTIONS"].includes(req.method)&&
+     ((origin!==undefined&&!trusted.includes(origin))||
+      req.headers["sec-fetch-site"]==="cross-site")){
+    res.status(403).json({code:"ORIGIN_DENIED",messageKey:"errors.denied"});return;
+  }
+  next();
+});
 // Deny new protected health data writes until evidence-backed pilot approval in production.
 app.use(protectHealthWrites);
 // Only guarded registry imports accept CSV-sized JSON bodies.
@@ -187,6 +208,19 @@ app.use("/v1/team", phase03Router());
 app.use("/v1", phase02Router());
 app.use("/v1", (_req, res) => res.status(404).json({ code: "NOT_FOUND", messageKey: "errors.notFound" }));
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  // Express body-parser faults are input errors, not internal server errors.
+  // Do not reflect a malformed payload, parsing exception or patient details.
+  const type=error&&typeof error==="object"&&"type" in error?
+    String((error as {type:unknown}).type):"";
+  if(type==="entity.too.large"){
+    res.status(413).json({code:"BODY_TOO_LARGE",messageKey:"errors.invalidInput",
+      requestId:res.locals.requestId});return;
+  }
+  if(type==="entity.parse.failed"||type==="charset.unsupported"||type==="encoding.unsupported"){
+    res.status(type==="entity.parse.failed"?400:415).json({
+      code:type==="entity.parse.failed"?"INVALID_JSON":"UNSUPPORTED_REQUEST_ENCODING",
+      messageKey:"errors.invalidInput",requestId:res.locals.requestId});return;
+  }
   // Never return stack traces, tokens, medical information, or user identifiers.
   console.error("API error", error instanceof Error ? error.name : "unknown");
   res.status(500).json({ code: "INTERNAL_ERROR", messageKey: "errors.unavailable", requestId: res.locals.requestId });
