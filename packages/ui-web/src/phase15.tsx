@@ -1,5 +1,5 @@
 "use client";
-import React,{useEffect,useMemo,useState,type FormEvent} from "react";
+import React,{useCallback,useEffect,useMemo,useState,type FormEvent} from "react";
 import {usePreferences,InlineAlert} from "./index";
 import {Shell} from "./phase03";
 
@@ -168,8 +168,8 @@ function useWords(){
  };
  return {lang,t,fmt};
 }
-async function api<T>(path:string,method="GET",body?:unknown):Promise<T>{
- const r=await fetch(API+path,{method,credentials:"include",cache:"no-store",
+async function api<T>(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<T>{
+ const r=await fetch(API+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -480,7 +480,9 @@ export function PatientRecordsPage(){
 
 type StaffContext={name:string;email:string;clinics:{
  clinicId:string;clinicName:string;membershipId:string;role:string;clinicianEnabled:boolean}[]};
-function ClinicShell({title,activeKey="appointments",children}:{title:string;activeKey?:string;children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
+function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,children}:{title:string;
+ activeKey?:string;ownerManagerOnly?:boolean;
+ children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
  const {t}=useWords(),[ctx,setCtx]=useState<StaffContext|null>(null),[clinic,setClinic]=useState<string|null>(null);
  const [error,setError]=useState("");
  useEffect(()=>{
@@ -489,13 +491,17 @@ function ClinicShell({title,activeKey="appointments",children}:{title:string;act
  },[]);
  if(error)return <Page heading={title}><ErrorNote message={error}/><LinkButton href="/clinic/login">{t("signClinic")}</LinkButton></Page>;
  if(!ctx)return <Spinner/>;
- const space=(clinic?ctx.clinics.find(c=>c.clinicId===clinic):null)||ctx.clinics[0];
- if(!space)return <Page heading={title}><Banner text={t("signClinic")}/></Page>;
+ // A supplied clinic ID must never silently fall back to a different tenant.
+ const space=clinic===null?ctx.clinics[0]:ctx.clinics.find(c=>c.clinicId===clinic);
+ if(!space)return <Page heading={title}><Banner text={t(clinic===null?"signClinic":"clinicUnavailable")}/></Page>;
+ if(ownerManagerOnly&&!["owner","manager"].includes(space.role))
+  return <Page heading={title}><Banner text={t("roleRestricted")}/></Page>;
  return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
   <Page heading={title} sub={space.clinicName}>
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
-    <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a></nav>
+    {["owner","manager"].includes(space.role)&&
+     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a>}</nav>
    {children(space.clinicId,space.role,space.clinicianEnabled)}
   </Page>
  </Shell>;
