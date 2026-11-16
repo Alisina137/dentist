@@ -45,15 +45,25 @@ const faq=[
 /** No clinical data joins or searches anywhere in this router. */
 export function supportRouter(){
  const router=Router();
- // PH18 support mutations require an allowlisted browser Origin (defense in depth with SameSite cookies).
+ // Browser support writes require an allowlisted Origin; native Expo Go uses
+ // explicit bearer authentication and sends no Origin. Only patient ticket
+ // creation/replies may bypass the browser Origin check, and only when the
+ // request is origin-less, carries a bearer token, and is not a cross-site
+ // browser Fetch Metadata request. opsIdentity + ticketAccess still authorize
+ // every endpoint; staff/admin writes can never use this native exception.
  router.use((req,res,next)=>{
   if(["GET","HEAD","OPTIONS"].includes(req.method))return next();
   const origin=req.headers.origin;
   const allowed=[process.env.CLINIC_WEB_URL||"http://localhost:3001",
    process.env.ADMIN_WEB_URL||"http://localhost:3000",
    process.env.PATIENT_WEB_URL||"http://localhost:3002"];
-  if(!origin||!allowed.includes(origin)){res.status(403).json({code:"ORIGIN_DENIED"});return;}
-  next();
+  if(origin&&allowed.includes(origin))return next();
+  const bearer=typeof req.headers.authorization==="string"&&
+   /^Bearer [A-Za-z0-9._~-]{12,512}$/.test(req.headers.authorization);
+  const nativePatientWrite=req.method==="POST"&&
+   (req.path==="/tickets"||/^\/tickets\/[a-zA-Z0-9_-]{8,100}\/messages$/.test(req.path));
+  if(!origin&&bearer&&nativePatientWrite&&!req.headers["sec-fetch-site"])return next();
+  res.status(403).json({code:"ORIGIN_DENIED"});
  });
  router.get("/public/help",opsTask(async(_req,res)=>{
   const categories=await sqlClient`SELECT code,label_en,label_fa,label_ps
