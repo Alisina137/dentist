@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
-import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {NativeAuthProvider,useNativeAuth,type NativeAccount} from "./native-auth";
+import {NativeAppointmentDetails,NativeNextAppointment} from "./native-journeys";
 import {patientError} from "./patient-errors";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
@@ -23,7 +24,10 @@ declare const process:{readonly env:{
 type Language="fa-AF"|"ps-AF"|"en";
 type Calendar="solar_hijri"|"gregorian";
 type Tab="home"|"explore"|"appointments"|"saved"|"account";
-type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string}|{kind:"booking";clinicId:string;dentistId?:string;booking?:Booking;fromDentistId?:string;returnTab?:Tab};
+type AccountSection="overview"|"profile"|"family"|"notifications"|"reviews"|"settings"|"records"|"security"|"support";
+type Route={kind:"clinic";clinicId:string;fromBookingId?:string}|{kind:"dentist";clinicId:string;dentistId:string}|
+ {kind:"appointment";bookingId:string}|
+ {kind:"booking";clinicId:string;dentistId?:string;booking?:Booking;fromDentistId?:string;returnTab?:Tab};
 type Remote<T>={loading:boolean;data:T|null;error:string|null;refresh:()=>void};
 type Clinic={id:string;name:string;city:string;province:string;address:string;phone:string};
 type Service={id:string;name:string;category:string;priceAfn:number;durationMinutes:number;version?:number};
@@ -64,6 +68,7 @@ const colors={
 };
 const en={
  home:"Home",explore:"Explore",saved:"Saved",account:"Account",back:"Back",
+ appointments:"Appointments",quickActions:"Quick actions",
  brand:"DandanLink",hello:"Your smile, your care",intro:"Verified dental clinics in Afghanistan",
  goodCare:"Find care you can trust",heroBody:"Compare verified professionals, published fees and real clinic schedules.",
  find:"Find a dentist, clinic or treatment",findLabel:"Search clinics and dentists",
@@ -131,6 +136,7 @@ const en={
 };
 const fa:Record<keyof typeof en,string>={
  home:"خانه",explore:"جستجو",saved:"ذخیره‌ها",account:"حساب",back:"بازگشت",
+ appointments:"نوبت‌ها",quickActions:"دسترسی سریع",
  brand:"دندان‌لینک",hello:"لبخند شما، مراقبت شما",intro:"کلینیک‌های دندان تأییدشده در افغانستان",
  goodCare:"خدمات دندان مطمئن پیدا کنید",heroBody:"داکتران تأییدشده، قیمت‌های نشرشده و تقسیم اوقات واقعی کلینیک را مقایسه کنید.",
  find:"داکتر، کلینیک یا تداوی را جستجو کنید",findLabel:"جستجوی کلینیک و داکتر",
@@ -205,6 +211,7 @@ const fa:Record<keyof typeof en,string>={
 };
 const ps:Record<keyof typeof en,string>={
  home:"کور",explore:"لټون",saved:"ساتل شوي",account:"حساب",back:"ستنېدل",
+ appointments:"ملاقاتونه",quickActions:"چټک لاسرسی",
  brand:"دندان‌لینک",hello:"ستاسو موسکا، ستاسو پاملرنه",intro:"په افغانستان کې تایید شوي د غاښونو کلینیکونه",
  goodCare:"باوري د غاښونو خدمتونه ومومئ",
  heroBody:"تایید شوي ډاکټران، خپرې شوې بیې او د کلینیک رښتینې مهال‌وېش پرتله کړئ.",
@@ -772,9 +779,11 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
   <TextLine ui={ui} style={s.footerNotice}>{ui.t("medical")}</TextLine>
  </View>;
 }
-function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSaved,onSave}:{ui:UI;
+function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSaved,onSave,
+ onAppointment,onAppointments,onSaved}:{ui:UI;
  city:string;onCity:(v:string)=>void;onSearch:(q:string)=>void;onBrowse:()=>void;
  onSpecialty:(specialty:string)=>void;onClinic:(id:string)=>void;
+ onAppointment:(bookingId:string)=>void;onAppointments:()=>void;onSaved:()=>void;
  isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
  const [search,setSearch]=useState(""),[showCity,setShowCity]=useState(false);
  const facets=usePublic<Facets>("/facets");
@@ -789,6 +798,8 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
     <Tag positive label={ui.t("verify")}/><Tag label={ui.t("free")}/>
    </View>
   </View>
+  <NativeNextAppointment locale={ui.locale} calendar={ui.calendar}
+   onOpen={onAppointment} onAll={onAppointments} onExplore={onBrowse}/>
   <CardShell style={s.searchBox}>
    <Text style={[s.fieldLabel,{textAlign:ui.align}]}>{ui.t("findLabel")}</Text>
    <View style={[s.inputLine,{flexDirection:ui.flow}]}>
@@ -813,6 +824,19 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
        {x.city?cityLabel(x.city,ui.locale):ui.t("allCities")}</Text>
      </Pressable>)}</View>}
   </CardShell>
+  <SectionHead ui={ui} title={ui.t("quickActions")}/>
+  <View style={[s.quickActions,{flexDirection:ui.flow}]}>
+   {([
+    [ui.t("explore"),"⌕",onBrowse],
+    [ui.t("appointments"),"▦",onAppointments],
+    [ui.t("saved"),"♡",onSaved]
+   ] as [string,string,()=>void][]).map(([label,icon,action])=>
+    <Pressable key={label} accessibilityRole="button" accessibilityLabel={label}
+     onPress={action} style={s.quickAction}>
+     <Text style={s.quickActionIcon}>{icon}</Text>
+     <Text style={s.quickActionLabel} numberOfLines={2}>{label}</Text>
+    </Pressable>)}
+  </View>
   <SectionHead ui={ui} title={ui.t("featured")} sub={ui.t("featuredSub")}
    action={<Pressable onPress={onBrowse}><Text style={s.link}>{ui.t("viewAll")}  ›</Text></Pressable>}/>
   {result.loading?<LoadingCards ui={ui}/>:
