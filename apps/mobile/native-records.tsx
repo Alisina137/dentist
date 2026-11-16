@@ -114,6 +114,8 @@ export function NativeReleasedRecords({locale,calendar}:{locale:Lang;calendar:Ca
  const refresh=()=>setRevision(x=>x+1);
  useEffect(()=>{
   setClinic("");setNumber("");setConsent(false);setError("");setNotice("");
+ },[user]);
+ useEffect(()=>{
   if(!user){setSnapshot(null);return;}
   let live=true;setSnapshot(null);
   Promise.all([
