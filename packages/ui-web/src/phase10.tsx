@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,type ReactNode,type FormEvent} from "react";
 import {InlineAlert,usePreferences} from "./index";
+import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
 import {ExpensePanel,CashFlowInsights} from "./phase11";
 
@@ -231,13 +232,22 @@ async function api(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useLoad(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState(""),[seq,setSeq]=useState(0);
+ // Tenant and invoice path isolation prevents a previous patient's financial
+ // data from remaining visible during a new request, even for one render.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
+ const [seq,setSeq]=useState(0);
  const refresh=()=>setSeq(x=>x+1);
- useEffect(()=>{let active=true;setData(null);setError("");
-  if(path)api(path).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message);});
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let active=true;setSnapshot({path,data:null,error:""});
+  api(path).then(x=>{if(active)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(active)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{active=false;};
  },[path,seq]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const b=(clinicId:string)=>"/clinics/"+clinicId;
 const financeHref=(clinicId:string,tab?:string)=>"/clinic/finance?clinic="+encodeURIComponent(clinicId)+(tab?"&tab="+encodeURIComponent(tab):"");
@@ -247,13 +257,12 @@ const billHref=(clinicId:string,id:string)=>"/clinic/patients/"+id+"/billing?cli
 function Alert({children,kind="info"}:{children:ReactNode;kind?:"info"|"warning"|"error"|"success"}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
-function Busy(){const {t}=useWords();return <div className="card phase10-busy" role="status">
- <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</div>;}
+function Busy(){const {t}=useWords();return <ClinicLoadingState
+ className="card phase10-busy" label={t("loading")} variant="cards"/>;}
 function Failure({code,retry}:{code:string;retry?:()=>void}){
- const {t}=useWords();return <div className="card phase10-error" role="alert">
- <strong>{t("error")}</strong><p>{code}</p>
- {retry&&<button type="button" className="btn btn-secondary" onClick={retry}>{t("retry")} ↻</button>}
- </div>;
+ const {t,error:describe}=useClinicFeedback();
+ return <ClinicFailureState className="card phase10-error" title={t("failed")}
+  message={describe(code)} onRetry={retry} retryLabel={t("retry")}/>;
 }
 function Badge({status}:{status:string}){
  const {t}=useWords();return <span className={"phase10-badge status-"+status}>{t(status)}</span>;
@@ -264,7 +273,7 @@ function Title({title,desc,action}:{title:string;desc?:string;action?:ReactNode}
 function Money({amount,className=""}:{amount:number;className?:string}){
  const {money}=useWords();return <span className={className} dir="ltr">{money(amount)} AFN</span>;
 }
-function TableEmpty({text}:{text?:string}){const {t}=useWords();return <div className="phase10-empty">{text||t("noData")}</div>;}
+function TableEmpty({text}:{text?:string}){const {t}=useWords();return <div className="phase10-empty" role="status">{text||t("noData")}</div>;}
 function Pager({page,next,setPage}:{page:number;next:boolean;setPage:(x:number)=>void}){
  const {t}=useWords();return <div className="phase10-pager">
   <button className="btn btn-secondary" type="button" disabled={page<=1} onClick={()=>setPage(page-1)}>{t("previous")}</button>

@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useState,useCallback,useMemo,type FormEvent,type ReactNode} from "react";
 import { InlineAlert, usePreferences } from "./index";
+import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import { Shell } from "./phase03";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -233,10 +234,12 @@ async function context():Promise<Context>{
  if(!response.ok)throw new Error(value.code||"NETWORK_ERROR");
  return value as Context;
 }
-function Loading(){const {t}=useWords();return <div className="card panel" aria-live="polite"><span className="phase05-spinner"/> {t("loading")}</div>;}
-function ErrorPanel({message,retry}:{message:string,retry?:()=>void}){
- const {t}=useWords();return <section className="card panel"><InlineAlert kind="error">{t("failed")}: {message}</InlineAlert>
-  {retry&&<button className="btn btn-secondary" onClick={retry}>{t("retry")}</button>}</section>;
+function Loading(){const {t}=useWords();return <ClinicLoadingState
+ className="card panel" label={t("loading")} variant="rows"/>;}
+function ErrorPanel({message,retry}:{message:string;retry?:()=>void}){
+ const {t,error:describe}=useClinicFeedback();
+ return <ClinicFailureState className="card panel" title={t("failed")}
+  message={describe(message)} onRetry={retry} retryLabel={t("retry")}/>;
 }
 function Notice({children,kind="info"}:{children:ReactNode,kind?:"info"|"warning"|"error"|"success"}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;

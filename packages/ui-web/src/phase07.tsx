@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
+import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -154,14 +155,22 @@ async function call(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useLoad(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Route identity is part of the snapshot: older patient/encounter data may
+ // never flash while a new clinic/patient is loading.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [tick,setTick]=useState(0);
- const refresh=()=>{setTick(x=>x+1);setError("");setData(null);};
- useEffect(()=>{if(!path)return;let live=true;setData(null);setError("");
-  call(path).then(v=>{if(live)setData(v);}).catch(e=>{if(live)setError(e.message);});
+ const refresh=()=>setTick(x=>x+1);
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let live=true;setSnapshot({path,data:null,error:""});
+  call(path).then(v=>{if(live)setSnapshot({path,data:v,error:""});})
+   .catch(e=>{if(live)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{live=false;};
  },[path,tick]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const link=(cid:string,pid:string,view:"overview"|"visits"|"files"="overview",visit?:string)=>
  "/clinic/patients/"+pid+(view==="overview"?"":"/"+view)+(visit?"/"+visit:"")+
@@ -178,16 +187,16 @@ const day=()=>{
 function Banner({children,kind="info"}:{children:ReactNode;kind?:"info"|"error"|"success"|"warning"}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
-function Loading(){const {t}=useW();return <section className="card phase07-loading" aria-live="polite">
- <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</section>;}
+function Loading(){const {t}=useW();return <ClinicLoadingState
+ className="card phase07-loading" label={t("loading")} variant="form"/>;}
 function ErrorBox({error,retry}:{error:string;retry?:()=>void}){
- const {t}=useW();return <section className="card phase07-error" role="alert">
- <strong>{t("errors")}</strong><p>{error==="STALE_ENCOUNTER_REVISION"?t("revisionConflict"):error}</p>
- {retry&&<button className="btn btn-secondary" onClick={retry}>{t("retry")}</button>}</section>;
+ const {t,error:describe}=useClinicFeedback();
+ return <ClinicFailureState className="card phase07-error" title={t("failed")}
+  message={describe(error)} onRetry={retry} retryLabel={t("retry")}/>;
 }
 function Tabs({space,patientId,current}:{space:Space;patientId:string;current:View}){
  const {t}=useW();return <nav className="phase07-tabs" aria-label={t("patient")}>
- <a href={link(space.clinicId,patientId)}>{t("overview")}</a>
+ <a aria-label={t("overview")} href={link(space.clinicId,patientId)}>{t("overview")}</a>
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
@@ -198,7 +207,7 @@ function Tabs({space,patientId,current}:{space:Space;patientId:string;current:Vi
  </nav>;
 }
 export function ClinicalPortal({view}:{view:View}){
- const {t}=useW();
+ const {t}=useW(),{t:feedback}=useClinicFeedback();
  const [ctx,setCtx]=useState<Context|null>(null),[error,setError]=useState("");
  const [selected,setSelected]=useState<string|null|undefined>(undefined);
  useEffect(()=>{
@@ -209,7 +218,7 @@ export function ClinicalPortal({view}:{view:View}){
    .catch(e=>setError(e.message||"NETWORK_ERROR"));
  },[]);
  if(error==="AUTH_REQUIRED")return <div className="card panel"><Banner kind="warning">{t("forbidden")}</Banner>
-  <a href="/clinic/login" className="btn btn-primary">Login</a></div>;
+  <a href="/clinic/login" className="btn btn-primary">{feedback("signIn")}</a></div>;
  if(error)return <ErrorBox error={error} retry={()=>location.reload()}/>;
  if(!ctx||selected===undefined)return <Loading/>;
  const space=selected?ctx.clinics.find(s=>s.clinicId===selected):ctx.clinics[0];

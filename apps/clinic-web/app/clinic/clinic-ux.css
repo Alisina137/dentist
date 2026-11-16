@@ -1,0 +1,244 @@
+/*
+ * Clinic PH04 — responsive operational UX. Only authenticated clinic workspace.
+ * Builds on premium tokens from PH03 and keeps chart/signed-note geometry intact.
+ */
+.clinic-persistent-shell{
+ --clinic-ux-progress:#2d7cbc;
+ --clinic-ux-skeleton:#e6f0f9;
+ --clinic-ux-skeleton-light:#f3f8fc;
+ --clinic-ux-destructive:#a62646;
+}
+.clinic-persistent-shell .clinic-route-content{
+ min-width:0;overflow-wrap:break-word;
+}
+.clinic-persistent-shell :is(.phase04-workspace,.phase05-page,.phase06-calendar-page,
+ .phase06-queue-page,.phase07-workspace,.phase10-workspace,.h-clinic,
+ .phase12-workspace,.p18-wrap){
+ min-width:0;max-width:100%;
+}
+.clinic-persistent-shell :is(.phase04-workspace,.phase05-page,.phase07-workspace,
+ .phase10-workspace,.h-clinic) :is(.card,.panel){
+ min-width:0;
+}
+/* Loading placeholders match rows, cards or form fields and never display
+   arbitrary demo patient details. A single spoken status is used per loader. */
+.clinic-persistent-shell .clinic-ux-loading{
+ min-height:165px;display:grid;align-content:start;
+ gap:16px;padding:18px;color:var(--clinic-muted);
+ border:1px solid var(--clinic-border);border-radius:var(--clinic-radius-lg);
+ background:var(--clinic-surface);
+}
+.clinic-persistent-shell .clinic-ux-loading-caption{
+ display:flex;align-items:center;gap:10px;
+ color:var(--clinic-ink-soft);font-size:13px;font-weight:750;
+}
+.clinic-persistent-shell .clinic-ux-spinner{
+ display:inline-block;width:18px;height:18px;flex:0 0 18px;
+ border:2px solid #bcd6ec;border-top-color:var(--clinic-primary);
+ border-radius:50%;animation:clinic-ux-spin .8s linear infinite;
+}
+@keyframes clinic-ux-spin{to{transform:rotate(360deg)}}
+.clinic-persistent-shell .clinic-ux-skeleton{display:grid;gap:10px}
+.clinic-persistent-shell .clinic-ux-skeleton-cards{
+ grid-template-columns:repeat(auto-fit,minmax(min(135px,100%),1fr));
+}
+.clinic-persistent-shell .clinic-ux-skeleton-form{
+ grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));
+}
+.clinic-persistent-shell .clinic-ux-placeholder{
+ display:grid;align-content:center;gap:9px;min-width:0;
+ padding:14px;border:1px solid #e4edf6;border-radius:12px;
+ background:#fafdff;
+}
+.clinic-persistent-shell .clinic-ux-placeholder>span{
+ display:block;height:10px;border-radius:10px;width:72%;
+ background:var(--clinic-ux-skeleton);
+ animation:clinic-ux-pulse 1.5s ease-in-out infinite alternate;
+}
+.clinic-persistent-shell .clinic-ux-placeholder>span:last-child{
+ height:14px;width:43%;background:var(--clinic-ux-skeleton-light);
+}
+.clinic-persistent-shell .clinic-ux-skeleton-cards .clinic-ux-placeholder{min-height:95px}
+.clinic-persistent-shell .clinic-ux-skeleton-rows .clinic-ux-placeholder{
+ min-height:50px;grid-template-columns:1fr minmax(42px,23%);
+ align-items:center;gap:13px;
+}
+.clinic-persistent-shell .clinic-ux-skeleton-rows .clinic-ux-placeholder>span:last-child{
+ width:100%}
+.clinic-persistent-shell .clinic-ux-skeleton-form .clinic-ux-placeholder{min-height:84px}
+@keyframes clinic-ux-pulse{to{opacity:.45}}
+/* Errors never dump backend codes or patient identifiers into generic alerts.
+   The retry action has a full-size target and accessible inline feedback. */
+.clinic-persistent-shell .clinic-ux-failure{
+ display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;
+ min-width:0;padding:18px;
+ border:1px solid #f2cbd4;border-radius:15px;
+ background:#fff8f9;color:#8c2841;
+ box-shadow:none;
+}
+.clinic-persistent-shell .clinic-ux-failure-icon{
+ flex:0 0 40px;display:grid;place-items:center;height:40px;
+ border-radius:12px;background:#ffe8ed;color:#a72a4c;
+}
+.clinic-persistent-shell .clinic-ux-failure-copy{
+ display:grid;gap:5px;flex:1 1 200px;min-width:0;
+}
+.clinic-persistent-shell .clinic-ux-failure-copy strong{
+ font-size:14px;color:#8c2841;line-height:1.5;
+}
+.clinic-persistent-shell .clinic-ux-failure-copy p{
+ font-size:13px;line-height:1.7;margin:0;color:#854051;
+ overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-ux-failure>.btn{
+ min-height:44px;align-self:center;white-space:nowrap;
+}
+.clinic-persistent-shell .clinic-ux-no-results{
+ display:grid;justify-items:center;gap:9px;padding:26px 18px;
+ background:var(--clinic-surface-muted);border:1px dashed #cbddeb;
+ border-radius:16px;text-align:center;color:var(--clinic-muted);
+}
+.clinic-persistent-shell .clinic-ux-no-results-icon{
+ display:grid;place-items:center;width:45px;height:45px;border-radius:14px;
+ background:#e7f1fb;color:var(--clinic-primary);
+}
+.clinic-persistent-shell .clinic-ux-no-results p{margin:0;font-size:14px}
+.clinic-persistent-shell .clinic-ux-no-results small{font-size:12px}
+/* Date, time, amounts, identifiers and phone numbers remain legible in
+   both Dari/Pashto RTL and English LTR, without reversing their characters. */
+.clinic-persistent-shell :is(input[type="date"],input[type="time"],
+ input[type="datetime-local"],input[type="number"],input[type="tel"]){
+ font-variant-numeric:tabular-nums;max-width:100%;
+}
+.clinic-persistent-shell :is(bdi[dir="ltr"],[dir="ltr"]){
+ unicode-bidi:isolate;
+}
+/* Scrolling must stay inside large tables/calendars; never push a 320px
+   viewport sideways because of a 7-column appointment grid. */
+.clinic-persistent-shell :is(.phase05-scroll,.phase04-table-scroll,
+ .phase06-week-scroll,.phase10-table-scroll,
+ .phase07-table-scroll,.phase12-table-scroll){
+ max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;
+ scrollbar-width:thin;
+}
+.clinic-persistent-shell :is(.phase06-week-grid,.phase06-month-grid){
+ direction:inherit;
+}
+.clinic-persistent-shell :is(.phase04-inner-tabs,.phase04-section-nav,
+ .phase06-main-tabs,.phase07-tabs,.phase10-tabs,.p15-tabs){
+ min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:thin;
+ scrollbar-gutter:stable;
+}
+.clinic-persistent-shell :is(.phase04-inner-tabs,.phase06-main-tabs,
+ .phase07-tabs,.phase10-tabs) :is(button,a){
+ white-space:nowrap;min-height:44px;
+}
+.clinic-persistent-shell :is(.phase06-main-tabs,.phase07-tabs) [aria-current="page"]{
+ color:var(--clinic-primary-hover);
+}
+/* Keep consent and staff role actions visually distinct from disabled inputs. */
+.clinic-persistent-shell :is(.phase05-check,.phase06-check,.phase12-checkbox,
+ .p15-consent){
+ align-items:flex-start;gap:11px;line-height:1.7;min-width:0;
+}
+.clinic-persistent-shell :is(.phase05-check,.phase06-check,.phase12-checkbox,
+ .p15-consent) input[type="checkbox"]{
+ flex:0 0 20px;min-width:20px;min-height:20px;
+}
+/* Form / modal keyboards: never hide confirm, cancel, close or lower fields.
+   Apply logical padding for RTL without flipping calendar data. */
+.clinic-persistent-shell :is(.phase04-drawer,.phase05-dialog,
+ .phase06-dialog,.phase07-dialog,.phase10-dialog){
+ max-width:min(100%,95vw);
+ max-height:min(92dvh,100%);overflow-y:auto;overscroll-behavior-y:contain;
+}
+.clinic-persistent-shell :is(.phase04-drawer-footer,.phase06-dialog-footer){
+ position:sticky;bottom:0;
+ padding-block:14px;background:#fff;border-top:1px solid var(--clinic-border);
+ z-index:2;
+}
+.clinic-persistent-shell :is(.phase04-drawer-head,.phase05-dialog h2){
+ overflow-wrap:anywhere;
+}
+.clinic-persistent-shell :is(.phase04-drawer,.phase05-dialog,
+ .phase06-dialog,.phase07-dialog,.phase10-dialog) :is(input,textarea,select){
+ max-width:100%;min-width:0;
+}
+.clinic-persistent-shell :is(.phase05-form-grid,.phase06-form-grid,
+ .phase07-form-grid,.phase10-form-grid,.phase04-form-grid){
+ min-width:0;
+}
+.clinic-persistent-shell :is(.phase04-field,.field,.phase06-field,.p15-field){
+ min-width:0;max-width:100%;
+}
+/* Maintain click targets and clear keyboard focus order at increased text size. */
+.clinic-persistent-shell :is(.phase04-section-nav,.phase05-tabs,.phase06-main-tabs,
+ .phase07-tabs,.phase10-tabs) button:focus-visible,
+.clinic-persistent-shell :is(.phase04-section-nav,.phase05-tabs,.phase06-main-tabs,
+ .phase07-tabs,.phase10-tabs) a:focus-visible{
+ outline:3px solid #297bbb;outline-offset:2px;
+}
+@media(max-width:1024px){
+ .clinic-persistent-shell :is(.phase04-summary,.phase05-counters,.phase06-queue-kpis,
+  .phase10-kpis){grid-template-columns:repeat(2,minmax(0,1fr))}
+ .clinic-persistent-shell :is(.phase06-queue-board,.phase04-resource-grid){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .clinic-persistent-shell :is(.phase06-detail-layout,.phase10-grid){
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .phase06-booking-sidebar{position:static}
+}
+@media(max-width:680px){
+ .clinic-persistent-shell{min-width:0}
+ .clinic-persistent-shell .clinic-route-content{overflow-wrap:anywhere}
+ .clinic-persistent-shell :is(.phase04-summary,.phase05-counters,
+  .phase06-queue-kpis,.phase10-kpis){
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+ }
+ .clinic-persistent-shell :is(.phase06-queue-board,.phase04-resource-grid,
+  .phase05-form-grid,.phase06-form-grid,.phase07-form-grid,
+  .phase10-form-grid,.phase04-form-grid){
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell :is(.phase06-calendar-tools,.phase06-calendar-body,
+  .phase06-queue-intro,.phase04-schedule-pane,.phase10-panel){
+  padding-inline:clamp(12px,3.5vw,18px);
+ }
+ .clinic-persistent-shell :is(.phase05-dialog,.phase04-drawer){
+  padding-inline:clamp(12px,4vw,18px);
+ }
+ .clinic-persistent-shell .clinic-ux-failure>.btn{flex:1 1 100%;width:100%}
+ .clinic-persistent-shell .clinic-ux-skeleton-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .clinic-persistent-shell .clinic-ux-skeleton-form{grid-template-columns:minmax(0,1fr)}
+ .clinic-persistent-shell .clinic-ux-placeholder{padding:11px}
+ .clinic-persistent-shell :is(.phase06-calendar-meta,.phase06-queue-controls,
+  .phase04-header-actions,.phase10-head-actions){
+  gap:10px;flex-wrap:wrap;
+ }
+ .clinic-persistent-shell .phase06-queue-controls>.phase06-field{
+  flex:1 1 100%;min-width:0;
+ }
+ .clinic-persistent-shell .phase06-queue-controls input[type="date"]{width:100%}
+}
+@media(max-width:375px){
+ .clinic-persistent-shell :is(.phase04-summary,.phase05-counters,
+  .phase06-queue-kpis,.phase10-kpis){grid-template-columns:minmax(0,1fr)}
+ .clinic-persistent-shell .clinic-ux-loading{padding:14px}
+ .clinic-persistent-shell .clinic-ux-skeleton-cards{grid-template-columns:minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-ux-spinner,
+ .clinic-persistent-shell .clinic-ux-placeholder>span{
+  animation:none!important;transition:none!important;
+ }
+}
+/* Printed receipts/financial reports must stay printable rather than adopting
+   workstation-only scrolling/padding styles. */
+@media print{
+ .clinic-persistent-shell :is(.phase10-printable,.phase10-table-scroll){
+  overflow:visible!important;max-height:none!important;
+ }
+ .clinic-persistent-shell .clinic-ux-loading,
+ .clinic-persistent-shell .clinic-ux-failure{display:none!important}
+}

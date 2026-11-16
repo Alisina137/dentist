@@ -1,6 +1,7 @@
 "use client";
 import React,{useCallback,useEffect,useMemo,useState,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences } from "./index";
+import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import { Shell } from "./phase03";
 type Language="en"|"fa-AF"|"ps-AF";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
@@ -296,16 +297,22 @@ const OpsApi=async(path:string,method="GET",body?:unknown):Promise<any>=>{
  return data;
 };
 function useResource(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Never expose a previous clinic's operations data during first render
+ // after route/tenant/filters change, including before the effect runs.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [tick,setTick]=useState(0);
- const reload=()=>{setTick(n=>n+1);setError("");setData(null);};
+ const reload=()=>setTick(n=>n+1);
  useEffect(()=>{
-  if(!path)return;
-  let valid=true;setData(null);setError("");
-  OpsApi(path).then(d=>{if(valid)setData(d);}).catch(e=>{if(valid)setError(e.message);});
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let valid=true;setSnapshot({path,data:null,error:""});
+  OpsApi(path).then(d=>{if(valid)setSnapshot({path,data:d,error:""});})
+   .catch(e=>{if(valid)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{valid=false;};
  },[path,tick]);
- return {data,error,reload};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",reload};
 }
 const cPath=(cid:string)=>"/clinics/"+encodeURIComponent(cid);
 const href=(cid:string,view:Page,tab?:string)=>"/clinic/"+
@@ -318,13 +325,12 @@ const timeMinute=(raw:string)=>{
 };
 const activeLabel=(t:(s:string)=>string,active:boolean)=>active?t("active"):t("inactive");
 function ErrorBox({error,retry}:{error:string,retry:()=>void}){
- const {t}=useWords();return <section className="card panel phase04-empty" role="alert">
-  <h2>{t("failed")}</h2><p>{error==="STALE_SERVICE_VERSION"||error==="STALE_RESOURCE_REVISION"||error==="STALE_SCHEDULE_VERSION"?
-   t("stale"):error}</p>
-  <button className="btn btn-secondary" onClick={retry}>{t("tryAgain")}</button></section>;
+ const {t,error:describe}=useClinicFeedback();
+ return <ClinicFailureState className="card panel phase04-empty" title={t("failed")}
+  message={describe(error)} onRetry={retry} retryLabel={t("retry")}/>;
 }
-function Busy(){const {t}=useWords();return <div className="card panel phase04-loading" aria-live="polite">
- <span className="phase05-spinner" aria-hidden="true"/> {t("loading")}</div>;}
+function Busy(){const {t}=useWords();return <ClinicLoadingState
+ className="card panel phase04-loading" label={t("loading")} variant="cards"/>;}
 function Alert({kind="info",children}:{kind?:"info"|"success"|"error"|"warning",children:ReactNode}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }

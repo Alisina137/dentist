@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences } from "./index";
+import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
 import { Shell } from "./phase03";
 
 type Lang="fa-AF"|"ps-AF"|"en";
@@ -448,13 +449,13 @@ const patientDisplay=(a:Appointment,compact=false)=>{
  if(compact)return p.preferredName+" "+(p.familyName?p.familyName.charAt(0)+".":"");
  return p.preferredName+(p.familyName?" "+p.familyName:"");
 };
-function Busy(){const {t}=useWords();return <div className="phase06-busy" aria-live="polite">
- <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</div>;}
+function Busy(){const {t}=useWords();return <ClinicLoadingState
+ className="phase06-busy" label={t("loading")} variant="rows"/>;}
 function Notice({kind="info",children}:{kind?:"info"|"success"|"warning"|"error";children:ReactNode}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
 function Problem({error,retry}:{error:string;retry?:()=>void}){
- const {t}=useWords();
+ const {t}=useWords(),{error:describe}=useClinicFeedback();
  const messages:Record<string,string>={
   STALE_APPOINTMENT_REVISION:t("stale"),APPOINTMENT_SLOT_UNAVAILABLE:t("unavailable"),
   ONLY_CONFIRMED_CAN_RESCHEDULE:t("statusInvalid"),NO_SHOW_BEFORE_START:t("noShowEarly"),
@@ -462,7 +463,7 @@ function Problem({error,retry}:{error:string;retry?:()=>void}){
   ACTIVE_CLINIC_PATIENT_REQUIRED:t("inactivePatient")
  };
  return <div className="card phase06-error" role="alert"><strong>{t("error")}</strong>
-  <p>{messages[error]||error}</p>{retry&&<button className="btn btn-secondary" onClick={retry}>
+  <p>{messages[error]||describe(error)}</p>{retry&&<button className="btn btn-secondary" onClick={retry}>
    {t("retry")} ↻</button>}</div>;
 }
 function Badge({status}:{status:AppointmentStatus}){
