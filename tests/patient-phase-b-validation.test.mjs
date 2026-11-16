@@ -108,7 +108,9 @@ test("Patient B: account is an organized hub with dedicated profile, family, upd
   'accountSection==="overview"?<AccountHub',
   'accountSection==="reviews"?<NativeReviews',
   'accountSection==="settings"?<AccountScreen',
-  'accountSection==="records"||accountSection==="security"||accountSection==="support"?',
+  'accountSection==="records"?<NativeReleasedRecords',
+  'accountSection==="support"?<NativePatientSupport',
+  'accountSection==="security"?',
   'section={accountSection}',
   'setRoute(null);setAccountSection("overview");setTab("account")',
   'if(tab==="account"&&accountSection!=="overview")'
