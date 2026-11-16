@@ -92,7 +92,7 @@ export function ClinicFailureState({title,message,onRetry,retryLabel,className="
 }){
  return <section className={"clinic-ux-failure "+className} role="alert" aria-live="assertive">
   <span className="clinic-ux-failure-icon" aria-hidden="true">
-   <CareIcon name="alert" size={21}/></span>
+   <CareIcon name="about" size={21}/></span>
   <div className="clinic-ux-failure-copy"><strong>{title}</strong><p>{message}</p></div>
   {onRetry&&<button type="button" className="btn btn-secondary"
    onClick={onRetry}><CareIcon name="activity" size={16}/>{retryLabel}</button>}
