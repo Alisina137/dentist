@@ -241,7 +241,11 @@ export function patientBookingRouter(){
   res.json({status:result.status,revision:result.revision,confirmed:result.status==="confirmed"});
  }));
  staff.get("/record-links",route(async(req:StaffRequest,res)=>{
-  const {clinic}=await clinicScheduler(req,false);
+  const {clinic,ctx}=await clinicScheduler(req,false);
+  // A dentist without clinician authorization must not enumerate patient
+  // record-link applicants; this mirrors the existing decision/release gate.
+  if(ctx.role==="dentist"&&!ctx.membership.clinicianEnabled)
+   fail(403,"LINK_APPROVAL_DENIED");
   const links=await sqlClient`SELECT l.id,l.state,l.supplied_patient_number,l.created_at,
    l.patient_id,l.verification_method,p.preferred_name
    FROM patient_record_link_requests l JOIN patient_profiles p ON p.user_id=l.user_id
