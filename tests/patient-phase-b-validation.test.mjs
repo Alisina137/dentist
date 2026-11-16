@@ -49,7 +49,7 @@ test("Patient B: every appointment row opens its secure, dedicated server-author
  assert.ok(patient.includes('title={t.view} onPress={()=>onOpen(b.id)}'),"appointment details accessible");
  for(const x of [
   'export function NativeAppointmentDetails(',
-  'auth.request<{booking:Booking}>("/v1/booking/my/"+encodeURIComponent(bookingId))',
+  'auth.request<{booking:Booking;timeline:BookingEvent[];timelineTruncated:boolean}>(',
   'snapshot?.user===user&&snapshot.bookingId===bookingId?snapshot:null',
   'if(!user)return',
   'setSnapshot({user,bookingId,booking:null,error:"",loading:true})',
