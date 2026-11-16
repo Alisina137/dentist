@@ -299,13 +299,14 @@ function Notice({children,kind="info"}:{children:ReactNode,kind?:"info"|"warning
 function Chip({value}:{value:string}){
  const {t}=useWords();return <span className={"state-badge state-"+value}>{t(value)}</span>;
 }
-function Field({name,value,onChange,type="text",required=false,maxLength=250,disabled=false,placeholder=""}:{
+function Field({name,value,onChange,type="text",required=false,maxLength=250,min,max,disabled=false,placeholder=""}:{
  name:string;value:string|number|null|undefined;onChange:(s:string)=>void;type?:string;
- required?:boolean;maxLength?:number;disabled?:boolean;placeholder?:string
+ required?:boolean;maxLength?:number;min?:number|string;max?:number|string;disabled?:boolean;placeholder?:string
 }){
  return <label className="field"><span>{name}{required?" *":""}</span>
  <input value={value??""} onChange={e=>onChange(e.target.value)} type={type}
-  required={required} maxLength={maxLength} disabled={disabled} placeholder={placeholder}/></label>;
+  required={required} maxLength={maxLength} min={min} max={max}
+  disabled={disabled} placeholder={placeholder}/></label>;
 }
 function Select({name,value,onChange,options,disabled=false}:{name:string,value:string,onChange:(s:string)=>void,
  options:{value:string,label:string}[],disabled?:boolean}){
@@ -320,6 +321,12 @@ const addHref=(cid:string)=>"/clinic/patients/new?clinic="+encodeURIComponent(ci
 const importHref=(cid:string)=>"/clinic/patients/import?clinic="+encodeURIComponent(cid);
 const emptyPatient={preferredName:"",familyName:"",dateOfBirth:"",ageEstimate:"",phone:"",alternateContact:"",
  province:"",city:"",address:"",emergencyContact:"",noticeAcknowledged:false};
+function todayKabul(){
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const date=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+ return date.year+"-"+date.month+"-"+date.day;
+}
 function useResource(path:string|null){
  // Never render records returned for another clinic or patient, even for one frame.
  const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
@@ -356,7 +363,7 @@ export function PatientPortal({view}:{view:Page}){
   return <ErrorPanel message={t("notAllowed")}/>;
  return <Shell ctx={ctx} space={space} active="patients">
   <div className="phase05-page">
-   <div className="phase05-top"><div><span className="pill">DandanLink · PH05</span>
+   <div className="phase05-top"><div><span className="pill">DandanLink · Clinic</span>
       <h1 className="phase-title">{view==="import"?t("importTitle"):view==="new"?t("newPatient"):
         view==="overview"||view==="edit"?t("patientHeader"):t("patients")}</h1></div>
       <div className="phase-actions"><a className="btn btn-secondary" href={patientHref(space.clinicId)}>{t("directory")}</a>
@@ -570,22 +577,23 @@ function PatientFields({form,setForm,editing=false}:{
       maxLength={120} onChange={set("preferredName")}/>
     <Field name={t("familyName")} value={form.familyName}
       maxLength={120} onChange={set("familyName")}/>
-    <Field name={t("dob")} value={form.dateOfBirth} type="date" onChange={toggleDob}
-      disabled={Boolean(form.ageEstimate)}/>
-    <Field name={t("ageEstimate")} value={form.ageEstimate} type="number" onChange={toggleAge}
-      disabled={Boolean(form.dateOfBirth)}/>
+    <Field name={t("dob")} value={form.dateOfBirth} type="date" max={todayKabul()}
+      onChange={toggleDob} disabled={Boolean(form.ageEstimate)}/>
+    <Field name={t("ageEstimate")} value={form.ageEstimate} type="number" min={0} max={120}
+      onChange={toggleAge} disabled={Boolean(form.dateOfBirth)}/>
    </div>
-   <p className="muted phase05-description">{t("ageWarning")}</p>
+   <p className="muted phase05-description">{t("ageWarning")} {t("directoryDobHint")}</p>
   </section>
   <section className="phase05-form-section"><h2>{t("contact")}</h2>
    <div className="phase-form-grid">
-    <Field name={t("phone")} value={form.phone} maxLength={24} onChange={set("phone")} type="tel"/>
+    <Field name={t("phone")} value={form.phone} maxLength={24} onChange={set("phone")} type="tel" placeholder="+93…"/>
     <Field name={t("altContact")} value={form.alternateContact} maxLength={120} onChange={set("alternateContact")}/>
     <Field name={t("province")} value={form.province} maxLength={80} onChange={set("province")}/>
     <Field name={t("city")} value={form.city} maxLength={80} onChange={set("city")}/>
     <Field name={t("address")} value={form.address} maxLength={250} onChange={set("address")}/>
     <Field name={t("emergency")} value={form.emergencyContact} maxLength={160} onChange={set("emergencyContact")}/>
    </div>
+   <p className="muted phase05-description">{t("directoryContactHint")}</p>
   </section>
   <section className="phase05-form-section"><h2>{t("intake")}</h2>
    <Notice>{t("clinicalPrivacy")}</Notice><p className="muted">{t("clinicalUnavailable")}</p>
@@ -624,7 +632,7 @@ function DuplicateDialog({candidates,cid,reason,setReason,close,continueCreate,b
  </div>;
 }
 function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
- const {t}=useWords();
+ const {t}=useWords(),{error:describe}=useClinicFeedback();
  const [form,setForm]=useState<any>(existing?{
   ...existing,ageEstimate:existing.ageEstimate??"",
   dateOfBirth:existing.dateOfBirth??"",
@@ -655,6 +663,14 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
  async function submit(event:FormEvent){
   event.preventDefault();
   if(!form.noticeAcknowledged){setError("NOTICE_ACKNOWLEDGEMENT_REQUIRED");return;}
+  if(!form.preferredName?.trim()||form.preferredName.trim().length<2){
+   setError("INVALID_PREFERRED_NAME");return;
+  }
+  if(form.dateOfBirth&&form.dateOfBirth>todayKabul()){setError("INVALID_DATE");return;}
+  if(form.dateOfBirth&&String(form.ageEstimate).trim()){setError("DOB_AND_ESTIMATE_MUTUALLY_EXCLUSIVE");return;}
+  if(form.ageEstimate!==""&&form.ageEstimate!==null&&
+   (!Number.isInteger(Number(form.ageEstimate))||Number(form.ageEstimate)<0||
+    Number(form.ageEstimate)>120)){setError("INVALID_AGE");return;}
   if(!existing){
    setBusy(true);setError("");
    try{
@@ -667,17 +683,22 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
   }
   await persist();
  }
- return <section className="card panel">
+ return <section className="card panel clinic-phase08-editor">
+  <div className="clinic-phase08-editor-heading">
+   <span className="clinic-phase08-kicker"><CareIcon name="account" size={17}/>{t("identity")}</span>
+   <h2>{existing?t("edit"):t("directoryStart")}</h2>
+   <p>{existing?t("directoryChanges"):t("directoryNewIntro")}</p>
+  </div>
   {!canWrite?<Notice kind="warning">{t("disabled")}</Notice>:<>
    {existing&&<p className="muted">{t("idLabel")}: <bdi dir="ltr">{existing.patientNumber}</bdi></p>}
    <Notice kind="warning">{t("noPublic")}</Notice>
    {existing&&!existing.noticeAcknowledged&&<Notice kind="warning">{t("importedStatus")}</Notice>}
    <form onSubmit={submit}><PatientFields form={form} setForm={setForm} editing={!!existing}/>
-    {error&&<Notice kind="error">{t("failed")}: {error==="STALE_PATIENT_REVISION"?t("stale"):error}</Notice>}
+    {error&&<Notice kind="error">{t("failed")}: {error==="STALE_PATIENT_REVISION"?t("stale"):describe(error)}</Notice>}
     <div className="phase-actions">
      <a className="btn btn-secondary" href={existing?
        "/clinic/patients/"+existing.id+"?clinic="+space.clinicId:patientHref(space.clinicId)}>{t("cancel")}</a>
-     <button className="btn btn-primary" disabled={busy||!form.preferredName?.trim()||!form.noticeAcknowledged}>
+     <button className="btn btn-primary" disabled={busy||form.preferredName?.trim().length<2||!form.noticeAcknowledged}>
        {busy?t("loading"):existing?t("save"):t("create")}</button>
     </div>
    </form></>}
