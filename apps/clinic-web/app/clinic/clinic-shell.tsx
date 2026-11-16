@@ -12,6 +12,25 @@ type Space={clinicId:string;clinicName:string;clinicStatus:string;membershipId:s
 type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 type Group="workspace"|"operations"|"settings";
 type Item={key:string;path:string;icon:CareIconName;group:Group};
+type SectionKey="frontDesk"|"clinicalCare"|"billing"|"operations"|"growth"|"settings";
+type Section={key:SectionKey;icon:CareIconName;items:readonly string[]};
+/**
+ * Sections group existing real authorized routes. They are not permission
+ * grants: navigation(space) is still the only route visibility source, and
+ * each backend endpoint continues to enforce staff/tenant permissions.
+ */
+const NAV_SECTIONS:readonly Section[]=[
+ {key:"frontDesk",icon:"calendar",items:["appointments","queue","bookingRequests","patients"]},
+ {key:"clinicalCare",icon:"dental",items:["clinical","myVerification"]},
+ {key:"billing",icon:"receipt",items:["finance","reports"]},
+ {key:"operations",icon:"hospital",items:["staff","resources","services","hours"]},
+ {key:"growth",icon:"chart-columns",items:["listing","notifications"]},
+ {key:"settings",icon:"settings",items:["settings","security","subscription","exportData","myProfile"]}
+] as const;
+const NAV_EXPANSION_KEY="dandan.clinic.navSections";
+const sectionOf=(key:string):SectionKey|null=>
+ NAV_SECTIONS.find(section=>section.items.includes(key))?.key||null;
+
 const PUBLIC_CLINIC_PATH=/^\/clinic\/(?:login|signup|verify|invite|onboarding|reset-password|2fa)(?:\/|$)/;
 const COLLAPSE_KEY="dandan.clinic.sidebarCollapsed";
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -24,6 +43,11 @@ const translations:Record<string,Record<string,string>>={
   security:"Security & access",settings:"Clinic settings",subscription:"Subscription",
   exportData:"Export & retention",myVerification:"My credentials",myProfile:"My membership",
   workspace:"Workspace",operations:"Operations",account:"Account",
+  frontDesk:"Front desk",clinicalCare:"Clinical care",billing:"Billing & reports",
+  growth:"Growth & updates",navigationSearch:"Search clinic pages",
+  navigationSearchTip:"Search navigation (Ctrl+K)",noNavigationMatch:"No matching clinic page.",
+  clearNavigationSearch:"Clear navigation search",navigateQuickly:"Quick access",
+  details:"Details",expandGroup:"Expand section",collapseGroup:"Collapse section",
   changeClinic:"Active clinic",navigation:"Clinic navigation",collapse:"Collapse sidebar",
   expand:"Expand sidebar",openMenu:"Open navigation",closeMenu:"Close navigation",
   signOut:"Sign out",signingOut:"Signing out…",loading:"Loading clinic access…",
@@ -46,6 +70,11 @@ const translations:Record<string,Record<string,string>>={
   security:"امنیت و دسترسی",settings:"تنظیمات کلینیک",subscription:"اشتراک",
   exportData:"صادرات و نگهداری",myVerification:"اسناد مسلکی من",myProfile:"عضویت من",
   workspace:"فضای کاری",operations:"عملیات",account:"حساب",
+  frontDesk:"پذیرش",clinicalCare:"بخش کلینیکی",billing:"مالی و گزارش‌ها",
+  growth:"رشد و اطلاع‌رسانی",navigationSearch:"جستجوی صفحات کلینیک",
+  navigationSearchTip:"جستجوی منو (Ctrl+K)",noNavigationMatch:"صفحه‌ای پیدا نشد.",
+  clearNavigationSearch:"پاک‌کردن جستجو",navigateQuickly:"دسترسی سریع",
+  details:"جزئیات",expandGroup:"بازکردن بخش",collapseGroup:"بستن بخش",
   changeClinic:"کلینیک فعال",navigation:"منوی کلینیک",collapse:"جمع‌کردن منو",
   expand:"بازکردن منو",openMenu:"بازکردن منو",closeMenu:"بستن منو",
   signOut:"خروج",signingOut:"در حال خروج…",loading:"در حال بررسی دسترسی کلینیک…",
@@ -67,6 +96,11 @@ const translations:Record<string,Record<string,string>>={
   security:"امنیت او لاسرسی",settings:"د کلینیک تنظیمات",subscription:"ګډون",
   exportData:"صادرات او ساتنه",myVerification:"زما مسلکي اسناد",myProfile:"زما غړیتوب",
   workspace:"کاري برخه",operations:"چارې",account:"حساب",
+  frontDesk:"پذیرش",clinicalCare:"کلینیکي پاملرنه",billing:"مالي چارې او راپورونه",
+  growth:"وده او خبرتیاوې",navigationSearch:"د کلینیک پاڼې ولټوئ",
+  navigationSearchTip:"نوملړ ولټوئ (Ctrl+K)",noNavigationMatch:"اړونده پاڼه ونه موندل شوه.",
+  clearNavigationSearch:"لټون پاک کړئ",navigateQuickly:"چټک لاسرسی",
+  details:"تفصیل",expandGroup:"برخه پرانیزئ",collapseGroup:"برخه بنده کړئ",
   changeClinic:"فعال کلینیک",navigation:"د کلینیک نوملړ",collapse:"نوملړ لنډول",
   expand:"نوملړ پراخول",openMenu:"نوملړ پرانیستل",closeMenu:"نوملړ بندول",
   signOut:"وتل",signingOut:"د وتلو په حال کې…",loading:"د کلینیک لاسرسی کتل کېږي…",
