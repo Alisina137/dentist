@@ -23,6 +23,9 @@ test("Stage G: pull refreshes current data view and Android navigation preserves
  for(const marker of [
   'import {Alert,BackHandler} from "react-native";',
   'BackHandler.addEventListener("hardwareBackPress"',
+  'accountSection==="settings"',
+  'tab+":"+accountSection',
+  's.accountSegment',
   'fromDentistId:route?.kind==="dentist"?route.dentistId:undefined',
   'else if(route.returnTab==="appointments")',
   'if(tab!=="home"){select("home");return true;}',
