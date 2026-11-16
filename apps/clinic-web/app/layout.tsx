@@ -6,6 +6,7 @@ import "@dandanlink/ui/polish.css";
 import "@dandanlink/ui/phase18.css";
 import "@dandanlink/ui/phase19.css";
 import "@dandanlink/ui/clinic-onboarding.css";
+import "@dandanlink/ui/clinic-operations.css";
 
 export const metadata: Metadata = {
   title: "DandanLink Clinic",
