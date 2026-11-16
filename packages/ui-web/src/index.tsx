@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import QRCode from "react-qr-code";
+import {usePathname} from "next/navigation";
 import { CareIcon } from "./care-icons";
 export { CareIcon } from "./care-icons";
 export type { CareIconName } from "./care-icons";
@@ -143,9 +144,12 @@ function PatientBottomNav({path}:{path:string}){
 export function SiteLayout({ children, audience }: { children: ReactNode; audience: "clinic" | "admin" | "patient" }) {
  const {t,locale}=usePreferences();
  const [open,setOpen]=useState(false);
- const [path,setPath]=useState("");
+ const path=usePathname()||"";
  const home=audience==="clinic"?"/clinic":audience==="admin"?"/admin":"/";
- useEffect(()=>setPath(window.location.pathname),[]);
+ // Clinic route navigation is handled by a persistent workspace shell: never
+ // render a second site header/footer around authenticated workspace pages.
+ const clinicWorkspace=audience==="clinic" && /^\/clinic(?:\/|$)/.test(path) &&
+  !/^\/clinic\/(?:login|signup|verify|invite|onboarding|reset-password|2fa)(?:\/|$)/.test(path);
  const active=(href:string)=>href===home
   ? path===home || (home!=="/" && path===home+"/")
   :path===href||(href!=="/"&&path.startsWith(href+"/"));
@@ -153,7 +157,7 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
  return <div className={"shell shell-"+audience}>
   <a className="skip-link" href="#main">{t("skipToContent")}</a>
   {/* Global header intentionally contains navigation only. Locale/calendar controls belong in workspace/account settings. */}
-  <header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
+  {!clinicWorkspace&&<header className={"site-header"+(audience==="patient"?" p13-site-header":"")}>
    <div className="site-header-inner">
     <a href={home} onClick={closeMenu} className="brand" aria-label={t("brand")+" — "+t("home")}>
      <span aria-hidden="true" className="brand-symbol"><CareIcon name="sparkle" size={24}/></span>
@@ -196,13 +200,13 @@ export function SiteLayout({ children, audience }: { children: ReactNode; audien
      </nav>
     </div>
    </div>
-  </header>
+  </header>}
   <main id="main" className="site-main">{children}</main>
-  <footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
+  {!clinicWorkspace&&<footer className="footer"><span>{t("brand")} · <TodayLabel /></span><div className="footer-links">
     <a href="/privacy" className="text-link">{t("privacy")}</a>
     <a href="/terms" className="text-link">{t("terms")}</a>
     <a href={audience==="admin"?"/admin/support":"/help"} className="text-link">{locale==="ps-AF"?"مرسته":locale==="fa-AF"?"راهنما":"Help"}</a>
-  </div></footer>
+  </div></footer>}
   {audience==="patient"&&<PatientBottomNav path={path}/>}
  </div>;
 }
