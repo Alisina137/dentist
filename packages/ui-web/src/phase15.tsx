@@ -1,5 +1,5 @@
 "use client";
-import React,{useEffect,useMemo,useState,type FormEvent} from "react";
+import React,{useCallback,useEffect,useMemo,useState,type FormEvent} from "react";
 import {usePreferences,InlineAlert} from "./index";
 import {Shell} from "./phase03";
 
@@ -62,6 +62,17 @@ const vocab:Record<Lang,Record<string,string>>={
  verify:"Verify identity in person",method:"Verification method",
  approveLink:"Approve verified link",rejectLink:"Reject link",selectedPatient:"Clinic patient ID",
  notificationStatus:"Booking email delivery",provider:"SMTP configured",
+  roleRestricted:"Only clinic owners and managers can review delivery operations.",
+  clinicUnavailable:"This clinic is not in your active memberships. Select an authorized clinic.",
+  refreshDelivery:"Refresh delivery status",deliveryHint:"Delivery metadata only. No patient names or clinical details.",
+  deliveryRecent:"Latest 100 delivery events",deliveryLimit:"Up to 100 recent events shown; this is not an all-time total.",
+  deliveryQueued:"Queued",deliverySent:"Sent",deliveryFailed:"Failed",deliverySkipped:"Opted out",
+  deliveryAll:"All events",deliveryTime:"Event time",deliveryAttempts:"Attempts",
+  deliveryNoData:"No delivery events match this filter.",deliveryEmail:"Email",
+  deliverySms:"SMS",deliveryPush:"Push",deliveryOn:"Configured",deliveryOff:"Not configured",
+  deliveryNoPush:"SMS and push are not available in this release.",
+  deliveryPage:"Page",deliverySync:"Automatically checks for updates while this tab is open.",
+  requestRefresh:"Refresh requests",requestSynced:"Current clinic data refreshed.",
  noneProcessed:"No requests in this category",signClinic:"Sign in to the clinic workspace",
  overview:"Appointments calendar",settings:"Clinic notifications",details:"Details",
  network:"Network connection is unavailable",noFamily:"No authorized family members available.",
@@ -105,6 +116,17 @@ const vocab:Record<Lang,Record<string,string>>={
  verify:"تأیید هویت حضوری",method:"روش تأیید",
  approveLink:"تأیید اتصال",rejectLink:"رد اتصال",selectedPatient:"شناسه مریض در کلینیک",
  notificationStatus:"ارسال ایمیل وقت ملاقات",provider:"سرور ایمیل تنظیم شده",
+  roleRestricted:"فقط مالک و مدیر کلینیک می‌توانند وضعیت ارسال پیام‌ها را ببینند.",
+  clinicUnavailable:"این کلینیک جزو عضویت‌های فعال شما نیست؛ کلینیک مجاز را انتخاب کنید.",
+  refreshDelivery:"تازه‌سازی وضعیت ارسال",deliveryHint:"فقط وضعیت ارسال؛ بدون نام مریض یا معلومات طبی.",
+  deliveryRecent:"۱۰۰ رویداد اخیر ارسال",deliveryLimit:"حداکثر ۱۰۰ رویداد اخیر؛ نه مجموع تمام پیام‌ها.",
+  deliveryQueued:"در صف",deliverySent:"ارسال‌شده",deliveryFailed:"ناکام",deliverySkipped:"بدون اجازه",
+  deliveryAll:"همه رویدادها",deliveryTime:"زمان رویداد",deliveryAttempts:"تلاش‌ها",
+  deliveryNoData:"در این فیلتر رویدادی موجود نیست.",deliveryEmail:"ایمیل",
+  deliverySms:"پیامک",deliveryPush:"اعلان پوش",deliveryOn:"تنظیم‌شده",deliveryOff:"تنظیم نشده",
+  deliveryNoPush:"پیامک و پوش در این نسخه فعال نیست.",
+  deliveryPage:"صفحه",deliverySync:"وقتی این صفحه باز باشد، تغییرات تازه‌سازی می‌شوند.",
+  requestRefresh:"تازه‌سازی درخواست‌ها",requestSynced:"معلومات فعلی کلینیک تازه شد.",
  noneProcessed:"درخواستی در این بخش نیست",signClinic:"وارد حساب کلینیک شوید",
  overview:"تقویم ملاقات‌ها",settings:"اطلاعیه‌های کلینیک",details:"جزئیات",
  network:"ارتباط با سرور برقرار نشد",noFamily:"عضو مجاز خانواده موجود نیست",
@@ -148,6 +170,17 @@ const vocab:Record<Lang,Record<string,string>>={
  verify:"مخامخ هویت تایید کړه",method:"د تایید ډول",
  approveLink:"نښلول تایید کړه",rejectLink:"نښلول رد کړه",selectedPatient:"په کلینیک کې ناروغ پېژند",
  notificationStatus:"د ملاقات ایمیلونه",provider:"ایمیل تنظیم دی",
+  roleRestricted:"یوازې د کلینیک خاوند او مدیر د پیغام رسونې حالت کتلی شي.",
+  clinicUnavailable:"دا کلینیک ستاسې په فعالو غړیتوبونو کې نشته؛ اجازه لرونکی کلینیک وټاکئ.",
+  refreshDelivery:"د لېږلو حالت تازه کړئ",deliveryHint:"یوازې د استولو حالت؛ د ناروغ نوم یا طبي معلومات نه ښکاري.",
+  deliveryRecent:"وروستۍ ۱۰۰ پېښې",deliveryLimit:"یوازې تر ۱۰۰ وروستۍ پېښې؛ ټول شمېر نه دی.",
+  deliveryQueued:"په کتار کې",deliverySent:"لېږل شوی",deliveryFailed:"ناکام",deliverySkipped:"اجازه نشته",
+  deliveryAll:"ټولې پېښې",deliveryTime:"د پېښې وخت",deliveryAttempts:"هڅې",
+  deliveryNoData:"په دې چاڼ کې پېښه نشته.",deliveryEmail:"برېښنالیک",
+  deliverySms:"پیغام",deliveryPush:"پوش خبرتیا",deliveryOn:"چمتو",deliveryOff:"نه دی چمتو",
+  deliveryNoPush:"SMS او push په دې نسخه کې نشته.",
+  deliveryPage:"مخ",deliverySync:"کله چې دا پاڼه خلاصه وي، معلومات تازه کېږي.",
+  requestRefresh:"غوښتنې تازه کړئ",requestSynced:"د کلینیک اوسني معلومات تازه شول.",
  noneProcessed:"دلته غوښتنه نشته",signClinic:"د کلینیک حساب ته ننوځه",
  overview:"د ملاقات جدول",settings:"د کلینیک خبرتیاوې",details:"جزئیات",
  network:"د سرور سره اړیکه نشته",noFamily:"د کورنۍ اجازه لرونکی غړی نشته",
@@ -168,8 +201,8 @@ function useWords(){
  };
  return {lang,t,fmt};
 }
-async function api<T>(path:string,method="GET",body?:unknown):Promise<T>{
- const r=await fetch(API+path,{method,credentials:"include",cache:"no-store",
+async function api<T>(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<T>{
+ const r=await fetch(API+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -480,7 +513,9 @@ export function PatientRecordsPage(){
 
 type StaffContext={name:string;email:string;clinics:{
  clinicId:string;clinicName:string;membershipId:string;role:string;clinicianEnabled:boolean}[]};
-function ClinicShell({title,activeKey="appointments",children}:{title:string;activeKey?:string;children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
+function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,children}:{title:string;
+ activeKey?:string;ownerManagerOnly?:boolean;
+ children:(clinicId:string,role:string,clinicianEnabled:boolean)=>React.ReactNode}){
  const {t}=useWords(),[ctx,setCtx]=useState<StaffContext|null>(null),[clinic,setClinic]=useState<string|null>(null);
  const [error,setError]=useState("");
  useEffect(()=>{
@@ -489,13 +524,18 @@ function ClinicShell({title,activeKey="appointments",children}:{title:string;act
  },[]);
  if(error)return <Page heading={title}><ErrorNote message={error}/><LinkButton href="/clinic/login">{t("signClinic")}</LinkButton></Page>;
  if(!ctx)return <Spinner/>;
- const space=(clinic?ctx.clinics.find(c=>c.clinicId===clinic):null)||ctx.clinics[0];
- if(!space)return <Page heading={title}><Banner text={t("signClinic")}/></Page>;
+ // A supplied clinic ID must never silently fall back to a different tenant.
+ const space=clinic===null?ctx.clinics[0]:ctx.clinics.find(c=>c.clinicId===clinic);
+ if(!space)return <Page heading={title}><Banner text={t(clinic===null?"signClinic":"clinicUnavailable")}/></Page>;
+ if((ownerManagerOnly&&!["owner","manager"].includes(space.role))||
+    (activeKey==="bookingRequests"&&!["owner","manager","receptionist","dentist"].includes(space.role)))
+  return <Page heading={title}><Banner text={t("roleRestricted")}/></Page>;
  return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
   <Page heading={title} sub={space.clinicName}>
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
-    <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a></nav>
+    {["owner","manager"].includes(space.role)&&
+     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a>}</nav>
    {children(space.clinicId,space.role,space.clinicianEnabled)}
   </Page>
  </Shell>;
@@ -505,39 +545,71 @@ type StaffRequestRow={id:string;patientName:string;serviceName:string;startAt:st
 type LinkRequest={id:string;state:string;suppliedPatientNumber:string;
  requestedAt:string;patientId:string|null;method:string|null;applicantName:string};
 export function ClinicBookingRequestsPage(){
- return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=><Requests cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
+ return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=><Requests key={clinicId} cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
 }
 function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianEnabled:boolean}){
  const {t,fmt}=useWords(),[filter,setFilter]=useState("pending");
- const [rows,setRows]=useState<StaffRequestRow[]>([]),[links,setLinks]=useState<LinkRequest[]>([]);
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false);
+ const [actionError,setActionError]=useState("");
+ const [snapshot,setSnapshot]=useState<{key:string;rows:StaffRequestRow[];
+  links:LinkRequest[];error:string;loading:boolean;syncedAt:string|null}|null>(null);
  const [reasons,setReasons]=useState<Record<string,string>>({});
  const [patientIds,setPatientIds]=useState<Record<string,string>>({});
  const [verified,setVerified]=useState<Record<string,boolean>>({});
  const [methods,setMethods]=useState<Record<string,string>>({});
- const load=()=>{setLoading(true);
-  Promise.all([api<{requests:StaffRequestRow[]}>("/v1/booking/clinics/"+cid+"/requests?state="+filter),
-   api<{links:LinkRequest[]}>("/v1/booking/clinics/"+cid+"/record-links")])
-   .then(([q,l])=>{setRows(q.requests);setLinks(l.links);})
-   .catch(e=>setError(e.message)).finally(()=>setLoading(false))};
- useEffect(load,[cid,filter]);
+ const reload=useCallback(()=>setRevision(x=>x+1),[]);
+ const key=cid+":"+filter;
+ const current=snapshot?.key===key?snapshot:null;
+ const rows=current?.rows||[],links=current?.links||[];
+ const loading=current?.loading??true,error=current?.error||actionError;
+ const canReviewLinks=role!=="dentist"||clinicianEnabled;
+ useEffect(()=>{
+  const controller=new AbortController();
+  setSnapshot({key,rows:[],links:[],error:"",loading:true,syncedAt:null});
+  setActionError("");
+  Promise.all([
+   api<{requests:StaffRequestRow[]}>("/v1/booking/clinics/"+cid+"/requests?state="+filter,"GET",undefined,controller.signal),
+   canReviewLinks?api<{links:LinkRequest[]}>("/v1/booking/clinics/"+cid+"/record-links","GET",undefined,controller.signal):
+    Promise.resolve({links:[] as LinkRequest[]})
+  ]).then(([requests,records])=>{
+   if(!controller.signal.aborted)setSnapshot({key,rows:requests.requests,links:records.links,
+    error:"",loading:false,syncedAt:new Date().toISOString()});
+  }).catch(e=>{
+   if(!controller.signal.aborted)setSnapshot({key,rows:[],links:[],
+    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,syncedAt:null});
+  });
+  return()=>controller.abort();
+ },[cid,filter,revision,key,canReviewLinks]);
+ useEffect(()=>{
+  const visible=()=>{if(document.visibilityState==="visible")reload();};
+  window.addEventListener("focus",visible);
+  document.addEventListener("visibilitychange",visible);
+  const timer=window.setInterval(visible,45000);
+  return()=>{window.clearInterval(timer);window.removeEventListener("focus",visible);
+   document.removeEventListener("visibilitychange",visible);};
+ },[cid,reload]);
  async function decision(r:StaffRequestRow,action:"accept"|"reject"){
-  setBusy(true);setError("");
+  setBusy(true);setActionError("");
   try{await api("/v1/booking/clinics/"+cid+"/requests/"+r.id+"/decision","POST",
-   {action,reason:reasons[r.id],revision:r.revision});load();}
-  catch(e:any){setError(e.message)}finally{setBusy(false)}
+   {action,reason:reasons[r.id],revision:r.revision});setSnapshot(null);reload();}
+  catch(e:any){setActionError(e.message)}finally{setBusy(false)}
  }
  async function linkDecision(l:LinkRequest,action:"approve"|"reject"){
-  setBusy(true);setError("");
+  setBusy(true);setActionError("");
   try{await api("/v1/booking/clinics/"+cid+"/record-links/"+l.id+"/decision","POST",
    {action,patientId:patientIds[l.id],reason:reasons[l.id],
-    verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});load();}
-  catch(e:any){setError(e.message)}finally{setBusy(false)}
+    verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});setSnapshot(null);reload();}
+  catch(e:any){setActionError(e.message)}finally{setBusy(false)}
  }
  return <><ErrorNote message={error}/>
   <div className="p15-tabs">{["pending","processed"].map(s=><button key={s} type="button"
-   aria-current={filter===s?"page":undefined} onClick={()=>setFilter(s)}>{t(s)}</button>)}</div>
-  {loading?<Spinner/>:rows.length?<div className="p15-list">{rows.map(r=>
+   aria-current={filter===s?"page":undefined} onClick={()=>setFilter(s)}>{t(s)}</button>)}
+   <button type="button" className="p15-button p15-button-secondary" onClick={reload}
+    disabled={busy||loading}>{t("requestRefresh")}</button>
+   {current?.syncedAt&&!loading&&<small aria-live="polite">{t("requestSynced")} · {fmt(current.syncedAt,true)}</small>}
+  </div>
+  {loading?<Spinner/>:error?<button type="button" className="p15-button p15-button-secondary"
+   onClick={reload}>{t("tryAgain")}</button>:rows.length?<div className="p15-list">{rows.map(r=>
    <div className="p15-panel p15-request" key={r.id}>
     <div className="p15-topline"><strong>{r.patientName}</strong><Badge status={r.status}/></div>
     <p>{r.serviceName} · {fmt(r.startAt,true)} · {r.priceAfn} AFN</p>
@@ -550,7 +622,7 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
        onClick={()=>void decision(r,"reject")}>{t("reject")}</button></div>
     </>}
    </div>)}</div>:<div className="p15-empty">{t("noneProcessed")}</div>}
-  <div className="p15-panel"><h2>{t("proof")}</h2><p>{t("secure")}</p>
+  {canReviewLinks&&!loading&&!error&&<div className="p15-panel"><h2>{t("proof")}</h2><p>{t("secure")}</p>
    <div className="p15-list">{links.filter(l=>l.state==="pending").map(l=>
     <article className="p15-list-row" key={l.id}>
      <strong>{l.applicantName}</strong>
@@ -572,7 +644,7 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
     </article>)}</div>
    {links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
      cid={cid} link={l} enabled={role==="dentist"||clinicianEnabled}/>) }
-  </div>
+  </div>}
  </>;
 }
 
@@ -630,19 +702,111 @@ function ApprovedRecordReleases({cid,link,enabled}:{cid:string;link:LinkRequest;
  </article>;
 }
 
+type DeliveryStatus="all"|"queued"|"sent"|"failed"|"skipped";
+type DeliveryEvent={event_name:string;status:string;attempt_count:number;
+ created_at:string;sent_at:string|null;last_error_code:string|null};
+type DeliveryRead={deliveries:DeliveryEvent[];emailConfigured:boolean;
+ smsConfigured:boolean;pushConfigured:boolean};
+function deliveryGroup(value:string):Exclude<DeliveryStatus,"all">{
+ if(value==="sent")return "sent";
+ if(value==="failed")return "failed";
+ if(value==="skipped")return "skipped";
+ return "queued";
+}
 export function ClinicNotificationsPage(){
- const {t,fmt}=useWords();
- return <ClinicShell title={t("settings")} activeKey="notifications">{cid=><Notifications cid={cid}/>}</ClinicShell>;
+ const {t}=useWords();
+ return <ClinicShell title={t("settings")} activeKey="notifications" ownerManagerOnly>
+  {cid=><Notifications key={cid} cid={cid}/>}</ClinicShell>;
 }
 function Notifications({cid}:{cid:string}){
- const {t,fmt}=useWords(),[items,setItems]=useState<any[]>([]);
- const [configured,setConfigured]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState("");
- useEffect(()=>{api<{deliveries:any[];emailConfigured:boolean}>("/v1/booking/clinics/"+cid+"/notifications")
-  .then(r=>{setItems(r.deliveries);setConfigured(r.emailConfigured)})
-  .catch(e=>setError(e.message)).finally(()=>setLoading(false))},[cid]);
- return <div className="p15-panel"><p>{t("provider")}: {configured?"✓":"—"}</p>
-  <p>{t("secure")}</p><ErrorNote message={error}/>{loading?<Spinner/>:
-  items.length?items.map((i,n)=><div key={n} className="p15-list-row">
-   <strong>{i.event_name}</strong><Badge status={i.status}/><small>{fmt(i.created_at,true)}</small>
-   <small>{i.attempt_count} attempts</small></div>):<p>{t("noMessages")}</p>}</div>;
+ const {t,fmt}=useWords();
+ const [filter,setFilter]=useState<DeliveryStatus>("all"),[page,setPage]=useState(1);
+ const [revision,setRevision]=useState(0);
+ const [snapshot,setSnapshot]=useState<{cid:string;data:DeliveryRead|null;
+  error:string;loading:boolean;syncedAt:string|null}|null>(null);
+ const reload=useCallback(()=>setRevision(x=>x+1),[]);
+ const current=snapshot?.cid===cid?snapshot:null;
+ const data=current?.data,loading=current?.loading??true,error=current?.error||"";
+ useEffect(()=>{
+  const controller=new AbortController();
+  setSnapshot({cid,data:null,error:"",loading:true,syncedAt:null});
+  api<DeliveryRead>("/v1/booking/clinics/"+encodeURIComponent(cid)+"/notifications",
+   "GET",undefined,controller.signal).then(result=>{
+   if(!controller.signal.aborted)setSnapshot({cid,data:result,error:"",loading:false,
+    syncedAt:new Date().toISOString()});
+  }).catch(e=>{
+   if(!controller.signal.aborted)setSnapshot({cid,data:null,
+    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,syncedAt:null});
+  });
+  return()=>controller.abort();
+ },[cid,revision]);
+ useEffect(()=>{
+  const visible=()=>{if(document.visibilityState==="visible")reload();};
+  window.addEventListener("focus",visible);
+  document.addEventListener("visibilitychange",visible);
+  const timer=window.setInterval(visible,45000);
+  return()=>{window.clearInterval(timer);window.removeEventListener("focus",visible);
+   document.removeEventListener("visibilitychange",visible)};
+ },[cid,reload]);
+ const deliveries=data?.deliveries||[];
+ const counts={queued:0,sent:0,failed:0,skipped:0};
+ for(const event of deliveries)counts[deliveryGroup(event.status)]++;
+ const matches=deliveries.filter(event=>filter==="all"||deliveryGroup(event.status)===filter);
+ const pages=Math.max(1,Math.ceil(matches.length/10));
+ const safePage=Math.min(page,pages);
+ const visible=matches.slice((safePage-1)*10,safePage*10);
+ const filters:DeliveryStatus[]=["all","queued","sent","failed","skipped"];
+ const title=(value:DeliveryStatus)=>value==="all"?t("deliveryAll"):
+  value==="queued"?t("deliveryQueued"):value==="sent"?t("deliverySent"):
+  value==="failed"?t("deliveryFailed"):t("deliverySkipped");
+ return <section className="p15-panel j-deliveries" aria-label={t("notificationStatus")}>
+  <div className="j-delivery-head"><div><h2>{t("notificationStatus")}</h2>
+   <p>{t("deliveryHint")}</p></div>
+   <button type="button" className="p15-button p15-button-secondary"
+    onClick={reload} disabled={loading}>{t("refreshDelivery")}</button>
+  </div>
+  <p className="j-delivery-help">{t("deliverySync")}</p>
+  <ErrorNote message={error}/>
+  {loading?<Spinner/>:error?
+   <button type="button" className="p15-button p15-button-secondary" onClick={reload}>{t("tryAgain")}</button>:
+   data&&<>
+    <div className="j-channel-grid">
+     {([{name:t("deliveryEmail"),configured:data.emailConfigured},
+       {name:t("deliverySms"),configured:data.smsConfigured},
+       {name:t("deliveryPush"),configured:data.pushConfigured}] as const).map(channel=>
+       <div className="j-channel" key={channel.name}><span>{channel.name}</span>
+        <strong className={channel.configured?"j-channel-on":"j-channel-off"}>
+         {t(channel.configured?"deliveryOn":"deliveryOff")}</strong></div>)}
+    </div>
+    <p className="j-delivery-help">{t("deliveryNoPush")}</p>
+    <div className="j-delivery-counters" role="group" aria-label={t("deliveryRecent")}>
+     {(["queued","sent","failed","skipped"] as const).map(status=>
+      <button key={status} type="button" className={"j-delivery-count j-"+status}
+       aria-pressed={filter===status} onClick={()=>{setFilter(status);setPage(1)}}>
+       <span>{title(status)}</span><strong>{counts[status]}</strong></button>)}
+    </div>
+    <div className="j-delivery-filters" role="group" aria-label={t("deliveryRecent")}>
+     {filters.map(value=><button key={value} type="button" aria-pressed={filter===value}
+      className={"j-delivery-filter"+(filter===value?" active":"")}
+      onClick={()=>{setFilter(value);setPage(1)}}>{title(value)}</button>)}
+    </div>
+    {visible.length?<div className="j-delivery-items">{visible.map((event,index)=>
+     <article className="j-delivery-row" key={event.created_at+":"+event.event_name+":"+index}>
+      <div><strong>{event.event_name.replace(/_/g," ")}</strong>
+       <small>{t("deliveryTime")}: {fmt(event.created_at,true)}</small></div>
+      <span className={"j-delivery-badge j-"+deliveryGroup(event.status)}>
+       {title(deliveryGroup(event.status))}</span>
+      <small>{t("deliveryAttempts")}: {event.attempt_count}</small>
+     </article>)}</div>:<p className="p15-empty">{t("deliveryNoData")}</p>}
+    {pages>1&&<nav className="j-delivery-paging" aria-label={t("deliveryPage")}>
+     <button type="button" className="p15-button p15-button-secondary" disabled={safePage===1}
+      onClick={()=>setPage(x=>Math.max(1,x-1))}>{t("back")}</button>
+     <span aria-live="polite">{t("deliveryPage")} {safePage}/{pages}</span>
+     <button type="button" className="p15-button p15-button-secondary" disabled={safePage===pages}
+      onClick={()=>setPage(x=>Math.min(pages,x+1))}>{t("next")}</button>
+    </nav>}
+    <p className="j-delivery-help">{t("deliveryLimit")}
+     {current?.syncedAt?" · "+fmt(current.syncedAt,true):""}</p>
+   </>}
+ </section>;
 }
