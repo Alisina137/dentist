@@ -102,23 +102,30 @@ function useLabels(){
  return {lang,calendar,t:(key:string)=>copy[lang][key]||copy.en[key]||key};
 }
 function useClinicRead<T>(path:string|null){
- const [state,setState]=useState<{data:T|null;error:string;loading:boolean}>({data:null,error:"",loading:!!path});
+ // Associate every response with its requested path to avoid showing even one frame
+ // of another clinic's private counts while a tenant selection is changing.
+ const [state,setState]=useState<{path:string|null;data:T|null;error:string;loading:boolean}>({
+  path,data:null,error:"",loading:!!path
+ });
  const [revision,setRevision]=useState(0);
  useEffect(()=>{
-  if(!path){setState({data:null,error:"",loading:false});return;}
+  if(!path){setState({path:null,data:null,error:"",loading:false});return;}
   const controller=new AbortController();
-  setState({data:null,error:"",loading:true});
+  setState({path,data:null,error:"",loading:true});
   const timer=setTimeout(()=>controller.abort(),10000);
   fetch(API+path,{credentials:"include",cache:"no-store",signal:controller.signal}).then(async res=>{
    const result=await res.json().catch(()=>({}));
    if(!res.ok)throw new Error(result.code||"NETWORK_UNAVAILABLE");
-   if(!controller.signal.aborted)setState({data:result as T,error:"",loading:false});
+   if(!controller.signal.aborted)setState({path,data:result as T,error:"",loading:false});
   }).catch((error:unknown)=>{
-   if(!controller.signal.aborted)setState({data:null,error:error instanceof Error?error.message:"NETWORK_UNAVAILABLE",loading:false});
+   if(!controller.signal.aborted)setState({path,data:null,error:error instanceof Error?error.message:"NETWORK_UNAVAILABLE",loading:false});
   }).finally(()=>clearTimeout(timer));
   return ()=>{controller.abort();clearTimeout(timer)};
  },[path,revision]);
- return {...state,refresh:()=>setRevision(x=>x+1)};
+ return {data:state.path===path?state.data:null,
+  error:state.path===path?state.error:"",
+  loading:state.path===path?state.loading:!!path,
+  refresh:()=>setRevision(x=>x+1)};
 }
 function PanelState({loading,error,retry}:{loading:boolean;error:string;retry:()=>void}){
  const {t}=useLabels();
