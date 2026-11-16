@@ -1,4 +1,4 @@
-import {ApiError} from "./native-auth";
+import {ApiError} from "./api-error";
 
 /** Patient-safe native messages: never surface HTTP internals, tokens or raw backend diagnostics. */
 type Language="en"|"fa-AF"|"ps-AF";
