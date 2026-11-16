@@ -57,7 +57,7 @@ test("Clinic Phase 03: role-safe visual styling covers existing real workflows",
   ".clinic-persistent-sidebar"
  ])assert.ok(css.includes(marker),marker);
  assert.ok(shell.includes('className="clinic-header-quick-links"'));
- assert.ok(shell.includes('className="clinic-persistent-sidebar"'));
+ assert.ok(shell.includes('className="card side-panel staff-side clinic-persistent-sidebar"'));
 });
 
 test("Clinic Phase 03: forms preserve medical controls, validation and keyboard accessibility",()=>{
