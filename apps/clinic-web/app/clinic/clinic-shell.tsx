@@ -205,6 +205,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   }catch{/* locked-down storage or corrupt preference: use safe defaults */}
  },[]);
  useEffect(()=>{
+  if(isPublic)return;
   const shortcut=(event:KeyboardEvent)=>{
    if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
     event.preventDefault();setCollapsed(false);
@@ -217,7 +218,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   };
   window.addEventListener("keydown",shortcut);
   return()=>window.removeEventListener("keydown",shortcut);
- },[]);
+ },[isPublic]);
  useEffect(()=>{
   if(isPublic)return;
   const controller=new AbortController();
