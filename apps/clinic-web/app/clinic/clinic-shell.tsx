@@ -12,6 +12,25 @@ type Space={clinicId:string;clinicName:string;clinicStatus:string;membershipId:s
 type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
 type Group="workspace"|"operations"|"settings";
 type Item={key:string;path:string;icon:CareIconName;group:Group};
+type SectionKey="frontDesk"|"clinicalCare"|"billing"|"operations"|"growth"|"settings";
+type Section={key:SectionKey;icon:CareIconName;items:readonly string[]};
+/**
+ * Sections group existing real authorized routes. They are not permission
+ * grants: navigation(space) is still the only route visibility source, and
+ * each backend endpoint continues to enforce staff/tenant permissions.
+ */
+const NAV_SECTIONS:readonly Section[]=[
+ {key:"frontDesk",icon:"calendar",items:["appointments","queue","bookingRequests","patients"]},
+ {key:"clinicalCare",icon:"dental",items:["clinical","myVerification"]},
+ {key:"billing",icon:"receipt",items:["finance","reports"]},
+ {key:"operations",icon:"hospital",items:["staff","resources","services","hours"]},
+ {key:"growth",icon:"chart-columns",items:["listing","notifications"]},
+ {key:"settings",icon:"settings",items:["settings","security","subscription","exportData","myProfile"]}
+] as const;
+const NAV_EXPANSION_KEY="dandan.clinic.navSections";
+const sectionOf=(key:string):SectionKey|null=>
+ NAV_SECTIONS.find(section=>section.items.includes(key))?.key||null;
+
 const PUBLIC_CLINIC_PATH=/^\/clinic\/(?:login|signup|verify|invite|onboarding|reset-password|2fa)(?:\/|$)/;
 const COLLAPSE_KEY="dandan.clinic.sidebarCollapsed";
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -24,6 +43,11 @@ const translations:Record<string,Record<string,string>>={
   security:"Security & access",settings:"Clinic settings",subscription:"Subscription",
   exportData:"Export & retention",myVerification:"My credentials",myProfile:"My membership",
   workspace:"Workspace",operations:"Operations",account:"Account",
+  frontDesk:"Front desk",clinicalCare:"Clinical care",billing:"Billing & reports",
+  growth:"Growth & updates",navigationSearch:"Search clinic pages",
+  navigationSearchTip:"Search navigation (Ctrl+K)",noNavigationMatch:"No matching clinic page.",
+  clearNavigationSearch:"Clear navigation search",navigateQuickly:"Quick access",
+  details:"Details",expandGroup:"Expand section",collapseGroup:"Collapse section",
   changeClinic:"Active clinic",navigation:"Clinic navigation",collapse:"Collapse sidebar",
   expand:"Expand sidebar",openMenu:"Open navigation",closeMenu:"Close navigation",
   signOut:"Sign out",signingOut:"Signing out…",loading:"Loading clinic access…",
@@ -46,6 +70,11 @@ const translations:Record<string,Record<string,string>>={
   security:"امنیت و دسترسی",settings:"تنظیمات کلینیک",subscription:"اشتراک",
   exportData:"صادرات و نگهداری",myVerification:"اسناد مسلکی من",myProfile:"عضویت من",
   workspace:"فضای کاری",operations:"عملیات",account:"حساب",
+  frontDesk:"پذیرش",clinicalCare:"بخش کلینیکی",billing:"مالی و گزارش‌ها",
+  growth:"رشد و اطلاع‌رسانی",navigationSearch:"جستجوی صفحات کلینیک",
+  navigationSearchTip:"جستجوی منو (Ctrl+K)",noNavigationMatch:"صفحه‌ای پیدا نشد.",
+  clearNavigationSearch:"پاک‌کردن جستجو",navigateQuickly:"دسترسی سریع",
+  details:"جزئیات",expandGroup:"بازکردن بخش",collapseGroup:"بستن بخش",
   changeClinic:"کلینیک فعال",navigation:"منوی کلینیک",collapse:"جمع‌کردن منو",
   expand:"بازکردن منو",openMenu:"بازکردن منو",closeMenu:"بستن منو",
   signOut:"خروج",signingOut:"در حال خروج…",loading:"در حال بررسی دسترسی کلینیک…",
@@ -67,6 +96,11 @@ const translations:Record<string,Record<string,string>>={
   security:"امنیت او لاسرسی",settings:"د کلینیک تنظیمات",subscription:"ګډون",
   exportData:"صادرات او ساتنه",myVerification:"زما مسلکي اسناد",myProfile:"زما غړیتوب",
   workspace:"کاري برخه",operations:"چارې",account:"حساب",
+  frontDesk:"پذیرش",clinicalCare:"کلینیکي پاملرنه",billing:"مالي چارې او راپورونه",
+  growth:"وده او خبرتیاوې",navigationSearch:"د کلینیک پاڼې ولټوئ",
+  navigationSearchTip:"نوملړ ولټوئ (Ctrl+K)",noNavigationMatch:"اړونده پاڼه ونه موندل شوه.",
+  clearNavigationSearch:"لټون پاک کړئ",navigateQuickly:"چټک لاسرسی",
+  details:"تفصیل",expandGroup:"برخه پرانیزئ",collapseGroup:"برخه بنده کړئ",
   changeClinic:"فعال کلینیک",navigation:"د کلینیک نوملړ",collapse:"نوملړ لنډول",
   expand:"نوملړ پراخول",openMenu:"نوملړ پرانیستل",closeMenu:"نوملړ بندول",
   signOut:"وتل",signingOut:"د وتلو په حال کې…",loading:"د کلینیک لاسرسی کتل کېږي…",
@@ -138,9 +172,12 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const [requestIndex,setRequestIndex]=useState(0);
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
  const [collapsed,setCollapsed]=useState(false),[mobileOpen,setMobileOpen]=useState(false);
+ const [navSearch,setNavSearch]=useState("");
+ const [expandedSections,setExpandedSections]=useState<Partial<Record<SectionKey,boolean>>>({});
  const [signingOut,setSigningOut]=useState(false),[signOutError,setSignOutError]=useState(false);
  const [navigationPending,startNavigation]=useTransition();
  const mobileToggleRef=useRef<HTMLButtonElement>(null),
+  navSearchRef=useRef<HTMLInputElement>(null),
   drawerRef=useRef<HTMLElement>(null),
   mobileCloseRef=useRef<HTMLButtonElement>(null),
   lastContextCheck=useRef(0);
@@ -156,8 +193,32 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   setRequested(new URLSearchParams(window.location.search).get("clinic"));
  },[isPublic,pathname]);
  useEffect(()=>{
-  try{setCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1");}catch{/* locked-down storage */}
+  try{
+   setCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1");
+   const stored=JSON.parse(localStorage.getItem(NAV_EXPANSION_KEY)||"{}") as Record<string,unknown>;
+   if(stored&&typeof stored==="object"&&!Array.isArray(stored)){
+    const allowed:Partial<Record<SectionKey,boolean>>={};
+    for(const group of NAV_SECTIONS)
+     if(typeof stored[group.key]==="boolean")allowed[group.key]=stored[group.key] as boolean;
+    setExpandedSections(allowed);
+   }
+  }catch{/* locked-down storage or corrupt preference: use safe defaults */}
  },[]);
+ useEffect(()=>{
+  if(isPublic)return;
+  const shortcut=(event:KeyboardEvent)=>{
+   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+    event.preventDefault();setCollapsed(false);
+    if(window.matchMedia("(max-width: 900px)").matches)setMobileOpen(true);
+    window.setTimeout(()=>navSearchRef.current?.focus(),75);
+   }
+   if(event.key==="Escape"&&document.activeElement===navSearchRef.current){
+    setNavSearch("");navSearchRef.current?.blur();
+   }
+  };
+  window.addEventListener("keydown",shortcut);
+  return()=>window.removeEventListener("keydown",shortcut);
+ },[isPublic]);
  useEffect(()=>{
   if(isPublic)return;
   const controller=new AbortController();
@@ -190,7 +251,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
    document.removeEventListener("visibilitychange",recheck);
   };
  },[isPublic,loading]);
- useEffect(()=>setMobileOpen(false),[pathname]);
+ useEffect(()=>{setMobileOpen(false);setNavSearch("")},[pathname]);
  useEffect(()=>{
   if(!mobileOpen)return;
   const mq=window.matchMedia("(max-width: 900px)");
@@ -221,8 +282,6 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   return()=>{document.body.style.overflow=oldOverflow;
    window.removeEventListener("keydown",onKey);mq.removeEventListener("change",onDesktop);};
  },[mobileOpen]);
- if(isPublic)return <>{children}</>;
-
  const spaces=ctx?.clinics||[];
  const selected=requested===undefined?null:requested?
   spaces.find(s=>s.clinicId===requested)||null:spaces[0]||null;
@@ -231,10 +290,59 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const current=items.filter(item=>pathActive(pathname,item.path))
   .sort((a,b)=>b.path.length-a.path.length)[0];
  const activeTitle=current?t(current.key):t("workspace");
+ const activeSection=current?sectionOf(current.key):null;
+ const visibleSections=NAV_SECTIONS.map(section=>({
+  ...section,links:items.filter(item=>section.items.includes(item.key))
+ })).filter(section=>section.links.length>0);
+ const normalizedSearch=navSearch.trim().toLocaleLowerCase(locale);
+ const searchResults=normalizedSearch?
+  items.filter(item=>(t(item.key)+" "+t(sectionOf(item.key)||"workspace"))
+   .toLocaleLowerCase(locale).includes(normalizedSearch)):[];
+ const navDetails=current&&pathname!==current.path&&pathname!==current.path+"/"?t("details"):null;
+ const quickKeys=selected?.role==="dentist"?["appointments","clinical","patients"]:
+  selected?.role==="assistant"?["appointments","queue","clinical"]:
+  selected?.role==="cashier"?["finance","reports","patients"]:
+  selected?.role==="receptionist"?["bookingRequests","queue","patients"]:
+  ["bookingRequests","appointments","patients"];
+ const quickLinks=quickKeys.flatMap(key=>items.filter(item=>item.key===key)).slice(0,3);
+ // Keep a newly active section expanded after internal navigation even when it
+ // was explicitly folded on the previous page; do not persist the active page.
+ useEffect(()=>{
+  if(isPublic||!activeSection)return;
+  setExpandedSections(previous=>previous[activeSection]?previous:
+   {...previous,[activeSection]:true});
+ },[isPublic,activeSection,pathname]);
+ if(isPublic)return <>{children}</>;
+ function changeSection(section:SectionKey){
+  const expanded=expandedSections[section]??section===activeSection;
+  const next={...expandedSections,[section]:!expanded};
+  setExpandedSections(next);
+  try{localStorage.setItem(NAV_EXPANSION_KEY,JSON.stringify(next));}
+  catch{/* private browsing does not block keyboard navigation */}
+ }
+ function revealSearch(){
+  setCollapsed(false);
+  window.setTimeout(()=>navSearchRef.current?.focus(),40);
+ }
  const tenantParam=selected?"clinic="+encodeURIComponent(selected.clinicId):"";
  const hrefFor=(path:string)=>path+(tenantParam?"?"+tenantParam:"");
  const sameTenant=(url:URL)=>!url.searchParams.has("clinic")||
   url.searchParams.get("clinic")===selected?.clinicId;
+ function renderNavItem(item:Item,subItem=false){
+  // Deepest matching route wins: /appointments/queue must not also highlight
+  // its /appointments parent, and /settings/security must not highlight Settings.
+  const active=current?.key===item.key;
+  return <Link key={item.key} href={hrefFor(item.path)} prefetch={false} data-next-nav
+   onClick={()=>{setMobileOpen(false);setNavSearch("")}}
+   className={"phase04-side-link clinic-sidebar-link"+
+    (subItem?" clinic-nav-subitem":"")}
+   aria-label={t(item.key)} aria-current={active?"page":undefined}
+   title={collapsed?t(item.key):undefined}>
+   <span className="phase04-side-icon" aria-hidden="true">
+    <CareIcon name={item.icon} size={19}/></span>
+   <span className="clinic-sidebar-label">{t(item.key)}</span>
+  </Link>;
+ }
 
  // Routes shipped by phases 02–19 still use ordinary <a href>. Intercept only
  // same-origin, same-tenant /clinic links to retain this Next segment layout.
@@ -309,21 +417,53 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
      aria-label={t("navigation")}>
      {loading||requested===undefined?<div className="clinic-sidebar-skeleton" role="status"
        aria-label={t("loading")}>{Array.from({length:8},(_,i)=><span key={i}/>)}</div>:
-      items.length?items.map((item,index)=>{
-       const groupStart=index===0||items[index-1]?.group!==item.group;
-       const active=pathActive(pathname,item.path);
-       return <React.Fragment key={item.key}>
-        {groupStart&&<span className="phase04-side-group clinic-sidebar-group">{t(item.group)}</span>}
-        <Link href={hrefFor(item.path)} prefetch={false} data-next-nav
-         onClick={()=>setMobileOpen(false)}
-         className="phase04-side-link clinic-sidebar-link" aria-label={t(item.key)}
-         aria-current={active?"page":undefined} title={collapsed?t(item.key):undefined}>
-         <span className="phase04-side-icon" aria-hidden="true">
-          <CareIcon name={item.icon} size={19}/></span>
-         <span className="clinic-sidebar-label">{t(item.key)}</span>
-        </Link>
-       </React.Fragment>;
-      }):<div className="clinic-sidebar-empty">{t(ctx?.clinics.length?"invalidClinic":"noClinic")}</div>}
+      items.length?<React.Fragment>
+       <div className="clinic-navigation-search">
+        <CareIcon name="search" size={18}/>
+        <input ref={navSearchRef} type="search" value={navSearch}
+         aria-label={t("navigationSearch")} placeholder={t("navigationSearchTip")}
+         autoComplete="off" maxLength={70}
+         onChange={event=>setNavSearch(event.currentTarget.value)}/>
+        {navSearch.length>0&&<button type="button" onClick={()=>{setNavSearch("");navSearchRef.current?.focus()}}
+         aria-label={t("clearNavigationSearch")} title={t("clearNavigationSearch")}>
+         <CareIcon name="close" size={17}/></button>}
+       </div>
+       <button type="button" className="clinic-navigation-search-reveal"
+        aria-label={t("navigationSearch")} title={t("navigationSearchTip")}
+        onClick={revealSearch}><CareIcon name="search" size={19}/></button>
+       {normalizedSearch?<div className="clinic-nav-search-results" role="region"
+        aria-label={t("navigationSearch")}>
+        {searchResults.length?searchResults.map(item=>renderNavItem(item)):
+         <p className="clinic-nav-empty-match" role="status">{t("noNavigationMatch")}</p>}
+       </div>:<React.Fragment>
+        {items.filter(item=>item.key==="overview").map(item=>renderNavItem(item))}
+        {visibleSections.map(section=>{
+         const expanded=expandedSections[section.key]??section.key===activeSection;
+         const containsActive=section.key===activeSection;
+         const iconOnly=collapsed&&!mobileOpen;
+         const showLinks=expanded||iconOnly;
+         const sectionId="clinic-nav-section-"+section.key;
+         return <div key={section.key} className={"clinic-nav-section"+
+          (containsActive?" clinic-nav-section-active":"")}>
+          <button type="button" className="clinic-nav-section-toggle"
+           aria-controls={sectionId} aria-expanded={showLinks}
+           aria-label={t(showLinks?"collapseGroup":"expandGroup")+" — "+t(section.key)}
+           onClick={()=>changeSection(section.key)}>
+           <span className="clinic-nav-section-icon" aria-hidden="true">
+            <CareIcon name={section.icon} size={18}/></span>
+           <span className="clinic-nav-section-title">{t(section.key)}</span>
+           <span className="clinic-nav-section-count" aria-hidden="true">{section.links.length}</span>
+           <span className="clinic-nav-section-chevron" aria-hidden="true">
+            <CareIcon name="chevron" size={16}/></span>
+          </button>
+          <div id={sectionId} className="clinic-nav-section-links" hidden={!showLinks}>
+           {section.links.map(item=>renderNavItem(item,true))}
+          </div>
+         </div>;
+        })}
+       </React.Fragment>}
+      </React.Fragment>:
+      <div className="clinic-sidebar-empty">{t(ctx?.clinics.length?"invalidClinic":"noClinic")}</div>}
     </nav>
     <div className="clinic-sidebar-footer"><LocaleControls/>
      <nav className="clinic-sidebar-extras" aria-label={t("help")}>
@@ -347,10 +487,22 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
       <div className="clinic-header-copy">
        <nav className="clinic-breadcrumb" aria-label={t("breadcrumb")}>
         <Link href={hrefFor("/clinic")} prefetch={false} data-next-nav>{t("clinic")}</Link>
-        <CareIcon name="chevron" size={13}/>
-        <span aria-current="page">{activeTitle}</span>
+        {activeSection&&<React.Fragment>
+         <CareIcon name="chevron" size={13}/>
+         <span className="clinic-breadcrumb-section">{t(activeSection)}</span>
+        </React.Fragment>}
+        {current?.key!=="overview"&&<React.Fragment>
+         <CareIcon name="chevron" size={13}/>
+         {navDetails?<Link href={hrefFor(current?.path||"/clinic")} prefetch={false}
+          data-next-nav>{activeTitle}</Link>:
+          <span aria-current="page">{activeTitle}</span>}
+        </React.Fragment>}
+        {navDetails&&<React.Fragment>
+         <CareIcon name="chevron" size={13}/>
+         <span aria-current="page">{navDetails}</span>
+        </React.Fragment>}
        </nav>
-       <strong>{activeTitle}</strong>
+       <strong>{navDetails||activeTitle}</strong>
       </div>
      </div>
      <div className="clinic-header-actions">
@@ -371,6 +523,16 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
      </div>
     </header>
     {signOutError&&<div role="alert" className="clinic-shell-error">{t("signOutFailed")}</div>}
+    {showPage&&selected&&quickLinks.length>0&&<nav className="clinic-header-quick-links"
+     aria-label={t("navigateQuickly")}>
+     <span className="clinic-quick-label">{t("navigateQuickly")}</span>
+     {quickLinks.map(item=><Link key={item.key} href={hrefFor(item.path)}
+      prefetch={false} data-next-nav
+      aria-current={current?.key===item.key?"page":undefined}
+      onClick={()=>setMobileOpen(false)}>
+      <CareIcon name={item.icon} size={16}/><span>{t(item.key)}</span>
+     </Link>)}
+    </nav>}
     {navigationPending&&<div role="status" className="clinic-route-progress"
      aria-label={t("loading")}/>}
     <div className="clinic-route-content" id="clinic-route-content" tabIndex={-1}
