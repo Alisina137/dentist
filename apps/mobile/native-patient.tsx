@@ -366,8 +366,8 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
   </Block>)}
  </View>;
 }
-export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,onAccount}:{locale:Language;
- clinicId:string;dentistId?:string;booking?:Booking;onDone:()=>void;onAccount:()=>void}){
+export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,onDone,onAccount}:{locale:Language;
+ calendar:Calendar;clinicId:string;dentistId?:string;booking?:Booking;onDone:()=>void;onAccount:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [clinic,setClinic]=useState<Clinic|null>(null),[family,setFamily]=useState<Family|null>(null);
  const [step,setStep]=useState(0),[service,setService]=useState(booking?.serviceId||"");
@@ -375,7 +375,8 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
  const [day,setDay]=useState(isoDay()),[slots,setSlots]=useState<Time[]>([]);
  const [time,setTime]=useState(""),[person,setPerson]=useState("self"),[consent,setConsent]=useState(false);
  const [key,setKey]=useState(uniqueActionKey()),[receipt,setReceipt]=useState<Booking|null>(null);
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [loading,setLoading]=useState(true),[slotsLoading,setSlotsLoading]=useState(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [retry,setRetry]=useState(0);
  const reserved=booking!=null;
  useEffect(()=>{
@@ -389,11 +390,12 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
  },[clinicId,auth.account?.user.id,auth.account?.registered,retry]);
  useEffect(()=>{
   if(!service||!dentist)return;
-  let active=true;setSlots([]);setError("");
+  let active=true;setSlots([]);setError("");setSlotsLoading(true);
   const params=new URLSearchParams({date:day,serviceId:service,dentistId:dentist});
   publicGet<{slots:Time[]}>("/v1/discovery/clinics/"+encodeURIComponent(clinicId)+
    "/availability?"+params.toString()).then(x=>{if(active)setSlots(x.slots)})
-   .catch(e=>{if(active)setError(e instanceof Error?e.message:t.error)});
+   .catch(e=>{if(active)setError(e instanceof Error?e.message:t.error)})
+   .finally(()=>{if(active)setSlotsLoading(false)});
   return()=>{active=false};
  },[clinicId,service,dentist,day,retry]);
  function restartKey(){setTime("");setKey(uniqueActionKey())}
@@ -425,14 +427,14 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
   <Button secondary title={t.retry} onPress={()=>setRetry(x=>x+1)}/></Block>;
  if(receipt)return <Block><Text style={p.title}>{t.done}</Text><Text style={p.success}>{t.success}</Text>
   <Text style={p.label}>{receipt.clinicName||clinic.clinic.name}</Text>
-  <Text>{receipt.serviceName}</Text><Text>{formatDate(receipt.startAt,locale)}</Text>
+  <Text>{receipt.serviceName}</Text><Text>{formatDate(receipt.startAt,locale,calendar)}</Text>
   <Text style={p.badge}>{receipt.status==="requested"?t.pending:t.confirmed}</Text>
   <Text style={p.small}>{t.reference}: {receipt.id}</Text>
   <Button title={t.appointments} onPress={onDone}/></Block>;
  const picked=slots.find(s=>s.startAt===time);
  const allowed=step===0?!!service:step===1?!!dentist:step===2?!!picked:
   step===3?person==="self"||!!family?.members.find(x=>x.id===person&&x.eligibleForFutureBooking):consent;
- return <View style={{gap:12}}>
+ return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{booking?t.reschedule:t.book} · {clinic.clinic.name}</Text>
   <View style={p.stepper}>{steps.map((label,i)=><Pressable key={label} disabled={i>step}
    accessibilityRole="button" onPress={()=>setStep(i)}
@@ -454,20 +456,20 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
      <Text style={p.label}>{item.displayName}</Text>
     </Pressable>)}
    {step===2&&<>
-    <Text style={p.copy}>{t.date}: {day}</Text>
+    <Text style={p.copy}>{t.date}: {formatDay(day,locale,calendar)}</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false}
-     contentContainerStyle={{gap:7,marginVertical:13}}>
+     contentContainerStyle={{gap:7,marginVertical:13,flexDirection:locale==="en"?"row":"row-reverse"}}>
      {Array.from({length:Math.min(21,clinic.profile.bookingRules.horizonDays||21)},(_,i)=>addDays(isoDay(),i))
       .map(d=><Pressable key={d} style={[p.day,day===d&&p.choiceActive]}
-       onPress={()=>{setDay(d);restartKey()}}><Text style={p.label}>{d.slice(5)}</Text></Pressable>)}
+       onPress={()=>{setDay(d);restartKey()}}><Text style={p.label}>{formatDay(d,locale,calendar)}</Text></Pressable>)}
     </ScrollView>
-    {!slots.length?<Text style={p.copy}>{t.noSlots}</Text>:
+    {slotsLoading?<ActivityIndicator color={blue}/>:!slots.length&&!error?<Text style={p.copy}>{t.noSlots}</Text>:!error?
      <View style={p.times}>{slots.map((item,index)=><Pressable key={item.startAt+index}
       accessibilityRole="radio" accessibilityState={{checked:time===item.startAt}}
       onPress={()=>{setTime(item.startAt);setKey(uniqueActionKey())}}
       style={[p.time,time===item.startAt&&p.choiceActive]}>
-      <Text style={p.label}>{formatDate(item.startAt,locale)}</Text>
-     </Pressable>)}</View>}
+      <Text style={p.label}>{formatDate(item.startAt,locale,calendar)}</Text>
+     </Pressable>)}</View>:null}
    </>}
    {step===3&&<>
     <Pressable style={[p.choice,person==="self"&&p.choiceActive]}
