@@ -104,7 +104,7 @@ test("Clinic PH04: page and patient/financial/clinical records are isolated acro
  assert.ok(clinical.includes('if(!path){setSnapshot({path:null,data:null,error:""});return;}'));
  assert.ok(finance.includes('if(!path){setSnapshot({path:null,data:null,error:""});return;}'));
  assert.ok(appointments.includes('const canTreat=(space:Space,a:Appointment)'));
- assert.ok(clinical.includes('aria-current={current==="overview"?"page":undefined}'));
+ assert.ok(clinical.includes('<a aria-label={t("overview")} href={link(space.clinicId,patientId)}>'));
 });
 
 test("Clinic PH04: 320px, large text, RTL and calendar/table navigation remain usable",()=>{
