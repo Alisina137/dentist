@@ -52,7 +52,7 @@ test("Patient B: every appointment row opens its secure, dedicated server-author
   'auth.request<{booking:Booking;timeline:BookingEvent[];timelineTruncated:boolean}>(',
   'snapshot?.user===user&&snapshot.bookingId===bookingId?snapshot:null',
   'if(!user)return',
-  'setSnapshot({user,bookingId,booking:null,error:"",loading:true})',
+  'setSnapshot({user,bookingId,booking:null,timeline:[],timelineTruncated:false,error:"",loading:true})',
   'return()=>{current=false}',
   'booking.status==="requested"',
   'const mayChange=future(booking)',
