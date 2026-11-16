@@ -5,8 +5,8 @@ import { db, schema } from "@dandanlink/db";
 import { sendAccountMail } from "./mail.js";
 import { devEmailVerificationDisabled } from "./email-policy.js";
 
-const clinic = process.env.CLINIC_WEB_URL || "http://localhost:3000";
-const admin = process.env.ADMIN_WEB_URL || "http://localhost:3001";
+const clinic = process.env.CLINIC_WEB_URL || "http://localhost:3001";
+const admin = process.env.ADMIN_WEB_URL || "http://localhost:3000";
 const patient = process.env.PATIENT_WEB_URL || "http://localhost:3002";
 if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) {
   throw new Error("Set BETTER_AUTH_SECRET to a random value at least 32 characters long");
