@@ -103,6 +103,8 @@ export function NativePatientSupport({locale}:{locale:Lang}){
  useEffect(()=>{
   setForm(false);setCategory("");setSubject("");setMessage("");
   setTicketId(null);setDetail(null);setError("");setSuccess("");
+ },[user]);
+ useEffect(()=>{
   let live=true;setSnapshot(null);
   // FAQ remains public. Ticket lists are fetched only after native identity validation.
   const api=(process.env.EXPO_PUBLIC_API_URL||"").replace(/\/+$/,"");
