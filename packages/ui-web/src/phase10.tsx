@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,type ReactNode,type FormEvent} from "react";
 import {InlineAlert,usePreferences} from "./index";
+import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
 import {ExpensePanel,CashFlowInsights} from "./phase11";
 
@@ -247,13 +248,12 @@ const billHref=(clinicId:string,id:string)=>"/clinic/patients/"+id+"/billing?cli
 function Alert({children,kind="info"}:{children:ReactNode;kind?:"info"|"warning"|"error"|"success"}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
-function Busy(){const {t}=useWords();return <div className="card phase10-busy" role="status">
- <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</div>;}
+function Busy(){const {t}=useWords();return <ClinicLoadingState
+ className="card phase10-busy" label={t("loading")} variant="cards"/>;}
 function Failure({code,retry}:{code:string;retry?:()=>void}){
- const {t}=useWords();return <div className="card phase10-error" role="alert">
- <strong>{t("error")}</strong><p>{code}</p>
- {retry&&<button type="button" className="btn btn-secondary" onClick={retry}>{t("retry")} ↻</button>}
- </div>;
+ const {t,error:describe}=useClinicFeedback();
+ return <ClinicFailureState className="card phase10-error" title={t("failed")}
+  message={describe(code)} onRetry={retry} retryLabel={t("retry")}/>;
 }
 function Badge({status}:{status:string}){
  const {t}=useWords();return <span className={"phase10-badge status-"+status}>{t(status)}</span>;
@@ -264,7 +264,7 @@ function Title({title,desc,action}:{title:string;desc?:string;action?:ReactNode}
 function Money({amount,className=""}:{amount:number;className?:string}){
  const {money}=useWords();return <span className={className} dir="ltr">{money(amount)} AFN</span>;
 }
-function TableEmpty({text}:{text?:string}){const {t}=useWords();return <div className="phase10-empty">{text||t("noData")}</div>;}
+function TableEmpty({text}:{text?:string}){const {t}=useWords();return <div className="phase10-empty" role="status">{text||t("noData")}</div>;}
 function Pager({page,next,setPage}:{page:number;next:boolean;setPage:(x:number)=>void}){
  const {t}=useWords();return <div className="phase10-pager">
   <button className="btn btn-secondary" type="button" disabled={page<=1} onClick={()=>setPage(page-1)}>{t("previous")}</button>
