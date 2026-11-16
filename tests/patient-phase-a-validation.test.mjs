@@ -39,7 +39,7 @@ test("Patient A: navigation and favorites suppress every stale account frame",()
   'const [viewIdentity,setViewIdentity]=useState<string|null>(identityKey)',
   'const previousIdentity=useRef<string|null>(identityKey)',
   'if(previousIdentity.current!==identityKey)',
-  'setRoute(null);setAccountSection("profile");setTab("account")',
+  'setRoute(null);setAccountSection("overview");setTab("account")',
   'if(viewIdentity!==identityKey)return <SafeAreaView',
   'const favorites=favoriteSnapshot?.patientId===patientId?favoriteSnapshot.rows:[]',
   'if(!patientId){setFavoriteSnapshot(null);return;}',
