@@ -3,6 +3,9 @@ import React,{useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
+import {CareIcon} from "./care-icons";
+import {clinicValidDay} from "./clinic-scheduling-dates";
+import {clinicCanLinkClinicalEncounter,clinicHandoffStatusKey} from "./clinic-handoff-model";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
@@ -18,6 +21,7 @@ const empty:Note={reason:"",findings:"",assessment:"",historySource:"",historyDa
 type Language="en"|"fa-AF"|"ps-AF";
 const labels:Record<Language,Record<string,string>>={
  en:{
+ page:"Page",previous:"Previous",next:"Next",
  clinical:"Clinical",operational:"Operational progress · aggregate counts only",scheduled:"Scheduled today",arrived:"Checked in",inTreatment:"In treatment",completed:"Completed today",pendingCount:"Pending notes",signedCount:"Signed encounters",worklist:"Clinical worklist",today:"Today",pending:"Pending Notes",cases:"My Cases",
  date:"Date",refresh:"Refresh",visits:"Visits",billing:"Billing",files:"Files",overview:"Overview",
  newVisit:"New visit",newVisitHint:"Open an unscheduled encounter or continue from an in-progress appointment.",
@@ -54,9 +58,27 @@ const labels:Record<Language,Record<string,string>>={
  newIntake:"Check recorded medical alerts before treatment.",chooseFile:"Choose at least one file.",
  attachment:"Attachment",chooseAppointment:"Link to appointment",leaveUnlinked:"Unlinked",
  uploadFailed:"Upload failed; selected files remain available for retry.",protected:"Restricted clinical data",
- assistantHint:"Assistants may prepare their own assigned appointment drafts but cannot sign or amend."
+ assistantHint:"Assistants may prepare their own assigned appointment drafts but cannot sign or amend.",
+ chart:"Dental chart",treatments:"Treatment plans",
+ handoff:"Reception-to-clinician handoff",handoffIntro:"Check in the patient at reception, then document care in the assigned clinical workspace.",
+ handoffReception:"Reception check-in",handoffReview:"Clinician reviews intake",handoffDocument:"Document and sign actual care",
+ handoffWarning:"Check-in does not establish clinical readiness or patient consent. Review medical alerts and permissions before treatment.",
+ handoffQueue:"Reception queue",handoffCalendar:"Appointments calendar",
+ handoffSearch:"Search this worklist",handoffSearchHint:"Patient, clinic ID or service",
+ handoffStatus:"Appointment status",handoffAll:"All active stages",handoffRequested:"Awaiting clinic approval",handoffAwaiting:"Awaiting check-in",
+ handoffChecked:"Checked in",handoffTreatment:"In treatment",handoffCompleted:"Completed",
+ handoffNoMatch:"No matching cases in the latest loaded worklist. Clear the search or switch dates.",
+ handoffOpenPatient:"Patient overview",handoffOpenAppointment:"Appointment details",handoffContinue:"Open clinical record",
+ handoffDateHint:"Choose the date of the appointments to review.",handoffRange:"Up to 100 appointments, 60 draft notes and 60 signed cases are returned by the server; counts are for this loaded window only.",
+ handoffRefresh:"Refresh worklist",handoffClear:"Clear filters",handoffVisit:"Start clinical note",
+ handoffNoVisit:"There is no clinical encounter linked to this appointment. Opening Visits does not automatically create one.",
+ handoffAlready:"Linked clinical encounter",handoffUnknown:"Status not yet refreshed",
+ handoffActive:"Appointments on selected day",handoffLinked:"Clinical record",
+ handoffDesk:"Open reception queue to record arrival. Only authorized reception staff can check a patient in.",
+ handoffNeedsVerification:"Confirm the patient identity, clinical alerts and consent before documenting care.",
  },
  "fa-AF":{
+ page:"صفحه",previous:"قبلی",next:"بعدی",
  clinical:"کلینیکی",operational:"پیشرفت عملیاتی · فقط آمار کلی",scheduled:"وقت‌های امروز",arrived:"پذیرش‌شده",inTreatment:"در حال تداوی",completed:"تکمیل‌شده امروز",pendingCount:"یادداشت‌های ناتمام",signedCount:"معاینات امضاشده",worklist:"فهرست کارهای کلینیکی",today:"امروز",pending:"یادداشت‌های ناتمام",cases:"موارد من",
  date:"تاریخ",billing:"حساب مریض",refresh:"تازه‌سازی",visits:"معاینات",files:"فایل‌ها",overview:"نمای کلی",
  newVisit:"معاینه جدید",newVisitHint:"معاینه بدون نوبت بسازید یا از وقت ملاقات ادامه دهید.",
@@ -93,9 +115,27 @@ const labels:Record<Language,Record<string,string>>={
  newIntake:"پیش از تداوی، هشدارهای صحی ثبت‌شده را بررسی کنید.",chooseFile:"حداقل یک فایل انتخاب کنید.",
  attachment:"ضمیمه",chooseAppointment:"اتصال به وقت ملاقات",leaveUnlinked:"بدون اتصال",
  uploadFailed:"بارگذاری ناکام شد؛ فایل‌های انتخاب‌شده برای تلاش دوباره حفظ می‌شوند.",protected:"داده‌های کلینیکی محرمانه",
- assistantHint:"دستیار می‌تواند پیش‌نویس وظیفه مربوط را بسازد؛ اما امضا یا اصلاحیه انجام نمی‌دهد."
+ assistantHint:"دستیار می‌تواند پیش‌نویس وظیفه مربوط را بسازد؛ اما امضا یا اصلاحیه انجام نمی‌دهد.",
+ chart:"چارت دندان",treatments:"پلان‌های تداوی",
+ handoff:"تحویل کار از پذیرش به داکتر",handoffIntro:"ابتدا حضور مریض در پذیرش ثبت شود؛ سپس در بخش کلینیکی اسناد تداوی نوشته شوند.",
+ handoffReception:"ثبت حضور در پذیرش",handoffReview:"بررسی سابقه طبی توسط داکتر",handoffDocument:"ثبت و امضای خدمات انجام‌شده",
+ handoffWarning:"حضور مریض به معنی آمادگی طبی یا رضایت او نیست. قبل از تداوی هشدارها و اجازه‌ها را بررسی کنید.",
+ handoffQueue:"صف پذیرش",handoffCalendar:"تقویم ملاقات‌ها",
+ handoffSearch:"جستجو در فهرست کار",handoffSearchHint:"نام، شماره مریض یا خدمت",
+ handoffStatus:"حالت ملاقات",handoffAll:"تمام مراحل فعال",handoffRequested:"منتظر تأیید درخواست",handoffAwaiting:"منتظر پذیرش",
+ handoffChecked:"پذیرش‌شده",handoffTreatment:"تحت تداوی",handoffCompleted:"تکمیل‌شده",
+ handoffNoMatch:"در فهرست بارگیری‌شده موردی یافت نشد. فیلتر را پاک یا تاریخ را تغییر دهید.",
+ handoffOpenPatient:"نمای کلی مریض",handoffOpenAppointment:"جزئیات ملاقات",handoffContinue:"بازکردن سند کلینیکی",
+ handoffDateHint:"تاریخ ملاقات‌های مورد نظر را انتخاب کنید.",handoffRange:"سرور حداکثر ۱۰۰ ملاقات، ۶۰ پیش‌نویس و ۶۰ مورد امضاشده را می‌دهد. ارقام فقط برای همین فهرست هستند.",
+ handoffRefresh:"تازه‌سازی فهرست",handoffClear:"پاک‌کردن فیلترها",handoffVisit:"ایجاد یادداشت کلینیکی",
+ handoffNoVisit:"معاینه‌ای به این ملاقات وصل نیست. بازکردن معاینات به‌طور خودکار سند ایجاد نمی‌کند.",
+ handoffAlready:"سند کلینیکی وصل‌شده",handoffUnknown:"هنوز تازه نشده",
+ handoffActive:"ملاقات‌های تاریخ انتخاب‌شده",handoffLinked:"سند کلینیکی",
+ handoffDesk:"برای ثبت حضور صف پذیرش را باز کنید. فقط پذیرش مجاز می‌تواند حضور را ثبت کند.",
+ handoffNeedsVerification:"قبل از ثبت تداوی، هویت مریض، هشدارهای صحی و رضایت را بررسی کنید.",
  },
  "ps-AF":{
+ page:"پاڼه",previous:"مخکې",next:"راتلونکی",
  clinical:"کلینیکي",operational:"د چارو لنډیز · یوازې شمېرې",scheduled:"نن ټاکل شوې",arrived:"رارسېدلي",inTreatment:"تر درملنې لاندې",completed:"نن بشپړ شوي",pendingCount:"پاتې یادښتونه",signedCount:"لاسلیک شوې معاینې",worklist:"د کلینیکي کارونو لړلیک",today:"نن",pending:"نیمګړې یادښتونه",cases:"زما قضیې",
  date:"نېټه",billing:"د ناروغ حساب",refresh:"بیا تازه کول",visits:"معاینې",files:"فایلونه",overview:"لنډیز",
  newVisit:"نوې معاینه",newVisitHint:"له نوبت پرته معاینه پیل کړئ یا ټاکلې لیدنه پرمخ یوسئ.",
@@ -130,7 +170,24 @@ const labels:Record<Language,Record<string,string>>={
  newIntake:"له درملنې وړاندې طبي خبرتیاوې وګورئ.",chooseFile:"لږترلږه یو فایل غوره کړئ.",
  attachment:"ضمیمه",chooseAppointment:"نوبت ونښلوئ",leaveUnlinked:"بې ارتباطه",
  uploadFailed:"پورته کول ناکام شول؛ فایلونه د بیا هڅې لپاره ساتل شوي.",protected:"خوندي کلینیکي معلومات",
- assistantHint:"مرستیال خپله سپارل شوې مسوده جوړوي، خو لاسلیک یا سمون نه شي کولی."
+ assistantHint:"مرستیال خپله سپارل شوې مسوده جوړوي، خو لاسلیک یا سمون نه شي کولی.",
+ chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",
+ handoff:"له استقبال څخه ډاکټر ته سپارل",handoffIntro:"لومړی د ناروغ راتګ په استقبال کې ثبت کړئ؛ بیا رښتینې درملنه په کلینیکي برخه کې ولیکئ.",
+ handoffReception:"په استقبال کې د راتګ ثبت",handoffReview:"د ډاکټر له خوا د طبي تاریخ کتنه",handoffDocument:"د ترسره شوې درملنې ثبت او لاسلیک",
+ handoffWarning:"د راتګ ثبت طبي چمتووالی یا رضا نه ثابتوي؛ تر درملنې وړاندې طبي خبرتیاوې او اجازې وګورئ.",
+ handoffQueue:"د استقبال کتار",handoffCalendar:"د ملاقاتونو مهالوېش",
+ handoffSearch:"د کارلړ پلټنه",handoffSearchHint:"نوم، د ناروغ شمېره یا خدمت",
+ handoffStatus:"د ملاقات حالت",handoffAll:"ټول فعال پړاوونه",handoffRequested:"د کلینیک د تایید په تمه",handoffAwaiting:"د راتګ په تمه",
+ handoffChecked:"رارسېدلی",handoffTreatment:"تر درملنې لاندې",handoffCompleted:"بشپړ",
+ handoffNoMatch:"په پورته شوي کارلړ کې پایله نشته؛ چاڼ پاک یا نېټه بدله کړئ.",
+ handoffOpenPatient:"د ناروغ لنډیز",handoffOpenAppointment:"د ملاقات جزیات",handoffContinue:"کلینیکي ریکارډ پرانیزئ",
+ handoffDateHint:"د لیدنو نېټه وټاکئ.",handoffRange:"سرور تر ۱۰۰ ملاقاتونو، ۶۰ مسودو او ۶۰ لاسلیک شویو ریکارډونو پورې ښيي؛ شمېرې یوازې د پورته شوي لړ دي.",
+ handoffRefresh:"کارلړ تازه کړئ",handoffClear:"چاڼونه پاک کړئ",handoffVisit:"کلینیکي یادښت جوړ کړئ",
+ handoffNoVisit:"دې ملاقات ته کلینیکي ریکارډ نه دی نښلول شوی؛ د معایناتو پاڼه په خپله نوی ریکارډ نه جوړوي.",
+ handoffAlready:"نښلول شوی کلینیکي ریکارډ",handoffUnknown:"لا نه دی تازه شوی",
+ handoffActive:"د ټاکلې ورځې ملاقاتونه",handoffLinked:"کلینیکي ریکارډ",
+ handoffDesk:"د راتګ د ثبت لپاره د استقبال کتار پرانیزئ. یوازې اجازه لرونکی استقبال راتګ ثبتوي.",
+ handoffNeedsVerification:"تر ثبت وړاندې د ناروغ هویت، طبي خبرتیاوې او رضایت وګورئ.",
  }
 };
 function useW(){
@@ -196,11 +253,11 @@ function ErrorBox({error,retry}:{error:string;retry?:()=>void}){
 }
 function Tabs({space,patientId,current}:{space:Space;patientId:string;current:View}){
  const {t}=useW();return <nav className="phase07-tabs" aria-label={t("patient")}>
- <a aria-label={t("overview")} href={link(space.clinicId,patientId)}>{t("overview")}</a>
+ {space.role!=="assistant"&&<a aria-label={t("overview")} href={link(space.clinicId,patientId)}>{t("overview")}</a>}
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
- <a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
+ {space.role!=="assistant"&&<a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>}
  {["owner","manager"].includes(space.role)&&<a href={"/clinic/patients/"+patientId+"/billing?clinic="+encodeURIComponent(space.clinicId)}>{t("billing")}</a>}
  <a aria-current={current==="files"?"page":undefined}
   href={link(space.clinicId,patientId,"files")}>{t("files")}</a>
@@ -238,7 +295,7 @@ export function ClinicalPortal({view}:{view:View}){
      <h1>{t(view==="worklist"?"worklist":view==="visits"?"visits":view==="files"?"patientFiles":"visitDetail")}</h1>
      <p className="muted">{view==="worklist"?t("care"):t("protected")}</p></div>
     <div className="phase07-actions"><a className="btn btn-secondary" href={clinicalLink(space.clinicId)}>{t("worklist")}</a>
-     {view!=="worklist"&&<a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
+     {view!=="worklist"&&space.role!=="assistant"&&<a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
       {t("returnToPatient")}</a>}</div>
    </header>
    {view!=="worklist"&&<Tabs space={space} patientId={patientId} current={view}/>}
@@ -268,50 +325,214 @@ function OperationalSummary({space}:{space:Space}){
   <Banner kind="warning">{t("protected")}. {t("operational")}</Banner>
  </section>;
 }
+type WorklistTab="today"|"pending"|"cases";
+type WorklistStatus="all"|"confirmed"|"arrived"|"in_treatment"|"completed";
+type WorklistAppointment={
+ appointment_id:string;patient_id:string;patient_number:string;
+ preferred_name:string;family_name:string|null;service_name:string;
+ status:string;start_at:string;end_at:string;encounter_id:string|null;
+ encounter_status:string|null;
+};
+type WorklistCase={id:string;patient_id:string;patient_number:string;
+ preferred_name:string;family_name:string|null;reason:string;
+ updated_at?:string;signed_at?:string};
+const WORKLIST_PAGE_SIZE=5;
 function Worklist({space}:{space:Space}){
- const {t,fmt}=useW();const [date,setDate]=useState(day());
- const [tab,setTab]=useState<"today"|"pending"|"cases">("today");
- const base="/clinics/"+space.clinicId;
- const {data,error,refresh}=useLoad(base+"/worklist?date="+date);
- return <div className="phase07-stack">
-  <section className="card phase07-controlbar">
+ const {t,fmt,lang}=useW();
+ const [date,setDate]=useState(day());
+ const [ready,setReady]=useState(false);
+ const [tab,setTab]=useState<WorklistTab>("today");
+ const [status,setStatus]=useState<WorklistStatus>("all");
+ const [search,setSearch]=useState("");
+ const [page,setPage]=useState(1);
+ const base="/clinics/"+encodeURIComponent(space.clinicId);
+ useEffect(()=>{
+  const q=new URLSearchParams(location.search);
+  const queryDate=q.get("date");
+  if(queryDate&&clinicValidDay(queryDate))setDate(queryDate);
+  if(["today","pending","cases"].includes(q.get("tab")||""))
+   setTab(q.get("tab") as WorklistTab);
+  if(["all","confirmed","arrived","in_treatment","completed"].includes(q.get("status")||""))
+   setStatus(q.get("status") as WorklistStatus);
+  setReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const q=new URLSearchParams(location.search);
+  q.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries({date,tab,status})){
+   if((key==="tab"&&value==="today")||(key==="status"&&value==="all"))q.delete(key);
+   else q.set(key,value);
+  }
+  history.replaceState(null,"",location.pathname+"?"+q.toString());
+ },[ready,space.clinicId,date,tab,status]);
+ const {data,error,refresh}=useLoad(ready?base+"/worklist?date="+date:null);
+ const todayRows:WorklistAppointment[]=data?.today||[];
+ const pendingRows:WorklistCase[]=data?.pending||[];
+ const caseRows:WorklistCase[]=data?.cases||[];
+ const searchTerm=search.trim().toLocaleLowerCase();
+ const todayMatches=todayRows.filter(a=>(status==="all"||a.status===status)&&
+  (!searchTerm||(patientName(a)+" "+a.patient_number+" "+a.service_name)
+   .toLocaleLowerCase().includes(searchTerm)));
+ const caseMatches=(tab==="pending"?pendingRows:caseRows).filter(e=>
+  !searchTerm||(patientName(e)+" "+e.patient_number+" "+e.reason)
+   .toLocaleLowerCase().includes(searchTerm));
+ const filtered=tab==="today"?todayMatches:caseMatches;
+ const pageCount=Math.max(1,Math.ceil(filtered.length/WORKLIST_PAGE_SIZE));
+ const safePage=Math.min(page,pageCount);
+ const visible=filtered.slice((safePage-1)*WORKLIST_PAGE_SIZE,safePage*WORKLIST_PAGE_SIZE);
+ const counts=[
+  {key:"confirmed" as const,label:"handoffAwaiting"},
+  {key:"arrived" as const,label:"handoffChecked"},
+  {key:"in_treatment" as const,label:"handoffTreatment"},
+  {key:"completed" as const,label:"handoffCompleted"}
+ ];
+ function navigateDay(value:string){if(!clinicValidDay(value))return;
+  setDate(value);setPage(1);}
+ function setActiveTab(value:WorklistTab){setTab(value);setPage(1);}
+ function changeStatus(value:WorklistStatus){setStatus(value);setPage(1);}
+ return <div className="phase07-stack clinic-phase09-worklist">
+  <section className="clinic-phase09-handoff card" aria-label={t("handoff")}>
+   <div className="clinic-phase09-handoff-header">
+    <div><span className="clinic-phase09-kicker">
+     <CareIcon name="activity" size={17}/>{t("handoff")}</span>
+     <h2>{t("handoffIntro")}</h2></div>
+    <nav className="clinic-phase09-handoff-links" aria-label={t("handoffQueue")}>
+     <a href={"/clinic/appointments/queue?clinic="+encodeURIComponent(space.clinicId)+
+      "&date="+date} className="btn btn-secondary">
+      <CareIcon name="clock" size={17}/>{t("handoffQueue")}</a>
+     <a href={"/clinic/appointments?clinic="+encodeURIComponent(space.clinicId)+
+      "&date="+date+"&view=day"} className="btn btn-secondary">
+      <CareIcon name="calendar" size={17}/>{t("handoffCalendar")}</a>
+    </nav>
+   </div>
+   <ol className="clinic-phase09-handoff-steps">
+    {([
+     ["handoffReception","account"],["handoffReview","shield-check"],["handoffDocument","clipboard"]
+    ] as const).map(([label,icon],index)=><li key={label}>
+     <span className="clinic-phase09-step-icon">
+      <CareIcon name={icon} size={19}/></span>
+     <div><small dir="auto">{index+1}</small><strong>{t(label)}</strong></div>
+    </li>)}
+   </ol>
+   <p className="clinic-phase09-clinical-warning">
+    <CareIcon name="about" size={17}/>{t("handoffWarning")}</p>
+  </section>
+  <section className="card phase07-controlbar clinic-phase09-controlbar">
    <div className="phase07-tabs" role="tablist" aria-label={t("worklist")}>
     {(["today","pending","cases"] as const).map(key=><button type="button" role="tab" key={key}
-     aria-selected={tab===key} onClick={()=>setTab(key)}>{t(key)}
-     {data&&<span className="phase07-count">{(key==="today"?data.today:key==="pending"?data.pending:data.cases).length}</span>}</button>)}
+     aria-selected={tab===key} onClick={()=>setActiveTab(key)}>{t(key)}
+     {data&&<span className="phase07-count">
+      {(key==="today"?todayRows:key==="pending"?pendingRows:caseRows).length}
+     </span>}</button>)}
    </div>
-   <label className="phase07-date"><span>{t("date")}</span>
-    <input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
-   <button type="button" className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
+   <div className="clinic-phase09-date-controls">
+    <button type="button" className="btn btn-secondary" onClick={()=>navigateDay(day())}>{t("today")}</button>
+    <label className="phase07-date"><span>{t("date")}</span>
+     <input type="date" value={date} onChange={e=>navigateDay(e.target.value)}/></label>
+    <button type="button" className="btn btn-secondary" onClick={refresh}>
+     <CareIcon name="activity" size={17}/>{t("handoffRefresh")}</button>
+   </div>
   </section>
+  <section className="clinic-phase09-search-row card" aria-label={t("handoffSearch")}>
+   <label className="clinic-phase09-search">
+    <span>{t("handoffSearch")}</span>
+    <span><CareIcon name="search" size={17}/>
+     <input type="search" value={search} maxLength={100} autoComplete="off"
+      placeholder={t("handoffSearchHint")}
+      onChange={event=>{setSearch(event.target.value);setPage(1);}}/></span>
+   </label>
+   {tab==="today"&&<label className="clinic-phase09-status-filter">
+    <span>{t("handoffStatus")}</span>
+    <select value={status} onChange={event=>changeStatus(event.target.value as WorklistStatus)}>
+     <option value="all">{t("handoffAll")}</option>
+     {counts.map(({key,label})=><option key={key} value={key}>{t(label)}</option>)}
+    </select>
+   </label>}
+   {(search||status!=="all")&&<button type="button" className="btn btn-secondary"
+    onClick={()=>{setSearch("");changeStatus("all");}}>{t("handoffClear")}</button>}
+  </section>
+  {data&&<section className="clinic-phase09-status-cards" aria-label={t("handoffActive")}>
+   {counts.map(({key,label})=><button type="button" key={key}
+    className={"clinic-phase09-stage-card stage-"+key+(tab==="today"&&status===key?" is-selected":"")}
+    aria-pressed={tab==="today"&&status===key}
+    onClick={()=>{setActiveTab("today");changeStatus(key);}}>
+    <span>{t(label)}</span>
+    <strong>{todayRows.filter(a=>a.status===key).length}</strong></button>)}
+  </section>}
+  {data&&<p className="clinic-phase09-limits" role="status">
+   <CareIcon name="about" size={16}/>{t("handoffRange")}</p>}
   {error?<ErrorBox error={error} retry={refresh}/>:!data?<Loading/>:
-   tab==="today"?<section className="card phase07-panel">
-    <div className="phase07-section"><h2>{t("today")}</h2><span className="phase07-subdued">{fmt(date+"T12:00:00Z")}</span></div>
-    {!data.today.length?<p className="phase07-empty">{t("noToday")}</p>:
-     <div className="phase07-rows">{data.today.map((a:any)=><article className="phase07-visit-row" key={a.appointment_id}>
-      <div className="phase07-time">{fmt(a.start_at,{year:undefined,month:undefined,day:undefined,
-       hour:"2-digit",minute:"2-digit"})}</div>
-      <div className="phase07-row-main"><h3>{patientName(a)}</h3><div className="phase07-meta">
-       <bdi dir="ltr">{a.patient_number}</bdi> · {a.service_name} · <span className="phase07-state">{a.status}</span>
-       </div></div>
-      {a.status==="confirmed"?<span className="phase07-await" aria-label={t("awaitArrival")}>
-       {t("awaitArrival")}</span>:
-       <a className="btn btn-primary" href={a.encounter_id?
-        link(space.clinicId,a.patient_id,"visits",a.encounter_id):
-        link(space.clinicId,a.patient_id,"visits")+"&appointmentId="+encodeURIComponent(a.appointment_id)}>
-        {t("start")} →</a>}</article>)}</div>}
-   </section>:
-   <section className="card phase07-panel">
-    <div className="phase07-section"><h2>{t(tab)}</h2></div>
-    {!(tab==="pending"?data.pending:data.cases).length?
-     <p className="phase07-empty">{t(tab==="pending"?"noPending":"noCases")}</p>:
-     <div className="phase07-rows">{(tab==="pending"?data.pending:data.cases).map((e:any)=>
-      <article className="phase07-visit-row" key={e.id}>
-       <div className="phase07-time">✚</div>
+   <section className="card phase07-panel clinic-phase09-results" aria-label={t(tab)}>
+    <div className="phase07-section">
+     <h2>{tab==="today"?t("handoffActive"):t(tab)}</h2>
+     <span className="phase07-subdued" role="status" aria-live="polite">
+      {tab==="today"?fmt(date+"T12:00:00Z")+" · ":""}
+      {filtered.length} {t("handoffLinked")}</span>
+    </div>
+    {!visible.length?<div className="clinic-phase09-empty" role="status">
+     <CareIcon name="search" size={23}/>
+     <p>{search||status!=="all"?t("handoffNoMatch"):
+      t(tab==="today"?"noToday":tab==="pending"?"noPending":"noCases")}</p>
+     {(search||status!=="all")&&<button type="button" className="btn btn-secondary"
+      onClick={()=>{setSearch("");changeStatus("all");}}>{t("handoffClear")}</button>}
+    </div>:
+     tab==="today"?<div className="phase07-rows clinic-phase09-rows">
+      {(visible as WorklistAppointment[]).map(a=><article className="phase07-visit-row clinic-phase09-visit-row"
+       key={a.appointment_id}>
+       <div className="phase07-time"><time dateTime={a.start_at}>
+        <bdi dir="ltr">{fmt(a.start_at,{year:undefined,month:undefined,day:undefined,
+         hour:"2-digit",minute:"2-digit",hourCycle:"h23"})}</bdi></time></div>
+       <div className="phase07-row-main">
+        <h3>{patientName(a)}</h3>
+        <div className="phase07-meta">
+         <bdi dir="ltr">{a.patient_number}</bdi> · {a.service_name}
+        </div>
+        <span className={"clinic-phase09-visit-status stage-"+a.status}>
+         {t(clinicHandoffStatusKey(a.status))}</span>
+        {a.encounter_id&&<small className="clinic-phase09-encounter-mark">
+         <CareIcon name="check" size={14}/>{t("handoffAlready")}</small>}
+       </div>
+       <div className="clinic-phase09-row-actions">
+        {!clinicCanLinkClinicalEncounter(a.status)?<span className="phase07-await"
+         aria-label={t(a.status==="requested"?"handoffRequested":"awaitArrival")}>
+         {t(a.status==="requested"?"handoffRequested":"awaitArrival")}</span>:
+         <a className="btn btn-primary" href={a.encounter_id?
+          link(space.clinicId,a.patient_id,"visits",a.encounter_id):
+          link(space.clinicId,a.patient_id,"visits")+
+           "&appointmentId="+encodeURIComponent(a.appointment_id)}>
+          <CareIcon name="clipboard" size={16}/>
+          {t(a.encounter_id?"handoffContinue":"handoffVisit")}</a>}
+        <a href={"/clinic/appointments/"+encodeURIComponent(a.appointment_id)+
+         "?clinic="+encodeURIComponent(space.clinicId)}
+         className="clinic-phase09-textlink">{t("handoffOpenAppointment")}</a>
+        {space.role!=="assistant"&&<a href={link(space.clinicId,a.patient_id)}
+         className="clinic-phase09-textlink">{t("handoffOpenPatient")}</a>}
+       </div>
+      </article>)}
+     </div>:
+     <div className="phase07-rows clinic-phase09-rows">
+      {(visible as WorklistCase[]).map(e=><article className="phase07-visit-row clinic-phase09-visit-row" key={e.id}>
+       <span className="phase07-time" aria-hidden="true">✚</span>
        <div className="phase07-row-main"><h3>{patientName(e)}</h3>
-        <p className="phase07-meta">{e.reason} · {fmt(e.updated_at||e.signed_at)}</p></div>
-       <a className="btn btn-secondary" href={link(space.clinicId,e.patient_id,"visits",e.id)}>
-        {t("open")} →</a></article>)}</div>}
+        <p className="phase07-meta"><bdi dir="ltr">{e.patient_number}</bdi> ·
+         {e.reason} · {fmt(e.updated_at||e.signed_at)}</p></div>
+       <div className="clinic-phase09-row-actions">
+        <a className="btn btn-secondary" href={link(space.clinicId,e.patient_id,"visits",e.id)}>
+         {t("handoffContinue")} →</a>
+        {space.role!=="assistant"&&<a className="clinic-phase09-textlink" href={link(space.clinicId,e.patient_id)}>
+         {t("handoffOpenPatient")}</a>}
+       </div>
+      </article>)}
+     </div>}
+    {filtered.length>WORKLIST_PAGE_SIZE&&<nav className="clinic-phase09-pagination" aria-label={t("page")}>
+     <span aria-live="polite">{safePage}/{pageCount} · {filtered.length}</span>
+     <div><button type="button" className="btn btn-secondary"
+      disabled={safePage<=1} onClick={()=>setPage(v=>Math.max(1,v-1))}>{t("previous")}</button>
+      <button type="button" className="btn btn-secondary"
+       disabled={safePage>=pageCount} onClick={()=>setPage(v=>Math.min(pageCount,v+1))}>{t("next")}</button>
+     </div>
+    </nav>}
    </section>}
   {space.role==="assistant"&&<Banner>{t("assistantHint")}</Banner>}
  </div>;
@@ -346,10 +567,17 @@ function Visits({space,patientId}:{space:Space;patientId:string}){
   <aside className="card phase07-panel phase07-sidebar">
    <h2>{t("newVisit")}</h2><p className="muted">{t("newVisitHint")}</p>
    {canStart?<form className="phase07-form" onSubmit={create}>
-    {appointmentId&&<Banner>{t("chooseAppointment")}: <bdi dir="ltr">{appointmentId.slice(0,8)}</bdi></Banner>}
+    {appointmentId&&<div className="clinic-phase09-visit-origin">
+     <Banner>{t("chooseAppointment")}: <bdi dir="ltr">{appointmentId.slice(0,8)}</bdi></Banner>
+     <a className="clinic-phase09-textlink"
+      href={"/clinic/appointments/"+encodeURIComponent(appointmentId)+
+       "?clinic="+encodeURIComponent(space.clinicId)}>
+      <CareIcon name="calendar" size={16}/>{t("handoffOpenAppointment")}</a>
+     <p>{t("handoffNeedsVerification")}</p>
+    </div>}
     <label className="field"><span>{t("complaint")} *</span><textarea value={reason} required maxLength={2000}
      rows={4} onChange={e=>setReason(e.target.value)}/></label>
-    <button className="btn btn-primary" disabled={busy||!reason.trim()}>
+    <button className="btn btn-primary" disabled={busy||reason.trim().length<2}>
      {busy?t("busy"):t("newVisit")}</button>
     {failure&&<ErrorBox error={failure}/>}
    </form>:<Banner kind="warning">{t("assistantHint")}</Banner>}
@@ -416,6 +644,14 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       {data.patient.patientNumber}</bdi></span><h2>{patientName(data.patient)}</h2>
       <p className="muted">{fmt(e.createdAt)} · {t("revision")} {e.revision}</p></div>
      <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
+    <div className="clinic-phase09-visit-navigation">
+     {space.role!=="assistant"&&<a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
+      <CareIcon name="account" size={16}/>{t("returnToPatient")}</a>}
+     {e.appointmentId&&<a className="btn btn-secondary" href={
+      "/clinic/appointments/"+encodeURIComponent(e.appointmentId)+
+       "?clinic="+encodeURIComponent(space.clinicId)}>
+      <CareIcon name="calendar" size={16}/>{t("handoffOpenAppointment")}</a>}
+    </div>
     <Banner kind={e.status==="signed"?"success":"warning"}>
      {t(e.status==="signed"?"signedHint":"draftHint")}</Banner>
    </section>
@@ -473,6 +709,14 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
     <p className="muted">{t("storage")}</p>
     <a className="btn btn-secondary" href={link(space.clinicId,patientId,"files")+
      "&encounterId="+encodeURIComponent(encounterId)}>{t("patientFiles")} →</a>
+    {space.role!=="assistant"&&<div className="clinic-phase09-treatment-link">
+     <hr className="phase07-divider"/>
+     <h2>{t("treatments")}</h2>
+     <a className="btn btn-secondary" href={
+      "/clinic/patients/"+encodeURIComponent(patientId)+"/treatments?clinic="+
+       encodeURIComponent(space.clinicId)}>
+      <CareIcon name="clipboard" size={16}/>{t("treatments")} →</a>
+    </div>}
    </section>
   </aside>
  </div>;

@@ -4,6 +4,7 @@ import { InlineAlert, usePreferences } from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import { Shell } from "./phase03";
 import {CareIcon} from "./care-icons";
+import {clinicPickHandoffAppointment,clinicCanLinkClinicalEncounter,clinicHandoffKabulDay} from "./clinic-handoff-model";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
@@ -19,6 +20,22 @@ type Patient={id:string;clinicId?:string;patientNumber:string;preferredName:stri
 const text:Record<string,Record<string,string>>={
  en:{visits:"Visits",files:"Files",chart:"Dental Chart",treatments:"Treatments",billing:"Billing",
 
+  careHandoff:"Care coordination",careHandoffSub:"Real appointment status and next authorized actions for this clinic record.",
+  careAppointment:"Appointment",careNoVisits:"No appointment history is recorded for this patient.",
+  careReception:"Reception",careChecked:"Checked in",careClinical:"Clinical documentation",
+  careStatusUnknown:"Not documented",careDetails:"View appointment",
+  careQueue:"Reception queue",careVisit:"Open clinical visits",careChart:"Dental chart",
+  careNeedsArrival:"Reception must record arrival before a linked clinical encounter can begin.",
+  careArrived:"Arrival is recorded. Clinical staff must verify identity, intake and consent before treatment.",
+  careInProgress:"Care is recorded as in progress. Documentation and signing are separate clinical steps.",
+  careCompleted:"Appointment marked completed. This does not imply that an encounter note is signed.",
+  careRequested:"Online booking request is pending clinic review. The time is not yet confirmed.",
+  careConfirmed:"Appointment confirmed. Arrival must be recorded at reception.",
+  careInactive:"This patient's record is inactive or archived; new appointment booking is restricted.",
+  careOnlyRecorded:"Clinical data and consent are available only to authorized clinical staff.",
+  careVisitDate:"Appointment date",careService:"Service",careProvider:"Clinician",
+  careWorkflow:"Workflow",careSearch:"See all appointments below",
+  requested:"Requested",rejected:"Rejected",
   historyLimit:"Showing up to 150 recent visits.",
   visitFilter:"Filter visits",allVisits:"All visits",plannedVisits:"Scheduled",finishedVisits:"Completed",cancelledVisits:"Cancelled / no-show",visitsPage:"Page",
   appointmentHistory:"Appointment history",newAppointment:"New appointment",noBookedVisits:"No appointments for this clinic patient yet.",confirmed:"Scheduled",arrived:"Arrived",in_treatment:"In treatment",completed:"Completed",cancelled:"Cancelled",no_show:"No-show",patients:"Patients",directory:"Directory",import:"Import",newPatient:"Add patient",identity:"Identification",
@@ -98,6 +115,22 @@ const text:Record<string,Record<string,string>>={
  },
  "fa-AF":{visits:"معاینات",files:"فایل‌ها",chart:"چارت دندان",treatments:"پلان‌های تداوی",billing:"حساب مریض",
 
+  careHandoff:"هماهنگی مراقبت",careHandoffSub:"حالت واقعی ملاقات و اقدامات مجاز بعدی برای این پرونده.",
+  careAppointment:"ملاقات",careNoVisits:"برای این مریض هنوز وقت ثبت نشده است.",
+  careReception:"پذیرش",careChecked:"حضور ثبت‌شده",careClinical:"اسناد کلینیکی",
+  careStatusUnknown:"ثبت نشده",careDetails:"جزئیات ملاقات",
+  careQueue:"صف پذیرش",careVisit:"بازکردن معاینات",careChart:"چارت دندان",
+  careNeedsArrival:"قبل از شروع معاینه مرتبط، پذیرش باید حضور مریض را ثبت کند.",
+  careArrived:"حضور ثبت شده است؛ قبل از تداوی هویت، سابقه صحی و رضایت باید بررسی شود.",
+  careInProgress:"تداوی در حال اجرا ثبت شده است؛ نوشتن و امضای سند کلینیکی مراحل جداگانه اند.",
+  careCompleted:"ملاقات تکمیل‌شده ثبت شده؛ این به معنی امضای یادداشت معاینه نیست.",
+  careRequested:"درخواست رزرو آنلاین منتظر بررسی کلینیک است؛ وقت هنوز تأیید نیست.",
+  careConfirmed:"وقت تأیید شده؛ حضور مریض باید در پذیرش ثبت شود.",
+  careInactive:"پرونده این مریض غیرفعال یا بایگانی است؛ وقت جدید محدود شده است.",
+  careOnlyRecorded:"معلومات صحی و رضایت فقط برای کارمندان کلینیکی مجاز است.",
+  careVisitDate:"تاریخ ملاقات",careService:"خدمت",careProvider:"داکتر",
+  careWorkflow:"جریان کار",careSearch:"همه ملاقات‌ها را در پایین ببینید",
+  requested:"درخواست‌شده",rejected:"ردشده",
   historyLimit:"حداکثر ۱۵۰ ملاقات اخیر نمایش داده می‌شود.",
   visitFilter:"فیلتر ملاقات‌ها",allVisits:"همه ملاقات‌ها",plannedVisits:"برنامه‌ریزی‌شده",finishedVisits:"تکمیل‌شده",cancelledVisits:"لغوشده / غیرحاضر",visitsPage:"صفحه",
   appointmentHistory:"تاریخچه ملاقات‌ها",newAppointment:"ثبت وقت جدید",noBookedVisits:"برای این مریض هنوز ملاقات ثبت نشده است.",confirmed:"وقت تعیین‌شده",arrived:"حاضر",in_treatment:"در تداوی",completed:"تکمیل",cancelled:"لغو",no_show:"غیرحاضر",patients:"مریضان",directory:"فهرست",import:"وارد کردن",newPatient:"افزودن مریض",
@@ -178,6 +211,22 @@ const text:Record<string,Record<string,string>>={
  },
  "ps-AF":{visits:"معاینې",files:"فایلونه",chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",
 
+  careHandoff:"د درملنې همغږي",careHandoffSub:"د دې ریکارډ د ملاقات رښتینی حالت او راتلونکې مجاز کړنې.",
+  careAppointment:"ملاقات",careNoVisits:"دې ناروغ ته لا کوم ملاقات نه دی ثبت شوی.",
+  careReception:"استقبال",careChecked:"رارسېدلی",careClinical:"کلینیکي اسناد",
+  careStatusUnknown:"نه دی ثبت شوی",careDetails:"د ملاقات جزیات",
+  careQueue:"د استقبال کتار",careVisit:"کلینیکي معاینې پرانیزئ",careChart:"د غاښونو چارټ",
+  careNeedsArrival:"د نښلول شوې معاینې تر پیل وړاندې باید استقبال د ناروغ راتګ ثبت کړي.",
+  careArrived:"راتګ ثبت شوی؛ تر درملنې وړاندې هویت، طبي معلومات او رضایت وګورئ.",
+  careInProgress:"درملنه روانه ثبت شوې؛ کلینیکي لیکنه او لاسلیک جلا ګامونه دي.",
+  careCompleted:"ملاقات بشپړ ثبت شوی؛ دا د کلینیکي یادښت د لاسلیک معنا نه لري.",
+  careRequested:"د آنلاین وخت غوښتنه لا د کلینیک کتنې ته منتظره ده؛ وخت نه دی تایید.",
+  careConfirmed:"ملاقات تایید شوی؛ استقبال باید د ناروغ راتګ ثبت کړي.",
+  careInactive:"د دې ناروغ ریکارډ غیر فعال یا آرشیف شوی؛ نوی ملاقات محدود دی.",
+  careOnlyRecorded:"طبي معلومات او رضایت یوازې مجاز کلینیکي کارکوونکي لیدلی شي.",
+  careVisitDate:"د ملاقات نېټه",careService:"خدمت",careProvider:"ډاکټر",
+  careWorkflow:"د کار بهیر",careSearch:"ټول ملاقاتونه لاندې وګورئ",
+  requested:"غوښتنه شوې",rejected:"رد شوی",
   historyLimit:"تر ۱۵۰ وروستۍ لیدنې ښودل کېږي.",
   visitFilter:"د لیدنو چاڼ",allVisits:"ټولې لیدنې",plannedVisits:"ټاکل شوې",finishedVisits:"بشپړې شوې",cancelledVisits:"لغوه / نه حاضر",visitsPage:"مخ",
   appointmentHistory:"د لیدنو تاریخچه",newAppointment:"نوی وخت ثبت کړئ",noBookedVisits:"د دې ناروغ لپاره تر اوسه لیدنه نشته.",confirmed:"ټاکل شوی",arrived:"راغلی",in_treatment:"درملنه",completed:"بشپړ",cancelled:"لغوه",no_show:"نه راغلی",patients:"ناروغان",directory:"نوملړ",import:"واردول",newPatient:"ناروغ ثبت کړئ",
@@ -765,13 +814,14 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
      <Notice kind="warning">{t("importedStatus")}</Notice>}
   </section>
   <section className="card panel">
-   <div className="phase05-tabs"><span className="phase05-tab current">{t("overview")}</span>
+   <nav className="phase05-tabs clinic-phase09-patient-nav" aria-label={t("patientHeader")}><span className="phase05-tab current" aria-current="page">{t("overview")}</span>
+    <a className="phase05-tab" href="#clinic-phase09-patient-history">{t("careHandoff")}</a>
     {data.clinicalAvailable&&<><a className="phase05-tab" href={"/clinic/patients/"+p.id+"/visits?clinic="+encodeURIComponent(space.clinicId)}>{t("visits")}</a>
      <a className="phase05-tab" href={"/clinic/patients/"+p.id+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
      <a className="phase05-tab" href={"/clinic/patients/"+p.id+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
      <a className="phase05-tab" href={"/clinic/patients/"+p.id+"/files?clinic="+encodeURIComponent(space.clinicId)}>{t("files")}</a></>}
     {["owner","manager","cashier","receptionist"].includes(space.role)&&
-     <a className="phase05-tab" href={"/clinic/patients/"+p.id+"/billing?clinic="+encodeURIComponent(space.clinicId)}>{t("billing")}</a>}</div>
+     <a className="phase05-tab" href={"/clinic/patients/"+p.id+"/billing?clinic="+encodeURIComponent(space.clinicId)}>{t("billing")}</a>}</nav>
    <h2>{t("identity")}</h2>
    <div className="phase05-detail-grid">
     {([
@@ -853,6 +903,73 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
   </div>}
  </div>;
 }
+type HandoffAppointment={id:string;startAt:string;endAt?:string;status:string;
+ serviceName:string;providerName:string};
+
+/** Coordination reads only authorized, clinic-scoped appointment rows already
+ * returned by the existing patient booking history API. It does not infer
+ * clinical consent, signed encounter notes or medical readiness. */
+function PatientCareHandoff({space,patientId,appointments}:{space:Space;
+ patientId:string;appointments:HandoffAppointment[]}){
+ const {t,date}=useWords();
+ const clinical=space.role==="dentist"||
+  (["owner","manager"].includes(space.role)&&space.clinicianEnabled);
+ const receptionist=["owner","manager","receptionist"].includes(space.role);
+ const selected=clinicPickHandoffAppointment(appointments);
+ const info=selected?.status==="requested"?"careRequested":
+  selected?.status==="confirmed"?"careConfirmed":
+  selected?.status==="arrived"?"careArrived":
+  selected?.status==="in_treatment"?"careInProgress":
+  selected?.status==="completed"?"careCompleted":null;
+ const canOpenVisit=clinical&&selected&&clinicCanLinkClinicalEncounter(selected.status);
+ return <section className="clinic-phase09-patient-coordination"
+  aria-label={t("careHandoff")}>
+  <div className="clinic-phase09-patient-coordination-head">
+   <div><span className="clinic-phase09-kicker">
+    <CareIcon name="activity" size={18}/>{t("careWorkflow")}</span>
+    <h3>{t("careHandoff")}</h3><p>{t("careHandoffSub")}</p></div>
+   <span className="clinic-phase09-care-security">
+    <CareIcon name="shield" size={16}/>{t("staffOnly")}</span>
+  </div>
+  {selected?<div className="clinic-phase09-patient-current">
+   <div className="clinic-phase09-patient-current-top">
+    <div><span>{t("careAppointment")}</span>
+     <strong>{selected.serviceName}</strong>
+     <small>{t("careVisitDate")}: {date(selected.startAt)}</small></div>
+    <Chip value={selected.status}/>
+   </div>
+   <dl className="clinic-phase09-patient-context">
+    <div><dt>{t("careProvider")}</dt><dd>{selected.providerName}</dd></div>
+    <div><dt>{t("status")}</dt><dd>{t(selected.status)}</dd></div>
+   </dl>
+   {info&&<p className="clinic-phase09-patient-guidance" role="note">
+    <CareIcon name="about" size={17}/>{t(info)}</p>}
+   <div className="clinic-phase09-patient-actions">
+    <a className="btn btn-secondary" href={"/clinic/appointments/"+
+     encodeURIComponent(selected.id)+"?clinic="+encodeURIComponent(space.clinicId)}>
+     <CareIcon name="calendar" size={16}/>{t("careDetails")}</a>
+    {receptionist&&["confirmed","arrived","in_treatment"].includes(selected.status)&&
+     <a className="btn btn-secondary" href={"/clinic/appointments/queue?clinic="+
+      encodeURIComponent(space.clinicId)+"&date="+encodeURIComponent(clinicHandoffKabulDay(selected.startAt))}>
+      <CareIcon name="clock" size={16}/>{t("careQueue")}</a>}
+    {canOpenVisit&&<a className="btn btn-primary"
+     href={"/clinic/patients/"+encodeURIComponent(patientId)+"/visits?clinic="+
+      encodeURIComponent(space.clinicId)+"&appointmentId="+encodeURIComponent(selected.id)}>
+      <CareIcon name="clipboard" size={16}/>{t("careVisit")}</a>}
+    {clinical&&<a className="btn btn-secondary"
+     href={"/clinic/patients/"+encodeURIComponent(patientId)+"/chart?clinic="+
+      encodeURIComponent(space.clinicId)}>
+      <CareIcon name="dental" size={16}/>{t("careChart")}</a>}
+   </div>
+  </div>:<p className="clinic-phase09-patient-no-appointment">{t("careNoVisits")}</p>}
+  {selected?.status==="confirmed"&&clinical&&<p className="clinic-phase09-clinical-note">
+   <CareIcon name="about" size={17}/>{t("careNeedsArrival")}</p>}
+  {selected&&<p className="clinic-phase09-clinical-note">
+   <CareIcon name="shield" size={17}/>{t("careOnlyRecorded")}</p>}
+  <a className="clinic-phase09-patient-history-anchor" href="#clinic-phase09-patient-history-list">
+   {t("careSearch")} ↓</a>
+ </section>;
+}
 type VisitFilter="all"|"planned"|"finished"|"cancelled";
 function PatientBookings({space,patientId}:{space:Space;patientId:string}){
  const {t,date}=useWords();
@@ -898,8 +1015,9 @@ function PatientBookings({space,patientId}:{space:Space;patientId:string}){
   {key:"all",label:t("allVisits")},{key:"planned",label:t("plannedVisits")},
   {key:"finished",label:t("finishedVisits")},{key:"cancelled",label:t("cancelledVisits")}
  ];
- return <div className="phase06-patient-history">
-  <div className="phase06-patient-history-controls">
+ return <div className="phase06-patient-history" id="clinic-phase09-patient-history">
+  <PatientCareHandoff space={space} patientId={patientId} appointments={all}/>
+  <div className="phase06-patient-history-controls" id="clinic-phase09-patient-history-list">
    <div className="phase06-patient-history-tabs" role="group" aria-label={t("visitFilter")}>
     {filters.map(item=><button type="button" key={item.key}
      className={"phase06-history-tab"+(filter===item.key?" is-active":"")}
