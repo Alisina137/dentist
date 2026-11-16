@@ -297,16 +297,22 @@ const OpsApi=async(path:string,method="GET",body?:unknown):Promise<any>=>{
  return data;
 };
 function useResource(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Never expose a previous clinic's operations data during first render
+ // after route/tenant/filters change, including before the effect runs.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [tick,setTick]=useState(0);
- const reload=()=>{setTick(n=>n+1);setError("");setData(null);};
+ const reload=()=>setTick(n=>n+1);
  useEffect(()=>{
-  if(!path)return;
-  let valid=true;setData(null);setError("");
-  OpsApi(path).then(d=>{if(valid)setData(d);}).catch(e=>{if(valid)setError(e.message);});
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let valid=true;setSnapshot({path,data:null,error:""});
+  OpsApi(path).then(d=>{if(valid)setSnapshot({path,data:d,error:""});})
+   .catch(e=>{if(valid)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{valid=false;};
  },[path,tick]);
- return {data,error,reload};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",reload};
 }
 const cPath=(cid:string)=>"/clinics/"+encodeURIComponent(cid);
 const href=(cid:string,view:Page,tab?:string)=>"/clinic/"+
