@@ -35,7 +35,8 @@ const translations:Record<string,Record<string,string>>={
   owner:"Owner",manager:"Manager",dentist:"Dentist",
   receptionist:"Receptionist",assistant:"Assistant",cashier:"Cashier",
   approved:"Approved",pending:"Pending review",suspended:"Suspended",
-  skip:"Skip to workspace content"
+  skip:"Skip to workspace content",help:"Help",privacy:"Privacy",terms:"Terms",
+  signOutFailed:"Sign out failed. Please retry; your session is still active."
  },
  "fa-AF":{
   clinic:"محیط مدیریت کلینیک",overview:"نمای کلی",appointments:"ملاقات‌ها",queue:"صف امروز",
@@ -55,7 +56,8 @@ const translations:Record<string,Record<string,string>>={
   owner:"مالک",manager:"مدیر",dentist:"داکتر دندان",
   receptionist:"پذیرش",assistant:"دستیار",cashier:"صندوق‌دار",
   approved:"تأییدشده",pending:"در حال بررسی",suspended:"تعلیق‌شده",
-  skip:"رفتن به محتوای کلینیک"
+  skip:"رفتن به محتوای کلینیک",help:"راهنما",privacy:"حریم خصوصی",terms:"شرایط خدمات",
+  signOutFailed:"خروج انجام نشد. دوباره کوشش کنید؛ نشست شما هنوز فعال است."
  },
  "ps-AF":{
   clinic:"د کلینیک کاري چاپېریال",overview:"لنډیز",appointments:"ملاقاتونه",queue:"د نن کتار",
@@ -75,7 +77,8 @@ const translations:Record<string,Record<string,string>>={
   role:"ستاسې دنده",owner:"مالک",manager:"مدیر",dentist:"د غاښونو ډاکټر",
   receptionist:"پذیرش",assistant:"مرستیال",cashier:"حسابدار",
   approved:"تایید شوی",pending:"تر څېړنې لاندې",suspended:"ځنډول شوی",
-  skip:"د کلینیک منځپانګې ته لاړ شئ"
+  skip:"د کلینیک منځپانګې ته لاړ شئ",help:"مرسته",privacy:"محرمیت",terms:"د خدمت شرطونه",
+  signOutFailed:"وتل بریالي نه شول. بیا هڅه وکړئ؛ ناسته لا فعاله ده."
  }
 };
 function navigation(space:Space):Item[]{
@@ -135,7 +138,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const [requestIndex,setRequestIndex]=useState(0);
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
  const [collapsed,setCollapsed]=useState(false),[mobileOpen,setMobileOpen]=useState(false);
- const [signingOut,setSigningOut]=useState(false);
+ const [signingOut,setSigningOut]=useState(false),[signOutError,setSignOutError]=useState(false);
  const [navigationPending,startNavigation]=useTransition();
  const mobileToggleRef=useRef<HTMLButtonElement>(null),
   drawerRef=useRef<HTMLElement>(null),
@@ -170,6 +173,10 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   if(!mobileOpen)return;
   const mq=window.matchMedia("(max-width: 900px)");
   if(!mq.matches)return;
+  const onDesktop=(event:MediaQueryListEvent)=>{
+   if(!event.matches){setMobileOpen(false);mobileToggleRef.current?.focus();}
+  };
+  mq.addEventListener("change",onDesktop);
   const oldOverflow=document.body.style.overflow;
   document.body.style.overflow="hidden";
   mobileCloseRef.current?.focus();
@@ -189,7 +196,8 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
    }
   };
   window.addEventListener("keydown",onKey);
-  return()=>{document.body.style.overflow=oldOverflow;window.removeEventListener("keydown",onKey);};
+  return()=>{document.body.style.overflow=oldOverflow;
+   window.removeEventListener("keydown",onKey);mq.removeEventListener("change",onDesktop);};
  },[mobileOpen]);
  if(isPublic)return <>{children}</>;
 
@@ -240,17 +248,19 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  }
  async function signOut(){
   if(signingOut)return;
-  setSigningOut(true);
+  setSigningOut(true);setSignOutError(false);
   try{
-   await authClient.signOut();
+   const response=await authClient.signOut();
+   if(response.error)throw new Error("SIGN_OUT_FAILED");
    setCtx(null);
    window.location.assign("/clinic/login");
-  }catch{setSigningOut(false);}
+  }catch{setSigningOut(false);setSignOutError(true);}
  }
  const restricted=error==="AUTH_REQUIRED"||requestedInvalid;
  const showPage=!loading&&!error&&!requestedInvalid;
  return <div className={"work-layout phase-layout staff-shell clinic-persistent-shell"+
    (collapsed?" clinic-sidebar-collapsed":"")+(mobileOpen?" clinic-mobile-open":"")}>
+   <a className="clinic-workspace-skip" href="#clinic-route-content">{t("skip")}</a>
    {mobileOpen&&<button type="button" className="clinic-mobile-backdrop"
     aria-label={t("closeMenu")} tabIndex={-1}
     onClick={()=>{setMobileOpen(false);mobileToggleRef.current?.focus();}}/>}
@@ -294,6 +304,11 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
       }):<div className="clinic-sidebar-empty">{t(ctx?.clinics.length?"invalidClinic":"noClinic")}</div>}
     </nav>
     <div className="clinic-sidebar-footer"><LocaleControls/>
+     <nav className="clinic-sidebar-extras" aria-label={t("help")}>
+      <Link href="/help" onClick={()=>setMobileOpen(false)}>{t("help")}</Link>
+      <Link href="/privacy" onClick={()=>setMobileOpen(false)}>{t("privacy")}</Link>
+      <Link href="/terms" onClick={()=>setMobileOpen(false)}>{t("terms")}</Link>
+     </nav>
      <div className="clinic-sidebar-security"><CareIcon name="shield" size={16}/>
       <span>{t("secure")}</span></div>
     </div>
@@ -333,6 +348,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
       </button>
      </div>
     </header>
+    {signOutError&&<div role="alert" className="clinic-shell-error">{t("signOutFailed")}</div>}
     {navigationPending&&<div role="status" className="clinic-route-progress"
      aria-label={t("loading")}/>}
     <div className="clinic-route-content" id="clinic-route-content" aria-label={t("pageContent")}>
