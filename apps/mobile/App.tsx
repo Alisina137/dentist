@@ -3,6 +3,8 @@ import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth,type NativeAccount} from "./native-auth";
 import {NativeAppointmentDetails,NativeNextAppointment} from "./native-journeys";
 import {patientError} from "./patient-errors";
+import {patientTheme} from "./patient-theme";
+import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
@@ -61,10 +63,13 @@ const PATIENT_WEB=(process.env.EXPO_PUBLIC_PATIENT_WEB_URL||"").trim().replace(/
 const PREF_KEY="dandanlink.patient.preferences.v1";
 const SAVED_KEY="dandanlink.patient.savedPublicClinicIds.v1";
 const colors={
- blue:"#075BF2",blueDeep:"#1247BE",navy:"#11274A",ink:"#263854",muted:"#6A788D",
- pale:"#EEF4FF",soft:"#F4F7FC",white:"#FFFFFF",line:"#E2EAF2",
- green:"#138464",greenSoft:"#E7F8F0",amber:"#9A6514",amberSoft:"#FFF6DF",
- gray:"#A3B0BF",red:"#BC4854"
+ blue:patientTheme.colors.brand,blueDeep:patientTheme.colors.brandDark,
+ navy:patientTheme.colors.ink,ink:patientTheme.colors.inkSecondary,muted:patientTheme.colors.muted,
+ pale:patientTheme.colors.brandSoft,soft:patientTheme.colors.background,
+ white:patientTheme.colors.surface,line:patientTheme.colors.stroke,
+ green:patientTheme.colors.green,greenSoft:patientTheme.colors.greenSoft,
+ amber:patientTheme.colors.amber,amberSoft:patientTheme.colors.amberSoft,
+ gray:patientTheme.colors.inactive,red:patientTheme.colors.danger
 };
 const en={
  home:"Home",explore:"Explore",saved:"Saved",account:"Account",back:"Back",
@@ -373,8 +378,10 @@ function TextLine({children,ui,style}:{children:React.ReactNode;ui:UI;style?:obj
  return <Text style={[s.body,{textAlign:ui.align},style]}>{children}</Text>;
 }
 function Icon({glyph,filled=false}:{glyph:string;filled?:boolean}){
+ const icon:PatientIconName=glyph==="⌕"?"search":glyph==="▦"?"calendar":
+  glyph==="☺"?"user":glyph==="!"?"help":"shield";
  return <View style={[s.iconSquare,filled&&s.iconSquareBlue]}>
-  <Text style={[s.iconText,filled&&{color:colors.white}]}>{glyph}</Text>
+  <PatientIcon name={icon} size={25} color={filled?colors.white:colors.blue}/>
  </View>;
 }
 function CardShell({children,style}:{children:React.ReactNode;style?:object}){
@@ -457,7 +464,7 @@ function SavedButton({saved,onPress,ui}:{saved:boolean;onPress:()=>void;ui:UI}){
  return <Pressable style={[s.heart,saved&&s.heartSelected]}
   accessibilityRole="button" accessibilityState={{selected:saved}}
   accessibilityLabel={ui.t(saved?"removeFromSaved":"addToSaved")} onPress={onPress}>
-  <Text style={[s.heartText,saved&&{color:colors.blue}]}>{saved?"♥":"♡"}</Text>
+  <PatientIcon name="bookmark" size={21} color={saved?colors.blue:colors.muted} filled={saved}/>
  </Pressable>;
 }
 function ClinicCard({card,ui,saved,onSave,onOpen}:{card:Card;ui:UI;saved:boolean;
@@ -490,7 +497,9 @@ function ClinicCard({card,ui,saved,onSave,onOpen}:{card:Card;ui:UI;saved:boolean
    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={()=>onOpen(c.id)}
     accessibilityRole="button"><Text style={s.cardButtonPrimaryText}>{ui.t("details")}  ›</Text></Pressable>
    <Pressable style={s.cardButton} onPress={()=>{void Linking.openURL("tel:"+c.phone)}}
-    accessibilityRole="button"><Text style={s.cardButtonText}>☎  {ui.t("call")}</Text></Pressable>
+    accessibilityRole="button" accessibilityLabel={ui.t("call")}>
+    <View style={s.iconButtonRow}><PatientIcon name="phone" size={18} color={colors.blue}/>
+     <Text style={s.cardButtonText}>{ui.t("call")}</Text></View></Pressable>
   </View>
  </CardShell>;
 }
@@ -803,7 +812,7 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
   <CardShell style={s.searchBox}>
    <Text style={[s.fieldLabel,{textAlign:ui.align}]}>{ui.t("findLabel")}</Text>
    <View style={[s.inputLine,{flexDirection:ui.flow}]}>
-    <Text style={s.inputIcon}>⌕</Text>
+    <PatientIcon name="search" size={22} color={colors.blue}/>
     <TextInput value={search} onChangeText={setSearch}
      onSubmitEditing={()=>onSearch(search)} returnKeyType="search"
      style={[s.searchInput,{textAlign:ui.align}]} placeholder={ui.t("find")}
@@ -827,13 +836,13 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
   <SectionHead ui={ui} title={ui.t("quickActions")}/>
   <View style={[s.quickActions,{flexDirection:ui.flow}]}>
    {([
-    [ui.t("explore"),"⌕",onBrowse],
-    [ui.t("appointments"),"▦",onAppointments],
-    [ui.t("saved"),"♡",onSaved]
-   ] as [string,string,()=>void][]).map(([label,icon,action])=>
+    [ui.t("explore"),"search",onBrowse],
+    [ui.t("appointments"),"calendar",onAppointments],
+    [ui.t("saved"),"bookmark",onSaved]
+   ] as [string,PatientIconName,()=>void][]).map(([label,icon,action])=>
     <Pressable key={label} accessibilityRole="button" accessibilityLabel={label}
      onPress={action} style={s.quickAction}>
-     <Text style={s.quickActionIcon}>{icon}</Text>
+     <View style={s.quickActionIconBox}><PatientIcon name={icon} size={24} color={colors.blue}/></View>
      <Text style={s.quickActionLabel} numberOfLines={2}>{label}</Text>
     </Pressable>)}
   </View>
@@ -875,7 +884,7 @@ function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSav
  return <View style={s.sectionGap}>
   <SectionHead ui={ui} title={ui.t("listings")} sub={ui.t("intro")}/>
   <View style={[s.inputLine,s.exploreInput,{flexDirection:ui.flow}]}>
-   <Text style={s.inputIcon}>⌕</Text>
+   <PatientIcon name="search" size={22} color={colors.blue}/>
    <TextInput value={draft} onChangeText={setDraft} placeholder={ui.t("find")}
     onSubmitEditing={()=>{setQ(draft.trim());setPage(1)}} returnKeyType="search"
     style={[s.searchInput,{textAlign:ui.align}]} placeholderTextColor={colors.gray}/>
@@ -1126,17 +1135,17 @@ function AccountHub({ui,account,onSection,onAppointments,onExplore}:{
  onAppointments:()=>void;onExplore:()=>void}){
  const t=accountWords[ui.locale];
  const registered=Boolean(account?.registered);
- const groups:{title:string;items:{key:AccountSection;icon:string;title:string;sub:string}[]}[]=[
+ const groups:{title:string;items:{key:AccountSection;icon:PatientIconName;title:string;sub:string}[]}[]=[
   {title:t.care,items:[
-   {key:"family",icon:"◇",title:t.family,sub:t.familySub},
-   {key:"records",icon:"▤",title:t.records,sub:t.recordsSub},
-   {key:"reviews",icon:"☆",title:t.reviews,sub:t.reviewsSub}]},
+   {key:"family",icon:"users",title:t.family,sub:t.familySub},
+   {key:"records",icon:"file",title:t.records,sub:t.recordsSub},
+   {key:"reviews",icon:"star",title:t.reviews,sub:t.reviewsSub}]},
   {title:t.manage,items:[
-   {key:"profile",icon:"☺",title:t.profile,sub:t.profileSub},
-   {key:"notifications",icon:"♧",title:t.notifications,sub:t.notificationsSub},
-   {key:"security",icon:"♙",title:t.security,sub:t.securitySub},
-   {key:"settings",icon:"⚙",title:t.settings,sub:t.settingsSub},
-   {key:"support",icon:"ⓘ",title:t.support,sub:t.supportSub}]}
+   {key:"profile",icon:"user",title:t.profile,sub:t.profileSub},
+   {key:"notifications",icon:"bell",title:t.notifications,sub:t.notificationsSub},
+   {key:"security",icon:"shield",title:t.security,sub:t.securitySub},
+   {key:"settings",icon:"settings",title:t.settings,sub:t.settingsSub},
+   {key:"support",icon:"help",title:t.support,sub:t.supportSub}]}
  ];
  return <View style={s.sectionGap}>
   <View style={s.accountSegment}>
@@ -1161,7 +1170,7 @@ function AccountHub({ui,account,onSection,onAppointments,onExplore}:{
       accessibilityRole="button" accessibilityLabel={row.title}
       key={row.key} onPress={()=>onSection(row.key)}
       style={[s.accountRow,{flexDirection:ui.flow},index>0&&s.accountRowBorder]}>
-      <View style={s.accountRowGlyph}><Text style={s.accountRowIcon}>{row.icon}</Text></View>
+      <View style={s.accountRowGlyph}><PatientIcon name={row.icon} size={22} color={colors.blue}/></View>
       <View style={{flex:1}}>
        <Text style={[s.accountRowTitle,{textAlign:ui.align}]}>{row.title}</Text>
        <Text style={[s.accountRowSubtitle,{textAlign:ui.align}]}>{row.sub}</Text>
@@ -1341,18 +1350,21 @@ function PatientApp(){
    backgroundColor={route?colors.white:colors.blue}/>
   {route?<View style={[s.detailTop,{flexDirection:ui.flow}]}>
     <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={ui.t("back")}
-     style={s.backButton}><Text style={s.backGlyph}>{ui.rtl?"→":"←"}</Text></Pressable>
+     style={s.backButton}>
+     <View style={ui.rtl?{transform:[{rotate:"180deg"}]}:undefined}>
+      <PatientIcon name="arrow" size={24} color={colors.blue}/>
+     </View></Pressable>
     <Text style={s.detailTopTitle}>{screenTitle}</Text><View style={{width:44}}/>
    </View>:
    <View style={[s.mainHeader,{flexDirection:ui.flow}]}>
     <View style={[s.row,{flexDirection:ui.flow,alignItems:"center",gap:11}]}>
-     <View style={s.brandSquare}><Text style={s.brandGlyph}>✦</Text></View>
+     <View style={s.brandSquare}><PatientIcon name="tooth" size={29} color={colors.blue}/></View>
      <View><Text style={s.brandText}>DandanLink</Text>
       <Text style={s.brandSmall}>{ui.t("intro")}</Text></View>
     </View>
     <Pressable onPress={()=>select("account")} accessibilityLabel={ui.t("openSettings")}
      accessibilityRole="button" style={s.headerAccount}>
-     <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
+     <PatientIcon name="user" size={25} color={colors.white}/></Pressable>
    </View>}
   <ScrollView key={(route?route.kind+":"+(route.kind==="appointment"?route.bookingId:route.clinicId)+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
@@ -1411,12 +1423,26 @@ function PatientApp(){
         onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
     </View>}
   </ScrollView>
+  {(route?.kind==="clinic"||route?.kind==="dentist")&&<View style={s.stickyBookingBar}>
+   <Pressable style={({pressed})=>[s.stickyBookingButton,pressed&&s.ctaPressed]}
+    accessibilityRole="button" accessibilityLabel={locale==="en"?"Book appointment":
+     locale==="ps-AF"?"د ملاقات وخت اخیستل":"رزرو نوبت"}
+    onPress={()=>route?.kind==="dentist"?book(route.clinicId,route.dentistId):
+     route?.kind==="clinic"?book(route.clinicId):undefined}>
+    <PatientIcon name="calendar" size={21} color={colors.white}/>
+    <Text style={s.stickyBookingText}>{locale==="en"?"Book appointment":
+     locale==="ps-AF"?"د ملاقات وخت اخیستل":"رزرو نوبت"}</Text>
+   </Pressable>
+  </View>}
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
-   {([["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
+   {([["home","home"],["explore","search"],["appointments","calendar"],["saved","bookmark"],["account","user"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
      accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
      style={({pressed})=>[s.bottomNavItem,tab===value&&s.bottomNavItemActive,pressed&&s.bottomNavPressed]}>
-     <Text style={[s.bottomNavIcon,tab===value&&s.bottomNavIconSelected]}>{icon}</Text>
+     <View style={[s.bottomNavIconContainer,tab===value&&s.bottomNavIconContainerSelected]}>
+      <PatientIcon name={icon} size={23}
+       color={tab===value?colors.blue:colors.muted} filled={tab===value}/>
+     </View>
      <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
       {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
     </Pressable>)}
