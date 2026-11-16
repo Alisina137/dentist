@@ -233,7 +233,10 @@ function navigation(space:Space,t:(key:string)=>string){
  const profile=link("myProfile","/clinic/staff/"+space.membershipId,"◎","settings");
  const options=[home];
  if(space.role==="owner"||space.role==="manager"){
-  options.push(appointments,queue,bookingRequests,patients,clinical,finance,reports,listing,staff,resources,services,hours,notifications,security,settings);
+  options.push(appointments,queue,bookingRequests,patients,finance,reports,listing,staff,resources,services,hours,notifications,security);
+  if(space.clinicianEnabled)options.push(clinical);
+  // The PH02 clinic-registration/settings routes are owner-only, unlike operations setup.
+  if(space.role==="owner")options.push(settings);
   if(space.role==="owner")options.push(exportData);
   if(space.role==="owner")options.push(subscription);
  }else if(space.role==="dentist"||space.role==="receptionist"){
