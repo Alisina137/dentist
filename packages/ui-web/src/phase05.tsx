@@ -3,6 +3,7 @@ import React,{useEffect,useState,useCallback,useMemo,type FormEvent,type ReactNo
 import { InlineAlert, usePreferences } from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import { Shell } from "./phase03";
+import {CareIcon} from "./care-icons";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
@@ -75,6 +76,23 @@ const text:Record<string,Record<string,string>>={
   errorAccount:"Sign in to view clinic patients",disabled:"This action is not available for your role.",
   reportSummary:"Batch results by row. No medical or contact details are included in error report.",
   statusReason:"Reason for changing patient status",lastUpdated:"Last updated",
+  directoryIntro:"Find verified clinic records, manage appointments and register patients without accessing clinical history.",
+  directoryRecently:"Patient directory",directoryHelp:"Search is limited to this clinic. Phone details are not independently verified.",
+  directoryShown:"Showing",directoryOf:"of",directoryNoPhone:"No contact number",
+  directoryBook:"Book visit",directoryOpen:"Open profile",directoryVerified:"Phone verification not recorded",
+  directoryResults:"Patients in this view",directoryFiltered:"Filtered by",directoryAll:"All patients",
+  directoryRefresh:"Refresh records",directoryStart:"Register a patient",directoryReadOnly:"Read-only access",
+  directoryAction:"Actions",directoryPage:"Page",directoryType:"Directory filters",
+  directoryEmpty:"No records match this search. Try clearing filters.",
+  directoryPrivacy:"Clinic IDs and contact data are private. Never share this directory publicly.",
+  directoryNewIntro:"Register the patient's demographics first. Duplicates are checked against this clinic before creation.",
+  directoryContactHint:"Phone numbers are recorded as unverified until separately confirmed.",
+  directoryDobHint:"The birth date cannot be in the future. Use estimated age only when birth date is unknown.",
+  directoryDuplicateReview:"Review possible matches",directoryChanges:"Profile changes require the latest server revision.",
+  directoryStatusTitle:"Confirm patient record status",directoryStatusHelp:"Changing a patient status is recorded in the clinic audit trail. Inactivation and archival are blocked for patients with upcoming appointments.",
+  directoryStatusProceed:"Confirm status change",directoryStatusCancel:"Keep current status",
+  directoryStatusPending:"Updating patient status",directoryGoBack:"Back to directory",
+  directoryReady:"Ready to book",directoryNoBooking:"Booking requires an active record.",
   noPublic:"Do not enter real patient data until clinic privacy, security and retention policies are approved.",
   idLabel:"Internal clinic identifier",notVerified:"Unverified",staffOnly:"Authorized clinic staff only"
  },
@@ -138,6 +156,23 @@ const text:Record<string,Record<string,string>>={
   dateFormat:"تاریخ را به قالب میلادی YYYY-MM-DD وارد کنید.",errorAccount:"برای دیدن مریضان وارد شوید.",
   disabled:"این اقدام برای نقش شما فعال نیست.",reportSummary:"گزارش شامل معلومات طبی یا تماس نیست.",
   statusReason:"دلیل تغییر وضعیت",lastUpdated:"آخرین تغییر",
+  directoryIntro:"پرونده‌های کلینیک را جستجو، ملاقات‌ها را تنظیم و مریضان جدید را با حفظ حریم خصوصی ثبت کنید.",
+  directoryRecently:"فهرست مریضان",directoryHelp:"جستجو فقط در همین کلینیک است. شماره‌های تماس مستقلاً تأیید نشده‌اند.",
+  directoryShown:"نمایش",directoryOf:"از",directoryNoPhone:"بدون شماره تماس",
+  directoryBook:"ثبت وقت",directoryOpen:"بازکردن پرونده",directoryVerified:"شماره تماس تأیید نشده است",
+  directoryResults:"مریضان این فهرست",directoryFiltered:"فیلتر فعلی",directoryAll:"تمام مریضان",
+  directoryRefresh:"تازه‌سازی فهرست",directoryStart:"ثبت مریض جدید",directoryReadOnly:"فقط مشاهده",
+  directoryAction:"عملیات",directoryPage:"صفحه",directoryType:"فیلترهای فهرست",
+  directoryEmpty:"مریضی یافت نشد. فیلترها را پاک یا جستجو را تغییر دهید.",
+  directoryPrivacy:"آی‌دی و معلومات تماس مریضان محرمانه است. فهرست را عمومی شریک نکنید.",
+  directoryNewIntro:"نخست مشخصات مریض را ثبت کنید. موارد تکراری قبل از ذخیره بررسی می‌شوند.",
+  directoryContactHint:"شماره تماس تا تأیید جداگانه، تأییدنشده است.",
+  directoryDobHint:"تاریخ تولد نباید آینده باشد. فقط اگر تاریخ معلوم نیست، سن تخمینی وارد کنید.",
+  directoryDuplicateReview:"بررسی مریضان مشابه",directoryChanges:"تغییر پرونده به آخرین نسخۀ سرور نیاز دارد.",
+  directoryStatusTitle:"تأیید تغییر وضعیت مریض",directoryStatusHelp:"تغییر وضعیت در گزارش فعالیت کلینیک ثبت می‌شود. پرونده‌های دارای ملاقات آینده را نمی‌توان غیرفعال یا بایگانی کرد.",
+  directoryStatusProceed:"تأیید تغییر وضعیت",directoryStatusCancel:"حفظ وضعیت فعلی",
+  directoryStatusPending:"در حال تغییر وضعیت",directoryGoBack:"بازگشت به فهرست",
+  directoryReady:"آماده ثبت وقت",directoryNoBooking:"ثبت وقت نیازمند پرونده فعال است.",
   noPublic:"تا تکمیل مقررات حریم خصوصی و امنیت، معلومات واقعی مریضان را وارد نکنید.",
   idLabel:"شناسه داخلی کلینیک",notVerified:"تأیید نشده",staffOnly:"فقط کارمندان مجاز کلینیک"
  },
@@ -203,6 +238,23 @@ const text:Record<string,Record<string,string>>={
   dateFormat:"د میلادي نېټې بڼه YYYY-MM-DD ده.",errorAccount:"لومړی خپل حساب ته ننوځئ.",
   disabled:"دا کړنه ستاسې لپاره نشته.",reportSummary:"په راپور کې طبي او د اړیکې معلومات نشته.",
   statusReason:"د حالت بدلولو دلیل",lastUpdated:"وروستی بدلون",
+  directoryIntro:"د کلینیک ریکارډونه ولټوئ، ملاقاتونه تنظیم کړئ او نوي ناروغان په خوندي ډول ثبت کړئ.",
+  directoryRecently:"د ناروغانو لړلیک",directoryHelp:"پلټنه یوازې همدا کلینیک پوښي؛ د اړیکې شمېرې جلا نه دي تایید شوې.",
+  directoryShown:"ښودل",directoryOf:"له",directoryNoPhone:"د اړیکې شمېره نشته",
+  directoryBook:"لیدنه ثبت کړئ",directoryOpen:"ریکارډ پرانیزئ",directoryVerified:"شمېره لا نه ده تایید شوې",
+  directoryResults:"د دې لړلیک ناروغان",directoryFiltered:"اوسنی چاڼ",directoryAll:"ټول ناروغان",
+  directoryRefresh:"لړلیک تازه کړئ",directoryStart:"نوی ناروغ ثبت کړئ",directoryReadOnly:"یوازې کتل",
+  directoryAction:"کړنې",directoryPage:"پاڼه",directoryType:"د لړلیک چاڼ",
+  directoryEmpty:"په دې پلټنه کې ناروغ نشته؛ چاڼ پاک یا پلټنه بدله کړئ.",
+  directoryPrivacy:"د ناروغانو پېژند او اړیکې شخصي دي. لړلیک په عامه توګه مه شریکوئ.",
+  directoryNewIntro:"لومړی د ناروغ معلومات ثبت کړئ. ورته ریکارډونه تر ثبت وړاندې کتل کېږي.",
+  directoryContactHint:"د اړیکې شمېرې تر جلا تایید پورې ناتایید دي.",
+  directoryDobHint:"د زېږېدو نېټه باید راتلونکې نه وي. اټکلی عمر یوازې د نامعلومې نېټې لپاره وکاروئ.",
+  directoryDuplicateReview:"ورته ریکارډونه وګورئ",directoryChanges:"د ریکارډ بدلون د سرور وروستۍ نسخې ته اړتیا لري.",
+  directoryStatusTitle:"د ناروغ د حالت بدلون تایید",directoryStatusHelp:"د حالت بدلون د کلینیک په تاریخچه کې ثبتېږي. د راتلونکو ملاقاتونو لرونکی ریکارډ نه غیر فعالېږي او نه آرشیف کېږي.",
+  directoryStatusProceed:"د حالت بدلون تایید کړئ",directoryStatusCancel:"اوسنی حالت وساتئ",
+  directoryStatusPending:"حالت بدلېږي",directoryGoBack:"لړلیک ته ستنېدل",
+  directoryReady:"د لیدنې لپاره چمتو",directoryNoBooking:"د لیدنې لپاره فعال ریکارډ اړین دی.",
   noPublic:"تر قانوني او امنیتي تایید مخکې واقعي ناروغان مه داخلوئ.",
   idLabel:"د کلینیک داخلي پېژند",notVerified:"نه دی تایید شوی",staffOnly:"یوازې مجاز کارکوونکي"
  }
@@ -247,13 +299,14 @@ function Notice({children,kind="info"}:{children:ReactNode,kind?:"info"|"warning
 function Chip({value}:{value:string}){
  const {t}=useWords();return <span className={"state-badge state-"+value}>{t(value)}</span>;
 }
-function Field({name,value,onChange,type="text",required=false,maxLength=250,disabled=false,placeholder=""}:{
+function Field({name,value,onChange,type="text",required=false,maxLength=250,min,max,disabled=false,placeholder=""}:{
  name:string;value:string|number|null|undefined;onChange:(s:string)=>void;type?:string;
- required?:boolean;maxLength?:number;disabled?:boolean;placeholder?:string
+ required?:boolean;maxLength?:number;min?:number|string;max?:number|string;disabled?:boolean;placeholder?:string
 }){
  return <label className="field"><span>{name}{required?" *":""}</span>
  <input value={value??""} onChange={e=>onChange(e.target.value)} type={type}
-  required={required} maxLength={maxLength} disabled={disabled} placeholder={placeholder}/></label>;
+  required={required} maxLength={maxLength} min={min} max={max}
+  disabled={disabled} placeholder={placeholder}/></label>;
 }
 function Select({name,value,onChange,options,disabled=false}:{name:string,value:string,onChange:(s:string)=>void,
  options:{value:string,label:string}[],disabled?:boolean}){
@@ -268,6 +321,12 @@ const addHref=(cid:string)=>"/clinic/patients/new?clinic="+encodeURIComponent(ci
 const importHref=(cid:string)=>"/clinic/patients/import?clinic="+encodeURIComponent(cid);
 const emptyPatient={preferredName:"",familyName:"",dateOfBirth:"",ageEstimate:"",phone:"",alternateContact:"",
  province:"",city:"",address:"",emergencyContact:"",noticeAcknowledged:false};
+function todayKabul(){
+ const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const date=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+ return date.year+"-"+date.month+"-"+date.day;
+}
 function useResource(path:string|null){
  // Never render records returned for another clinic or patient, even for one frame.
  const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
@@ -304,7 +363,7 @@ export function PatientPortal({view}:{view:Page}){
   return <ErrorPanel message={t("notAllowed")}/>;
  return <Shell ctx={ctx} space={space} active="patients">
   <div className="phase05-page">
-   <div className="phase05-top"><div><span className="pill">DandanLink · PH05</span>
+   <div className="phase05-top"><div><span className="pill">DandanLink · Clinic</span>
       <h1 className="phase-title">{view==="import"?t("importTitle"):view==="new"?t("newPatient"):
         view==="overview"||view==="edit"?t("patientHeader"):t("patients")}</h1></div>
       <div className="phase-actions"><a className="btn btn-secondary" href={patientHref(space.clinicId)}>{t("directory")}</a>
@@ -323,62 +382,185 @@ function Directory({space}:{space:Space}){
  const [search,setSearch]=useState(""),[q,setQ]=useState("");
  const [status,setStatus]=useState("active"),[sort,setSort]=useState("activity");
  const [page,setPage]=useState(1),[limit,setLimit]=useState(20);
- useEffect(()=>{const id=setTimeout(()=>{setQ(search.trim());setPage(1);},300);return()=>clearTimeout(id);},[search]);
- const prefix="/clinics/"+space.clinicId+"/patients";
- const {data:summary,retry:refreshSummary}=useResource(prefix+"/summary");
- const {data,error,retry}=useResource(prefix+"?"+new URLSearchParams({
+ const [ready,setReady]=useState(false);
+ const canWrite=["owner","manager","dentist","receptionist"].includes(space.role);
+ const canImport=["owner","manager"].includes(space.role);
+ const prefix="/clinics/"+encodeURIComponent(space.clinicId)+"/patients";
+ useEffect(()=>{
+  const params=new URLSearchParams(location.search);
+  const requestedStatus=params.get("status");
+  const requestedSort=params.get("sort");
+  const requestedLimit=params.get("limit");
+  const requestedPage=Number(params.get("page"));
+  const requestedSearch=(params.get("q")||"").trim().slice(0,120);
+  setSearch(requestedSearch);setQ(requestedSearch);
+  if(["active","inactive","archived","all"].includes(requestedStatus||""))setStatus(requestedStatus!);
+  if(["activity","name"].includes(requestedSort||""))setSort(requestedSort!);
+  if(["10","20"].includes(requestedLimit||""))setLimit(Number(requestedLimit));
+  if(Number.isInteger(requestedPage)&&requestedPage>=1&&requestedPage<=100000)setPage(requestedPage);
+  setReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const id=setTimeout(()=>{const term=search.trim();
+   if(term!==q){setQ(term);setPage(1);}
+  },300);
+  return()=>clearTimeout(id);
+ },[search,ready,q]);
+ useEffect(()=>{
+  if(!ready)return;
+  const params=new URLSearchParams(location.search);
+  params.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries({q,status,sort,page:String(page),limit:String(limit)})){
+   if((key==="q"&&!value)||(key==="status"&&value==="active")||
+    (key==="sort"&&value==="activity")||(key==="page"&&value==="1")||
+    (key==="limit"&&value==="20"))params.delete(key);
+   else params.set(key,value);
+  }
+  history.replaceState(null,"",location.pathname+"?"+params.toString());
+ },[ready,space.clinicId,q,status,sort,page,limit]);
+ const {data:summary,retry:refreshSummary}=useResource(ready?prefix+"/summary":null);
+ const {data,error,retry}=useResource(ready?prefix+"?"+new URLSearchParams({
   q,status,sort,page:String(page),limit:String(limit)
- }).toString());
- return <div>
-  <div className="phase05-counters" aria-label={t("total")}>
-   {(["total","active","inactive","archived"] as const).map(key=><div className="card phase05-stat" key={key}>
-     <span>{t(key==="total"?"total":key==="active"?"countActive":key==="inactive"?"countInactive":"countArchived")}</span>
-     <strong>{summary?key==="total"?summary.total:summary.counts[key]:"—"}</strong></div>)}
+ }).toString():null);
+ useEffect(()=>{if(ready&&data&&page>data.pages)setPage(data.pages);},[ready,data,page]);
+ function chooseStatus(value:string){setStatus(value);setPage(1);}
+ function clearFilters(){setSearch("");setQ("");setStatus("active");setSort("activity");setPage(1);setLimit(20);}
+ const patients:Patient[]=data?.patients||[];
+ const lower=data&&data.total?(data.page-1)*data.limit+1:0;
+ const upper=data?Math.min(data.page*data.limit,data.total):0;
+ const changeDate=(p:Patient)=>date(p.updatedAt);
+ return <div className="clinic-phase08-directory">
+  <div className="clinic-phase08-intro">
+   <div>
+    <span className="clinic-phase08-kicker"><CareIcon name="users" size={17}/>{t("directoryRecently")}</span>
+    <h2>{t("directoryIntro")}</h2>
+    <p>{t("directoryHelp")}</p>
+   </div>
+   <div className="clinic-phase08-shortcuts">
+    {canWrite&&<a className="btn btn-primary" href={addHref(space.clinicId)}>
+     <CareIcon name="plus" size={17}/>{t("directoryStart")}</a>}
+    {canImport&&<a className="btn btn-secondary" href={importHref(space.clinicId)}>
+     <CareIcon name="download" size={17}/>{t("import")}</a>}
+    {!canWrite&&<span className="clinic-phase08-readonly"><CareIcon name="shield" size={16}/>
+     {t("directoryReadOnly")}</span>}
+   </div>
   </div>
-  <div className="phase05-directory card panel">
-   <div className="phase05-toolbar">
-    <div className="phase05-tabs">
-     <a href={patientHref(space.clinicId)} className="phase05-tab current" aria-current="page">{t("directory")}</a>
-     {["owner","manager"].includes(space.role)&&
-       <a href={importHref(space.clinicId)} className="phase05-tab">{t("import")}</a>}
+  <div className="phase05-counters clinic-phase08-counters" role="group" aria-label={t("directoryType")}>
+   {(["all","active","inactive","archived"] as const).map((key,i)=>{
+    const count=summary?(key==="all"?summary.total:summary.counts[key]):null;
+    return <button type="button" key={key}
+     className={"card phase05-stat clinic-phase08-stat "+(status===key?"is-selected":"")}
+     aria-pressed={status===key}
+     onClick={()=>chooseStatus(key)}>
+     <span className="clinic-phase08-stat-top">
+      <CareIcon name={i===0?"users":i===1?"check":i===2?"clock":"file"} size={20}/>
+      {status===key&&<span className="clinic-phase08-current" aria-hidden="true"><CareIcon name="check" size={14}/></span>}
+     </span>
+     <span>{t(key==="all"?"directoryAll":key==="active"?"countActive":key==="inactive"?"countInactive":"countArchived")}</span>
+     <strong dir="auto">{count??"—"}</strong>
+    </button>;
+   })}
+  </div>
+  <section className="phase05-directory card panel clinic-phase08-panel" aria-label={t("directory")}>
+   <div className="phase05-toolbar clinic-phase08-toolbar">
+    <div className="clinic-phase08-panel-head">
+     <div><h2>{t("directory")}</h2><p>{t("directoryPrivacy")}</p></div>
+     <button className="btn btn-secondary" type="button" disabled={!ready}
+      onClick={()=>{retry();refreshSummary();}}>
+      <CareIcon name="activity" size={16}/>{t("directoryRefresh")}</button>
     </div>
-    <div className="phase05-filters">
-     <Field name={t("search")} value={search} onChange={setSearch} placeholder={t("search")} maxLength={120}/>
-     <Select name={t("status")} value={status} onChange={v=>{setStatus(v);setPage(1);}}
-       options={["active","inactive","archived","all"].map(v=>({value:v,label:t(v)}))}/>
+    <div className="phase05-filters clinic-phase08-filters">
+     <label className="field clinic-phase08-search">
+      <span>{t("search")}</span>
+      <span className="clinic-phase08-search-control"><CareIcon name="search" size={17}/>
+       <input type="search" value={search} maxLength={120}
+        placeholder={t("search")} autoComplete="off"
+        onChange={event=>setSearch(event.target.value)}/></span>
+     </label>
+     <Select name={t("status")} value={status} onChange={chooseStatus}
+      options={["all","active","inactive","archived"].map(v=>({value:v,label:t(v)}))}/>
      <Select name={t("sort")} value={sort} onChange={v=>{setSort(v);setPage(1);}}
-       options={[{value:"activity",label:t("activity")},{value:"name",label:t("name")}]}/>
-     <Select name={t("pageSize")} value={String(limit)} onChange={v=>{setLimit(Number(v));setPage(1);}}
-       options={[{value:"10",label:"10"},{value:"20",label:"20"}]}/>
+      options={[{value:"activity",label:t("activity")},{value:"name",label:t("name")}]}/>
+     <Select name={t("pageSize")} value={String(limit)}
+      onChange={v=>{setLimit(Number(v));setPage(1);}}
+      options={[{value:"10",label:"10"},{value:"20",label:"20"}]}/>
     </div>
+    {(search||status!=="active"||sort!=="activity"||limit!==20)&&
+     <div className="clinic-phase08-active-filters">
+      <span><CareIcon name="sliders-horizontal" size={16}/>{t("directoryFiltered")}: {t(status)}</span>
+      <button className="btn btn-secondary" type="button" onClick={clearFilters}>{t("clear")}</button>
+     </div>}
    </div>
    {error?<ErrorPanel message={error} retry={retry}/>:!data?<Loading/>:
-    !data.patients.length?<div className="phase05-empty">
-      <h2>{search||status!=="active"?t("noFilter"):t("noPatients")}</h2>
-      {search||status!=="active"?<button className="btn btn-secondary"
-       onClick={()=>{setSearch("");setQ("");setStatus("active");setPage(1);}}>{t("clear")}</button>:
-       <a className="btn btn-primary" href={addHref(space.clinicId)}>{t("addFirst")}</a>}
+    !patients.length?<div className="phase05-empty clinic-phase08-empty" role="status">
+      <CareIcon name="search" size={28}/>
+      <h2>{q||status!=="active"?t("directoryEmpty"):t("noPatients")}</h2>
+      {q||status!=="active"?<button className="btn btn-secondary" type="button"
+       onClick={clearFilters}>{t("clear")}</button>:
+       canWrite?<a className="btn btn-primary" href={addHref(space.clinicId)}>{t("addFirst")}</a>:null}
      </div>:
-    <div className="phase05-scroll"><table className="staff-table phase05-table">
-     <thead><tr><th>{t("patientNumber")}</th><th>{t("name")}</th>
-      <th>{t("contact")}</th><th>{t("status")}</th><th>{t("lastChange")}</th><th>{t("view")}</th></tr></thead>
-     <tbody>{data.patients.map((p:Patient)=><tr key={p.id}>
-       <td><bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></td>
-       <td><PatientLink cid={space.clinicId} id={p.id}>
+    <>
+     <div className="phase05-scroll clinic-phase08-desktop">
+      <table className="staff-table phase05-table clinic-phase08-table">
+       <thead><tr><th scope="col">{t("patientNumber")}</th><th scope="col">{t("name")}</th>
+        <th scope="col">{t("contact")}</th><th scope="col">{t("status")}</th>
+        <th scope="col">{t("lastChange")}</th><th scope="col">{t("directoryAction")}</th></tr></thead>
+       <tbody>{patients.map(p=><tr key={p.id}>
+        <td><bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></td>
+        <td><PatientLink cid={space.clinicId} id={p.id}>
          {p.preferredName} {p.familyName||""}</PatientLink></td>
-       <td><bdi dir="ltr">{p.phone||"—"}</bdi>{p.phone&&!p.phoneVerified&&
-        <small className="phase05-unverified">{t("notVerified")}</small>}</td>
-       <td><Chip value={p.status}/></td><td>{date(p.updatedAt)}</td>
-       <td><PatientLink cid={space.clinicId} id={p.id}>{t("view")} ↗</PatientLink></td>
-      </tr>)}</tbody></table></div>}
-   {data&&<div className="phase-pagination">
-    <button className="btn btn-secondary" disabled={page<=1} onClick={()=>setPage(v=>v-1)}>{t("previous")}</button>
-    <span>{data.total} · {data.page}/{data.pages}</span>
-    <button className="btn btn-secondary" disabled={page>=data.pages}
-     onClick={()=>setPage(v=>v+1)}>{t("next")}</button>
-   </div>}
-  </div>
-  <p className="muted phase05-footer">{t("safeguard")} {t("noPublic")}</p>
+        <td><bdi dir="ltr">{p.phone||"—"}</bdi>{p.phone&&!p.phoneVerified&&
+         <small className="phase05-unverified">{t("notVerified")}</small>}</td>
+        <td><Chip value={p.status}/></td><td>{changeDate(p)}</td>
+        <td><div className="clinic-phase08-row-actions">
+         <PatientLink cid={space.clinicId} id={p.id}>{t("directoryOpen")}</PatientLink>
+         {canWrite&&p.status==="active"&&<a className="text-link" href={
+          "/clinic/appointments/new?clinic="+encodeURIComponent(space.clinicId)+
+          "&patientId="+encodeURIComponent(p.id)}>{t("directoryBook")}</a>}
+        </div></td>
+       </tr>)}</tbody>
+      </table>
+     </div>
+     <div className="clinic-phase08-mobile" aria-label={t("directoryResults")}>
+      {patients.map(p=><article className="clinic-phase08-patient-card" key={p.id}>
+       <div className="clinic-phase08-patient-head">
+        <span className="clinic-phase08-patient-avatar" aria-hidden="true">
+         {p.preferredName.slice(0,1)}</span>
+        <div><strong>{p.preferredName} {p.familyName||""}</strong>
+         <bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></div>
+        <Chip value={p.status}/>
+       </div>
+       <div className="clinic-phase08-patient-details">
+        <span><CareIcon name="account" size={15}/>{p.phone||t("directoryNoPhone")}
+         {p.phone&&!p.phoneVerified&&<small>{t("notVerified")}</small>}</span>
+        <span><CareIcon name="clock" size={15}/>{t("lastChange")}: {changeDate(p)}</span>
+       </div>
+       <div className="clinic-phase08-patient-actions">
+        <PatientLink cid={space.clinicId} id={p.id}>{t("directoryOpen")}</PatientLink>
+        {canWrite&&p.status==="active"&&<a href={
+         "/clinic/appointments/new?clinic="+encodeURIComponent(space.clinicId)+
+         "&patientId="+encodeURIComponent(p.id)}>{t("directoryBook")}</a>}
+       </div>
+      </article>)}
+     </div>
+    </>}
+   {data&&<nav className="phase-pagination clinic-phase08-pagination" aria-label={t("directoryPage")}>
+    <span aria-live="polite">
+     {t("directoryShown")} {lower}–{upper} {t("directoryOf")} {data.total}
+     <small>{t("directoryPage")} {Math.min(page,data.pages)}/{data.pages}</small>
+    </span>
+    <div>
+     <button type="button" className="btn btn-secondary" disabled={page<=1}
+      onClick={()=>setPage(v=>Math.max(1,v-1))}>{t("previous")}</button>
+     <button type="button" className="btn btn-secondary" disabled={page>=data.pages}
+      onClick={()=>setPage(v=>Math.min(data.pages,v+1))}>{t("next")}</button>
+    </div>
+   </nav>}
+  </section>
+  <p className="muted phase05-footer clinic-phase08-footer">
+   <CareIcon name="shield" size={17}/>{t("safeguard")} {t("noPublic")}
+  </p>
  </div>;
 }
 function PatientFields({form,setForm,editing=false}:{
@@ -395,26 +577,26 @@ function PatientFields({form,setForm,editing=false}:{
       maxLength={120} onChange={set("preferredName")}/>
     <Field name={t("familyName")} value={form.familyName}
       maxLength={120} onChange={set("familyName")}/>
-    <Field name={t("dob")} value={form.dateOfBirth} type="date" onChange={toggleDob}
-      disabled={Boolean(form.ageEstimate)}/>
-    <Field name={t("ageEstimate")} value={form.ageEstimate} type="number" onChange={toggleAge}
-      disabled={Boolean(form.dateOfBirth)}/>
+    <Field name={t("dob")} value={form.dateOfBirth} type="date" max={todayKabul()}
+      onChange={toggleDob} disabled={Boolean(form.ageEstimate)}/>
+    <Field name={t("ageEstimate")} value={form.ageEstimate} type="number" min={0} max={120}
+      onChange={toggleAge} disabled={Boolean(form.dateOfBirth)}/>
    </div>
-   <p className="muted phase05-description">{t("ageWarning")}</p>
+   <p className="muted phase05-description">{t("ageWarning")} {t("directoryDobHint")}</p>
   </section>
   <section className="phase05-form-section"><h2>{t("contact")}</h2>
    <div className="phase-form-grid">
-    <Field name={t("phone")} value={form.phone} maxLength={24} onChange={set("phone")} type="tel"/>
+    <Field name={t("phone")} value={form.phone} maxLength={24} onChange={set("phone")} type="tel" placeholder="+93…"/>
     <Field name={t("altContact")} value={form.alternateContact} maxLength={120} onChange={set("alternateContact")}/>
     <Field name={t("province")} value={form.province} maxLength={80} onChange={set("province")}/>
     <Field name={t("city")} value={form.city} maxLength={80} onChange={set("city")}/>
     <Field name={t("address")} value={form.address} maxLength={250} onChange={set("address")}/>
     <Field name={t("emergency")} value={form.emergencyContact} maxLength={160} onChange={set("emergencyContact")}/>
    </div>
+   <p className="muted phase05-description">{t("directoryContactHint")}</p>
   </section>
   <section className="phase05-form-section"><h2>{t("intake")}</h2>
    <Notice>{t("clinicalPrivacy")}</Notice><p className="muted">{t("clinicalUnavailable")}</p>
-   <p className="muted">{t("noFinancial")}</p>
   </section>
   <section className="phase05-form-section"><h2>{t("consent")}</h2>
    <label className="phase05-check"><input type="checkbox"
@@ -449,7 +631,7 @@ function DuplicateDialog({candidates,cid,reason,setReason,close,continueCreate,b
  </div>;
 }
 function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
- const {t}=useWords();
+ const {t}=useWords(),{error:describe}=useClinicFeedback();
  const [form,setForm]=useState<any>(existing?{
   ...existing,ageEstimate:existing.ageEstimate??"",
   dateOfBirth:existing.dateOfBirth??"",
@@ -480,6 +662,14 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
  async function submit(event:FormEvent){
   event.preventDefault();
   if(!form.noticeAcknowledged){setError("NOTICE_ACKNOWLEDGEMENT_REQUIRED");return;}
+  if(!form.preferredName?.trim()||form.preferredName.trim().length<2){
+   setError("INVALID_PREFERRED_NAME");return;
+  }
+  if(form.dateOfBirth&&form.dateOfBirth>todayKabul()){setError("INVALID_DATE");return;}
+  if(form.dateOfBirth&&String(form.ageEstimate).trim()){setError("DOB_AND_ESTIMATE_MUTUALLY_EXCLUSIVE");return;}
+  if(form.ageEstimate!==""&&form.ageEstimate!==null&&
+   (!Number.isInteger(Number(form.ageEstimate))||Number(form.ageEstimate)<0||
+    Number(form.ageEstimate)>120)){setError("INVALID_AGE");return;}
   if(!existing){
    setBusy(true);setError("");
    try{
@@ -492,17 +682,22 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
   }
   await persist();
  }
- return <section className="card panel">
+ return <section className="card panel clinic-phase08-editor">
+  <div className="clinic-phase08-editor-heading">
+   <span className="clinic-phase08-kicker"><CareIcon name="account" size={17}/>{t("identity")}</span>
+   <h2>{existing?t("edit"):t("directoryStart")}</h2>
+   <p>{existing?t("directoryChanges"):t("directoryNewIntro")}</p>
+  </div>
   {!canWrite?<Notice kind="warning">{t("disabled")}</Notice>:<>
    {existing&&<p className="muted">{t("idLabel")}: <bdi dir="ltr">{existing.patientNumber}</bdi></p>}
    <Notice kind="warning">{t("noPublic")}</Notice>
    {existing&&!existing.noticeAcknowledged&&<Notice kind="warning">{t("importedStatus")}</Notice>}
    <form onSubmit={submit}><PatientFields form={form} setForm={setForm} editing={!!existing}/>
-    {error&&<Notice kind="error">{t("failed")}: {error==="STALE_PATIENT_REVISION"?t("stale"):error}</Notice>}
+    {error&&<Notice kind="error">{t("failed")}: {error==="STALE_PATIENT_REVISION"?t("stale"):describe(error)}</Notice>}
     <div className="phase-actions">
      <a className="btn btn-secondary" href={existing?
        "/clinic/patients/"+existing.id+"?clinic="+space.clinicId:patientHref(space.clinicId)}>{t("cancel")}</a>
-     <button className="btn btn-primary" disabled={busy||!form.preferredName?.trim()||!form.noticeAcknowledged}>
+     <button className="btn btn-primary" disabled={busy||form.preferredName?.trim().length<2||!form.noticeAcknowledged}>
        {busy?t("loading"):existing?t("save"):t("create")}</button>
     </div>
    </form></>}
@@ -515,7 +710,7 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
 
 
 function PatientDetail({space,edit}:{space:Space,edit:boolean}){
- const {t,date}=useWords();
+ const {t,date}=useWords(),{error:describe}=useClinicFeedback();
  const [id,setId]=useState<string|null>(null);
  useEffect(()=>{const bits=location.pathname.split("/").filter(Boolean);
   const index=bits.indexOf("patients");setId(index>=0?bits[index+1]||"":null);},[]);
@@ -523,15 +718,24 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
  const {data,error,retry}=useResource(base);
  const [status,setStatus]=useState("inactive"),[statusReason,setStatusReason]=useState("");
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[problem,setProblem]=useState("");
+ const [statusConfirm,setStatusConfirm]=useState(false);
  const {data:intake,error:intakeError,retry:retryIntake}=useResource(data?.clinicalAvailable?base+"/intake":null);
  const p:Patient|undefined=data?.patient;
  useEffect(()=>{if(p)setStatus(p.status==="active"?"inactive":"active");},[p]);
+ useEffect(()=>{
+  if(!statusConfirm)return;
+  const escape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy)setStatusConfirm(false);
+  };
+  document.addEventListener("keydown",escape);
+  return()=>document.removeEventListener("keydown",escape);
+ },[statusConfirm,busy]);
  async function updateStatus(){
-  if(!p||statusReason.trim().length<10||!confirm(t("confirm")))return;
+  if(!p||!statusConfirm||busy||statusReason.trim().length<10)return;
   setBusy(true);setProblem("");setNotice("");
   try{
    await api(base+"/status","PATCH",{status,revision:p.revision,reason:statusReason.trim()});
-   setNotice(t("success"));setStatusReason("");retry();
+   setNotice(t("success"));setStatusReason("");setStatusConfirm(false);retry();
   }catch(e:any){setProblem(e.message);}finally{setBusy(false);}
  }
  if(error)return <ErrorPanel message={error} retry={retry}/>;
@@ -539,13 +743,21 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
  if(edit)return <PatientEditor key={p.id+":"+p.revision} space={space} existing={p}/>;
  const canEdit=["owner","manager","dentist","receptionist"].includes(space.role);
  return <div className="phase05-gap">
-  <section className="card panel">
+  <section className="card panel clinic-phase08-profile-hero">
    <div className="phase05-patient-head">
-    <div><p className="muted">{t("patientNumber")} <bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></p>
+    <div className="clinic-phase08-profile-ident"><span className="clinic-phase08-profile-avatar" aria-hidden="true">
+     {p.preferredName.slice(0,1)}</span>
+     <div><p className="muted">{t("patientNumber")} <bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></p>
      <h2 className="phase05-name">{p.preferredName} {p.familyName||""}</h2>
-     <p className="muted">{t("lastUpdated")}: {date(p.updatedAt)}</p></div>
+     <p className="muted">{t("lastUpdated")}: {date(p.updatedAt)}</p></div></div>
     <div className="phase05-head-actions"><Chip value={p.status}/>
-     {canEdit&&<a className="btn btn-secondary" href={"/clinic/patients/"+p.id+"/edit?clinic="+space.clinicId}>
+     <a className="btn btn-secondary" href={patientHref(space.clinicId)}>
+      <CareIcon name="arrow" size={16}/>{t("directoryGoBack")}</a>
+     {canEdit&&p.status==="active"&&<a className="btn btn-primary"
+      href={"/clinic/appointments/new?clinic="+encodeURIComponent(space.clinicId)+
+       "&patientId="+encodeURIComponent(p.id)}>
+      <CareIcon name="calendar" size={16}/>{t("directoryBook")}</a>}
+     {canEdit&&<a className="btn btn-secondary" href={"/clinic/patients/"+p.id+"/edit?clinic="+encodeURIComponent(space.clinicId)}>
        {t("edit")}</a>}</div>
    </div>
    <Notice>{t("safeguard")}</Notice>
@@ -592,8 +804,7 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
     </div>
     {canEdit?<PatientBookings space={space} patientId={p.id}/>:
       <Notice kind="warning">{t("disabled")}</Notice>}
-    <Notice>{t("noFinancial")}</Notice>
-  </section>
+   </section>
   {["owner","manager"].includes(space.role)&&<section className="card panel">
     <h2>{t("setStatus")}</h2>
     <div className="phase05-filters">
@@ -602,11 +813,44 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
         .map(s=>({value:s,label:t(s)}))}/>
       <Field name={t("statusReason")} value={statusReason} onChange={setStatusReason} maxLength={300}/>
     </div>
-    <button className="btn btn-secondary" disabled={busy||statusReason.trim().length<10}
-      onClick={updateStatus}>{busy?t("loading"):t("confirm")}</button>
+    <button className="btn btn-secondary" type="button"
+      disabled={busy||statusReason.trim().length<10}
+      onClick={()=>setStatusConfirm(true)}>{t("confirm")}</button>
     {notice&&<Notice kind="success">{notice}</Notice>}
-    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):problem}</Notice>}
+    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):describe(problem)}</Notice>}
   </section>}
+  {statusConfirm&&p&&<div className="clinic-phase08-status-backdrop" onMouseDown={event=>{
+   if(event.currentTarget===event.target&&!busy)setStatusConfirm(false);
+  }}>
+   <section className="clinic-phase08-status-modal" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase08-status-title">
+    <div className="clinic-phase08-status-modal-heading">
+     <span className="clinic-phase08-status-icon"><CareIcon name="shield" size={22}/></span>
+     <button className="clinic-phase08-status-close" type="button"
+      aria-label={t("cancel")} disabled={busy} onClick={()=>setStatusConfirm(false)}>
+      <CareIcon name="close" size={19}/></button>
+    </div>
+    <h2 id="clinic-phase08-status-title">{t("directoryStatusTitle")}</h2>
+    <p>{t("directoryStatusHelp")}</p>
+    <div className="clinic-phase08-status-preview">
+     <strong>{p.preferredName} {p.familyName||""}</strong>
+     <span>{t("patientNumber")}: <bdi dir="ltr">{p.patientNumber}</bdi></span>
+     <div><Chip value={p.status}/><CareIcon name="arrow" size={17}/><Chip value={status}/></div>
+    </div>
+    <label className="field"><span>{t("statusReason")} *</span>
+     <textarea value={statusReason} minLength={10} maxLength={300} rows={3} required
+      onChange={event=>setStatusReason(event.target.value)}/>
+    </label>
+    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):describe(problem)}</Notice>}
+    <div className="clinic-phase08-status-modal-actions">
+     <button type="button" className="btn btn-secondary" disabled={busy}
+      onClick={()=>setStatusConfirm(false)}>{t("directoryStatusCancel")}</button>
+     <button type="button" className="btn btn-primary"
+      disabled={busy||statusReason.trim().length<10} onClick={()=>void updateStatus()}>
+      {busy?t("directoryStatusPending"):t("directoryStatusProceed")}</button>
+    </div>
+   </section>
+  </div>}
  </div>;
 }
 type VisitFilter="all"|"planned"|"finished"|"cancelled";

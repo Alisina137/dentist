@@ -1,0 +1,354 @@
+/*
+ * DandanLink Clinic Phase 08 — authenticated patient directory and registration.
+ * Scoped to the persistent clinic shell; patient web, platform admin, print
+ * receipts and clinical tooth-chart geometry remain untouched.
+ */
+.clinic-persistent-shell .clinic-phase08-directory{display:grid;gap:18px;min-width:0}
+.clinic-persistent-shell .clinic-phase08-intro{
+ display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;
+ padding:clamp(18px,2.5vw,26px);border:1px solid #d9e8f6;border-radius:19px;
+ background:linear-gradient(126deg,#eef7ff 0%,#f6fbff 57%,#fdfefe 100%);
+ box-shadow:var(--clinic-shadow-sm);
+}
+.clinic-persistent-shell .clinic-phase08-kicker{
+ display:inline-flex;align-items:center;gap:8px;
+ color:var(--clinic-primary);font-size:12px;font-weight:850;
+}
+.clinic-persistent-shell .clinic-phase08-intro h2{
+ margin:7px 0 6px;font-size:clamp(18px,2.15vw,23px);
+ line-height:1.4;max-width:660px;letter-spacing:-.012em;
+}
+.clinic-persistent-shell .clinic-phase08-intro p,
+.clinic-persistent-shell .clinic-phase08-editor-heading p{
+ margin:0;color:var(--clinic-muted);font-size:12px;
+ line-height:1.7;max-width:660px;
+}
+.clinic-persistent-shell .clinic-phase08-shortcuts{
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.clinic-persistent-shell .clinic-phase08-shortcuts a{
+ display:inline-flex;align-items:center;gap:7px;
+ min-height:44px;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase08-readonly{
+ display:inline-flex;align-items:center;gap:7px;padding:9px 12px;
+ border-radius:10px;border:1px solid #cbdbeb;
+ background:white;color:#4b6681;font-size:12px;font-weight:760;
+}
+.clinic-persistent-shell .clinic-phase08-counters{
+ margin:0;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:12px;
+}
+.clinic-persistent-shell .clinic-phase08-stat{
+ appearance:none;text-align:start;cursor:pointer;min-width:0;
+ display:grid;justify-items:stretch;gap:9px;min-height:145px;
+ padding:17px;background:white;
+ border:1px solid var(--clinic-border);
+ border-radius:16px;box-shadow:var(--clinic-shadow-sm);
+ transition:transform .17s ease,border-color .17s ease,background-color .17s ease;
+ color:var(--clinic-ink);
+}
+.clinic-persistent-shell .clinic-phase08-stat:hover{
+ transform:translateY(-2px);border-color:#96bfe3;
+}
+.clinic-persistent-shell .clinic-phase08-stat.is-selected{
+ border-color:#84bde9;background:#f2f9ff;
+ box-shadow:0 0 0 1px #d2e9fb,0 7px 18px rgba(25,101,164,.075);
+}
+.clinic-persistent-shell .clinic-phase08-stat-top{
+ display:flex;align-items:center;justify-content:space-between;gap:9px;
+ color:#2775ad;
+}
+.clinic-persistent-shell .clinic-phase08-current{
+ display:grid;place-items:center;background:#d8eefc;color:#1569a9;
+ width:25px;height:25px;border-radius:8px;
+}
+.clinic-persistent-shell .clinic-phase08-stat>span:nth-child(2){
+ color:var(--clinic-muted);font-size:12px;line-height:1.5;font-weight:750;
+}
+.clinic-persistent-shell .clinic-phase08-stat strong{
+ font-size:clamp(22px,2.5vw,30px);line-height:1.15;
+ font-variant-numeric:tabular-nums;color:var(--clinic-ink);
+}
+.clinic-persistent-shell .clinic-phase08-panel{
+ min-width:0;border:1px solid var(--clinic-border);
+ border-radius:19px;background:#fff;box-shadow:var(--clinic-shadow-sm);
+}
+.clinic-persistent-shell .clinic-phase08-toolbar{gap:16px;margin-block-end:16px}
+.clinic-persistent-shell .clinic-phase08-panel-head{
+ display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:13px;
+ padding-block-end:15px;border-block-end:1px solid var(--clinic-border);
+}
+.clinic-persistent-shell .clinic-phase08-panel-head h2{
+ margin:0 0 5px;font-size:19px;
+}
+.clinic-persistent-shell .clinic-phase08-panel-head p{
+ font-size:11px;line-height:1.7;margin:0;color:var(--clinic-muted);
+ max-width:560px;
+}
+.clinic-persistent-shell .clinic-phase08-panel-head button{
+ display:inline-flex;align-items:center;gap:8px;min-height:43px;
+ font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase08-filters{
+ display:grid;grid-template-columns:minmax(230px,2fr) repeat(3,minmax(115px,.85fr));
+ gap:10px;min-width:0;
+}
+.clinic-persistent-shell .clinic-phase08-filters>.field{min-width:0}
+.clinic-persistent-shell .clinic-phase08-search{min-width:0}
+.clinic-persistent-shell .clinic-phase08-search-control{
+ display:flex;align-items:center;gap:9px;width:100%;min-width:0;
+ border:1px solid var(--clinic-border-strong);border-radius:11px;
+ background:#fff;padding-inline:12px;
+}
+.clinic-persistent-shell .clinic-phase08-search-control svg{
+ color:#6386a8;flex:0 0 auto;
+}
+.clinic-persistent-shell .clinic-phase08-search-control:focus-within{
+ border-color:#287dbe;box-shadow:0 0 0 3px rgba(39,123,186,.1);
+}
+.clinic-persistent-shell .clinic-phase08-search-control input{
+ display:block;border:0;box-shadow:none;outline:none;
+ margin:0;padding:10px 0;min-height:43px;min-width:0;width:100%;
+ background:transparent;color:var(--clinic-ink);font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase08-filters select{
+ min-width:0;border-radius:10px;min-height:45px;
+}
+.clinic-persistent-shell .clinic-phase08-active-filters{
+ display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:9px;
+ background:#eef7ff;border:1px solid #d4e8f9;
+ border-radius:11px;padding:10px 12px;
+ color:#315d80;font-size:12px;font-weight:760;
+}
+.clinic-persistent-shell .clinic-phase08-active-filters>span{
+ display:inline-flex;align-items:center;gap:7px;
+}
+.clinic-persistent-shell .clinic-phase08-active-filters .btn{font-size:11px;min-height:38px}
+.clinic-persistent-shell .clinic-phase08-table{min-width:750px}
+.clinic-persistent-shell .clinic-phase08-table td{
+ vertical-align:middle;padding-block:15px;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase08-table tbody tr:hover{background:#f7fbff}
+.clinic-persistent-shell .clinic-phase08-row-actions{
+ display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:760;
+}
+.clinic-persistent-shell .clinic-phase08-row-actions a{
+ display:inline-flex;align-items:center;min-height:35px;
+ white-space:nowrap;font-size:11px;
+}
+.clinic-persistent-shell .clinic-phase08-row-actions a+ a{
+ border:1px solid #bcd9ef;background:#eef8ff;
+ border-radius:8px;padding-inline:9px;
+}
+.clinic-persistent-shell .clinic-phase08-mobile{display:none}
+.clinic-persistent-shell .clinic-phase08-empty{
+ background:#f7fbff;border:1px dashed #b9d0e5;border-radius:13px;
+ padding:36px 16px;min-height:190px;gap:9px;color:#47749a;
+}
+.clinic-persistent-shell .clinic-phase08-empty h2{
+ margin:0;color:var(--clinic-muted);font-size:14px;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase08-pagination{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:11px;border-block-start:1px solid var(--clinic-border);
+ margin-top:17px;padding-top:15px;
+}
+.clinic-persistent-shell .clinic-phase08-pagination>span{
+ display:grid;gap:4px;font-size:12px;font-weight:770;
+ font-variant-numeric:tabular-nums;
+}
+.clinic-persistent-shell .clinic-phase08-pagination small{
+ font-size:11px;color:var(--clinic-muted);font-weight:700;
+}
+.clinic-persistent-shell .clinic-phase08-pagination>div{
+ display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+}
+.clinic-persistent-shell .clinic-phase08-pagination button{min-height:40px;font-size:12px}
+.clinic-persistent-shell .clinic-phase08-footer{
+ display:flex;align-items:flex-start;gap:8px;line-height:1.7;
+ margin:0;color:var(--clinic-muted);font-size:11px;
+}
+.clinic-persistent-shell .clinic-phase08-footer svg{flex:0 0 auto;margin-top:2px}
+.clinic-persistent-shell .clinic-phase08-editor{
+ display:grid;gap:21px;border:1px solid var(--clinic-border);
+ border-radius:20px;padding:clamp(16px,3vw,26px);box-shadow:var(--clinic-shadow-sm);
+}
+.clinic-persistent-shell .clinic-phase08-editor-heading{
+ display:grid;gap:7px;padding-bottom:15px;
+ border-bottom:1px solid var(--clinic-border);
+}
+.clinic-persistent-shell .clinic-phase08-editor-heading h2{
+ margin:0;font-size:22px;
+}
+.clinic-persistent-shell .clinic-phase08-editor .phase05-form-section{
+ border-radius:15px;border-color:var(--clinic-border);
+ background:#fcfdff;box-shadow:0 2px 9px rgba(22,67,112,.025);
+}
+.clinic-persistent-shell .clinic-phase08-editor .phase05-form-section h2{font-size:17px}
+.clinic-persistent-shell .clinic-phase08-editor .phase05-form-section .field input{
+ min-height:45px;border-radius:9px;
+}
+.clinic-persistent-shell .clinic-phase08-editor .phase05-check{
+ border-radius:10px;padding:12px;
+ background:#f0f8ff;border:1px solid #d1e5f7;
+}
+.clinic-persistent-shell .clinic-phase08-profile-hero{
+ border-radius:18px;border:1px solid var(--clinic-border);
+ background:linear-gradient(125deg,#fff 20%,#f2f8ff 100%);
+}
+.clinic-persistent-shell .clinic-phase08-profile-ident{
+ display:flex;align-items:center;gap:14px;min-width:0;max-width:100%;
+}
+.clinic-persistent-shell .clinic-phase08-profile-ident>div{min-width:0}
+.clinic-persistent-shell .clinic-phase08-profile-avatar,
+.clinic-persistent-shell .clinic-phase08-patient-avatar{
+ display:grid;place-items:center;flex-shrink:0;
+ border-radius:13px;background:#d8ebfd;color:#206ca8;
+ font-weight:850;
+}
+.clinic-persistent-shell .clinic-phase08-profile-avatar{
+ width:65px;height:65px;font-size:26px;
+}
+.clinic-persistent-shell .clinic-phase08-profile-ident .phase05-name{
+ margin-block:5px;font-size:clamp(20px,2.4vw,26px);
+}
+.clinic-persistent-shell .clinic-phase08-profile-hero .phase05-head-actions{
+ display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+}
+.clinic-persistent-shell .clinic-phase08-profile-hero .phase05-head-actions a{
+ display:inline-flex;align-items:center;gap:7px;min-height:40px;
+}
+.clinic-persistent-shell .clinic-phase08-status-backdrop{
+ position:fixed;inset:0;z-index:1100;
+ display:grid;place-items:center;overflow-y:auto;
+ padding:16px;background:rgba(11,31,53,.56);
+}
+.clinic-persistent-shell .clinic-phase08-status-modal{
+ display:grid;gap:14px;width:min(100%,540px);max-height:92dvh;
+ overflow-y:auto;overscroll-behavior:contain;
+ padding:clamp(18px,3vw,27px);border-radius:19px;
+ border:1px solid #c9dfef;background:#fff;
+ box-shadow:0 24px 70px rgba(9,33,58,.27);
+}
+.clinic-persistent-shell .clinic-phase08-status-modal-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.clinic-persistent-shell .clinic-phase08-status-icon{
+ display:grid;place-items:center;width:44px;height:44px;
+ border-radius:12px;color:#166caa;background:#e8f3fc;
+}
+.clinic-persistent-shell .clinic-phase08-status-close{
+ display:grid;place-items:center;width:42px;height:42px;
+ border-radius:10px;border:1px solid var(--clinic-border);
+ color:var(--clinic-muted);background:#fff;cursor:pointer;
+}
+.clinic-persistent-shell .clinic-phase08-status-modal h2{margin:0;font-size:21px}
+.clinic-persistent-shell .clinic-phase08-status-modal p{
+ margin:0;color:var(--clinic-muted);font-size:12px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase08-status-preview{
+ display:grid;gap:7px;padding:15px;background:#f2f8ff;
+ border-radius:12px;border:1px solid #d8e8f5;
+}
+.clinic-persistent-shell .clinic-phase08-status-preview strong{font-size:14px}
+.clinic-persistent-shell .clinic-phase08-status-preview>span{font-size:12px;color:var(--clinic-muted)}
+.clinic-persistent-shell .clinic-phase08-status-preview>div{display:flex;align-items:center;gap:11px}
+.clinic-persistent-shell .clinic-phase08-status-modal .field{display:grid;gap:7px}
+.clinic-persistent-shell .clinic-phase08-status-modal textarea{
+ display:block;width:100%;min-height:92px;padding:11px;
+ border:1px solid var(--clinic-border-strong);border-radius:10px;resize:vertical;
+ color:var(--clinic-ink);background:#fff;
+}
+.clinic-persistent-shell .clinic-phase08-status-modal-actions{
+ display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;
+}
+.clinic-persistent-shell .clinic-phase08-status-modal-actions button{min-height:44px}
+.clinic-persistent-shell .clinic-phase08-directory :is(a,button,input,select):focus-visible,
+.clinic-persistent-shell .clinic-phase08-editor :is(a,button,input,select):focus-visible,
+.clinic-persistent-shell .clinic-phase08-status-modal :is(button,textarea):focus-visible{
+ outline:3px solid #287bbb;outline-offset:3px;
+}
+@media(max-width:1100px){
+ .clinic-persistent-shell .clinic-phase08-counters{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .clinic-persistent-shell .clinic-phase08-filters{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+@media(max-width:760px){
+ .clinic-persistent-shell .clinic-phase08-desktop{display:none}
+ .clinic-persistent-shell .clinic-phase08-mobile{display:grid;gap:10px}
+ .clinic-persistent-shell .clinic-phase08-patient-card{
+  display:grid;gap:14px;background:#fff;min-width:0;
+  border:1px solid var(--clinic-border);border-radius:13px;
+  padding:14px;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-head{
+  display:flex;align-items:center;gap:11px;min-width:0;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-avatar{
+  width:42px;height:42px;font-size:17px;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-head>div{
+  display:grid;gap:5px;flex:1 1 auto;min-width:0;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-head>div strong{
+  font-size:13px;overflow-wrap:anywhere;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-head>div bdi{font-size:11px}
+ .clinic-persistent-shell .clinic-phase08-patient-head .state-badge{
+  flex-shrink:0;font-size:10px;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-details{
+  display:grid;gap:7px;background:#f5f9fd;
+  padding:12px;border-radius:10px;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-details>span{
+  display:flex;gap:7px;align-items:center;flex-wrap:wrap;
+  color:var(--clinic-muted);font-size:11px;overflow-wrap:anywhere;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-details svg{color:#6694ba;flex-shrink:0}
+ .clinic-persistent-shell .clinic-phase08-patient-details small{color:#a26921;font-size:10px}
+ .clinic-persistent-shell .clinic-phase08-patient-actions{
+  display:flex;flex-wrap:wrap;gap:8px;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-actions a{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:42px;flex:1 1 125px;font-size:12px;text-align:center;
+  border:1px solid #c5daec;border-radius:10px;
+  background:#f7fbff;color:#175c95;font-weight:770;text-decoration:none;padding:9px;
+ }
+ .clinic-persistent-shell .clinic-phase08-patient-actions a+ a{
+  color:#fff;background:#2079bb;border-color:#2079bb;
+ }
+}
+@media(max-width:580px){
+ .clinic-persistent-shell .clinic-phase08-intro{padding:16px}
+ .clinic-persistent-shell .clinic-phase08-shortcuts{width:100%}
+ .clinic-persistent-shell .clinic-phase08-shortcuts>a{flex:1 1 125px;justify-content:center}
+ .clinic-persistent-shell .clinic-phase08-stat{min-height:124px;padding:13px}
+ .clinic-persistent-shell .clinic-phase08-panel{padding:14px}
+ .clinic-persistent-shell .clinic-phase08-pagination{justify-content:center}
+ .clinic-persistent-shell .clinic-phase08-pagination>div{width:100%}
+ .clinic-persistent-shell .clinic-phase08-pagination button{flex:1 1 100px}
+ .clinic-persistent-shell .clinic-phase08-profile-avatar{width:48px;height:48px;font-size:19px}
+ .clinic-persistent-shell .clinic-phase08-profile-hero .phase05-head-actions{width:100%}
+ .clinic-persistent-shell .clinic-phase08-profile-hero .phase05-head-actions a{flex:1 1 auto;justify-content:center}
+}
+@media(max-width:375px){
+ .clinic-persistent-shell .clinic-phase08-counters{gap:8px}
+ .clinic-persistent-shell .clinic-phase08-stat{min-height:116px;padding:10px}
+ .clinic-persistent-shell .clinic-phase08-filters{grid-template-columns:minmax(0,1fr)}
+ .clinic-persistent-shell .clinic-phase08-shortcuts>a{flex-basis:100%}
+ .clinic-persistent-shell .clinic-phase08-patient-head .state-badge{max-width:29%}
+ .clinic-persistent-shell .clinic-phase08-status-modal-actions button{flex:1 1 100%}
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-phase08-stat{transition:none!important;transform:none!important}
+ .clinic-persistent-shell .clinic-phase08-directory *,
+ .clinic-persistent-shell .clinic-phase08-editor *{
+  scroll-behavior:auto!important;animation:none!important;
+ }
+}
