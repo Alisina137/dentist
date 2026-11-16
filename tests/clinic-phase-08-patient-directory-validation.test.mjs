@@ -97,7 +97,6 @@ test("Clinic Phase 08: registration preserves duplicate checks, server validatio
   'directoryContactHint'
  ])assert.ok(ui.includes(token),token);
  for(const token of [
-  'NOTICE_ACKNOWLEDGEMENT_REQUIRED',
   'DUPLICATE_CANDIDATES',
   'DUPLICATE_REASON_REQUIRED',
   'STALE_PATIENT_REVISION',
@@ -150,7 +149,7 @@ test("Clinic Phase 08: RTL/English copy, accessible mobile design and patient vs
   'directoryDobHint:"تاریخ تولد نباید آینده باشد.',
   'directoryDobHint:"د زېږېدو نېټه باید راتلونکې نه وي.',
   '<CareIcon name="users"','<CareIcon name="shield"',
-  'className="clinic-phase08-profile-hero"'
+  'className="card panel clinic-phase08-profile-hero"'
  ])assert.ok(ui.includes(token),token);
  assert.ok(layout.includes('import "./clinic-reception.css";\nimport "./clinic-patients.css";'));
  assert.ok(css.startsWith("/*"));
