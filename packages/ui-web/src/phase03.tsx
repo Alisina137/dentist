@@ -234,7 +234,8 @@ function navigation(space:Space,t:(key:string)=>string){
  const options=[home];
  if(space.role==="owner"||space.role==="manager"){
   options.push(appointments,queue,bookingRequests,patients,clinical,finance,reports,listing,staff,resources,services,hours,notifications,security,settings);
-  if(space.role==="owner")options.push(subscription,exportData);
+  if(space.role==="owner")options.push(exportData);
+  if(space.role==="owner")options.push(subscription);
  }else if(space.role==="dentist"||space.role==="receptionist"){
   options.push(appointments,queue,bookingRequests,patients,...(space.role==="dentist"?[clinical,myVerification]:[finance]),resources,services,hours,profile,security);
  }else if(space.role==="assistant"){
