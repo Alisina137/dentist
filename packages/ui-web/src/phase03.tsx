@@ -319,9 +319,16 @@ function NavLinks({nav,active}:{nav:{title:string;href:string;key:string;icon:st
  </nav>;
 }
 function useContextAndSpace(){
- const {data,error,reload}=useData("/context");
+ const persistent=usePersistentClinicShell();
+ // The /clinic layout fetched the role/tenant context once and stays mounted.
+ // Do not repeat /v1/team/context on each new clinic screen.
+ const {data,error,reload}=useData(persistent?null:"/context");
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
- useEffect(()=>{setRequested(new URLSearchParams(location.search).get("clinic"));},[]);
+ useEffect(()=>{if(!persistent)setRequested(new URLSearchParams(location.search).get("clinic"));},
+  [persistent]);
+ if(persistent)return {ctx:persistent.ctx as Context|null,
+  space:persistent.space as Space|undefined,error:persistent.error,
+  reload:persistent.reload,requested:persistent.requested};
  const spaces=(data as Context|undefined)?.clinics||[];
  const selected=requested===undefined?undefined:requested?spaces.find(x=>x.clinicId===requested):spaces[0];
  return {ctx:data as Context|null,space:selected as Space|undefined,error,reload,requested};
