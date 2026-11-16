@@ -1007,7 +1007,7 @@ function PatientApp(){
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
- const [accountSection,setAccountSection]=useState<"profile"|"reviews">("profile");
+ const [accountSection,setAccountSection]=useState<"profile"|"reviews"|"settings">("profile");
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
  const [refreshVersion,setRefreshVersion]=useState(0),[pullRefreshing,setPullRefreshing]=useState(false);
@@ -1109,7 +1109,7 @@ function PatientApp(){
  useEffect(()=>{
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(route){back();return true;}
-   if(tab==="account"&&accountSection==="reviews"){setAccountSection("profile");return true;}
+   if(tab==="account"&&accountSection!=="profile"){setAccountSection("profile");return true;}
    if(tab!=="home"){select("home");return true;}
    return false;
   });
@@ -1135,7 +1135,7 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):tab)+":"+refreshVersion}
+  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
@@ -1165,7 +1165,7 @@ function PatientApp(){
      <SavedScreen ui={ui} ids={savedIds} onRemove={save}
       onClinic={openClinic} onExplore={()=>select("explore")}/>):
     <View style={s.sectionGap}>
-     <View style={[s.row,{flexDirection:ui.flow,gap:10}]}>
+     <View style={[s.accountSegment,{flexDirection:ui.flow,gap:6}]}>
       <Pressable style={[s.cardButton,accountSection==="profile"&&s.cardButtonPrimary]}
        accessibilityRole="tab" accessibilityState={{selected:accountSection==="profile"}}
        onPress={()=>setAccountSection("profile")}>
@@ -1176,15 +1176,20 @@ function PatientApp(){
        onPress={()=>setAccountSection("reviews")}>
        <Text style={[s.cardButtonText,accountSection==="reviews"&&s.cardButtonPrimaryText]}>
         {locale==="en"?"Reviews":locale==="ps-AF"?"نظرونه":"نظرات"}</Text></Pressable>
+      <Pressable style={[s.cardButton,accountSection==="settings"&&s.cardButtonPrimary]}
+       accessibilityRole="tab" accessibilityState={{selected:accountSection==="settings"}}
+       onPress={()=>setAccountSection("settings")}>
+       <Text style={[s.cardButtonText,accountSection==="settings"&&s.cardButtonPrimaryText]}>
+        {locale==="en"?"Settings":locale==="ps-AF"?"تنظیمات":"تنظیمات"}</Text></Pressable>
      </View>
-     {accountSection==="reviews"?<NativeReviews locale={locale}/>:<>
-     <NativeAccountArea locale={locale} calendar={calendar} city={city}
-      onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>
-     <AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
-      signedIn={Boolean(native.account?.registered)}
-      onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
-      checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>
-     </>}
+     {accountSection==="reviews"?<NativeReviews locale={locale}/>:
+      accountSection==="settings"?<AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
+       signedIn={Boolean(native.account?.registered)}
+       onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
+       checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>:
+      <NativeAccountArea locale={locale} calendar={calendar} city={city}
+       onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
+
     </View>}
   </ScrollView>
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
@@ -1231,6 +1236,8 @@ const s=StyleSheet.create({
   alignItems:"center",justifyContent:"center"},
  backGlyph:{fontSize:26,fontWeight:"700",color:colors.blue},
  detailTopTitle:{fontSize:18,fontWeight:"900",color:colors.navy},
+ accountSegment:{backgroundColor:colors.white,borderColor:colors.line,borderWidth:1,
+  padding:5,borderRadius:16},
  bottomNav:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
   justifyContent:"space-around",paddingHorizontal:7,paddingTop:8,paddingBottom:3},
  bottomNavItem:{flex:1,minHeight:57,alignItems:"center",justifyContent:"center",
