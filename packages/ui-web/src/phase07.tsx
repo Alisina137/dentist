@@ -321,50 +321,215 @@ function OperationalSummary({space}:{space:Space}){
   <Banner kind="warning">{t("protected")}. {t("operational")}</Banner>
  </section>;
 }
+type WorklistTab="today"|"pending"|"cases";
+type WorklistStatus="all"|"confirmed"|"arrived"|"in_treatment"|"completed";
+type WorklistAppointment={
+ appointment_id:string;patient_id:string;patient_number:string;
+ preferred_name:string;family_name:string|null;service_name:string;
+ status:string;start_at:string;end_at:string;encounter_id:string|null;
+ encounter_status:string|null;
+};
+type WorklistCase={id:string;patient_id:string;patient_number:string;
+ preferred_name:string;family_name:string|null;reason:string;
+ updated_at?:string;signed_at?:string};
+const WORKLIST_PAGE_SIZE=5;
 function Worklist({space}:{space:Space}){
- const {t,fmt}=useW();const [date,setDate]=useState(day());
- const [tab,setTab]=useState<"today"|"pending"|"cases">("today");
- const base="/clinics/"+space.clinicId;
- const {data,error,refresh}=useLoad(base+"/worklist?date="+date);
- return <div className="phase07-stack">
-  <section className="card phase07-controlbar">
+ const {t,fmt,lang}=useW();
+ const [date,setDate]=useState(day()),[ready,setReady]=useState(false);
+ const [tab,setTab]=useState<WorklistTab>("today");
+ const [status,setStatus]=useState<WorklistStatus>("all");
+ const [search,setSearch]=useState("");
+ const [page,setPage]=useState(1);
+ const base="/clinics/"+encodeURIComponent(space.clinicId);
+ useEffect(()=>{
+  const q=new URLSearchParams(location.search);
+  const queryDate=q.get("date");
+  if(queryDate&&clinicValidDay(queryDate))setDate(queryDate);
+  if(["today","pending","cases"].includes(q.get("tab")||""))
+   setTab(q.get("tab") as WorklistTab);
+  if(["all","confirmed","arrived","in_treatment","completed"].includes(q.get("status")||""))
+   setStatus(q.get("status") as WorklistStatus);
+  setReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const q=new URLSearchParams(location.search);
+  q.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries({date,tab,status})){
+   if((key==="tab"&&value==="today")||(key==="status"&&value==="all"))q.delete(key);
+   else q.set(key,value);
+  }
+  history.replaceState(null,"",location.pathname+"?"+q.toString());
+ },[ready,space.clinicId,date,tab,status]);
+ const {data,error,refresh}=useLoad(ready?base+"/worklist?date="+date:null);
+ const todayRows:WorklistAppointment[]=data?.today||[];
+ const pendingRows:WorklistCase[]=data?.pending||[];
+ const caseRows:WorklistCase[]=data?.cases||[];
+ const searchTerm=search.trim().toLocaleLowerCase();
+ const todayMatches=todayRows.filter(a=>(status==="all"||a.status===status)&&
+  (!searchTerm||(patientName(a)+" "+a.patient_number+" "+a.service_name)
+   .toLocaleLowerCase().includes(searchTerm)));
+ const caseMatches=(tab==="pending"?pendingRows:caseRows).filter(e=>
+  !searchTerm||(patientName(e)+" "+e.patient_number+" "+e.reason)
+   .toLocaleLowerCase().includes(searchTerm));
+ const filtered=tab==="today"?todayMatches:caseMatches;
+ const pageCount=Math.max(1,Math.ceil(filtered.length/WORKLIST_PAGE_SIZE));
+ const safePage=Math.min(page,pageCount);
+ const visible=filtered.slice((safePage-1)*WORKLIST_PAGE_SIZE,safePage*WORKLIST_PAGE_SIZE);
+ const counts=[
+  {key:"confirmed" as const,label:"handoffAwaiting"},
+  {key:"arrived" as const,label:"handoffChecked"},
+  {key:"in_treatment" as const,label:"handoffTreatment"},
+  {key:"completed" as const,label:"handoffCompleted"}
+ ];
+ function navigateDay(value:string){if(!clinicValidDay(value))return;
+  setDate(value);setPage(1);}
+ function setActiveTab(value:WorklistTab){setTab(value);setPage(1);}
+ function changeStatus(value:WorklistStatus){setStatus(value);setPage(1);}
+ return <div className="phase07-stack clinic-phase09-worklist">
+  <section className="clinic-phase09-handoff card" aria-label={t("handoff")}>
+   <div className="clinic-phase09-handoff-header">
+    <div><span className="clinic-phase09-kicker">
+     <CareIcon name="activity" size={17}/>{t("handoff")}</span>
+     <h2>{t("handoffIntro")}</h2></div>
+    <nav className="clinic-phase09-handoff-links" aria-label={t("handoffQueue")}>
+     <a href={"/clinic/appointments/queue?clinic="+encodeURIComponent(space.clinicId)+
+      "&date="+date} className="btn btn-secondary">
+      <CareIcon name="clock" size={17}/>{t("handoffQueue")}</a>
+     <a href={"/clinic/appointments?clinic="+encodeURIComponent(space.clinicId)+
+      "&date="+date+"&view=day"} className="btn btn-secondary">
+      <CareIcon name="calendar" size={17}/>{t("handoffCalendar")}</a>
+    </nav>
+   </div>
+   <ol className="clinic-phase09-handoff-steps">
+    {([
+     ["handoffReception","account"],["handoffReview","shield-check"],["handoffDocument","clipboard"]
+    ] as const).map(([label,icon],index)=><li key={label}>
+     <span className="clinic-phase09-step-icon">
+      <CareIcon name={icon} size={19}/></span>
+     <div><small dir="auto">{index+1}</small><strong>{t(label)}</strong></div>
+    </li>)}
+   </ol>
+   <p className="clinic-phase09-clinical-warning">
+    <CareIcon name="about" size={17}/>{t("handoffWarning")}</p>
+  </section>
+  <section className="card phase07-controlbar clinic-phase09-controlbar">
    <div className="phase07-tabs" role="tablist" aria-label={t("worklist")}>
     {(["today","pending","cases"] as const).map(key=><button type="button" role="tab" key={key}
-     aria-selected={tab===key} onClick={()=>setTab(key)}>{t(key)}
-     {data&&<span className="phase07-count">{(key==="today"?data.today:key==="pending"?data.pending:data.cases).length}</span>}</button>)}
+     aria-selected={tab===key} onClick={()=>setActiveTab(key)}>{t(key)}
+     {data&&<span className="phase07-count">
+      {(key==="today"?todayRows:key==="pending"?pendingRows:caseRows).length}
+     </span>}</button>)}
    </div>
-   <label className="phase07-date"><span>{t("date")}</span>
-    <input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
-   <button type="button" className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
+   <div className="clinic-phase09-date-controls">
+    <button type="button" className="btn btn-secondary" onClick={()=>navigateDay(day())}>{t("today")}</button>
+    <label className="phase07-date"><span>{t("date")}</span>
+     <input type="date" value={date} onChange={e=>navigateDay(e.target.value)}/></label>
+    <button type="button" className="btn btn-secondary" onClick={refresh}>
+     <CareIcon name="activity" size={17}/>{t("handoffRefresh")}</button>
+   </div>
   </section>
+  <section className="clinic-phase09-search-row card" aria-label={t("handoffSearch")}>
+   <label className="clinic-phase09-search">
+    <span>{t("handoffSearch")}</span>
+    <span><CareIcon name="search" size={17}/>
+     <input type="search" value={search} maxLength={100} autoComplete="off"
+      placeholder={t("handoffSearchHint")}
+      onChange={event=>{setSearch(event.target.value);setPage(1);}}/></span>
+   </label>
+   {tab==="today"&&<label className="clinic-phase09-status-filter">
+    <span>{t("handoffStatus")}</span>
+    <select value={status} onChange={event=>changeStatus(event.target.value as WorklistStatus)}>
+     <option value="all">{t("handoffAll")}</option>
+     {counts.map(({key,label})=><option key={key} value={key}>{t(label)}</option>)}
+    </select>
+   </label>}
+   {(search||status!=="all")&&<button type="button" className="btn btn-secondary"
+    onClick={()=>{setSearch("");changeStatus("all");}}>{t("handoffClear")}</button>}
+  </section>
+  {data&&<section className="clinic-phase09-status-cards" aria-label={t("handoffActive")}>
+   {counts.map(({key,label})=><button type="button" key={key}
+    className={"clinic-phase09-stage-card stage-"+key+(tab==="today"&&status===key?" is-selected":"")}
+    aria-pressed={tab==="today"&&status===key}
+    onClick={()=>{setActiveTab("today");changeStatus(key);}}>
+    <span>{t(label)}</span>
+    <strong>{todayRows.filter(a=>a.status===key).length}</strong></button>)}
+  </section>}
+  {data&&<p className="clinic-phase09-limits" role="status">
+   <CareIcon name="about" size={16}/>{t("handoffRange")}</p>}
   {error?<ErrorBox error={error} retry={refresh}/>:!data?<Loading/>:
-   tab==="today"?<section className="card phase07-panel">
-    <div className="phase07-section"><h2>{t("today")}</h2><span className="phase07-subdued">{fmt(date+"T12:00:00Z")}</span></div>
-    {!data.today.length?<p className="phase07-empty">{t("noToday")}</p>:
-     <div className="phase07-rows">{data.today.map((a:any)=><article className="phase07-visit-row" key={a.appointment_id}>
-      <div className="phase07-time">{fmt(a.start_at,{year:undefined,month:undefined,day:undefined,
-       hour:"2-digit",minute:"2-digit"})}</div>
-      <div className="phase07-row-main"><h3>{patientName(a)}</h3><div className="phase07-meta">
-       <bdi dir="ltr">{a.patient_number}</bdi> · {a.service_name} · <span className="phase07-state">{a.status}</span>
-       </div></div>
-      {a.status==="confirmed"?<span className="phase07-await" aria-label={t("awaitArrival")}>
-       {t("awaitArrival")}</span>:
-       <a className="btn btn-primary" href={a.encounter_id?
-        link(space.clinicId,a.patient_id,"visits",a.encounter_id):
-        link(space.clinicId,a.patient_id,"visits")+"&appointmentId="+encodeURIComponent(a.appointment_id)}>
-        {t("start")} →</a>}</article>)}</div>}
-   </section>:
-   <section className="card phase07-panel">
-    <div className="phase07-section"><h2>{t(tab)}</h2></div>
-    {!(tab==="pending"?data.pending:data.cases).length?
-     <p className="phase07-empty">{t(tab==="pending"?"noPending":"noCases")}</p>:
-     <div className="phase07-rows">{(tab==="pending"?data.pending:data.cases).map((e:any)=>
-      <article className="phase07-visit-row" key={e.id}>
-       <div className="phase07-time">✚</div>
+   <section className="card phase07-panel clinic-phase09-results" aria-label={t(tab)}>
+    <div className="phase07-section">
+     <h2>{tab==="today"?t("handoffActive"):t(tab)}</h2>
+     <span className="phase07-subdued" role="status" aria-live="polite">
+      {tab==="today"?fmt(date+"T12:00:00Z")+" · ":""}
+      {filtered.length} {t("handoffLinked")}</span>
+    </div>
+    {!visible.length?<div className="clinic-phase09-empty" role="status">
+     <CareIcon name="search" size={23}/>
+     <p>{search||status!=="all"?t("handoffNoMatch"):
+      t(tab==="today"?"noToday":tab==="pending"?"noPending":"noCases")}</p>
+     {(search||status!=="all")&&<button type="button" className="btn btn-secondary"
+      onClick={()=>{setSearch("");changeStatus("all");}}>{t("handoffClear")}</button>}
+    </div>:
+     tab==="today"?<div className="phase07-rows clinic-phase09-rows">
+      {(visible as WorklistAppointment[]).map(a=><article className="phase07-visit-row clinic-phase09-visit-row"
+       key={a.appointment_id}>
+       <div className="phase07-time"><time dateTime={a.start_at}>
+        <bdi dir="ltr">{fmt(a.start_at,{year:undefined,month:undefined,day:undefined,
+         hour:"2-digit",minute:"2-digit",hourCycle:"h23"})}</bdi></time></div>
+       <div className="phase07-row-main">
+        <h3>{patientName(a)}</h3>
+        <div className="phase07-meta">
+         <bdi dir="ltr">{a.patient_number}</bdi> · {a.service_name}
+        </div>
+        <span className={"clinic-phase09-visit-status stage-"+a.status}>
+         {t(a.status==="confirmed"?"handoffAwaiting":
+          a.status==="arrived"?"handoffChecked":
+          a.status==="in_treatment"?"handoffTreatment":
+          a.status==="completed"?"handoffCompleted":"handoffUnknown")}</span>
+        {a.encounter_id&&<small className="clinic-phase09-encounter-mark">
+         <CareIcon name="check" size={14}/>{t("handoffAlready")}</small>}
+       </div>
+       <div className="clinic-phase09-row-actions">
+        {a.status==="confirmed"?<span className="phase07-await" aria-label={t("awaitArrival")}>
+         {t("awaitArrival")}</span>:
+         <a className="btn btn-primary" href={a.encounter_id?
+          link(space.clinicId,a.patient_id,"visits",a.encounter_id):
+          link(space.clinicId,a.patient_id,"visits")+
+           "&appointmentId="+encodeURIComponent(a.appointment_id)}>
+          <CareIcon name="clipboard" size={16}/>
+          {t(a.encounter_id?"handoffContinue":"handoffVisit")}</a>}
+        <a href={"/clinic/appointments/"+encodeURIComponent(a.appointment_id)+
+         "?clinic="+encodeURIComponent(space.clinicId)}
+         className="clinic-phase09-textlink">{t("handoffOpenAppointment")}</a>
+        <a href={link(space.clinicId,a.patient_id)}
+         className="clinic-phase09-textlink">{t("handoffOpenPatient")}</a>
+       </div>
+      </article>)}
+     </div>:
+     <div className="phase07-rows clinic-phase09-rows">
+      {(visible as WorklistCase[]).map(e=><article className="phase07-visit-row clinic-phase09-visit-row" key={e.id}>
+       <span className="phase07-time" aria-hidden="true">✚</span>
        <div className="phase07-row-main"><h3>{patientName(e)}</h3>
-        <p className="phase07-meta">{e.reason} · {fmt(e.updated_at||e.signed_at)}</p></div>
-       <a className="btn btn-secondary" href={link(space.clinicId,e.patient_id,"visits",e.id)}>
-        {t("open")} →</a></article>)}</div>}
+        <p className="phase07-meta"><bdi dir="ltr">{e.patient_number}</bdi> ·
+         {e.reason} · {fmt(e.updated_at||e.signed_at)}</p></div>
+       <div className="clinic-phase09-row-actions">
+        <a className="btn btn-secondary" href={link(space.clinicId,e.patient_id,"visits",e.id)}>
+         {t("handoffContinue")} →</a>
+        <a className="clinic-phase09-textlink" href={link(space.clinicId,e.patient_id)}>
+         {t("handoffOpenPatient")}</a>
+       </div>
+      </article>)}
+     </div>}
+    {filtered.length>WORKLIST_PAGE_SIZE&&<nav className="clinic-phase09-pagination" aria-label={t("page")}>
+     <span aria-live="polite">{safePage}/{pageCount} · {filtered.length}</span>
+     <div><button type="button" className="btn btn-secondary"
+      disabled={safePage<=1} onClick={()=>setPage(v=>Math.max(1,v-1))}>{t("previous")}</button>
+      <button type="button" className="btn btn-secondary"
+       disabled={safePage>=pageCount} onClick={()=>setPage(v=>Math.min(pageCount,v+1))}>{t("next")}</button>
+     </div>
+    </nav>}
    </section>}
   {space.role==="assistant"&&<Banner>{t("assistantHint")}</Banner>}
  </div>;
