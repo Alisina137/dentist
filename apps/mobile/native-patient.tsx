@@ -1,4 +1,4 @@
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
 
@@ -391,16 +391,30 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
 export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
  calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
  const t=tr(locale),auth=useNativeAuth();
- const [rows,setRows]=useState<Booking[]>([]),[filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
- const [busy,setBusy]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(true),[reload,setReload]=useState(0);
+ const [filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
+ const [busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
+ const [reload,setReload]=useState(0),generation=useRef(0);
+ const patientId=auth.account?.registered?auth.account.user.id:null;
+ const [snapshot,setSnapshot]=useState<{patientId:string;rows:Booking[];
+  error:string;loading:boolean}|null>(null);
  const refresh=useCallback(async()=>{
-  if(!auth.account?.registered)return;
-  setLoading(true);setError("");
-  try{const result=await auth.request<{appointments:Booking[]}>("/v1/booking/my");setRows(result.appointments)}
-  catch(e){setError(e instanceof Error?e.message:t.error)}
-  finally{setLoading(false)}
- },[auth.account?.registered,auth.request,locale]);
- useEffect(()=>{void refresh()},[refresh,reload]);
+  if(!patientId){setSnapshot(null);return;}
+  const request=++generation.current;
+  setActionError("");
+  setSnapshot({patientId,rows:[],error:"",loading:true});
+  try{
+   const result=await auth.request<{appointments:Booking[]}>("/v1/booking/my");
+   if(generation.current===request)setSnapshot({patientId,rows:result.appointments||[],
+    error:"",loading:false});
+  }catch(e){
+   if(generation.current===request)setSnapshot({patientId,rows:[],
+    error:e instanceof Error?e.message:t.error,loading:false});
+  }
+ },[patientId,auth.request,locale]);
+ useEffect(()=>{void refresh();return()=>{generation.current++};},[refresh,reload]);
+ const active=snapshot?.patientId===patientId?snapshot:null;
+ const rows=active?.rows||[],loading=active?.loading??true;
+ const error=active?.error||actionError;
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
@@ -412,11 +426,11 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    Date.parse(b.startAt)-Date.parse(a.startAt));
  const cancel=(b:Booking)=>Alert.alert(t.cancel,t.cancelHint,[
   {text:t.back,style:"cancel"},{text:t.cancel,style:"destructive",onPress:()=>void(async()=>{
-   setBusy(b.id);setError("");
+   setBusy(b.id);setActionError("");
    try{await auth.request("/v1/booking/my/"+encodeURIComponent(b.id)+"/cancel","POST",{
     revision:b.revision,reason:"Patient requested appointment cancellation"});
     await refresh();
-   }catch(e){setError(e instanceof Error?e.message:t.error)}
+   }catch(e){setActionError(e instanceof Error?e.message:t.error)}
    finally{setBusy("")}
   })()}]);
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -432,7 +446,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
   {error&&<ErrorBox message={error}/>}
   {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
-  {current.map(b=><Block key={b.id}>
+  {!loading&&!error&&current.map(b=><Block key={b.id}>
    <View style={p.between}><Text style={p.title}>{b.clinicName}</Text>
     <Text style={[p.badge,["cancelled","rejected","no_show"].includes(b.status)?p.badgeDanger:
      b.status==="requested"?p.badgePending:null]}>{appointmentStatus(b.status,locale)}</Text>
