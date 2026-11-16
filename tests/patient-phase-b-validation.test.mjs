@@ -63,8 +63,19 @@ test("Patient B: every appointment row opens its secure, dedicated server-author
   'time(booking.cancelUntil,locale,calendar)',
   'timeZone:"Asia/Kabul"'
  ])assert.ok(journeys.includes(x),x);
- assert.ok(journeys.includes("not a full event history"),
-  "don't invent a booking event timeline not returned by the API");
+ assert.ok(journeys.includes("view.timeline.map((event,index)"),
+  "must render real patient-scoped chronology, not fabricated status milestones");
+ assert.ok(journeys.includes("timeline:data.timeline||[]"));
+ assert.ok(journeys.includes("event.action===\\"rescheduled\\"".replaceAll("\\\\"","\\"")));
+ const api=read("apps/api/src/patient-booking-router.ts");
+ for(const part of [
+  "JOIN patient_public_bookings b",
+  "b.appointment_id=e.appointment_id AND b.clinic_id=e.clinic_id",
+  "WHERE b.id=${bookingId} AND b.user_id=${user}",
+  "e.action,e.after_status,e.after_start_at,e.created_at",
+  "ORDER BY e.created_at DESC,e.id DESC LIMIT 101",
+  "timeline,timelineTruncated:rows.length>100"
+ ])assert.ok(api.includes(part),part);
 });
 
 test("Patient B: clinic profile is four practical tabs, with full reviewed gallery and hours on Overview",()=>{
