@@ -958,7 +958,17 @@ function QueuePanel({space}:{space:Space}){
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
   if(requested&&validIsoDay(requested))setDay(requested);
+  setProvider(q.get("providerId")||"");
  },[]);
+ function queueNavigate(nextDay:string,providerId:string){
+  if(!validIsoDay(nextDay))return;
+  setDay(nextDay);setProvider(providerId);
+  const q=new URLSearchParams(location.search);
+  q.set("clinic",space.clinicId);
+  q.set("date",nextDay);
+  if(providerId)q.set("providerId",providerId);else q.delete("providerId");
+  history.replaceState(null,"",location.pathname+"?"+q.toString());
+ }
  const base="/clinics/"+space.clinicId;
  const {data,error,refresh}=useData(base+"/queue?date="+day);
  const {data:catalog}=useData(base+"/catalog");
@@ -976,10 +986,10 @@ function QueuePanel({space}:{space:Space}){
    <div><span className="phase06-eyebrow">{t("queueToday")}</span>
     <h2>{dateTitle(day,lang,calendar)}</h2><p>{t("queueDateHint")}</p></div>
    <div className="phase06-queue-controls">
-    <button className="btn btn-secondary" onClick={()=>setDay(dayKabul())}>{t("today")}</button>
+    <button className="btn btn-secondary" type="button" onClick={()=>queueNavigate(dayKabul(),provider)}>{t("today")}</button>
     <label className="phase06-field"><span>{t("queuePast")}</span>
-     <input type="date" value={day} onChange={e=>{if(e.target.value)setDay(e.target.value);}}/></label>
-    <Select label={t("filterDentist")} value={provider} onChange={setProvider}
+     <input type="date" value={day} onChange={e=>{if(e.target.value)queueNavigate(e.target.value,provider);}}/></label>
+    <Select label={t("filterDentist")} value={provider} onChange={value=>queueNavigate(day,value)}
      options={[{value:"",label:t("allDentists")},
       ...(catalog?.providers||[]).map((p:Provider)=>({value:p.membershipId,label:p.name}))]}/>
     <button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
@@ -1016,7 +1026,8 @@ function QueuePanel({space}:{space:Space}){
    </section>}
   <div className="phase06-queue-foot">
    <Notice>{t("clinicalNext")} {t("deliveryNotice")}</Notice>
-   <a href={appHref(space.clinicId)} className="btn btn-secondary">{t("viewCalendar")} ↗</a>
+   <a href={appHref(space.clinicId)+"&view=day&date="+day}
+    className="btn btn-secondary">{t("viewCalendar")} ↗</a>
   </div>
  </div>;
 }
