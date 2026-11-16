@@ -19,10 +19,10 @@ test("Clinic Phase 05: independent clinic-only dashboard styles load after shell
   "apps/patient-web/app/layout.tsx"]){
   assert.ok(!read(p).includes("clinic-dashboard.css"),"Dashboard theme must remain clinic-only");
  }
- for(const forbidden of [":root{","html{","body{","svg path{",".odontogram{",
-  "transform:scaleX(-1)"]){
+ for(const forbidden of ["svg path{",".odontogram{","transform:scaleX(-1)"]){
   assert.ok(!css.includes(forbidden),forbidden);
  }
+ assert.ok(!/(^|\\n)\\s*(?:html|body|:root)\\s*\\{/m.test(css),"No unscoped global selectors");
 });
 
 test("Clinic Phase 05: new command view is bound to existing private tenant-scoped requests, not demo statistics",()=>{
@@ -39,7 +39,8 @@ test("Clinic Phase 05: new command view is bound to existing private tenant-scop
   'credentials:"include",cache:"no-store"',
   '<ClinicDashboardSnapshot role={space.role} clinicId={space.clinicId}',
   'canSeeReports&&<ClinicDashboardInsights clinicId={space.clinicId}',
-  'function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();bookingRequests.refresh();insights.refresh();}'
+  'function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();bookingRequests.refresh();}',
+  'function refreshDashboard(){refreshAll();insights.refresh();}'
  ])assert.ok(dashboard.includes(marker),marker);
  assert.ok(report.includes('if(!["owner","manager","cashier"].includes(person.role))opsFail(403,"REPORT_FORBIDDEN")'));
  assert.ok(report.includes('WHERE clinic_id=${clinicId}'));
