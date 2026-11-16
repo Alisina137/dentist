@@ -80,5 +80,8 @@ jobs:
           node tests/admin-phase-c-integration.mjs
           node tests/phase18-integration.mjs
           node tests/admin-phase-f-integration.mjs
+          # Stage L runs PH19's previously unexecuted owner export, audit and
+          # 100-contender booking suite, then new cross-role HTTP security checks.
+          node tests/stage-l-security-integration.mjs
           NODE_ENV=test node scripts/verify-test-backup-restore.mjs
           node tests/dev-no-email-integration.mjs
