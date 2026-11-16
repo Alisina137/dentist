@@ -17,6 +17,7 @@ type Patient={id:string;clinicId?:string;patientNumber:string;preferredName:stri
 const text:Record<string,Record<string,string>>={
  en:{visits:"Visits",files:"Files",chart:"Dental Chart",treatments:"Treatments",billing:"Billing",
 
+  historyLimit:"Showing up to 150 recent visits.",
   visitFilter:"Filter visits",allVisits:"All visits",plannedVisits:"Scheduled",finishedVisits:"Completed",cancelledVisits:"Cancelled / no-show",visitsPage:"Page",
   appointmentHistory:"Appointment history",newAppointment:"New appointment",noBookedVisits:"No appointments for this clinic patient yet.",confirmed:"Scheduled",arrived:"Arrived",in_treatment:"In treatment",completed:"Completed",cancelled:"Cancelled",no_show:"No-show",patients:"Patients",directory:"Directory",import:"Import",newPatient:"Add patient",identity:"Identification",
   contact:"Contact",intake:"Medical intake",consent:"Consent",overview:"Overview",edit:"Edit demographics",
@@ -78,6 +79,7 @@ const text:Record<string,Record<string,string>>={
  },
  "fa-AF":{visits:"معاینات",files:"فایل‌ها",chart:"چارت دندان",treatments:"پلان‌های تداوی",billing:"حساب مریض",
 
+  historyLimit:"حداکثر ۱۵۰ ملاقات اخیر نمایش داده می‌شود.",
   visitFilter:"فیلتر ملاقات‌ها",allVisits:"همه ملاقات‌ها",plannedVisits:"برنامه‌ریزی‌شده",finishedVisits:"تکمیل‌شده",cancelledVisits:"لغوشده / غیرحاضر",visitsPage:"صفحه",
   appointmentHistory:"تاریخچه ملاقات‌ها",newAppointment:"ثبت وقت جدید",noBookedVisits:"برای این مریض هنوز ملاقات ثبت نشده است.",confirmed:"وقت تعیین‌شده",arrived:"حاضر",in_treatment:"در تداوی",completed:"تکمیل",cancelled:"لغو",no_show:"غیرحاضر",patients:"مریضان",directory:"فهرست",import:"وارد کردن",newPatient:"افزودن مریض",
   identity:"معلومات هویت",contact:"تماس",intake:"معلومات صحی",consent:"رضایت و اطلاع",
@@ -140,6 +142,7 @@ const text:Record<string,Record<string,string>>={
  },
  "ps-AF":{visits:"معاینې",files:"فایلونه",chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",
 
+  historyLimit:"تر ۱۵۰ وروستۍ لیدنې ښودل کېږي.",
   visitFilter:"د لیدنو چاڼ",allVisits:"ټولې لیدنې",plannedVisits:"ټاکل شوې",finishedVisits:"بشپړې شوې",cancelledVisits:"لغوه / نه حاضر",visitsPage:"مخ",
   appointmentHistory:"د لیدنو تاریخچه",newAppointment:"نوی وخت ثبت کړئ",noBookedVisits:"د دې ناروغ لپاره تر اوسه لیدنه نشته.",confirmed:"ټاکل شوی",arrived:"راغلی",in_treatment:"درملنه",completed:"بشپړ",cancelled:"لغوه",no_show:"نه راغلی",patients:"ناروغان",directory:"نوملړ",import:"واردول",newPatient:"ناروغ ثبت کړئ",
   identity:"د پېژندنې معلومات",contact:"اړیکه",intake:"روغتیايي معلومات",consent:"خبرتیا او رضا",
@@ -603,34 +606,85 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
   </section>}
  </div>;
 }
+type VisitFilter="all"|"planned"|"finished"|"cancelled";
 function PatientBookings({space,patientId}:{space:Space;patientId:string}){
  const {t,date}=useWords();
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ const [filter,setFilter]=useState<VisitFilter>("all"),[page,setPage]=useState(1);
+ const [snapshot,setSnapshot]=useState<{key:string;data:any;error:string}>({
+  key:"",data:null,error:""
+ });
  const [again,setAgain]=useState(0);
+ const key=space.clinicId+":"+patientId;
  useEffect(()=>{
-  let active=true;setData(null);setError("");
-  fetch(API+"/v1/appointments/clinics/"+space.clinicId+"/patients/"+patientId+"/appointments",{
-   credentials:"include",cache:"no-store"})
-   .then(async r=>{const x=await r.json().catch(()=>({}));
-     if(!r.ok)throw new Error(x.code||"REQUEST_FAILED");return x;})
-   .then(x=>{if(active)setData(x);})
-   .catch(e=>{if(active)setError(e.message);});
-  return()=>{active=false;};
- },[space.clinicId,patientId,again]);
+  const controller=new AbortController();
+  setSnapshot({key,data:null,error:""});
+  fetch(API+"/v1/appointments/clinics/"+encodeURIComponent(space.clinicId)+
+   "/patients/"+encodeURIComponent(patientId)+"/appointments",{
+   credentials:"include",cache:"no-store",signal:controller.signal
+  }).then(async r=>{
+   const x=await r.json().catch(()=>({}));
+   if(!r.ok)throw new Error(x.code||"REQUEST_FAILED");
+   if(!controller.signal.aborted)setSnapshot({key,data:x,error:""});
+  }).catch(e=>{
+   if(!controller.signal.aborted)setSnapshot({key,data:null,
+    error:e instanceof Error?e.message:"REQUEST_FAILED"});
+  });
+  return()=>controller.abort();
+ },[key,again]);
+ const data=snapshot.key===key?snapshot.data:null;
+ const error=snapshot.key===key?snapshot.error:"";
  if(error)return <ErrorPanel message={error} retry={()=>setAgain(n=>n+1)}/>;
  if(!data)return <Loading/>;
- const visits=(data.appointments||[]).slice().reverse();
- if(!visits.length)return <div className="phase06-patient-empty">
+ const all=[...(data.appointments||[])].sort((a:any,b:any)=>
+  Date.parse(b.startAt)-Date.parse(a.startAt));
+ const matches=(a:any)=>{
+  if(filter==="all")return true;
+  if(filter==="planned")return ["confirmed","arrived","in_treatment","requested"].includes(a.status);
+  if(filter==="finished")return a.status==="completed";
+  return ["cancelled","no_show","rejected"].includes(a.status);
+ };
+ const visits=all.filter(matches);
+ const pages=Math.max(1,Math.ceil(visits.length/5));
+ const safePage=Math.min(page,pages);
+ const visible=visits.slice((safePage-1)*5,safePage*5);
+ const filters:{key:VisitFilter;label:string}[]=[
+  {key:"all",label:t("allVisits")},{key:"planned",label:t("plannedVisits")},
+  {key:"finished",label:t("finishedVisits")},{key:"cancelled",label:t("cancelledVisits")}
+ ];
+ return <div className="phase06-patient-history">
+  <div className="phase06-patient-history-controls">
+   <div className="phase06-patient-history-tabs" role="group" aria-label={t("visitFilter")}>
+    {filters.map(item=><button type="button" key={item.key}
+     className={"phase06-history-tab"+(filter===item.key?" is-active":"")}
+     aria-pressed={filter===item.key}
+     onClick={()=>{setFilter(item.key);setPage(1);}}>
+      {item.label}
+     </button>)}
+   </div>
+   <button type="button" className="btn btn-secondary" onClick={()=>setAgain(n=>n+1)}>
+    {t("retry")} ↻</button>
+  </div>
+  {!visible.length?<div className="phase06-patient-empty" role="status">
     <span aria-hidden="true">▦</span><p>{t("noBookedVisits")}</p>
-  </div>;
- return <div className="phase06-patient-appointments">
-  {visits.map((a:any)=><a href={"/clinic/appointments/"+a.id+"?clinic="+space.clinicId}
-    className="phase06-patient-appointment" key={a.id}>
-   <div><strong>{a.serviceName}</strong>
-    <span>{a.providerName} · {date(a.startAt)}</span></div>
-   <span className={"phase06-status phase06-status-"+a.status}>{t(a.status)}</span>
-   <span aria-hidden="true">↗</span>
-  </a>)}
+   </div>:
+   <div className="phase06-patient-appointments">
+    {visible.map((a:any)=><a href={"/clinic/appointments/"+encodeURIComponent(a.id)+
+     "?clinic="+encodeURIComponent(space.clinicId)} className="phase06-patient-appointment" key={a.id}>
+      <div><strong>{a.serviceName}</strong>
+       <span>{a.providerName} · {date(a.startAt)}</span></div>
+      <span className={"phase06-status phase06-status-"+a.status}>{t(a.status)}</span>
+      <span aria-hidden="true">↗</span>
+     </a>)}
+   </div>}
+  {pages>1&&<nav className="phase-pagination" aria-label={t("visitsPage")}>
+    <button type="button" className="btn btn-secondary" disabled={safePage===1}
+     onClick={()=>setPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+    <span aria-live="polite">{t("visitsPage")} {safePage}/{pages}</span>
+    <button type="button" className="btn btn-secondary" disabled={safePage>=pages}
+     onClick={()=>setPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+   </nav>}
+  {data.maximumRows&&data.total>=data.maximumRows&&<p className="muted">
+   {t("historyLimit")}</p>}
  </div>;
 }
 function ClinicalIntake({value,path,reload}:{value:any,path:string,reload:()=>void}){
