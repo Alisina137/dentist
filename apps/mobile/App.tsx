@@ -1207,7 +1207,7 @@ function PatientApp(){
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
  const [viewIdentity,setViewIdentity]=useState<string|null>(identityKey);
  const previousIdentity=useRef<string|null>(identityKey);
- const [accountSection,setAccountSection]=useState<"profile"|"reviews"|"settings">("profile");
+ const [accountSection,setAccountSection]=useState<AccountSection>("overview");
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
  const [refreshVersion,setRefreshVersion]=useState(0),[pullRefreshing,setPullRefreshing]=useState(false);
@@ -1219,7 +1219,7 @@ function PatientApp(){
   if(previousIdentity.current!==identityKey){
    previousIdentity.current=identityKey;
    // Never display a previous user's booking route while another user signs in.
-   setRoute(null);setAccountSection("profile");setTab("account");
+   setRoute(null);setAccountSection("overview");setTab("account");
    setViewIdentity(identityKey);
   }
  },[identityKey]);
@@ -1280,13 +1280,14 @@ function PatientApp(){
   setPullRefreshing(true);setRefreshVersion(x=>x+1);
   void checkApi().finally(()=>setPullRefreshing(false));
  },[checkApi]);
- function select(next:Tab){setRoute(null);setTab(next);setAccountSection("profile")}
+ function select(next:Tab){setRoute(null);setTab(next);setAccountSection("overview")}
  function book(clinicId:string,dentistId?:string,booking?:Booking){
   setRoute({kind:"booking",clinicId,dentistId,booking,
    fromDentistId:route?.kind==="dentist"?route.dentistId:undefined,
    returnTab:booking?"appointments":tab});
  }
- function openClinic(clinicId:string){setRoute({kind:"clinic",clinicId})}
+ function openClinic(clinicId:string,fromBookingId?:string){setRoute({kind:"clinic",clinicId,fromBookingId})}
+ function openAppointment(bookingId:string){setRoute({kind:"appointment",bookingId})}
  function openDentist(clinicId:string,dentistId:string){setRoute({kind:"dentist",clinicId,dentistId})}
  function back(){
   if(route?.kind==="booking"){
@@ -1294,6 +1295,8 @@ function PatientApp(){
    else if(route.returnTab==="appointments"){setRoute(null);setTab("appointments");}
    else setRoute({kind:"clinic",clinicId:route.clinicId});
   }else if(route?.kind==="dentist")setRoute({kind:"clinic",clinicId:route.clinicId});
+  else if(route?.kind==="clinic"&&route.fromBookingId)
+   setRoute({kind:"appointment",bookingId:route.fromBookingId});
   else setRoute(null);
  }
  function toggleFavorite(clinicId:string,dentistId?:string){
@@ -1318,13 +1321,14 @@ function PatientApp(){
  useEffect(()=>{
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(route){back();return true;}
-   if(tab==="account"&&accountSection!=="profile"){setAccountSection("profile");return true;}
+   if(tab==="account"&&accountSection!=="overview"){setAccountSection("overview");return true;}
    if(tab!=="home"){select("home");return true;}
    return false;
   });
   return ()=>subscription.remove();
  },[route,tab,accountSection]);
- const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
+ const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="appointment"?
+  ui.t("appointments"):route?.kind==="booking"?
   (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
  // Block even a single render of a stale, private route during an account switch.
  if(viewIdentity!==identityKey)return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
@@ -1350,12 +1354,16 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
+  <ScrollView key={(route?route.kind+":"+(route.kind==="appointment"?route.bookingId:route.clinicId)+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
     onRefresh={pullToRefresh} tintColor={colors.blue}/>:undefined}>
-   {route?.kind==="booking"?<NativeBookingWizard locale={locale} calendar={calendar}
+   {route?.kind==="appointment"?<NativeAppointmentDetails bookingId={route.bookingId}
+    locale={locale} calendar={calendar} onBack={back}
+    onReschedule={b=>book(b.clinicId,b.dentistId,b)}
+    onClinic={id=>openClinic(id,route.bookingId)}/>:
+    route?.kind==="booking"?<NativeBookingWizard locale={locale} calendar={calendar}
     clinicId={route.clinicId} dentistId={route.dentistId} booking={route.booking}
     onAccount={()=>select("account")} onDone={()=>select("appointments")}/>:
     route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
@@ -1367,6 +1375,7 @@ function PatientApp(){
      isSaved={isSavedDentist(route.clinicId,route.dentistId)}
      onSave={()=>saveDentist(route.clinicId,route.dentistId)}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
+     onAppointment={openAppointment} onAppointments={()=>select("appointments")} onSaved={()=>select("saved")}
      onSearch={q=>{setSearchSeed(q.trim());setSpecialtySeed("");select("explore")}}
      onBrowse={()=>{setSearchSeed("");setSpecialtySeed("");select("explore")}}
      onSpecialty={specialty=>{setSearchSeed("");setSpecialtySeed(specialty);select("explore")}}
@@ -1374,38 +1383,32 @@ function PatientApp(){
     tab==="explore"?<ExploreScreen ui={ui} city={city} onCity={setCity}
      seed={searchSeed} specialtySeed={specialtySeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
     tab==="appointments"?<NativeAppointments locale={locale} calendar={calendar}
-     onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}/>:
+     onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}
+     onOpen={openAppointment}/>:
     tab==="saved"?(native.account?.registered?<NativeSaved locale={locale}
      onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}/>:
      <SavedScreen ui={ui} ids={savedIds} onRemove={save}
       onClinic={openClinic} onExplore={()=>select("explore")}/>):
     <View style={s.sectionGap}>
-     <View style={[s.accountSegment,{flexDirection:ui.flow,gap:6}]}>
-      <Pressable style={[s.cardButton,accountSection==="profile"&&s.cardButtonPrimary]}
-       accessibilityRole="tab" accessibilityState={{selected:accountSection==="profile"}}
-       onPress={()=>setAccountSection("profile")}>
-       <Text style={[s.cardButtonText,accountSection==="profile"&&s.cardButtonPrimaryText]}>
-        {locale==="en"?"Profile":locale==="ps-AF"?"پروفایل":"پروفایل"}</Text></Pressable>
-      <Pressable style={[s.cardButton,accountSection==="reviews"&&s.cardButtonPrimary]}
-       accessibilityRole="tab" accessibilityState={{selected:accountSection==="reviews"}}
-       onPress={()=>setAccountSection("reviews")}>
-       <Text style={[s.cardButtonText,accountSection==="reviews"&&s.cardButtonPrimaryText]}>
-        {locale==="en"?"Reviews":locale==="ps-AF"?"نظرونه":"نظرات"}</Text></Pressable>
-      <Pressable style={[s.cardButton,accountSection==="settings"&&s.cardButtonPrimary]}
-       accessibilityRole="tab" accessibilityState={{selected:accountSection==="settings"}}
-       onPress={()=>setAccountSection("settings")}>
-       <Text style={[s.cardButtonText,accountSection==="settings"&&s.cardButtonPrimaryText]}>
-        {locale==="en"?"Settings":locale==="ps-AF"?"تنظیمات":"تنظیمات"}</Text></Pressable>
-     </View>
-     {accountSection==="reviews"?<NativeReviews locale={locale}/>:
+     {accountSection!=="overview"&&<Pressable style={[s.accountBack,{flexDirection:ui.flow}]}
+      accessibilityRole="button" onPress={()=>setAccountSection("overview")}>
+      <Text style={s.link}>{ui.rtl?"→":"←"}  {accountWords[locale].return}</Text>
+     </Pressable>}
+     {accountSection==="overview"?<AccountHub ui={ui} account={native.account}
+      onSection={setAccountSection} onAppointments={()=>select("appointments")} onExplore={()=>select("explore")}/>:
+      accountSection==="reviews"?<NativeReviews locale={locale}/>:
       accountSection==="settings"?<AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
        signedIn={Boolean(native.account?.registered)}
        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
        checkApi={()=>{void checkApi()}} onOpenProfile={()=>setAccountSection("profile")}
        connection={connection} checking={checking}/>:
-      <NativeAccountArea locale={locale} calendar={calendar} city={city}
-       onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
-
+      accountSection==="records"||accountSection==="security"||accountSection==="support"?
+       <AccountWebSection ui={ui} section={accountSection}
+        registered={Boolean(native.account?.registered)}
+        onBack={()=>setAccountSection("overview")} onProfile={()=>setAccountSection("profile")}/>:
+       <NativeAccountArea locale={locale} calendar={calendar} city={city}
+        section={accountSection}
+        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
     </View>}
   </ScrollView>
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
