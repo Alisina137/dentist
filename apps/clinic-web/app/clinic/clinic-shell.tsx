@@ -1,0 +1,359 @@
+"use client";
+
+import React,{useEffect,useRef,useState,useTransition,type MouseEvent,type ReactNode} from "react";
+import Link from "next/link";
+import {usePathname,useRouter} from "next/navigation";
+import {authClient,CareIcon,LocaleControls,usePreferences,type CareIconName} from "@dandanlink/ui";
+import {PersistentClinicShellProvider} from "@dandanlink/ui/clinic-shell-context";
+
+type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
+type Space={clinicId:string;clinicName:string;clinicStatus:string;membershipId:string;
+ role:Role;clinicianEnabled:boolean;capabilities:string[]};
+type Context={name:string;email:string;mfaEnabled:boolean;clinics:Space[]};
+type Group="workspace"|"operations"|"settings";
+type Item={key:string;path:string;icon:CareIconName;group:Group};
+const PUBLIC_CLINIC_PATH=/^\/clinic\/(?:login|signup|verify|invite|onboarding|reset-password|2fa)(?:\/|$)/;
+const COLLAPSE_KEY="dandan.clinic.sidebarCollapsed";
+const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
+const translations:Record<string,Record<string,string>>={
+ en:{
+  clinic:"Clinic workspace",overview:"Overview",appointments:"Appointments",queue:"Today's queue",
+  bookingRequests:"Online requests",patients:"Patients",clinical:"Clinical",finance:"Finance",
+  reports:"Reports",listing:"Public listing",staff:"Staff",resources:"Chairs & rooms",
+  services:"Services & pricing",hours:"Hours & holidays",notifications:"Notifications",
+  security:"Security & access",settings:"Clinic settings",subscription:"Subscription",
+  exportData:"Export & retention",myVerification:"My credentials",myProfile:"My membership",
+  workspace:"Workspace",operations:"Operations",account:"Account",
+  changeClinic:"Active clinic",navigation:"Clinic navigation",collapse:"Collapse sidebar",
+  expand:"Expand sidebar",openMenu:"Open navigation",closeMenu:"Close navigation",
+  signOut:"Sign out",signingOut:"Signing out…",loading:"Loading clinic access…",
+  noClinic:"No active clinic membership",invalidClinic:"This clinic is not in your memberships.",
+  login:"Sign in",register:"Register clinic",retry:"Try again",
+  connection:"Unable to load clinic access. Check your connection and retry.",
+  secure:"Authorized clinic workspace",breadcrumb:"Page location",
+  pageContent:"Clinic page content",role:"Your role",
+  owner:"Owner",manager:"Manager",dentist:"Dentist",
+  receptionist:"Receptionist",assistant:"Assistant",cashier:"Cashier",
+  approved:"Approved",pending:"Pending review",suspended:"Suspended",
+  skip:"Skip to workspace content"
+ },
+ "fa-AF":{
+  clinic:"محیط مدیریت کلینیک",overview:"نمای کلی",appointments:"ملاقات‌ها",queue:"صف امروز",
+  bookingRequests:"درخواست‌های آنلاین",patients:"مریضان",clinical:"کلینیکی",finance:"مالی",
+  reports:"گزارش‌ها",listing:"نمایش عمومی کلینیک",staff:"کارمندان",resources:"چوکی‌ها و اتاق‌ها",
+  services:"خدمات و قیمت‌ها",hours:"ساعات و رخصتی‌ها",notifications:"اعلان‌ها",
+  security:"امنیت و دسترسی",settings:"تنظیمات کلینیک",subscription:"اشتراک",
+  exportData:"صادرات و نگهداری",myVerification:"اسناد مسلکی من",myProfile:"عضویت من",
+  workspace:"فضای کاری",operations:"عملیات",account:"حساب",
+  changeClinic:"کلینیک فعال",navigation:"منوی کلینیک",collapse:"جمع‌کردن منو",
+  expand:"بازکردن منو",openMenu:"بازکردن منو",closeMenu:"بستن منو",
+  signOut:"خروج",signingOut:"در حال خروج…",loading:"در حال بررسی دسترسی کلینیک…",
+  noClinic:"عضویت فعال کلینیک ندارید",invalidClinic:"این کلینیک در عضویت‌های شما نیست.",
+  login:"ورود",register:"ثبت کلینیک",retry:"کوشش دوباره",
+  connection:"دسترسی کلینیک دریافت نشد. اتصال را بررسی و دوباره کوشش کنید.",
+  secure:"محیط کاری دارای مجوز",breadcrumb:"مسیر صفحه",pageContent:"محتوای کلینیک",role:"نقش شما",
+  owner:"مالک",manager:"مدیر",dentist:"داکتر دندان",
+  receptionist:"پذیرش",assistant:"دستیار",cashier:"صندوق‌دار",
+  approved:"تأییدشده",pending:"در حال بررسی",suspended:"تعلیق‌شده",
+  skip:"رفتن به محتوای کلینیک"
+ },
+ "ps-AF":{
+  clinic:"د کلینیک کاري چاپېریال",overview:"لنډیز",appointments:"ملاقاتونه",queue:"د نن کتار",
+  bookingRequests:"آنلاین غوښتنې",patients:"ناروغان",clinical:"کلینیکي",finance:"مالي",
+  reports:"راپورونه",listing:"د کلینیک عامه پاڼه",staff:"کارکوونکي",resources:"څوکۍ او خونې",
+  services:"خدمتونه او بیې",hours:"وختونه او رخصتۍ",notifications:"خبرتیاوې",
+  security:"امنیت او لاسرسی",settings:"د کلینیک تنظیمات",subscription:"ګډون",
+  exportData:"صادرات او ساتنه",myVerification:"زما مسلکي اسناد",myProfile:"زما غړیتوب",
+  workspace:"کاري برخه",operations:"چارې",account:"حساب",
+  changeClinic:"فعال کلینیک",navigation:"د کلینیک نوملړ",collapse:"نوملړ لنډول",
+  expand:"نوملړ پراخول",openMenu:"نوملړ پرانیستل",closeMenu:"نوملړ بندول",
+  signOut:"وتل",signingOut:"د وتلو په حال کې…",loading:"د کلینیک لاسرسی کتل کېږي…",
+  noClinic:"فعال کلینیکي غړیتوب نشته",invalidClinic:"دا کلینیک ستاسو په غړیتوب کې نشته.",
+  login:"ننوتل",register:"کلینیک ثبت کړئ",retry:"بیا هڅه",
+  connection:"د کلینیک لاسرسی ونه لوستل شو. اړیکه وګورئ او بیا هڅه وکړئ.",
+  secure:"مجاز کاري چاپېریال",breadcrumb:"د پاڼې لاره",pageContent:"د کلینیک منځپانګه",
+  role:"ستاسې دنده",owner:"مالک",manager:"مدیر",dentist:"د غاښونو ډاکټر",
+  receptionist:"پذیرش",assistant:"مرستیال",cashier:"حسابدار",
+  approved:"تایید شوی",pending:"تر څېړنې لاندې",suspended:"ځنډول شوی",
+  skip:"د کلینیک منځپانګې ته لاړ شئ"
+ }
+};
+function navigation(space:Space):Item[]{
+ const nav:Item[]=[
+  {key:"overview",path:"/clinic",group:"workspace",icon:"layout-dashboard"},
+  {key:"appointments",path:"/clinic/appointments",group:"workspace",icon:"calendar"},
+  {key:"queue",path:"/clinic/appointments/queue",group:"workspace",icon:"clock"},
+  {key:"bookingRequests",path:"/clinic/appointments/requests",group:"workspace",icon:"bell"},
+  {key:"patients",path:"/clinic/patients",group:"workspace",icon:"users"},
+  {key:"clinical",path:"/clinic/clinical",group:"workspace",icon:"dental"},
+  {key:"finance",path:"/clinic/finance",group:"workspace",icon:"receipt"},
+  {key:"reports",path:"/clinic/reports",group:"workspace",icon:"chart-columns"},
+  {key:"listing",path:"/clinic/listing",group:"workspace",icon:"clinic"},
+  {key:"staff",path:"/clinic/staff",group:"operations",icon:"users"},
+  {key:"resources",path:"/clinic/resources",group:"operations",icon:"hospital"},
+  {key:"services",path:"/clinic/services",group:"operations",icon:"clipboard"},
+  {key:"hours",path:"/clinic/settings/hours",group:"operations",icon:"clock"},
+  {key:"notifications",path:"/clinic/settings/notifications",group:"settings",icon:"mail"},
+  {key:"security",path:"/clinic/settings/security",group:"settings",icon:"shield-check"},
+  {key:"settings",path:"/clinic/settings",group:"settings",icon:"settings"},
+  {key:"subscription",path:"/clinic/settings/subscription",group:"settings",icon:"credit-card"},
+  {key:"exportData",path:"/clinic/settings/export",group:"settings",icon:"download"},
+  {key:"myVerification",path:"/clinic/credentials",group:"settings",icon:"badge-check"},
+  {key:"myProfile",path:"/clinic/staff/"+encodeURIComponent(space.membershipId),
+   group:"settings",icon:"account"}
+ ];
+ const manager=space.role==="owner"||space.role==="manager";
+ const wanted=manager?[
+  "overview","appointments","queue","bookingRequests","patients","finance","reports",
+  "listing","staff","resources","services","hours","notifications","security",
+  ...(space.clinicianEnabled?["clinical"]:[]),
+  ...(space.role==="owner"?["settings","exportData","subscription"]:[])
+ ]:space.role==="dentist"?[
+  "overview","appointments","queue","bookingRequests","patients","clinical",
+  "resources","services","hours","myVerification","myProfile","security"
+ ]:space.role==="receptionist"?[
+  "overview","appointments","queue","bookingRequests","patients",
+  "finance","resources","services","hours","myProfile","security"
+ ]:space.role==="assistant"?[
+  "overview","appointments","queue","clinical","myProfile","security"
+ ]:space.role==="cashier"?[
+  "overview","finance","reports","patients","myProfile","security"
+ ]:["overview","myProfile","security"];
+ return wanted.flatMap(key=>nav.filter(item=>item.key===key));
+}
+function pathActive(pathname:string,href:string){
+ return href==="/clinic"?pathname==="/clinic"||pathname==="/clinic/":
+  pathname===href||pathname.startsWith(href+"/");
+}
+export function ClinicPersistentShell({children}:{children:ReactNode}){
+ const pathname=usePathname()||"/clinic",router=useRouter();
+ const {locale}=usePreferences();
+ const t=(key:string)=>translations[locale]?.[key]||translations.en[key]||key;
+ const isPublic=PUBLIC_CLINIC_PATH.test(pathname);
+ const [ctx,setCtx]=useState<Context|null>(null);
+ const [loading,setLoading]=useState(true),[error,setError]=useState("");
+ const [requestIndex,setRequestIndex]=useState(0);
+ const [requested,setRequested]=useState<string|null|undefined>(undefined);
+ const [collapsed,setCollapsed]=useState(false),[mobileOpen,setMobileOpen]=useState(false);
+ const [signingOut,setSigningOut]=useState(false);
+ const [navigationPending,startNavigation]=useTransition();
+ const mobileToggleRef=useRef<HTMLButtonElement>(null),
+  drawerRef=useRef<HTMLElement>(null),
+  mobileCloseRef=useRef<HTMLButtonElement>(null);
+ // A tenant change is an explicit full navigation. A/B clinic data cannot
+ // temporarily share a React subtree while page-local fetches are still live.
+ useEffect(()=>{
+  if(isPublic)return;
+  setRequested(new URLSearchParams(window.location.search).get("clinic"));
+ },[isPublic,pathname]);
+ useEffect(()=>{
+  try{setCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1");}catch{/* locked-down storage */}
+ },[]);
+ useEffect(()=>{
+  if(isPublic)return;
+  const controller=new AbortController();
+  setLoading(true);setError("");
+  fetch(API+"/v1/team/context",{credentials:"include",cache:"no-store",signal:controller.signal})
+   .then(async r=>{
+    if(!r.ok)throw new Error(r.status===401?"AUTH_REQUIRED":"CONTEXT_UNAVAILABLE");
+    return await r.json() as Context;
+   })
+   .then(data=>{if(!controller.signal.aborted){setCtx(data);setLoading(false);}})
+   .catch(e=>{if(!controller.signal.aborted){
+    setCtx(null);setError(e instanceof Error?e.message:"CONTEXT_UNAVAILABLE");
+    setLoading(false);
+   }});
+  return()=>controller.abort();
+ },[isPublic,requestIndex]);
+ useEffect(()=>setMobileOpen(false),[pathname]);
+ useEffect(()=>{
+  if(!mobileOpen)return;
+  const mq=window.matchMedia("(max-width: 900px)");
+  if(!mq.matches)return;
+  const oldOverflow=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  mobileCloseRef.current?.focus();
+  const onKey=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"){
+    setMobileOpen(false);mobileToggleRef.current?.focus();return;
+   }
+   if(event.key!=="Tab")return;
+   const tabbable=Array.from(drawerRef.current?.querySelectorAll<HTMLElement>(
+    'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled])')||[])
+    .filter(el=>el.getClientRects().length>0);
+   if(!tabbable.length)return;
+   if(event.shiftKey&&document.activeElement===tabbable[0]){
+    event.preventDefault();tabbable[tabbable.length-1].focus();
+   }else if(!event.shiftKey&&document.activeElement===tabbable[tabbable.length-1]){
+    event.preventDefault();tabbable[0].focus();
+   }
+  };
+  window.addEventListener("keydown",onKey);
+  return()=>{document.body.style.overflow=oldOverflow;window.removeEventListener("keydown",onKey);};
+ },[mobileOpen]);
+ if(isPublic)return <>{children}</>;
+
+ const spaces=ctx?.clinics||[];
+ const selected=requested===undefined?null:requested?
+  spaces.find(s=>s.clinicId===requested)||null:spaces[0]||null;
+ const requestedInvalid=Boolean(requested&&ctx&&!selected);
+ const items=selected?navigation(selected):[];
+ const current=items.filter(item=>pathActive(pathname,item.path))
+  .sort((a,b)=>b.path.length-a.path.length)[0];
+ const activeTitle=current?t(current.key):t("workspace");
+ const tenantParam=selected?"clinic="+encodeURIComponent(selected.clinicId):"";
+ const hrefFor=(path:string)=>path+(tenantParam?"?"+tenantParam:"");
+ const sameTenant=(url:URL)=>!url.searchParams.has("clinic")||
+  url.searchParams.get("clinic")===selected?.clinicId;
+
+ // Routes shipped by phases 02–19 still use ordinary <a href>. Intercept only
+ // same-origin, same-tenant /clinic links to retain this Next segment layout.
+ // Downloads, new tabs, modifiers and unrelated paths retain browser semantics.
+ function navigateWithinClinic(event:MouseEvent<HTMLElement>){
+  if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||
+   event.shiftKey||event.altKey)return;
+  const target=event.target;if(!(target instanceof Element))return;
+  const anchor=target.closest("a[href]");
+  if(!(anchor instanceof HTMLAnchorElement)||anchor.hasAttribute("download")||
+    anchor.hasAttribute("data-hard-navigation")||anchor.hasAttribute("data-next-nav")||
+    (anchor.target&&anchor.target!=="_self"))return;
+  const url=new URL(anchor.href,window.location.href);
+  if(url.origin!==window.location.origin||
+    !(url.pathname==="/clinic"||url.pathname.startsWith("/clinic/"))||
+    PUBLIC_CLINIC_PATH.test(url.pathname))return;
+  if(!sameTenant(url)){
+   // Hard reload on switching clinics to clear all mounted patient/clinical data.
+   return;
+  }
+  if(selected&&!url.searchParams.has("clinic"))
+   url.searchParams.set("clinic",selected.clinicId);
+  if(url.pathname===window.location.pathname&&url.search===window.location.search&&
+   url.hash===window.location.hash)return;
+  event.preventDefault();setMobileOpen(false);
+  startNavigation(()=>router.push(url.pathname+url.search+url.hash));
+ }
+ function toggleCollapsed(){
+  setCollapsed(v=>{
+   try{localStorage.setItem(COLLAPSE_KEY,!v?"1":"0");}catch{}
+   return !v;
+  });
+ }
+ async function signOut(){
+  if(signingOut)return;
+  setSigningOut(true);
+  try{
+   await authClient.signOut();
+   setCtx(null);
+   window.location.assign("/clinic/login");
+  }catch{setSigningOut(false);}
+ }
+ const restricted=error==="AUTH_REQUIRED"||requestedInvalid;
+ const showPage=!loading&&!error&&!requestedInvalid;
+ return <div className={"work-layout phase-layout staff-shell clinic-persistent-shell"+
+   (collapsed?" clinic-sidebar-collapsed":"")+(mobileOpen?" clinic-mobile-open":"")}>
+   {mobileOpen&&<button type="button" className="clinic-mobile-backdrop"
+    aria-label={t("closeMenu")} tabIndex={-1}
+    onClick={()=>{setMobileOpen(false);mobileToggleRef.current?.focus();}}/>}
+   <aside ref={drawerRef} className="card side-panel staff-side clinic-persistent-sidebar"
+    role={mobileOpen?"dialog":undefined} aria-modal={mobileOpen||undefined}
+    id="clinic-workspace-navigation" aria-label={t("navigation")}>
+    <div className="clinic-sidebar-header">
+     <span className="clinic-sidebar-emblem" aria-hidden="true"><CareIcon name="dental" size={22}/></span>
+     <div className="clinic-sidebar-brand"><strong>DandanLink</strong><small>{t("clinic")}</small></div>
+     <button type="button" className="clinic-sidebar-collapse"
+      aria-expanded={!collapsed} aria-label={t(collapsed?"expand":"collapse")}
+      title={t(collapsed?"expand":"collapse")} onClick={toggleCollapsed}>
+      <CareIcon name="panel" size={18}/></button>
+     <button ref={mobileCloseRef} type="button" className="clinic-sidebar-close"
+      aria-label={t("closeMenu")} onClick={()=>{setMobileOpen(false);mobileToggleRef.current?.focus();}}>
+      <CareIcon name="close" size={20}/></button>
+    </div>
+    <div className="clinic-sidebar-tenant" title={selected?.clinicName||t("noClinic")}>
+     <CareIcon name="clinic" size={18}/>
+     <span><strong>{selected?.clinicName||t("noClinic")}</strong>
+      {selected&&<small>{t(selected.role)} · {t(selected.clinicStatus)}</small>}</span>
+    </div>
+    <nav className="side-nav phase04-side-nav clinic-persistent-nav"
+     aria-label={t("navigation")}>
+     {loading||requested===undefined?<div className="clinic-sidebar-skeleton" role="status"
+       aria-label={t("loading")}>{Array.from({length:8},(_,i)=><span key={i}/>)}</div>:
+      items.length?items.map((item,index)=>{
+       const groupStart=index===0||items[index-1]?.group!==item.group;
+       const active=pathActive(pathname,item.path);
+       return <React.Fragment key={item.key}>
+        {groupStart&&<span className="phase04-side-group clinic-sidebar-group">{t(item.group)}</span>}
+        <Link href={hrefFor(item.path)} prefetch={false} data-next-nav
+         onClick={()=>setMobileOpen(false)}
+         className="phase04-side-link clinic-sidebar-link" aria-label={t(item.key)}
+         aria-current={active?"page":undefined} title={collapsed?t(item.key):undefined}>
+         <span className="phase04-side-icon" aria-hidden="true">
+          <CareIcon name={item.icon} size={19}/></span>
+         <span className="clinic-sidebar-label">{t(item.key)}</span>
+        </Link>
+       </React.Fragment>;
+      }):<div className="clinic-sidebar-empty">{t(ctx?.clinics.length?"invalidClinic":"noClinic")}</div>}
+    </nav>
+    <div className="clinic-sidebar-footer"><LocaleControls/>
+     <div className="clinic-sidebar-security"><CareIcon name="shield" size={16}/>
+      <span>{t("secure")}</span></div>
+    </div>
+   </aside>
+   <section className="work-content staff-content clinic-persistent-content"
+    onClick={navigateWithinClinic}>
+    <header className="work-heading clinic-persistent-header">
+     <div className="clinic-header-leading">
+      <button ref={mobileToggleRef} type="button" className="clinic-mobile-menu"
+       aria-controls="clinic-workspace-navigation" aria-expanded={mobileOpen}
+       aria-label={t(mobileOpen?"closeMenu":"openMenu")}
+       onClick={()=>setMobileOpen(v=>!v)}>
+       <CareIcon name={mobileOpen?"close":"menu"} size={22}/></button>
+      <div className="clinic-header-copy">
+       <nav className="clinic-breadcrumb" aria-label={t("breadcrumb")}>
+        <Link href={hrefFor("/clinic")} prefetch={false} data-next-nav>{t("clinic")}</Link>
+        <CareIcon name="chevron" size={13}/>
+        <span aria-current="page">{activeTitle}</span>
+       </nav>
+       <strong>{activeTitle}</strong>
+      </div>
+     </div>
+     <div className="clinic-header-actions">
+      {ctx&&ctx.clinics.length>1&&<label className="clinic-header-switch">
+       <span>{t("changeClinic")}</span>
+       <select aria-label={t("changeClinic")} value={selected?.clinicId||""}
+        onChange={event=>{
+         // Full reload is deliberate: purge old clinic clinical content and pending fetches.
+         window.location.assign("/clinic?clinic="+encodeURIComponent(event.target.value));
+        }}>{ctx.clinics.map(space=><option key={space.clinicId} value={space.clinicId}>
+         {space.clinicName} · {t(space.role)}</option>)}</select>
+      </label>}
+      {selected&&<span className="clinic-header-role">{t("role")}: {t(selected.role)}</span>}
+      <button type="button" className="clinic-header-signout btn btn-secondary"
+       disabled={signingOut} onClick={()=>void signOut()}>
+       <CareIcon name="logout" size={17}/><span>{t(signingOut?"signingOut":"signOut")}</span>
+      </button>
+     </div>
+    </header>
+    {navigationPending&&<div role="status" className="clinic-route-progress"
+     aria-label={t("loading")}/>}
+    <div className="clinic-route-content" id="clinic-route-content" aria-label={t("pageContent")}>
+     {loading||requested===undefined?<div className="clinic-page-skeleton"
+       role="status" aria-label={t("loading")}>
+       <span className="clinic-page-skeleton-title"/>
+       <div className="clinic-page-skeleton-grid">{Array.from({length:4},(_,i)=>
+        <span key={i}/>)}</div><span className="clinic-page-skeleton-body"/></div>:
+      restricted?<div className="clinic-access-card card panel" role="alert">
+       <h2>{t(requestedInvalid?"invalidClinic":"login")}</h2>
+       <p>{t("secure")}</p>
+       <Link className="btn btn-primary" href={error?"/clinic/login":"/clinic"}>
+        {t(error?"login":"overview")}</Link></div>:
+      error?<div className="clinic-access-card card panel" role="alert">
+       <h2>{t("connection")}</h2><button type="button" className="btn btn-secondary"
+        onClick={()=>setRequestIndex(x=>x+1)}>{t("retry")}</button></div>:
+      showPage&&ctx?<PersistentClinicShellProvider session={{
+       ctx,space:selected,requested:requested??null}}>
+       <div key={selected?.clinicId||"unregistered"}>{children}</div>
+      </PersistentClinicShellProvider>:null}
+    </div>
+   </section>
+  </div>;
+}

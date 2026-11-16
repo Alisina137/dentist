@@ -1,0 +1,9 @@
+import type {ReactNode} from "react";
+import {ClinicPersistentShell} from "./clinic-shell";
+import "./clinic-shell.css";
+
+// Next App Router preserves the clinic sidebar, header and clinic selector
+// while only the active page segment changes.
+export default function ClinicLayout({children}:{children:ReactNode}){
+ return <ClinicPersistentShell>{children}</ClinicPersistentShell>;
+}

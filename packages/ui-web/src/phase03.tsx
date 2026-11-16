@@ -3,6 +3,7 @@ import React, { useEffect, useState, type FormEvent, type ReactNode } from "reac
 import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls, CareIcon, type CareIconName } from "./index";
 import { ClinicOperationsOverview } from "./clinic-operations-dashboard";
 import { Phase02Portal } from "./phase02";
+import {usePersistentClinicShell,useClinicWorkspaceSession} from "./clinic-shell-context";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
   membershipId:string;role:Role;clinicianEnabled:boolean;capabilities:string[]};
@@ -266,7 +267,11 @@ function navigation(space:Space,t:(key:string)=>string){
  return options;
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
- const {t}=useLang();const nav=navigation(space,t);
+ const {t}=useLang();const persistent=usePersistentClinicShell();
+ const nav=navigation(space,t);
+ // /clinic/layout.tsx now owns the sidebar/header across client-side routes.
+ // Retain the original stand-alone shell as a safe fallback in other contexts.
+ if(persistent)return <>{children}</>;
  const pageHasOwnHeading=["home","patients","services","resources","hours","appointments","queue","bookingRequests","notifications","clinical","finance","reports","export","listing","myVerification","subscription","settings"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
@@ -314,11 +319,21 @@ function NavLinks({nav,active}:{nav:{title:string;href:string;key:string;icon:st
  </nav>;
 }
 function useContextAndSpace(){
- const {data,error,reload}=useData("/context");
+ const session=useClinicWorkspaceSession();
+ // The Next clinic layout fetched the authenticated tenant context exactly
+ // once. Existing pages keep their own in-page data requests; no second
+ // /v1/team/context call or full navigation skeleton is needed.
+ const {data,error,reload}=useData(session?null:"/context");
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
- useEffect(()=>{setRequested(new URLSearchParams(location.search).get("clinic"));},[]);
+ useEffect(()=>{
+  if(!session)setRequested(new URLSearchParams(location.search).get("clinic"));
+ },[session]);
+ if(session)return {ctx:session.ctx as Context|null,
+  space:session.space as Space|undefined,error:"",reload,
+  requested:session.requested};
  const spaces=(data as Context|undefined)?.clinics||[];
- const selected=requested===undefined?undefined:requested?spaces.find(x=>x.clinicId===requested):spaces[0];
+ const selected=requested===undefined?undefined:requested?
+  spaces.find(x=>x.clinicId===requested):spaces[0];
  return {ctx:data as Context|null,space:selected as Space|undefined,error,reload,requested};
 }
 function Guard({children}:{children:(ctx:Context,space:Space)=>ReactNode}){
