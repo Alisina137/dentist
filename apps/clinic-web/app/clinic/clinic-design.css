@@ -1,0 +1,311 @@
+/*
+ * DandanLink Clinic PH03 — premium clinic-only design tokens and components.
+ * Loaded AFTER the shared portal styles and PH01/PH02 navigation CSS.
+ * NEVER apply to /admin, /patient, public sign-in or clinical chart geometry.
+ * Preserve semantic status meanings and medically significant chart colors.
+ */
+.clinic-persistent-shell{
+ --brand:#166db7;--brand-hover:#0d568f;--brand-pale:#eaf4ff;
+ --ink:#17314c;--muted:#596f86;--line:#dce7f2;--canvas:#f7fafd;
+ --shadow:0 2px 7px rgba(24,57,90,.025),0 12px 32px rgba(24,57,90,.035);
+ --clinic-primary:#176db7;--clinic-primary-hover:#11558e;
+ --clinic-primary-weak:#eaf4ff;--clinic-ink:#192f49;
+ --clinic-ink-soft:#4b6580;--clinic-muted:#617890;
+ --clinic-border:#dce7f2;--clinic-border-strong:#b9cde1;
+ --clinic-surface:#fff;--clinic-surface-muted:#f7faff;
+ --clinic-radius-sm:10px;--clinic-radius-md:14px;--clinic-radius-lg:19px;
+ --clinic-shadow-sm:0 2px 6px rgba(27,58,89,.025),0 10px 24px rgba(27,58,89,.035);
+ --clinic-shadow-md:0 3px 9px rgba(27,58,89,.035),0 18px 42px rgba(27,58,89,.055);
+ --clinic-space-1:4px;--clinic-space-2:8px;--clinic-space-3:12px;
+ --clinic-space-4:16px;--clinic-space-5:20px;--clinic-space-6:24px;
+ --clinic-focus:0 0 0 3px rgba(28,109,181,.19);
+ font-family:"Segoe UI",system-ui,"Noto Sans Arabic",Arial,sans-serif;
+ font-size:14px;line-height:1.55;color:var(--clinic-ink);
+ text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;
+ min-width:0;
+}
+[dir="rtl"] .clinic-persistent-shell{
+ font-family:"Noto Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+ letter-spacing:0;
+}
+.clinic-persistent-shell :is(.clinic-persistent-content,.clinic-route-content,
+ .phase04-workspace,.phase05-page,.phase06-page,.p15-page,.h-clinic){
+ min-width:0;max-width:100%;
+}
+.clinic-persistent-shell :is(h1,h2,h3){
+ color:var(--clinic-ink);font-weight:800;line-height:1.32;
+ text-wrap:balance;
+}
+.clinic-persistent-shell h1{font-size:clamp(24px,2.45vw,33px);letter-spacing:-.027em}
+.clinic-persistent-shell h2{font-size:clamp(18px,1.7vw,22px);letter-spacing:-.015em}
+.clinic-persistent-shell h3{font-size:clamp(15px,1.35vw,18px);letter-spacing:-.008em}
+[dir="rtl"] .clinic-persistent-shell :is(h1,h2,h3){letter-spacing:0}
+.clinic-persistent-shell :is(p,.muted,small,.phase04-description,.h-help){
+ line-height:1.65;
+}
+.clinic-persistent-shell :is(.clinic-header-copy>strong,.clinic-sidebar-brand strong){
+ letter-spacing:-.025em;
+}
+[dir="rtl"] .clinic-persistent-shell :is(.clinic-header-copy>strong,
+ .clinic-sidebar-brand strong){letter-spacing:0}
+.clinic-persistent-shell .clinic-persistent-sidebar{
+ background:var(--clinic-surface);border-color:var(--clinic-border);
+ box-shadow:var(--clinic-shadow-md);
+}
+.clinic-persistent-shell .clinic-persistent-header{
+ margin-block-end:21px;padding-block:13px 19px;
+ border-color:var(--clinic-border);
+}
+.clinic-persistent-shell .clinic-sidebar-emblem{
+ background:linear-gradient(145deg,#e7f3ff,#dcecff);
+ color:var(--clinic-primary);
+}
+.clinic-persistent-shell .clinic-route-content{min-height:360px}
+.clinic-persistent-shell .clinic-header-quick-links a{
+ background:#fff;border-color:var(--clinic-border);
+ color:var(--clinic-ink-soft);font-weight:750;
+}
+.clinic-persistent-shell .clinic-header-quick-links a:hover{
+ border-color:#a9cce8;background:var(--clinic-primary-weak);
+}
+.clinic-persistent-shell .clinic-header-quick-links a[aria-current="page"]{
+ background:var(--clinic-primary-weak);border-color:#b5d7f2;color:var(--clinic-primary-hover);
+}
+/* Surface rhythm across clinic workflows built in different phases. Do not
+   restyle charts, dental SVGs, procedure selection internals or modal masks. */
+.clinic-persistent-shell :is(.card,.panel,.phase04-panel,.phase05-form-section,
+ .phase05-stat,.phase05-detail-item,.phase06-summary-card,.p15-panel,
+ .p18-panel,.p19-panel,.h-card){
+ border-color:var(--clinic-border);
+ border-radius:var(--clinic-radius-lg);
+ background:var(--clinic-surface);
+ box-shadow:var(--clinic-shadow-sm);
+}
+.clinic-persistent-shell :is(.phase04-kpi,.value-box,.phase05-intake-card,
+ .phase06-confirm-details>div,.phase06-slot-section,
+ .phase04-resource-card,.phase04-history-card,.p15-list-row,.p15-appointment){
+ border-color:var(--clinic-border);
+ border-radius:var(--clinic-radius-md);
+ background:var(--clinic-surface);
+ box-shadow:0 1px 7px rgba(27,58,89,.025);
+}
+.clinic-persistent-shell :is(.h-head,.phase04-preview-hero,.phase04-header){
+ border-radius:var(--clinic-radius-lg);
+}
+.clinic-persistent-shell .h-head{
+ background:linear-gradient(112deg,#eaf4ff 0%,#f8fbff 63%,#eef9f8 100%);
+ border:1px solid #dae8f5;
+ box-shadow:0 8px 24px rgba(33,79,123,.045);
+}
+.clinic-persistent-shell .h-clinic{
+ --h-ink:var(--clinic-ink);
+ --h-muted:var(--clinic-muted);
+ --h-line:var(--clinic-border);
+ --h-teal:var(--clinic-primary);
+}
+.clinic-persistent-shell .h-head :is(h1,p){max-width:700px}
+.clinic-persistent-shell .h-card{border-radius:var(--clinic-radius-lg)}
+.clinic-persistent-shell .h-metric{
+ border-color:var(--clinic-border);border-radius:var(--clinic-radius-md);
+}
+.clinic-persistent-shell .h-clinic :is(.h-more,.h-action,.h-check,.h-upcoming-row){
+ border-radius:var(--clinic-radius-md);
+}
+.clinic-persistent-shell .h-clinic .h-action:hover{
+ border-color:#acd2ee;background:#f4faff;
+}
+.clinic-persistent-shell .h-clinic .h-metric strong,
+.clinic-persistent-shell .clinic-metric-value{
+ font-variant-numeric:tabular-nums;
+ font-feature-settings:"tnum" 1;
+ line-height:1.25;color:var(--clinic-ink);
+}
+.clinic-persistent-shell .clinic-metric-unit{
+ font-size:12px;font-weight:650;color:var(--clinic-muted);
+}
+.clinic-persistent-shell .clinic-section-heading{gap:14px}
+.clinic-persistent-shell .clinic-section-action{
+ display:inline-flex;align-items:center;gap:7px;
+}
+.clinic-persistent-shell .clinic-empty-state{
+ display:grid;justify-items:center;align-content:center;gap:10px;
+ margin:8px 0 0;min-height:150px;padding:20px 16px;text-align:center;
+ border:1px dashed var(--clinic-border-strong);
+ border-radius:var(--clinic-radius-md);
+ background:var(--clinic-surface-muted);
+ font-size:13px;color:var(--clinic-muted);
+}
+.clinic-persistent-shell .clinic-empty-icon{
+ display:grid;place-items:center;width:45px;height:45px;
+ border-radius:15px;color:var(--clinic-primary);
+ background:#e7f3ff;
+}
+.clinic-persistent-shell .clinic-empty-state .btn{margin-block-start:3px}
+/* One visual system for buttons. Destructive semantics remain deliberately red. */
+.clinic-persistent-shell :is(.btn,.p15-button,.phase04-action,.phase05-tab){
+ border-radius:var(--clinic-radius-sm);
+ min-height:44px;line-height:1.3;
+ font-size:13px;font-weight:780;
+ transition:background-color .16s,border-color .16s,color .16s,box-shadow .16s;
+}
+.clinic-persistent-shell :is(.btn-primary,.p15-button:not(.p15-button-secondary):not(.p15-button-danger)){
+ background:var(--clinic-primary);border-color:var(--clinic-primary);color:white;
+ box-shadow:0 3px 11px rgba(19,104,177,.12);
+}
+.clinic-persistent-shell :is(.btn-primary,.p15-button:not(.p15-button-secondary):not(.p15-button-danger)):hover:not(:disabled){
+ background:var(--clinic-primary-hover);border-color:var(--clinic-primary-hover);color:white;
+}
+.clinic-persistent-shell :is(.btn-secondary,.p15-button-secondary){
+ border-color:var(--clinic-border-strong);
+ background:#fff;color:#315773;
+ box-shadow:none;
+}
+.clinic-persistent-shell :is(.btn-secondary,.p15-button-secondary):hover:not(:disabled){
+ background:#f3f8ff;border-color:#9bbfdd;
+}
+.clinic-persistent-shell :is(.p15-button-danger,[data-variant="danger"]){
+ color:#a42448;background:#fff0f3;border-color:#f7c9d5;
+}
+.clinic-persistent-shell :is(.p15-button-danger,[data-variant="danger"]):hover:not(:disabled){
+ color:#8f1c3c;background:#ffe3ea;border-color:#efb6c6;
+}
+.clinic-persistent-shell :is(button,a,.btn):disabled,
+.clinic-persistent-shell [aria-disabled="true"]{cursor:not-allowed}
+.clinic-persistent-shell :is(button,a,input,select,textarea,[role="tab"]):focus-visible{
+ outline:3px solid #297bbb;outline-offset:3px;box-shadow:var(--clinic-focus);
+}
+/* Explicitly exclude checkboxes, radio buttons, medical SVG charts and
+   file uploads from the standardized form geometry. */
+.clinic-persistent-shell :is(.field,.phase04-field,.p15-field)
+ :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),select,textarea),
+.clinic-persistent-shell :is(.phase05-form,.phase05-filters,.phase06-form-grid)
+ :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),select,textarea){
+ border:1px solid var(--clinic-border-strong);
+ border-radius:var(--clinic-radius-sm);background:#fff;
+ color:var(--clinic-ink);min-height:45px;
+ padding:10px 13px;font-size:13px;
+ transition:border-color .16s,box-shadow .16s,background-color .16s;
+ max-width:100%;min-width:0;
+}
+.clinic-persistent-shell :is(.field,.phase04-field,.p15-field) textarea,
+.clinic-persistent-shell :is(.phase05-form,.phase05-filters,.phase06-form-grid) textarea{
+ min-height:95px;height:auto;resize:vertical;
+}
+.clinic-persistent-shell :is(input,select,textarea):focus-visible{
+ border-color:var(--clinic-primary);
+}
+.clinic-persistent-shell :is(input,select,textarea)[aria-invalid="true"]{
+ border-color:#d64768;
+}
+.clinic-persistent-shell :is(.field,.phase04-field,.p15-field)>span:first-child{
+ color:var(--clinic-ink-soft);font-size:12px;font-weight:750;
+}
+.clinic-persistent-shell :is(input,select,textarea):disabled{
+ background:#f1f5f9;opacity:.72;
+}
+.clinic-persistent-shell input[type="checkbox"],
+.clinic-persistent-shell input[type="radio"]{
+ accent-color:var(--clinic-primary);
+}
+/* Tabs retain their original selected classes and accessible DOM behavior. */
+.clinic-persistent-shell :is(.phase04-section-nav,.phase04-inner-tabs,
+ .phase05-tabs,.p15-tabs,.phase-tabs,.phase06-tabs){
+ border-color:var(--clinic-border);
+ border-radius:var(--clinic-radius-md);
+ background:#f5f9fd;gap:5px;
+}
+.clinic-persistent-shell :is(.phase04-section-nav a,
+ .phase04-inner-tabs a,.phase04-inner-tabs button,
+ .phase05-tab,.p15-tabs button,.p15-tabs a,.phase-tabs button){
+ border-radius:var(--clinic-radius-sm);min-height:43px;
+ font-weight:750;white-space:nowrap;
+}
+.clinic-persistent-shell :is(.phase04-inner-tabs a,.phase04-inner-tabs button,
+ .phase05-tab,.p15-tabs a,.p15-tabs button):hover{
+ color:var(--clinic-primary-hover);
+}
+.clinic-persistent-shell :is(.phase04-inner-tabs,.phase05-tabs,.p15-tabs){
+ max-width:100%;overflow-x:auto;scrollbar-width:thin;
+}
+.clinic-persistent-shell :is(.phase05-tab.current,.phase05-tab[aria-selected="true"],
+ .phase04-inner-tabs [aria-current="page"],.phase04-inner-tabs [aria-selected="true"],
+ .p15-tabs [aria-current="page"],.p15-tabs [aria-selected="true"]){
+ border-color:#bfd8f1;color:var(--clinic-primary-hover);
+ background:#fff;box-shadow:0 2px 8px rgba(28,82,134,.065);
+}
+/* Consistent dense, readable tables; preserve horizontal overflow on mobile. */
+.clinic-persistent-shell :is(table,.phase05-table){
+ border-collapse:separate;border-spacing:0;width:100%;
+ font-size:13px;color:var(--clinic-ink);
+}
+.clinic-persistent-shell :is(table,.phase05-table) :is(th,td){
+ padding:12px 13px;border-bottom:1px solid #e7eef5;
+ text-align:start;vertical-align:middle;line-height:1.55;
+}
+.clinic-persistent-shell :is(table,.phase05-table) th{
+ background:#f6f9fd;color:#536c85;
+ font-size:11px;font-weight:800;letter-spacing:.01em;
+}
+.clinic-persistent-shell :is(table,.phase05-table) tbody tr:hover{
+ background:#f8fbff;
+}
+.clinic-persistent-shell :is(.phase05-scroll,.phase04-table-scroll,
+ .phase06-table-scroll,.phase07-table-scroll,.p15-table-scroll){
+ max-width:100%;overflow-x:auto;scrollbar-width:thin;
+}
+/* Status color remains meaningful: green=approved/success, amber=pending,
+   rose=rejected/failed, neutral=unspecified. No rainbow status remapping. */
+.clinic-persistent-shell :is(.state-badge,.p15-badge,.phase04-pill,.h-status){
+ border-radius:999px;font-weight:780;letter-spacing:0;
+ font-size:11px;padding:6px 10px;
+}
+.clinic-persistent-shell :is(.state-approved,.state-active,.state-paid,
+ .p15-status-confirmed,.p15-status-approved,.p15-status-sent,.p15-status-completed){
+ color:#126a4c;background:#e7f7ef;border-color:#c0e6d3;
+}
+.clinic-persistent-shell :is(.state-pending,.state-needs_info,
+ .p15-status-requested,.p15-status-pending){
+ color:#896018;background:#fff6e3;border-color:#f1debb;
+}
+.clinic-persistent-shell :is(.state-rejected,.state-suspended,.state-void,
+ .p15-status-rejected,.p15-status-cancelled,.p15-status-failed){
+ color:#a12a49;background:#fff0f3;border-color:#f4ccd5;
+}
+/* Common skeleton/error/empty patterns are reserved and non-jarring. */
+.clinic-persistent-shell :is(.phase05-empty,.phase04-empty,.p15-empty){
+ border-radius:var(--clinic-radius-lg);border-color:var(--clinic-border);
+ background:#f8fbff;color:var(--clinic-muted);
+}
+.clinic-persistent-shell :is(.notice,.phase04-notice){
+ border-radius:var(--clinic-radius-sm);line-height:1.6;
+}
+.clinic-persistent-shell :is(.clinic-page-skeleton,.k-team-skeleton,.h-loading){
+ color:var(--clinic-muted);
+}
+.clinic-persistent-shell :is(.clinic-page-skeleton-title,.clinic-page-skeleton-grid span,
+ .clinic-page-skeleton-body){
+ background:#e5eff9;
+}
+/* Dark mode is not enabled automatically in the medical workstation:
+   predictable contrast and chart colors take precedence. */
+@media(max-width:900px){
+ .clinic-persistent-shell{--clinic-space-6:20px;font-size:13px}
+ .clinic-persistent-shell :is(.card,.panel,.phase05-form-section,.p15-panel){
+  border-radius:16px;
+ }
+ .clinic-persistent-shell .clinic-persistent-header{padding-block:9px 15px}
+ .clinic-persistent-shell .h-head{padding:22px}
+}
+@media(max-width:600px){
+ .clinic-persistent-shell{--clinic-space-5:16px;--clinic-space-6:18px}
+ .clinic-persistent-shell h1{font-size:clamp(22px,5vw,28px)}
+ .clinic-persistent-shell :is(.phase04-header-actions,.phase05-head-actions,
+ .phase-actions,.p15-footer){gap:9px}
+ .clinic-persistent-shell .clinic-empty-state{min-height:138px;padding:16px}
+ .clinic-persistent-shell .clinic-header-role{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell :is(.btn,.p15-button,.phase04-action,.phase05-tab,
+ .clinic-header-quick-links a,.clinic-nav-section-toggle,
+ input,select,textarea){transition:none!important;animation:none!important}
+}
