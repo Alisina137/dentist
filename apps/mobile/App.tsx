@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useState} from "react";
-import {Alert} from "react-native";
+import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth} from "./native-auth";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
@@ -22,7 +22,7 @@ declare const process:{readonly env:{
 type Language="fa-AF"|"ps-AF"|"en";
 type Calendar="solar_hijri"|"gregorian";
 type Tab="home"|"explore"|"appointments"|"saved"|"account";
-type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string}|{kind:"booking";clinicId:string;dentistId?:string;booking?:Booking};
+type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string}|{kind:"booking";clinicId:string;dentistId?:string;booking?:Booking;fromDentistId?:string;returnTab?:Tab};
 type Remote<T>={loading:boolean;data:T|null;error:string|null;refresh:()=>void};
 type Clinic={id:string;name:string;city:string;province:string;address:string;phone:string};
 type Service={id:string;name:string;category:string;priceAfn:number;durationMinutes:number;version?:number};
@@ -734,9 +734,10 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
   <TextLine ui={ui} style={s.footerNotice}>{ui.t("medical")}</TextLine>
  </View>;
 }
-function HomeScreen({ui,city,onCity,onSearch,onBrowse,onClinic,isSaved,onSave}:{ui:UI;
+function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSaved,onSave}:{ui:UI;
  city:string;onCity:(v:string)=>void;onSearch:(q:string)=>void;onBrowse:()=>void;
- onClinic:(id:string)=>void;isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
+ onSpecialty:(specialty:string)=>void;onClinic:(id:string)=>void;
+ isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
  const [search,setSearch]=useState(""),[showCity,setShowCity]=useState(false);
  const facets=usePublic<Facets>("/facets");
  const result=usePublic<Results>(urlSearch({city,limit:4,page:1}));
@@ -786,21 +787,25 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onClinic,isSaved,onSave}:{
   {(facets.data?.specialties.length||0)>0&&<View>
    <SectionHead ui={ui} title={ui.t("specialties")} sub={ui.t("near")}/>
    <View style={[s.cityChoiceGroup,{flexDirection:ui.flow}]}>
-    {facets.data!.specialties.slice(0,6).map(x=><Tag key={x.name}
-     label={x.name}/>)}</View></View>}
+    {facets.data!.specialties.slice(0,6).map(x=><Pressable key={x.name}
+     accessibilityRole="button" accessibilityLabel={x.name}
+     onPress={()=>onSpecialty(x.name)} style={s.chip}>
+     <Text style={s.chipText}>{x.name}  {ui.rtl?"‹":"›"}</Text>
+    </Pressable>)}</View></View>}
   <View style={s.trustBanner}><Text style={[s.trustTitle,{textAlign:ui.align}]}>
    ✓  {ui.t("trust")}</Text>
    <TextLine ui={ui} style={s.trustBody}>{ui.t("trustBody")}</TextLine></View>
  </View>;
 }
-function ExploreScreen({ui,city,onCity,seed,onClinic,isSaved,onSave}:{ui:UI;
- city:string;onCity:(v:string)=>void;seed:string;onClinic:(id:string)=>void;
- isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
+function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSave}:{ui:UI;
+ city:string;onCity:(v:string)=>void;seed:string;specialtySeed:string;
+ onClinic:(id:string)=>void;isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
  const [draft,setDraft]=useState(seed),[q,setQ]=useState(seed),
  [specialty,setSpecialty]=useState(""),[service,setService]=useState(""),
  [sort,setSort]=useState("relevance"),[filterOpen,setFilterOpen]=useState(false),
  [page,setPage]=useState(1);
  useEffect(()=>{setDraft(seed);setQ(seed);setPage(1)},[seed]);
+ useEffect(()=>{setSpecialty(specialtySeed);setPage(1)},[specialtySeed]);
  const facets=usePublic<Facets>("/facets");
  const results=usePublic<Results>(urlSearch({q,city,specialty,service,sort,page,limit:8}));
  function selectCity(x:string){onCity(x);setPage(1)}
@@ -828,6 +833,7 @@ function ExploreScreen({ui,city,onCity,seed,onClinic,isSaved,onSave}:{ui:UI;
     <Text style={s.chipText}>{service}  ×</Text></Pressable>}
   </View>
   {filterOpen&&<CardShell style={s.filtersPanel}>
+   {facets.error&&<Failure ui={ui} error={facets.error} retry={facets.refresh}/>}
    <SectionHead ui={ui} title={ui.t("filter")} action={<Pressable onPress={reset}>
     <Text style={s.link}>{ui.t("clear")}</Text></Pressable>}/>
    <TextLine ui={ui} style={s.fieldLabel}>{ui.t("city")}</TextLine>
@@ -1002,7 +1008,9 @@ function PatientApp(){
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
  const [accountSection,setAccountSection]=useState<"profile"|"reviews">("profile");
- const [searchSeed,setSearchSeed]=useState(""),[savedIds,setSavedIds]=useState<string[]>([]);
+ const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
+ const [savedIds,setSavedIds]=useState<string[]>([]);
+ const [refreshVersion,setRefreshVersion]=useState(0),[pullRefreshing,setPullRefreshing]=useState(false);
  const [connection,setConnection]=useState<"connected"|"offline"|"notConfigured"|"checking">(
   API?"checking":"notConfigured");
  const [checking,setChecking]=useState(false);
@@ -1057,12 +1065,28 @@ function PatientApp(){
   }catch{setConnection("offline")}finally{clearTimeout(timer);setChecking(false)}
  },[]);
  useEffect(()=>{void checkApi()},[checkApi]);
+ const pullToRefresh=useCallback(()=>{
+  // Remount the current data view, not just the connectivity indicator.
+  // Private endpoints remain server-authorized and are never cached in AsyncStorage.
+  setPullRefreshing(true);setRefreshVersion(x=>x+1);
+  void checkApi().finally(()=>setPullRefreshing(false));
+ },[checkApi]);
  function select(next:Tab){setRoute(null);setTab(next);setAccountSection("profile")}
- function book(clinicId:string,dentistId?:string,booking?:Booking){setRoute({kind:"booking",clinicId,dentistId,booking})}
+ function book(clinicId:string,dentistId?:string,booking?:Booking){
+  setRoute({kind:"booking",clinicId,dentistId,booking,
+   fromDentistId:route?.kind==="dentist"?route.dentistId:undefined,
+   returnTab:booking?"appointments":tab});
+ }
  function openClinic(clinicId:string){setRoute({kind:"clinic",clinicId})}
  function openDentist(clinicId:string,dentistId:string){setRoute({kind:"dentist",clinicId,dentistId})}
- function back(){if(route?.kind==="dentist"||route?.kind==="booking")setRoute({kind:"clinic",clinicId:route.clinicId});
-  else setRoute(null)}
+ function back(){
+  if(route?.kind==="booking"){
+   if(route.fromDentistId)setRoute({kind:"dentist",clinicId:route.clinicId,dentistId:route.fromDentistId});
+   else if(route.returnTab==="appointments"){setRoute(null);setTab("appointments");}
+   else setRoute({kind:"clinic",clinicId:route.clinicId});
+  }else if(route?.kind==="dentist")setRoute({kind:"clinic",clinicId:route.clinicId});
+  else setRoute(null);
+ }
  function toggleFavorite(clinicId:string,dentistId?:string){
   const exists=favorites.some(f=>f.clinicId===clinicId&&f.dentistId===(dentistId||null));
   void native.request("/v1/patient-favorites",exists?"DELETE":"POST",
@@ -1082,6 +1106,15 @@ function PatientApp(){
  }
  const isSavedDentist=(clinicId:string,dentistId:string)=>favorites.some(f=>
   f.clinicId===clinicId&&f.dentistId===dentistId);
+ useEffect(()=>{
+  const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(route){back();return true;}
+   if(tab==="account"&&accountSection==="reviews"){setAccountSection("profile");return true;}
+   if(tab!=="home"){select("home");return true;}
+   return false;
+  });
+  return ()=>subscription.remove();
+ },[route,tab,accountSection]);
  const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
   (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
  return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
@@ -1102,12 +1135,12 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):tab}
+  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):tab)+":"+refreshVersion}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
-   refreshControl={!route?<RefreshControl refreshing={checking}
-    onRefresh={checkApi} tintColor={colors.blue}/>:undefined}>
-   {route?.kind==="booking"?<NativeBookingWizard locale={locale}
+   refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
+    onRefresh={pullToRefresh} tintColor={colors.blue}/>:undefined}>
+   {route?.kind==="booking"?<NativeBookingWizard locale={locale} calendar={calendar}
     clinicId={route.clinicId} dentistId={route.dentistId} booking={route.booking}
     onAccount={()=>select("account")} onDone={()=>select("appointments")}/>:
     route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
@@ -1119,11 +1152,13 @@ function PatientApp(){
      isSaved={isSavedDentist(route.clinicId,route.dentistId)}
      onSave={()=>saveDentist(route.clinicId,route.dentistId)}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
-     onSearch={q=>{setSearchSeed(q);select("explore")}} onBrowse={()=>{setSearchSeed("");select("explore")}}
+     onSearch={q=>{setSearchSeed(q.trim());setSpecialtySeed("");select("explore")}}
+     onBrowse={()=>{setSearchSeed("");setSpecialtySeed("");select("explore")}}
+     onSpecialty={specialty=>{setSearchSeed("");setSpecialtySeed(specialty);select("explore")}}
      onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
     tab==="explore"?<ExploreScreen ui={ui} city={city} onCity={setCity}
-     seed={searchSeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
-    tab==="appointments"?<NativeAppointments locale={locale}
+     seed={searchSeed} specialtySeed={specialtySeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
+    tab==="appointments"?<NativeAppointments locale={locale} calendar={calendar}
      onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}/>:
     tab==="saved"?(native.account?.registered?<NativeSaved locale={locale}
      onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}/>:
