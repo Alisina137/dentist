@@ -246,7 +246,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
    onPress={()=>void run(async()=>await auth.signOut())}/>
  </Block>;
  const profile=auth.account.profile;
- return <View style={{gap:13}}>
+ return <View style={{gap:13,direction:locale==="en"?"ltr":"rtl"}}>
   <Block><Text style={p.title}>{t.profile}</Text>
    <Text style={p.copy}>{auth.account.user.email}</Text>
    <Text style={p.label}>{profile?.preferredName} · {profile?.city}</Text>
@@ -484,7 +484,7 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
     <Text style={p.label}>{clinic.clinic.name}</Text>
     <Text>{clinic.profile.services.find(x=>x.id===service)?.name}</Text>
     <Text>{clinic.profile.dentists.find(x=>x.id===dentist)?.displayName}</Text>
-    <Text>{formatDate(time,locale)}</Text>
+    <Text>{formatDate(time,locale,calendar)}</Text>
     <Text style={p.label}>{t.fee}: {picked?.priceAfn||booking?.priceAfn} AFN</Text>
     <Text style={p.copy}>{clinic.profile.bookingRules.approvalMode==="manual"?t.pending:t.confirmed}</Text>
     <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}}
@@ -519,17 +519,17 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   }catch(e){setError(e instanceof Error?e.message:t.error)}
   finally{setBusy("")}
  }
- return <View style={{gap:12}}>
+ return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{t.favorites}</Text>
   {loading&&<ActivityIndicator color={blue}/>}
   {!!error&&<><ErrorBox message={error}/><Button secondary title={t.retry}
    onPress={()=>setReload(x=>x+1)}/></>}
   {!loading&&!error&&!favorites.length&&<Block><Text style={p.copy}>{t.noFavorites}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
-  {favorites.map(f=><Block key={f.clinicId+f.dentistId}>
+  {!loading&&!error&&favorites.map(f=><Block key={f.clinicId+f.dentistId}>
    <Text style={p.label}>{f.dentistName||f.clinicName}</Text>
    {f.dentistName&&<Text style={p.copy}>{f.clinicName}</Text>}
-   <View style={p.actions}><Button title={t.view} onPress={()=>f.dentistId?
+   <View style={p.actions}><Button title={t.view} disabled={!!busy} onPress={()=>f.dentistId?
     onDentist(f.clinicId,f.dentistId):onClinic(f.clinicId)}/>
     <Button secondary title={t.remove} disabled={!!busy} onPress={()=>void remove(f)}/></View>
   </Block>)}
