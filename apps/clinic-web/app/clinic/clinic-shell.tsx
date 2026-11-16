@@ -298,8 +298,12 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   items.filter(item=>(t(item.key)+" "+t(sectionOf(item.key)||"workspace"))
    .toLocaleLowerCase(locale).includes(normalizedSearch)):[];
  const navDetails=current&&pathname!==current.path&&pathname!==current.path+"/"?t("details"):null;
- const quickLinks=items.filter(item=>["appointments","bookingRequests","patients","clinical","finance"]
-  .includes(item.key)).slice(0,3);
+ const quickKeys=selected?.role==="dentist"?["appointments","clinical","patients"]:
+  selected?.role==="assistant"?["appointments","queue","clinical"]:
+  selected?.role==="cashier"?["finance","reports","patients"]:
+  selected?.role==="receptionist"?["bookingRequests","queue","patients"]:
+  ["bookingRequests","appointments","patients"];
+ const quickLinks=quickKeys.flatMap(key=>items.filter(item=>item.key===key)).slice(0,3);
  // Keep a newly active section expanded after internal navigation even when it
  // was explicitly folded on the previous page; do not persist the active page.
  useEffect(()=>{
@@ -323,6 +327,19 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const hrefFor=(path:string)=>path+(tenantParam?"?"+tenantParam:"");
  const sameTenant=(url:URL)=>!url.searchParams.has("clinic")||
   url.searchParams.get("clinic")===selected?.clinicId;
+ function renderNavItem(item:Item,subItem=false){
+  const active=pathActive(pathname,item.path);
+  return <Link key={item.key} href={hrefFor(item.path)} prefetch={false} data-next-nav
+   onClick={()=>{setMobileOpen(false);setNavSearch("")}}
+   className={"phase04-side-link clinic-sidebar-link"+
+    (subItem?" clinic-nav-subitem":"")}
+   aria-label={t(item.key)} aria-current={active?"page":undefined}
+   title={collapsed?t(item.key):undefined}>
+   <span className="phase04-side-icon" aria-hidden="true">
+    <CareIcon name={item.icon} size={19}/></span>
+   <span className="clinic-sidebar-label">{t(item.key)}</span>
+  </Link>;
+ }
 
  // Routes shipped by phases 02–19 still use ordinary <a href>. Intercept only
  // same-origin, same-tenant /clinic links to retain this Next segment layout.
@@ -397,21 +414,53 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
      aria-label={t("navigation")}>
      {loading||requested===undefined?<div className="clinic-sidebar-skeleton" role="status"
        aria-label={t("loading")}>{Array.from({length:8},(_,i)=><span key={i}/>)}</div>:
-      items.length?items.map((item,index)=>{
-       const groupStart=index===0||items[index-1]?.group!==item.group;
-       const active=pathActive(pathname,item.path);
-       return <React.Fragment key={item.key}>
-        {groupStart&&<span className="phase04-side-group clinic-sidebar-group">{t(item.group)}</span>}
-        <Link href={hrefFor(item.path)} prefetch={false} data-next-nav
-         onClick={()=>setMobileOpen(false)}
-         className="phase04-side-link clinic-sidebar-link" aria-label={t(item.key)}
-         aria-current={active?"page":undefined} title={collapsed?t(item.key):undefined}>
-         <span className="phase04-side-icon" aria-hidden="true">
-          <CareIcon name={item.icon} size={19}/></span>
-         <span className="clinic-sidebar-label">{t(item.key)}</span>
-        </Link>
-       </React.Fragment>;
-      }):<div className="clinic-sidebar-empty">{t(ctx?.clinics.length?"invalidClinic":"noClinic")}</div>}
+      items.length?<React.Fragment>
+       <div className="clinic-navigation-search">
+        <CareIcon name="search" size={18}/>
+        <input ref={navSearchRef} type="search" value={navSearch}
+         aria-label={t("navigationSearch")} placeholder={t("navigationSearchTip")}
+         autoComplete="off" maxLength={70}
+         onChange={event=>setNavSearch(event.currentTarget.value)}/>
+        {navSearch.length>0&&<button type="button" onClick={()=>{setNavSearch("");navSearchRef.current?.focus()}}
+         aria-label={t("clearNavigationSearch")} title={t("clearNavigationSearch")}>
+         <CareIcon name="close" size={17}/></button>}
+       </div>
+       <button type="button" className="clinic-navigation-search-reveal"
+        aria-label={t("navigationSearch")} title={t("navigationSearchTip")}
+        onClick={revealSearch}><CareIcon name="search" size={19}/></button>
+       {normalizedSearch?<div className="clinic-nav-search-results" role="region"
+        aria-label={t("navigationSearch")}>
+        {searchResults.length?searchResults.map(item=>renderNavItem(item)):
+         <p className="clinic-nav-empty-match" role="status">{t("noNavigationMatch")}</p>}
+       </div>:<React.Fragment>
+        {items.filter(item=>item.key==="overview").map(item=>renderNavItem(item))}
+        {visibleSections.map(section=>{
+         const expanded=expandedSections[section.key]??section.key===activeSection;
+         const containsActive=section.key===activeSection;
+         const iconOnly=collapsed&&!mobileOpen;
+         const showLinks=expanded||iconOnly;
+         const sectionId="clinic-nav-section-"+section.key;
+         return <div key={section.key} className={"clinic-nav-section"+
+          (containsActive?" clinic-nav-section-active":"")}>
+          <button type="button" className="clinic-nav-section-toggle"
+           aria-controls={sectionId} aria-expanded={showLinks}
+           aria-label={t(showLinks?"collapseGroup":"expandGroup")+" — "+t(section.key)}
+           onClick={()=>changeSection(section.key)}>
+           <span className="clinic-nav-section-icon" aria-hidden="true">
+            <CareIcon name={section.icon} size={18}/></span>
+           <span className="clinic-nav-section-title">{t(section.key)}</span>
+           <span className="clinic-nav-section-count" aria-hidden="true">{section.links.length}</span>
+           <span className="clinic-nav-section-chevron" aria-hidden="true">
+            <CareIcon name="chevron" size={16}/></span>
+          </button>
+          <div id={sectionId} className="clinic-nav-section-links" hidden={!showLinks}>
+           {section.links.map(item=>renderNavItem(item,true))}
+          </div>
+         </div>;
+        })}
+       </React.Fragment>}
+      </React.Fragment>:
+      <div className="clinic-sidebar-empty">{t(ctx?.clinics.length?"invalidClinic":"noClinic")}</div>}
     </nav>
     <div className="clinic-sidebar-footer"><LocaleControls/>
      <nav className="clinic-sidebar-extras" aria-label={t("help")}>
