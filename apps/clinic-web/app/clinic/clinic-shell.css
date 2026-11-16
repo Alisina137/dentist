@@ -131,6 +131,13 @@
  .clinic-sidebar-tenant{display:flex}
  .clinic-sidebar-brand{display:grid}
  .clinic-persistent-shell .clinic-sidebar-header{flex-direction:row}
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-brand,
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-label,
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-group,
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-footer{display:initial}
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-brand,
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-footer{display:grid}
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-tenant{display:flex}
  .clinic-persistent-nav .clinic-sidebar-link{justify-content:flex-start!important;
   padding:9px 12px!important}
  .clinic-persistent-header{padding:11px 0 13px}
