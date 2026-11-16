@@ -1031,15 +1031,16 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
 }
 function PatientApp(){
  const native=useNativeAuth();
- const patientId=native.account?.registered?native.account.user.id:null;
+ const identityKey=native.account?.user.id||null;
+ const patientId=native.account?.registered?identityKey:null;
  const [favoriteSnapshot,setFavoriteSnapshot]=useState<{patientId:string;rows:Favorite[]}|null>(null);
  const favorites=favoriteSnapshot?.patientId===patientId?favoriteSnapshot.rows:[];
  const [favoritesRefresh,setFavoritesRefresh]=useState(0);
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
- const [viewIdentity,setViewIdentity]=useState<string|null>(patientId);
- const previousIdentity=useRef<string|null>(patientId);
+ const [viewIdentity,setViewIdentity]=useState<string|null>(identityKey);
+ const previousIdentity=useRef<string|null>(identityKey);
  const [accountSection,setAccountSection]=useState<"profile"|"reviews"|"settings">("profile");
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
@@ -1049,13 +1050,13 @@ function PatientApp(){
  const [checking,setChecking]=useState(false);
  const ui=useUI(locale,calendar);
  useEffect(()=>{
-  if(previousIdentity.current!==patientId){
-   previousIdentity.current=patientId;
+  if(previousIdentity.current!==identityKey){
+   previousIdentity.current=identityKey;
    // Never display a previous user's booking route while another user signs in.
    setRoute(null);setAccountSection("profile");setTab("account");
-   setViewIdentity(patientId);
+   setViewIdentity(identityKey);
   }
- },[patientId]);
+ },[identityKey]);
  useEffect(()=>{
   if(!patientId){setFavoriteSnapshot(null);return;}
   let active=true;
@@ -1160,7 +1161,7 @@ function PatientApp(){
  const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
   (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
  // Block even a single render of a stale, private route during an account switch.
- if(viewIdentity!==patientId)return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
+ if(viewIdentity!==identityKey)return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
   <View style={{flex:1,alignItems:"center",justifyContent:"center"}}>
    <ActivityIndicator color={colors.blue}/>
   </View>
@@ -1183,7 +1184,7 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(patientId||"guest")}
+  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
