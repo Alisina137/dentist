@@ -172,9 +172,12 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const [requestIndex,setRequestIndex]=useState(0);
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
  const [collapsed,setCollapsed]=useState(false),[mobileOpen,setMobileOpen]=useState(false);
+ const [navSearch,setNavSearch]=useState("");
+ const [expandedSections,setExpandedSections]=useState<Partial<Record<SectionKey,boolean>>>({});
  const [signingOut,setSigningOut]=useState(false),[signOutError,setSignOutError]=useState(false);
  const [navigationPending,startNavigation]=useTransition();
  const mobileToggleRef=useRef<HTMLButtonElement>(null),
+  navSearchRef=useRef<HTMLInputElement>(null),
   drawerRef=useRef<HTMLElement>(null),
   mobileCloseRef=useRef<HTMLButtonElement>(null),
   lastContextCheck=useRef(0);
@@ -190,7 +193,30 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   setRequested(new URLSearchParams(window.location.search).get("clinic"));
  },[isPublic,pathname]);
  useEffect(()=>{
-  try{setCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1");}catch{/* locked-down storage */}
+  try{
+   setCollapsed(localStorage.getItem(COLLAPSE_KEY)==="1");
+   const stored=JSON.parse(localStorage.getItem(NAV_EXPANSION_KEY)||"{}") as Record<string,unknown>;
+   if(stored&&typeof stored==="object"&&!Array.isArray(stored)){
+    const allowed:Partial<Record<SectionKey,boolean>>={};
+    for(const group of NAV_SECTIONS)
+     if(typeof stored[group.key]==="boolean")allowed[group.key]=stored[group.key] as boolean;
+    setExpandedSections(allowed);
+   }
+  }catch{/* locked-down storage or corrupt preference: use safe defaults */}
+ },[]);
+ useEffect(()=>{
+  const shortcut=(event:KeyboardEvent)=>{
+   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+    event.preventDefault();setCollapsed(false);
+    if(window.matchMedia("(max-width: 900px)").matches)setMobileOpen(true);
+    window.setTimeout(()=>navSearchRef.current?.focus(),75);
+   }
+   if(event.key==="Escape"&&document.activeElement===navSearchRef.current){
+    setNavSearch("");navSearchRef.current?.blur();
+   }
+  };
+  window.addEventListener("keydown",shortcut);
+  return()=>window.removeEventListener("keydown",shortcut);
  },[]);
  useEffect(()=>{
   if(isPublic)return;
@@ -224,7 +250,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
    document.removeEventListener("visibilitychange",recheck);
   };
  },[isPublic,loading]);
- useEffect(()=>setMobileOpen(false),[pathname]);
+ useEffect(()=>{setMobileOpen(false);setNavSearch("")},[pathname]);
  useEffect(()=>{
   if(!mobileOpen)return;
   const mq=window.matchMedia("(max-width: 900px)");
@@ -255,8 +281,6 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   return()=>{document.body.style.overflow=oldOverflow;
    window.removeEventListener("keydown",onKey);mq.removeEventListener("change",onDesktop);};
  },[mobileOpen]);
- if(isPublic)return <>{children}</>;
-
  const spaces=ctx?.clinics||[];
  const selected=requested===undefined?null:requested?
   spaces.find(s=>s.clinicId===requested)||null:spaces[0]||null;
@@ -265,6 +289,36 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const current=items.filter(item=>pathActive(pathname,item.path))
   .sort((a,b)=>b.path.length-a.path.length)[0];
  const activeTitle=current?t(current.key):t("workspace");
+ const activeSection=current?sectionOf(current.key):null;
+ const visibleSections=NAV_SECTIONS.map(section=>({
+  ...section,links:items.filter(item=>section.items.includes(item.key))
+ })).filter(section=>section.links.length>0);
+ const normalizedSearch=navSearch.trim().toLocaleLowerCase(locale);
+ const searchResults=normalizedSearch?
+  items.filter(item=>(t(item.key)+" "+t(sectionOf(item.key)||"workspace"))
+   .toLocaleLowerCase(locale).includes(normalizedSearch)):[];
+ const navDetails=current&&pathname!==current.path&&pathname!==current.path+"/"?t("details"):null;
+ const quickLinks=items.filter(item=>["appointments","bookingRequests","patients","clinical","finance"]
+  .includes(item.key)).slice(0,3);
+ // Keep a newly active section expanded after internal navigation even when it
+ // was explicitly folded on the previous page; do not persist the active page.
+ useEffect(()=>{
+  if(isPublic||!activeSection)return;
+  setExpandedSections(previous=>previous[activeSection]?previous:
+   {...previous,[activeSection]:true});
+ },[isPublic,activeSection,pathname]);
+ if(isPublic)return <>{children}</>;
+ function changeSection(section:SectionKey){
+  const expanded=expandedSections[section]??section===activeSection;
+  const next={...expandedSections,[section]:!expanded};
+  setExpandedSections(next);
+  try{localStorage.setItem(NAV_EXPANSION_KEY,JSON.stringify(next));}
+  catch{/* private browsing does not block keyboard navigation */}
+ }
+ function revealSearch(){
+  setCollapsed(false);
+  window.setTimeout(()=>navSearchRef.current?.focus(),40);
+ }
  const tenantParam=selected?"clinic="+encodeURIComponent(selected.clinicId):"";
  const hrefFor=(path:string)=>path+(tenantParam?"?"+tenantParam:"");
  const sameTenant=(url:URL)=>!url.searchParams.has("clinic")||
