@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { PreferencesProvider, SiteLayout } from "@dandanlink/ui";
+import { PreferencesProvider } from "@dandanlink/ui";
+import { ClinicSiteLayout } from "./clinic-site-layout";
 import "@dandanlink/ui/styles.css";
 import "@dandanlink/ui/phase15.css";
 import "@dandanlink/ui/polish.css";
@@ -14,6 +15,6 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   return <html lang="fa-AF" dir="rtl"><body><PreferencesProvider>
-    <SiteLayout audience="clinic">{children}</SiteLayout>
+    <ClinicSiteLayout>{children}</ClinicSiteLayout>
   </PreferencesProvider></body></html>;
 }
