@@ -253,8 +253,7 @@ function ErrorBox({error,retry}:{error:string;retry?:()=>void}){
 }
 function Tabs({space,patientId,current}:{space:Space;patientId:string;current:View}){
  const {t}=useW();return <nav className="phase07-tabs" aria-label={t("patient")}>
- {space.role!=="assistant"&&<a aria-label={t("overview")}
-  href={link(space.clinicId,patientId)}>{t("overview")}</a>}
+ {space.role!=="assistant"&&<a aria-label={t("overview")} href={link(space.clinicId,patientId)}>{t("overview")}</a>}
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
@@ -340,7 +339,8 @@ type WorklistCase={id:string;patient_id:string;patient_number:string;
 const WORKLIST_PAGE_SIZE=5;
 function Worklist({space}:{space:Space}){
  const {t,fmt,lang}=useW();
- const [date,setDate]=useState(day()),[ready,setReady]=useState(false);
+ const [date,setDate]=useState(day());
+ const [ready,setReady]=useState(false);
  const [tab,setTab]=useState<WorklistTab>("today");
  const [status,setStatus]=useState<WorklistStatus>("all");
  const [search,setSearch]=useState("");
