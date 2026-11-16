@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences } from "./index";
+import {ClinicLoadingState} from "./clinic-feedback";
 import { Shell } from "./phase03";
 
 type Lang="fa-AF"|"ps-AF"|"en";
@@ -448,8 +449,8 @@ const patientDisplay=(a:Appointment,compact=false)=>{
  if(compact)return p.preferredName+" "+(p.familyName?p.familyName.charAt(0)+".":"");
  return p.preferredName+(p.familyName?" "+p.familyName:"");
 };
-function Busy(){const {t}=useWords();return <div className="phase06-busy" aria-live="polite">
- <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</div>;}
+function Busy(){const {t}=useWords();return <ClinicLoadingState
+ className="phase06-busy" label={t("loading")} variant="rows"/>;}
 function Notice({kind="info",children}:{kind?:"info"|"success"|"warning"|"error";children:ReactNode}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
