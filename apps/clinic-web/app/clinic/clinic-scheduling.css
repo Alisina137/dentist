@@ -1,0 +1,212 @@
+/*
+ * DandanLink Clinic Improvement Phase 06 — premium appointment scheduling.
+ * Authenticated clinic workspace ONLY; no patient/admin/public styling.
+ * Existing color semantics, consent controls, clinical charts and print retained.
+ */
+.clinic-persistent-shell .phase06-calendar-page,
+.clinic-persistent-shell .phase06-queue-page{min-width:0}
+.clinic-persistent-shell .phase06-calendar-page .phase06-panel{
+ border:1px solid var(--clinic-border);border-radius:var(--clinic-radius-lg);
+ background:#fff;box-shadow:var(--clinic-shadow-sm);
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-calendar-tools{
+ background:linear-gradient(180deg,#fff,#fbfdff);
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-controls{
+ border-radius:14px;background:#f4f8fd;border:1px solid var(--clinic-border);
+ padding:12px;gap:13px;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-view-toggle{
+ border:1px solid #d1e1f0;border-radius:12px;display:flex;flex-wrap:wrap;
+ padding:3px;background:#eaf2fa;gap:3px;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-view-toggle button{
+ min-height:42px;min-width:66px;font-size:12px;border-radius:9px;
+ flex:1 1 auto;white-space:nowrap;font-weight:750;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-view-toggle button[aria-pressed="true"]{
+ color:#145e9c;background:#fff;box-shadow:0 1px 6px rgba(26,80,120,.11);
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-date-title{
+ font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-filterbar{
+ padding-block:15px;gap:10px;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-filterbar>.phase06-field{
+ flex:1 1 154px;min-width:min(100%,138px);
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-filterbar>.btn{
+ white-space:nowrap;min-height:45px;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-filter-clear{
+ border-color:#b8cee3;background:#fff;color:#335771;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-calendar-meta{
+ border-block-start:1px solid var(--clinic-border);padding-block:13px 3px;
+}
+.clinic-persistent-shell .phase06-calendar-page .phase06-result-count{
+ display:inline-flex;flex-wrap:wrap;gap:7px;align-items:center;
+ font-size:12px;color:var(--clinic-ink-soft);font-weight:800;
+}
+.clinic-persistent-shell .phase06-filter-active{
+ font-weight:780;font-size:11px;padding:6px 9px;border-radius:20px;
+ background:#e8f2ff;color:#165f9f;
+}
+.clinic-persistent-shell .phase06-range-warning{
+ margin:4px 24px 12px;background:#fff6e3;color:#815915;
+ border:1px solid #ead3a6;border-radius:11px;
+ padding:12px 14px;font-size:12px;line-height:1.6;
+}
+.clinic-persistent-shell .phase06-availability-disclaimer{
+ padding:5px 24px 18px;margin:0;font-size:11px;
+ color:var(--clinic-muted);line-height:1.65;
+}
+.clinic-persistent-shell .clinic-schedule-agenda{
+ display:grid;gap:13px;min-width:0;
+}
+.clinic-persistent-shell .clinic-agenda-description{
+ font-size:12px;color:var(--clinic-muted);margin:0 0 4px;line-height:1.65;
+ background:#f2f8ff;border:1px solid #dfeafa;border-radius:10px;
+ padding:12px 14px;
+}
+.clinic-persistent-shell .clinic-agenda-day{
+ overflow:hidden;min-width:0;border:1px solid var(--clinic-border);
+ border-radius:14px;background:#fff;
+}
+.clinic-persistent-shell .clinic-agenda-day.is-today{
+ border-color:#98c4e7;box-shadow:0 0 0 1px #d0e8fb;
+}
+.clinic-persistent-shell .clinic-agenda-date{
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+ min-height:60px;padding:10px 13px;
+ background:#f5f9fd;border-block-end:1px solid var(--clinic-border);
+}
+.clinic-persistent-shell .clinic-agenda-day-button{
+ display:inline-flex;align-items:center;gap:10px;
+ padding:4px 7px;min-height:42px;background:transparent;
+ border:0;border-radius:10px;color:var(--clinic-ink);
+ cursor:pointer;font-weight:780;font-size:13px;
+ text-align:start;
+}
+.clinic-persistent-shell .clinic-agenda-day-button:hover{background:#e9f3fd}
+.clinic-persistent-shell .clinic-agenda-day-button strong{
+ display:grid;place-items:center;width:36px;height:36px;flex-shrink:0;
+ border-radius:10px;background:#e6f2fd;color:#175f9c;font-size:17px;
+}
+.clinic-persistent-shell .clinic-agenda-total{
+ margin-inline-start:auto;color:var(--clinic-muted);
+ font-size:12px;font-weight:770;font-variant-numeric:tabular-nums;
+}
+.clinic-persistent-shell .clinic-agenda-create{
+ color:var(--clinic-primary);font-weight:780;font-size:12px;
+ min-height:40px;display:inline-flex;align-items:center;
+ padding-inline:9px;border:1px solid #d3e4f2;border-radius:9px;background:#fff;
+}
+.clinic-persistent-shell .clinic-agenda-events{display:grid}
+.clinic-persistent-shell .clinic-agenda-row{
+ display:grid;grid-template-columns:minmax(110px,.65fr) minmax(130px,1.4fr)
+  minmax(120px,.9fr) max-content 18px;
+ align-items:center;gap:12px;min-height:68px;padding:12px 14px;
+ border-block-end:1px solid #e8f0f6;
+ border-inline-start:3px solid #5a92bb;
+ text-decoration:none;color:var(--clinic-ink);transition:background .15s ease;
+}
+.clinic-persistent-shell .clinic-agenda-row:last-child{border-block-end:0}
+.clinic-persistent-shell .clinic-agenda-row:hover{background:#f7fbff}
+.clinic-persistent-shell .clinic-agenda-arrived{border-inline-start-color:#139581}
+.clinic-persistent-shell .clinic-agenda-in_treatment{border-inline-start-color:#3868c2}
+.clinic-persistent-shell .clinic-agenda-completed{border-inline-start-color:#26934e}
+.clinic-persistent-shell .clinic-agenda-no_show{border-inline-start-color:#b77927}
+.clinic-persistent-shell .clinic-agenda-cancelled{border-inline-start-color:#9aa6af}
+.clinic-persistent-shell .clinic-agenda-time{
+ display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+ color:#28638a;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;
+}
+.clinic-persistent-shell .clinic-agenda-patient{display:grid;gap:3px;min-width:0}
+.clinic-persistent-shell .clinic-agenda-patient strong{
+ font-size:13px;font-weight:820;overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-agenda-patient small,
+.clinic-persistent-shell .clinic-agenda-provider,
+.clinic-persistent-shell .clinic-agenda-provider small{
+ display:block;font-size:11px;color:var(--clinic-muted);
+ line-height:1.55;overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-agenda-row .phase06-status{
+ justify-self:start;font-size:10px;white-space:nowrap;
+}
+.clinic-persistent-shell .clinic-agenda-arrow{color:var(--clinic-primary)}
+.clinic-persistent-shell .clinic-agenda-empty{
+ padding:14px;margin:0;color:var(--clinic-muted);font-size:12px;
+}
+.clinic-persistent-shell .phase06-month-outside{
+ background:#f7f9fc;color:#8c9eb0;
+}
+.clinic-persistent-shell .clinic-month-not-loaded{
+ color:#b9c6d4;font-size:12px;margin-top:auto;
+}
+.clinic-persistent-shell .phase06-month-cell:focus-visible,
+.clinic-persistent-shell .clinic-agenda-day-button:focus-visible,
+.clinic-persistent-shell .clinic-agenda-row:focus-visible{
+ outline:3px solid #297bbb;outline-offset:-2px;
+}
+.clinic-persistent-shell .phase06-month-today>strong{
+ font-variant-numeric:tabular-nums;line-height:1.45;min-width:27px;
+}
+@media(max-width:1024px){
+ .clinic-persistent-shell .clinic-agenda-row{
+  grid-template-columns:minmax(95px,.65fr) minmax(125px,1.5fr) minmax(110px,.9fr);
+ }
+ .clinic-persistent-shell .clinic-agenda-row .phase06-status{grid-column:3;grid-row:2}
+ .clinic-persistent-shell .clinic-agenda-arrow{display:none}
+}
+@media(max-width:680px){
+ .clinic-persistent-shell .phase06-calendar-page .phase06-controls{
+  padding:10px;align-items:stretch;
+ }
+ .clinic-persistent-shell .phase06-calendar-page .phase06-date-controls{gap:8px}
+ .clinic-persistent-shell .phase06-calendar-page .phase06-view-toggle{width:100%}
+ .clinic-persistent-shell .phase06-calendar-page .phase06-view-toggle button{min-width:60px}
+ .clinic-persistent-shell .phase06-calendar-page .phase06-filterbar{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+ }
+ .clinic-persistent-shell .phase06-calendar-page .phase06-filterbar>.phase06-field{
+  min-width:0;width:100%;
+ }
+ .clinic-persistent-shell .phase06-calendar-page .phase06-filterbar>.btn{grid-column:span 1}
+ .clinic-persistent-shell .phase06-range-warning{margin-inline:14px}
+ .clinic-persistent-shell .phase06-availability-disclaimer{padding-inline:14px}
+ .clinic-persistent-shell .clinic-agenda-row{
+  grid-template-columns:minmax(92px,.6fr) minmax(0,1.4fr);
+  gap:8px 12px;padding:10px;
+ }
+ .clinic-persistent-shell .clinic-agenda-provider{grid-column:2;grid-row:2}
+ .clinic-persistent-shell .clinic-agenda-row .phase06-status{
+  grid-column:1;grid-row:2;
+ }
+ .clinic-persistent-shell .clinic-agenda-date{gap:6px;padding:9px}
+ .clinic-persistent-shell .clinic-agenda-day-button span{font-size:12px}
+ .clinic-persistent-shell .clinic-agenda-total{margin-inline-start:0}
+ .clinic-persistent-shell .clinic-agenda-create{margin-inline-start:auto}
+}
+@media(max-width:375px){
+ .clinic-persistent-shell .phase06-calendar-page .phase06-view-toggle button{
+  min-width:0;padding-inline:6px;font-size:11px;
+ }
+ .clinic-persistent-shell .phase06-calendar-page .phase06-filterbar>.btn{grid-column:1/-1}
+ .clinic-persistent-shell .clinic-agenda-day-button span{overflow-wrap:anywhere}
+ .clinic-persistent-shell .clinic-agenda-total{margin-inline-start:auto}
+ .clinic-persistent-shell .clinic-agenda-create{width:100%;justify-content:center}
+ .clinic-persistent-shell .clinic-agenda-row{
+  grid-template-columns:minmax(0,1fr);gap:6px;
+ }
+ .clinic-persistent-shell .clinic-agenda-time,
+ .clinic-persistent-shell .clinic-agenda-provider,
+ .clinic-persistent-shell .clinic-agenda-row .phase06-status{
+  grid-column:1;grid-row:auto;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-agenda-row{transition:none!important}
+}

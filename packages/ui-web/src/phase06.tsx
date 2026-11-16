@@ -2,6 +2,8 @@
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences } from "./index";
 import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
+import {clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
+ type ClinicDateWindow} from "./clinic-scheduling-dates";
 import { Shell } from "./phase03";
 
 type Lang="fa-AF"|"ps-AF"|"en";
@@ -32,7 +34,7 @@ type Slot={start:string;end:string;resourceId:string|null;startAt:string;endAt:s
  durationMinutes:number;preparationMinutes:number};
 type Catalog={services:Service[];resources:Resource[];providers:Provider[];timezone:string};
 type ConflictOption={date:string;start:string;resourceId:string|null};
-type ViewMode="day"|"week"|"month";
+type ViewMode="day"|"week"|"month"|"agenda";
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const words:Record<Lang,Record<string,string>>={
  en:{
@@ -41,7 +43,7 @@ const words:Record<Lang,Record<string,string>>={
   queueIntro:"Today’s arrivals, treatment progress and completed appointments in one place.",
   newIntro:"Choose a real clinic patient, procedure, clinician and available time.",
   detailIntro:"Review details, appointment history and permitted actions.",
-  today:"Today",previous:"Previous",next:"Next",day:"Day",week:"Week",month:"Month",
+  today:"Today",previous:"Previous",next:"Next",day:"Day",week:"Week",month:"Month",agenda:"Agenda",
   search:"Search patients",searchHint:"Name, phone number or patient ID",searchPatient:"Find patient",
   addPatient:"Add patient",inlinePatient:"Register a new clinic patient",
   patientName:"Patient name",familyName:"Family name",phone:"Phone (optional)",
@@ -70,7 +72,10 @@ const words:Record<Lang,Record<string,string>>={
   completed:"Completed",no_show:"No-show",cancelled:"Cancelled",
   expected:"Expected",noAppointments:"No appointments on these dates",
   noAppointmentsHint:"Adjust your filters or create a booking for an active clinic patient.",
-  clearFilters:"Clear filters",viewDetails:"Details",openDetail:"Open details",
+  clearFilters:"Clear filters",activeFilters:"Active filters",outOfPeriod:"Outside selected month",
+  agendaHelp:"Seven days from the selected date. Open a booking for details or to change its status.",
+  candidateNotice:"Calendar gaps are not confirmed available slots. Booking rechecks the clinician and chair.",
+  viewDetails:"Details",openDetail:"Open details",
   patients:"Patients",services:"Services & Pricing",hours:"Hours & Holidays",
   resources:"Chairs & Rooms",staffLink:"Team & Dentists",manage:"Clinic operations",
   empty:"No results",count:"Appointments",status:"Status",started:"Start",finished:"End",
@@ -141,7 +146,7 @@ const words:Record<Lang,Record<string,string>>={
   queueIntro:"حضور مریضان، پیشرفت تداوی و تکمیل ملاقات‌ها در یک صفحه.",
   newIntro:"مریض، خدمت، داکتر و وقت واقعاً موجود را انتخاب کنید.",
   detailIntro:"معلومات، تاریخچه و عملیات مجاز وقت ملاقات.",
-  today:"امروز",previous:"قبلی",next:"بعدی",day:"روز",week:"هفته",month:"ماه",
+  today:"امروز",previous:"قبلی",next:"بعدی",day:"روز",week:"هفته",month:"ماه",agenda:"فهرست نوبت‌ها",
   search:"جستجوی مریض",searchHint:"نام، شماره تماس یا شماره مریض",
   searchPatient:"یافتن مریض",addPatient:"افزودن مریض",inlinePatient:"ثبت مریض جدید",
   patientName:"نام مریض",familyName:"تخلص",phone:"شماره تماس (اختیاری)",
@@ -173,7 +178,10 @@ const words:Record<Lang,Record<string,string>>={
   in_treatment:"در تداوی",completed:"تکمیل",no_show:"حاضر نشد",cancelled:"لغو شد",
   expected:"در انتظار",noAppointments:"برای این روز وقت ملاقات نیست",
   noAppointmentsHint:"فیلتر را تغییر دهید یا برای مریض فعال وقت ثبت کنید.",
-  clearFilters:"پاک‌کردن فیلتر",viewDetails:"جزئیات",openDetail:"مشاهده جزئیات",
+  clearFilters:"پاک‌کردن فیلتر",activeFilters:"فیلترهای فعال",outOfPeriod:"بیرون از ماه انتخاب‌شده",
+  agendaHelp:"هفت روز از تاریخ انتخاب‌شده؛ برای جزئیات یا تغییر وضعیت، نوبت را باز کنید.",
+  candidateNotice:"جای خالی تقویم به معنی موجودبودن قطعی وقت نیست. هنگام ثبت دوباره بررسی می‌شود.",
+  viewDetails:"جزئیات",openDetail:"مشاهده جزئیات",
   patients:"مریضان",services:"خدمات و قیمت‌ها",hours:"ساعات و رخصتی‌ها",
   resources:"چوکی‌ها و اتاق‌ها",staffLink:"کارمندان و داکتران",manage:"عملیات کلینیک",
   empty:"نتیجه‌ای نیست",count:"ملاقات‌ها",status:"وضعیت",
@@ -247,7 +255,7 @@ const words:Record<Lang,Record<string,string>>={
   queueIntro:"د ناروغانو راتګ، درملنې او بشپړو شوو لیدنو یو ځای مدیریت.",
   newIntro:"ناروغ، خدمت، ډاکټر او شته وخت غوره کړئ.",
   detailIntro:"د لیدنې معلومات، تاریخچه او مجازې کړنې.",
-  today:"نن",previous:"مخکېنی",next:"راتلونکی",day:"ورځ",week:"اونۍ",month:"میاشت",
+  today:"نن",previous:"مخکېنی",next:"راتلونکی",day:"ورځ",week:"اونۍ",month:"میاشت",agenda:"د لیدنو لړلیک",
   search:"ناروغ ولټوئ",searchHint:"نوم، شمېره یا د ناروغ پېژند",
   searchPatient:"ناروغ پیدا کړئ",addPatient:"ناروغ اضافه کړئ",
   inlinePatient:"نوی ناروغ ثبت کړئ",patientName:"د ناروغ نوم",
@@ -279,7 +287,10 @@ const words:Record<Lang,Record<string,string>>={
   completed:"بشپړ",no_show:"نه دی راغلی",cancelled:"لغوه",
   expected:"په تمه",noAppointments:"په دې ورځو کې لیدنې نشته",
   noAppointmentsHint:"فلټر بدل کړئ یا د فعال ناروغ لپاره وخت وټاکئ.",
-  clearFilters:"فلټر پاک کړئ",viewDetails:"جزییات",openDetail:"جزییات وګورئ",
+  clearFilters:"فلټر پاک کړئ",activeFilters:"فعال فلټرونه",outOfPeriod:"له ټاکلې میاشتې بهر",
+  agendaHelp:"له ټاکلې نېټې اووه ورځې؛ د جزیاتو یا حالت بدلولو لپاره لیدنه پرانیزئ.",
+  candidateNotice:"په تقویم کې خالي ځای قطعي شته وخت نه دی؛ د ثبت پر مهال بیا کتل کېږي.",
+  viewDetails:"جزییات",openDetail:"جزییات وګورئ",
   patients:"ناروغان",services:"خدمتونه او بیې",hours:"وختونه او رخصتۍ",
   resources:"څوکۍ او خونې",staffLink:"کارکوونکي او ډاکټران",manage:"د کلینیک چارې",
   empty:"پایله نشته",count:"لیدنې",status:"حالت",started:"پیل",
@@ -414,28 +425,11 @@ function dayKabul(){
 function advance(date:string,diff:number){
  return new Date(Date.parse(date+"T00:00:00Z")+diff*86400000).toISOString().slice(0,10);
 }
-function weekday(date:string){return (new Date(date+"T12:00:00Z").getUTCDay()+1)%7;}
-function saturday(date:string){return advance(date,-weekday(date));}
-function monthStart(date:string){return date.slice(0,7)+"-01";}
-function monthEnd(date:string){
- return new Date(Date.UTC(Number(date.slice(0,4)),Number(date.slice(5,7)),0))
-  .toISOString().slice(0,10);
-}
-function moveMonth(date:string,delta:number){
- const d=new Date(date.slice(0,7)+"-01T12:00:00Z");
- d.setUTCMonth(d.getUTCMonth()+delta);
- return d.toISOString().slice(0,10);
-}
 const weekLabels=["daySat","daySun","dayMon","dayTue","dayWed","dayThu","dayFri"] as const;
 function dateTitle(value:string,lang:Lang,calendar:"solar_hijri"|"gregorian"){
  const date=new Date(value+"T12:00:00Z");
  return new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",day:"numeric",
   calendar:calendar==="solar_hijri"?"persian":"gregory"}).format(date);
-}
-function dateRange(date:string,view:ViewMode){
- if(view==="day")return {from:date,to:date};
- if(view==="week"){const d=saturday(date);return {from:d,to:advance(d,6)};}
- return {from:monthStart(date),to:monthEnd(date)};
 }
 const appHref=(cid:string,view?:string)=>"/clinic/appointments"+(view?"/"+view:"")+"?clinic="+encodeURIComponent(cid);
 const patientHref=(cid:string,id:string)=>"/clinic/patients/"+id+"?clinic="+encodeURIComponent(cid);
@@ -583,17 +577,40 @@ function CalendarPanel({space}:{space:Space}){
   const queryDate=q.get("date");
   const queryView=q.get("view");
   if(queryDate&&validIsoDay(queryDate))setDate(queryDate);
-  if(["day","week","month"].includes(queryView||""))setMode(queryView as ViewMode);
+  if(["day","week","month","agenda"].includes(queryView||""))setMode(queryView as ViewMode);
   else if(window.innerWidth<=740)setMode("day");
+  setDoctor(q.get("providerId")||"");
+  setChair(q.get("resourceId")||"");
+  const requestedStatus=q.get("status");
+  if(["confirmed","arrived","in_treatment","completed","cancelled","no_show"].includes(requestedStatus||""))
+   setStatus(requestedStatus!);
   setReady(true);
  },[]);
- function navigate(value:string,view=mode){
-  setDate(value);setMode(view);
+ function updateQuery(params:Record<string,string>){
   const q=new URLSearchParams(location.search);
-  q.set("clinic",space.clinicId);q.set("date",value);q.set("view",view);
-  history.replaceState(null,"",location.pathname+"?"+q);
+  q.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries(params)){
+   if(value)q.set(key,value);else q.delete(key);
+  }
+  history.replaceState(null,"",location.pathname+"?"+q.toString());
  }
- const period=dateRange(date,mode);
+ function navigate(value:string,view=mode){
+  if(!validIsoDay(value))return;
+  setDate(value);setMode(view);
+  updateQuery({date:value,view});
+ }
+ function updateFilter(key:"providerId"|"resourceId"|"status",value:string){
+  if(key==="providerId")setDoctor(value);
+  else if(key==="resourceId")setChair(value);
+  else setStatus(value||"all");
+  updateQuery({[key]:value==="all"?"":value});
+ }
+ function clearFilters(){
+  setDoctor("");setChair("");setStatus("all");
+  updateQuery({providerId:"",resourceId:"",status:""});
+ }
+ const filtered=Boolean(doctor||chair||status!=="all");
+ const period=clinicScheduleWindow(date,mode,calendar);
  const query=ready?new URLSearchParams({from:period.from,to:period.to,
    ...(doctor?{providerId:doctor}:{}),
    ...(chair?{resourceId:chair}:{}),
@@ -612,11 +629,12 @@ function CalendarPanel({space}:{space:Space}){
  },[appointments]);
  const counts=overview?.counts||{};
  const dateLabel=mode==="day"?dateTitle(date,lang,calendar):
-  mode==="week"?dateTitle(period.from,lang,calendar)+" — "+dateTitle(period.to,lang,calendar):
+  mode==="week"||mode==="agenda"?dateTitle(period.from,lang,calendar)+" — "+dateTitle(period.to,lang,calendar):
   new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",
-   calendar:"gregory"}).format(new Date(date.slice(0,7)+"-01T12:00:00Z"));
- const next=()=>navigate(mode==="day"?advance(date,1):mode==="week"?advance(date,7):moveMonth(date,1));
- const previous=()=>navigate(mode==="day"?advance(date,-1):mode==="week"?advance(date,-7):moveMonth(date,-1));
+   calendar:calendar==="solar_hijri"?"persian":"gregory"
+  }).format(new Date(period.from+"T12:00:00Z"));
+ const next=()=>navigate(clinicShiftPeriod(date,mode,1,calendar));
+ const previous=()=>navigate(clinicShiftPeriod(date,mode,-1,calendar));
  const controls=<div className="phase06-controls">
   <div className="phase06-date-controls">
     <button className="phase06-icon-btn" aria-label={t("prevPeriod")} onClick={previous}>‹</button>
@@ -628,8 +646,8 @@ function CalendarPanel({space}:{space:Space}){
         onChange={e=>{if(e.target.value)navigate(e.target.value);}}/></label>
   </div>
   <div className="phase06-view-toggle" role="group" aria-label={t("views")}>
-    {(["day","week","month"] as ViewMode[]).map(view=><button key={view}
-      aria-pressed={mode===view} onClick={()=>navigate(date,view)}>{t(view)}</button>)}
+    {(["day","week","month","agenda"] as ViewMode[]).map(view=><button key={view}
+      type="button" aria-pressed={mode===view} onClick={()=>navigate(date,view)}>{t(view)}</button>)}
   </div>
  </div>;
  const legend=<div className="phase06-status-legend" aria-label={t("statusLegend")}>
@@ -653,29 +671,40 @@ function CalendarPanel({space}:{space:Space}){
    </div>
    <div className="phase06-calendar-tools">{controls}
     <div className="phase06-filterbar">
-     <Select label={t("filterDentist")} value={doctor} onChange={setDoctor}
+     <Select label={t("filterDentist")} value={doctor} onChange={value=>updateFilter("providerId",value)}
       options={[{value:"",label:t("allDentists")},...(catalog?.providers||[]).map((p:Provider)=>({
        value:p.membershipId,label:p.name}))]}/>
-     <Select label={t("filterChair")} value={chair} onChange={setChair}
+     <Select label={t("filterChair")} value={chair} onChange={value=>updateFilter("resourceId",value)}
       options={[{value:"",label:t("allChairs")},...(catalog?.resources||[]).map((r:Resource)=>({
        value:r.id,label:r.label}))]}/>
-     <Select label={t("filterStatus")} value={status} onChange={setStatus}
+     <Select label={t("filterStatus")} value={status} onChange={value=>updateFilter("status",value)}
       options={[{value:"all",label:t("allStatuses")},
        ...(["confirmed","arrived","in_treatment","completed","cancelled","no_show"] as AppointmentStatus[])
         .map(s=>({value:s,label:t(s)}))]}/>
-     <button className="btn btn-secondary" onClick={()=>{refresh();refreshOverview();}}>{t("refresh")} ↻</button>
+     {filtered&&<button type="button" className="btn btn-secondary phase06-filter-clear"
+       onClick={clearFilters}>{t("clearFilters")}</button>}
+     <button type="button" className="btn btn-secondary phase06-reload"
+       onClick={()=>{refresh();refreshOverview();}}>{t("refresh")} ↻</button>
     </div>
-    <div className="phase06-calendar-meta"><span>{appointments.length} {t("count")}
-      {data?.truncated?" · "+t("limitReached"):""}</span>{legend}</div>
+    <div className="phase06-calendar-meta">
+     <span role="status" aria-live="polite" className="phase06-result-count">
+      {data?data.total:t("loading")} {data?t("count"):""}
+      {filtered&&<strong className="phase06-filter-active">{t("activeFilters")}</strong>}
+     </span>{legend}</div>
    </div>
+   {data?.truncated&&<div className="phase06-range-warning" role="alert">
+    {t("limitReached")}</div>}
    {error?<Problem error={error} retry={refresh}/>:!data?<Busy/>:
-    <div className="phase06-calendar-body">
+    <div className="phase06-calendar-body" aria-label={t("calendar")} aria-busy="false">
      {mode==="day"?<DayGrid space={space} date={date} appointments={byDate.get(date)||[]}/>:
       mode==="week"?<WeekGrid space={space} start={period.from} byDate={byDate}
         onSelect={d=>navigate(d,"day")}/>:
-       <MonthGrid space={space} date={date} byDate={byDate}
+      mode==="agenda"?<AgendaGrid space={space} period={period} byDate={byDate}
+        onSelect={d=>navigate(d,"day")}/>:
+       <MonthGrid space={space} period={period} byDate={byDate}
         onSelect={d=>navigate(d,"day")}/>}
     </div>}
+   <p className="phase06-availability-disclaimer">{t("candidateNotice")}</p>
   </section>
   <section className="phase06-bottom-strip card">
    <div><h3>{t("nextBookings")}</h3><p>{t("noPublic")}</p></div>
@@ -698,7 +727,7 @@ function DayGrid({space,date,appointments}:{space:Space;date:string;appointments
  return <div className="phase06-day">
   <div className="phase06-day-heading">
    <div><span className="phase06-day-number">
-    {new Date(date+"T12:00:00Z").getUTCDate()}</span>
+    {clinicDayNumber(date,lang,calendar)}</span>
     <div><strong>{dateTitle(date,lang,calendar)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
    </div>
    {canBook(space)&&<a className="phase06-text-action"
@@ -729,7 +758,7 @@ function DayGrid({space,date,appointments}:{space:Space;date:string;appointments
 }
 function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
  byDate:Map<string,Appointment[]>;onSelect:(date:string)=>void}){
- const {t,lang}=useWords();
+ const {t,lang,calendar}=useWords();
  return <div className="phase06-week-scroll">
   <div className="phase06-week-grid">
   {Array.from({length:7},(_,weekday)=>{
@@ -738,7 +767,7 @@ function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
     <button className="phase06-week-day-head" onClick={()=>onSelect(date)}
      aria-label={t("selectDay")+" "+date}>
      <span>{t(weekLabels[weekday])}</span>
-     <strong>{Number(date.slice(-2))}</strong><small>{events.length} {t("count")}</small>
+     <strong>{clinicDayNumber(date,lang,calendar)}</strong><small>{events.length} {t("count")}</small>
     </button>
     <div className="phase06-week-content">
      {events.slice(0,7).map(a=><CalendarCard a={a} space={space} compact key={a.id}/>)}
@@ -751,38 +780,86 @@ function WeekGrid({space,start,byDate,onSelect}:{space:Space;start:string;
   </div>
  </div>;
 }
-function MonthGrid({space,date,byDate,onSelect}:{space:Space;date:string;
+
+/**
+ * A scannable 7-day agenda using the same API rows as day/week/month views.
+ * Appointment links navigate to the existing server-validated workflow.
+ */
+function AgendaGrid({space,period,byDate,onSelect}:{space:Space;period:ClinicDateWindow;
+ byDate:Map<string,Appointment[]>;onSelect:(day:string)=>void}){
+ const {t,lang,calendar}=useWords();
+ const dates=Array.from({length:7},(_,i)=>advance(period.from,i));
+ return <div className="clinic-schedule-agenda">
+  <p className="clinic-agenda-description">{t("agendaHelp")}</p>
+  {dates.map(day=>{
+   const events=byDate.get(day)||[];
+   return <section className={"clinic-agenda-day"+(day===dayKabul()?" is-today":"")} key={day}
+    aria-label={dateTitle(day,lang,calendar)}>
+    <div className="clinic-agenda-date">
+     <button type="button" className="clinic-agenda-day-button" onClick={()=>onSelect(day)}
+      aria-label={t("selectDay")+" "+dateTitle(day,lang,calendar)}>
+      <strong>{clinicDayNumber(day,lang,calendar)}</strong>
+      <span>{dateTitle(day,lang,calendar)}</span>
+     </button>
+     <span className="clinic-agenda-total" dir="auto">{events.length} {t("count")}</span>
+     {canBook(space)&&day>=dayKabul()&&<a className="clinic-agenda-create"
+      href={appHref(space.clinicId,"new")+"&date="+day}>{t("newAppointment")} ↗</a>}
+    </div>
+    {events.length?<div className="clinic-agenda-events">
+     {events.map(a=><a key={a.id} href={appHref(space.clinicId,a.id)}
+      className={"clinic-agenda-row clinic-agenda-"+a.status}>
+      <span className="clinic-agenda-time">
+       <time dateTime={a.startAt}><bdi dir="ltr">{localClock(a.startAt)}</bdi></time>
+       <span aria-hidden="true">–</span>
+       <time dateTime={a.endAt}><bdi dir="ltr">{localClock(a.endAt)}</bdi></time>
+      </span>
+      <span className="clinic-agenda-patient">
+       <strong>{patientDisplay(a)}</strong>
+       <small>{a.serviceName}</small>
+      </span>
+      <span className="clinic-agenda-provider">{a.providerName}
+       {a.resourceName&&<small>{a.resourceName}</small>}</span>
+      <Badge status={a.status}/>
+      <span className="clinic-agenda-arrow" aria-hidden="true">↗</span>
+     </a>)}
+    </div>:<p className="clinic-agenda-empty">{t("noAppointments")}</p>}
+   </section>;
+  })}
+ </div>;
+}
+/** Months are based on the *selected* display calendar, never a silently
+ * Gregorian month under a solar-Hijri title. Adjacent cells are not falsely
+ * shown as having zero bookings: the API has intentionally not fetched them. */
+function MonthGrid({space,period,byDate,onSelect}:{space:Space;period:ClinicDateWindow;
  byDate:Map<string,Appointment[]>;onSelect:(date:string)=>void}){
- const {t}=useWords();
- const start=saturday(monthStart(date));
- const end=monthEnd(date);
- const dayCount=Math.ceil((Math.ceil((Date.parse(end)-Date.parse(start))/86400000)+1)/7)*7;
- const cells=Array.from({length:Math.min(42,dayCount)},(_,i)=>advance(start,i));
+ const {t,lang,calendar}=useWords();
+ const cells=clinicMonthCells(period);
  return <div className="phase06-month">
   <div className="phase06-month-head">
    {weekLabels.map(key=><div key={key}>{t(key)}</div>)}
   </div>
   <div className="phase06-month-grid">
    {cells.map(day=>{
-    const events=byDate.get(day)||[],outside=day.slice(0,7)!==date.slice(0,7);
-    const counts=events.reduce<Record<string,number>>((a,e)=>{
-     a[e.status]=(a[e.status]||0)+1;return a;},{});
-    return <button key={day} className={"phase06-month-cell "+
+    const outside=day<period.from||day>period.to;
+    const events=outside?[]:byDate.get(day)||[];
+    return <button type="button" key={day} className={"phase06-month-cell "+
      (outside?"phase06-month-outside ":"")+(day===dayKabul()?"phase06-month-today":"")}
-     onClick={()=>onSelect(day)} aria-label={day+" · "+events.length+" "+t("count")}>
-      <strong>{Number(day.slice(-2))}</strong>
+     onClick={()=>onSelect(day)}
+     aria-label={day+" · "+(outside?t("outOfPeriod"):events.length+" "+t("count"))}>
+      <strong>{clinicDayNumber(day,lang,calendar)}</strong>
       <div className="phase06-month-bars">
-       {events.slice(0,3).map(a=><span key={a.id} className={"phase06-month-bar phase06-month-bar-"+a.status}>
+       {!outside&&events.slice(0,3).map(a=><span key={a.id}
+        className={"phase06-month-bar phase06-month-bar-"+a.status}>
         <bdi dir="ltr">{localClock(a.startAt)}</bdi> {patientDisplay(a,true)}</span>)}
-       {events.length>3&&<small>+{events.length-3} {t("moreInDay")}</small>}
+       {!outside&&events.length>3&&<small>+{events.length-3} {t("moreInDay")}</small>}
       </div>
-      {!events.length&&<span className="phase06-month-none">·</span>}
+      {!outside&&!events.length&&<span className="phase06-month-none">·</span>}
+      {outside&&<span className="clinic-month-not-loaded" aria-hidden="true">—</span>}
     </button>;
    })}
   </div>
  </div>;
 }
-
 
 type StatusAction="arrived"|"in_treatment"|"completed"|"cancelled"|"no_show";
 function actionsFor(space:Space,a:Appointment):StatusAction[]{
@@ -885,7 +962,17 @@ function QueuePanel({space}:{space:Space}){
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
   if(requested&&validIsoDay(requested))setDay(requested);
+  setProvider(q.get("providerId")||"");
  },[]);
+ function queueNavigate(nextDay:string,providerId:string){
+  if(!validIsoDay(nextDay))return;
+  setDay(nextDay);setProvider(providerId);
+  const q=new URLSearchParams(location.search);
+  q.set("clinic",space.clinicId);
+  q.set("date",nextDay);
+  if(providerId)q.set("providerId",providerId);else q.delete("providerId");
+  history.replaceState(null,"",location.pathname+"?"+q.toString());
+ }
  const base="/clinics/"+space.clinicId;
  const {data,error,refresh}=useData(base+"/queue?date="+day);
  const {data:catalog}=useData(base+"/catalog");
@@ -903,10 +990,10 @@ function QueuePanel({space}:{space:Space}){
    <div><span className="phase06-eyebrow">{t("queueToday")}</span>
     <h2>{dateTitle(day,lang,calendar)}</h2><p>{t("queueDateHint")}</p></div>
    <div className="phase06-queue-controls">
-    <button className="btn btn-secondary" onClick={()=>setDay(dayKabul())}>{t("today")}</button>
+    <button className="btn btn-secondary" type="button" onClick={()=>queueNavigate(dayKabul(),provider)}>{t("today")}</button>
     <label className="phase06-field"><span>{t("queuePast")}</span>
-     <input type="date" value={day} onChange={e=>{if(e.target.value)setDay(e.target.value);}}/></label>
-    <Select label={t("filterDentist")} value={provider} onChange={setProvider}
+     <input type="date" value={day} onChange={e=>{if(e.target.value)queueNavigate(e.target.value,provider);}}/></label>
+    <Select label={t("filterDentist")} value={provider} onChange={value=>queueNavigate(day,value)}
      options={[{value:"",label:t("allDentists")},
       ...(catalog?.providers||[]).map((p:Provider)=>({value:p.membershipId,label:p.name}))]}/>
     <button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
@@ -943,7 +1030,8 @@ function QueuePanel({space}:{space:Space}){
    </section>}
   <div className="phase06-queue-foot">
    <Notice>{t("clinicalNext")} {t("deliveryNotice")}</Notice>
-   <a href={appHref(space.clinicId)} className="btn btn-secondary">{t("viewCalendar")} ↗</a>
+   <a href={appHref(space.clinicId)+"&view=day&date="+day}
+    className="btn btn-secondary">{t("viewCalendar")} ↗</a>
   </div>
  </div>;
 }
