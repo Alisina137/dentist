@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from "react";
 import {ActivityIndicator,Alert,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {useNativeAuth} from "./native-auth";
+import {patientError} from "./patient-errors";
 
 /** PH17 native reviews never cache clinical notes, patient names or raw private review data. */
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -79,7 +80,7 @@ export function NativeReviews({locale}:{locale:Lang}){
    auth.request<{notices:Notice[]}>("/v1/reviews/my/notices")
   ]).then(([a,b,c])=>{
    if(mounted){setEligible(a.eligible);setMine(b.reviews);setNotices(c.notices);}
-  }).catch(e=>{if(mounted)setError(e instanceof Error?e.message:t.error)})
+  }).catch(e=>{if(mounted)setError(patientError(e,locale))})
    .finally(()=>{if(mounted)setLoading(false)});
   return()=>{mounted=false};
  },[auth.account?.user.id,auth.account?.registered,refresh]);
@@ -101,13 +102,13 @@ export function NativeReviews({locale}:{locale:Lang}){
     revision:(selected as Review).currentVersion,stars:rating,headline,feedback});
    if(mode==="appeal")await auth.request("/v1/reviews/my/"+(selected as Review).id+"/appeal","POST",{reason:feedback});
    setMode(null);setSelected(null);setRefresh(x=>x+1);
-  }catch(e){setError(e instanceof Error?e.message:t.error)}
+  }catch(e){setError(patientError(e,locale))}
   finally{setBusy(false)}
  }
  const withdraw=(review:Review)=>Alert.alert(t.withdraw,t.privacy,[
   {text:t.cancel,style:"cancel"},{text:t.withdraw,style:"destructive",onPress:()=>void(async()=>{
    setBusy(true);try{await auth.request("/v1/reviews/my/"+review.id+"/withdraw","POST",{});
-    setRefresh(x=>x+1)}catch(e){setError(e instanceof Error?e.message:t.error)}
+    setRefresh(x=>x+1)}catch(e){setError(patientError(e,locale))}
    finally{setBusy(false)}
   })()}]);
  return <View>
