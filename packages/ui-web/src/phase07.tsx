@@ -252,11 +252,12 @@ function ErrorBox({error,retry}:{error:string;retry?:()=>void}){
 }
 function Tabs({space,patientId,current}:{space:Space;patientId:string;current:View}){
  const {t}=useW();return <nav className="phase07-tabs" aria-label={t("patient")}>
- <a aria-label={t("overview")} href={link(space.clinicId,patientId)}>{t("overview")}</a>
+ {space.role!=="assistant"&&<a aria-label={t("overview")}
+  href={link(space.clinicId,patientId)}>{t("overview")}</a>}
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
- <a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
+ {space.role!=="assistant"&&<a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>}
  {["owner","manager"].includes(space.role)&&<a href={"/clinic/patients/"+patientId+"/billing?clinic="+encodeURIComponent(space.clinicId)}>{t("billing")}</a>}
  <a aria-current={current==="files"?"page":undefined}
   href={link(space.clinicId,patientId,"files")}>{t("files")}</a>
@@ -294,7 +295,7 @@ export function ClinicalPortal({view}:{view:View}){
      <h1>{t(view==="worklist"?"worklist":view==="visits"?"visits":view==="files"?"patientFiles":"visitDetail")}</h1>
      <p className="muted">{view==="worklist"?t("care"):t("protected")}</p></div>
     <div className="phase07-actions"><a className="btn btn-secondary" href={clinicalLink(space.clinicId)}>{t("worklist")}</a>
-     {view!=="worklist"&&<a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
+     {view!=="worklist"&&space.role!=="assistant"&&<a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
       {t("returnToPatient")}</a>}</div>
    </header>
    {view!=="worklist"&&<Tabs space={space} patientId={patientId} current={view}/>}
@@ -506,8 +507,8 @@ function Worklist({space}:{space:Space}){
         <a href={"/clinic/appointments/"+encodeURIComponent(a.appointment_id)+
          "?clinic="+encodeURIComponent(space.clinicId)}
          className="clinic-phase09-textlink">{t("handoffOpenAppointment")}</a>
-        <a href={link(space.clinicId,a.patient_id)}
-         className="clinic-phase09-textlink">{t("handoffOpenPatient")}</a>
+        {space.role!=="assistant"&&<a href={link(space.clinicId,a.patient_id)}
+         className="clinic-phase09-textlink">{t("handoffOpenPatient")}</a>}
        </div>
       </article>)}
      </div>:
@@ -520,8 +521,8 @@ function Worklist({space}:{space:Space}){
        <div className="clinic-phase09-row-actions">
         <a className="btn btn-secondary" href={link(space.clinicId,e.patient_id,"visits",e.id)}>
          {t("handoffContinue")} →</a>
-        <a className="clinic-phase09-textlink" href={link(space.clinicId,e.patient_id)}>
-         {t("handoffOpenPatient")}</a>
+        {space.role!=="assistant"&&<a className="clinic-phase09-textlink" href={link(space.clinicId,e.patient_id)}>
+         {t("handoffOpenPatient")}</a>}
        </div>
       </article>)}
      </div>}
@@ -645,8 +646,8 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       <p className="muted">{fmt(e.createdAt)} · {t("revision")} {e.revision}</p></div>
      <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
     <div className="clinic-phase09-visit-navigation">
-     <a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
-      <CareIcon name="account" size={16}/>{t("returnToPatient")}</a>
+     {space.role!=="assistant"&&<a className="btn btn-secondary" href={link(space.clinicId,patientId)}>
+      <CareIcon name="account" size={16}/>{t("returnToPatient")}</a>}
      {e.appointmentId&&<a className="btn btn-secondary" href={
       "/clinic/appointments/"+encodeURIComponent(e.appointmentId)+
        "?clinic="+encodeURIComponent(space.clinicId)}>
@@ -709,6 +710,14 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
     <p className="muted">{t("storage")}</p>
     <a className="btn btn-secondary" href={link(space.clinicId,patientId,"files")+
      "&encounterId="+encodeURIComponent(encounterId)}>{t("patientFiles")} →</a>
+    {space.role!=="assistant"&&<div className="clinic-phase09-treatment-link">
+     <hr className="phase07-divider"/>
+     <h2>{t("treatments")}</h2>
+     <a className="btn btn-secondary" href={
+      "/clinic/patients/"+encodeURIComponent(patientId)+"/treatments?clinic="+
+       encodeURIComponent(space.clinicId)}>
+      <CareIcon name="clipboard" size={16}/>{t("treatments")} →</a>
+    </div>}
    </section>
   </aside>
  </div>;
