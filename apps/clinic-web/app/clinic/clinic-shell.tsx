@@ -142,11 +142,17 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  const [navigationPending,startNavigation]=useTransition();
  const mobileToggleRef=useRef<HTMLButtonElement>(null),
   drawerRef=useRef<HTMLElement>(null),
-  mobileCloseRef=useRef<HTMLButtonElement>(null);
+  mobileCloseRef=useRef<HTMLButtonElement>(null),
+  lastContextCheck=useRef(0);
  // A tenant change is an explicit full navigation. A/B clinic data cannot
  // temporarily share a React subtree while page-local fetches are still live.
  useEffect(()=>{
-  if(isPublic)return;
+  // A public sign-in/invitation route must drop the prior authenticated
+  // workspace before any subsequent private navigation can render it again.
+  if(isPublic){
+   setCtx(null);setLoading(true);setError("");setRequested(undefined);
+   return;
+  }
   setRequested(new URLSearchParams(window.location.search).get("clinic"));
  },[isPublic,pathname]);
  useEffect(()=>{
@@ -161,13 +167,29 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
     if(!r.ok)throw new Error(r.status===401?"AUTH_REQUIRED":"CONTEXT_UNAVAILABLE");
     return await r.json() as Context;
    })
-   .then(data=>{if(!controller.signal.aborted){setCtx(data);setLoading(false);}})
+   .then(data=>{if(!controller.signal.aborted){lastContextCheck.current=Date.now();
+    setCtx(data);setLoading(false);}})
    .catch(e=>{if(!controller.signal.aborted){
     setCtx(null);setError(e instanceof Error?e.message:"CONTEXT_UNAVAILABLE");
     setLoading(false);
    }});
   return()=>controller.abort();
  },[isPublic,requestIndex]);
+ useEffect(()=>{
+  if(isPublic)return;
+  // A dormant clinic tab must re-confirm staff membership and role before
+  // the operator resumes working with private patient or billing data.
+  const recheck=()=>{
+   if(document.visibilityState==="visible"&&!loading&&
+    Date.now()-lastContextCheck.current>60000)setRequestIndex(v=>v+1);
+  };
+  window.addEventListener("focus",recheck);
+  document.addEventListener("visibilitychange",recheck);
+  return()=>{
+   window.removeEventListener("focus",recheck);
+   document.removeEventListener("visibilitychange",recheck);
+  };
+ },[isPublic,loading]);
  useEffect(()=>setMobileOpen(false),[pathname]);
  useEffect(()=>{
   if(!mobileOpen)return;
@@ -351,7 +373,8 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
     {signOutError&&<div role="alert" className="clinic-shell-error">{t("signOutFailed")}</div>}
     {navigationPending&&<div role="status" className="clinic-route-progress"
      aria-label={t("loading")}/>}
-    <div className="clinic-route-content" id="clinic-route-content" aria-label={t("pageContent")}>
+    <div className="clinic-route-content" id="clinic-route-content" tabIndex={-1}
+     aria-label={t("pageContent")}>
      {loading||requested===undefined?<div className="clinic-page-skeleton"
        role="status" aria-label={t("loading")}>
        <span className="clinic-page-skeleton-title"/>
