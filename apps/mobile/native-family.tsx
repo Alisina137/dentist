@@ -139,9 +139,9 @@ export function NativeFamilyManager({locale}:{locale:Lang}){
   return()=>{live=false};
  },[user,auth.request,revision]);
  const live=snapshot?.user===user?snapshot:null;
- const work=async(fn:()=>Promise<void>)=>{
+ const work=async(fn:()=>Promise<void>,successText:string=t.saved)=>{
   setBusy(true);setError("");setMessage("");
-  try{await fn();setMessage(t.saved);refresh();}
+  try{await fn();setMessage(successText);refresh();}
   catch(e){setError(patientError(e,locale))}
   finally{setBusy(false)}
  };
@@ -230,7 +230,7 @@ export function NativeFamilyManager({locale}:{locale:Lang}){
        await auth.request("/v1/patients/family/invite-adult","POST",{
         email:email.trim().toLowerCase(),explicitAuthorization:true});
        setEmail("");
-      })}/>
+      },t.inviteSent)}/>
      <Text style={css.sub}>{t.inviteSent}</Text>
     </View>
    </View>}
