@@ -374,7 +374,8 @@ function CardShell({children,style}:{children:React.ReactNode;style?:object}){
 }
 function CTA({label,onPress,secondary=false,disabled=false}:{label:string;onPress:()=>void;secondary?:boolean;disabled?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled}
- onPress={onPress} style={[s.cta,secondary&&s.ctaLight,disabled&&s.disabled]}>
+ onPress={onPress} style={({pressed})=>[s.cta,secondary&&s.ctaLight,
+  disabled&&s.disabled,pressed&&!disabled&&s.ctaPressed]}>
   <Text style={[s.ctaText,secondary&&s.ctaTextLight]}>{label}</Text>
  </Pressable>;
 }
@@ -440,8 +441,8 @@ function PublishedPhoto({photo,label,large=false}:{photo:Photo|null|undefined;la
   <Text style={[s.photoFallbackIcon,large&&{fontSize:56}]}>✧</Text>
   <Text style={s.photoFallbackLabel}>DANDANLINK</Text></View>;
  const url=photo.url.startsWith("/")?API+photo.url:photo.url;
- return <Image source={{uri:url}} resizeMode="cover"
-  onError={()=>setBad(true)}
+ return <Image source={{uri:url}} resizeMode="cover" fadeDuration={160}
+  progressiveRenderingEnabled onError={()=>setBad(true)}
   accessibilityLabel={photo.caption||label} style={[s.photo,large&&s.photoLarge]}/>;
 }
 function SavedButton({saved,onPress,ui}:{saved:boolean;onPress:()=>void;ui:UI}){
@@ -1225,7 +1226,7 @@ function PatientApp(){
    {([["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
      accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
-     style={[s.bottomNavItem,tab===value&&s.bottomNavItemActive]}>
+     style={({pressed})=>[s.bottomNavItem,tab===value&&s.bottomNavItemActive,pressed&&s.bottomNavPressed]}>
      <Text style={[s.bottomNavIcon,tab===value&&s.bottomNavIconSelected]}>{icon}</Text>
      <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
       {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
@@ -1270,11 +1271,12 @@ const s=StyleSheet.create({
  bottomNav:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
   justifyContent:"space-around",paddingHorizontal:7,paddingTop:8,paddingBottom:3},
  bottomNavItem:{flex:1,minHeight:57,alignItems:"center",justifyContent:"center",
-  borderRadius:12,marginHorizontal:3},
- bottomNavItemActive:{backgroundColor:colors.pale},
+  borderRadius:12,marginHorizontal:3,borderWidth:1,borderColor:"transparent"},
+ bottomNavItemActive:{backgroundColor:"#EAF3FF",borderColor:"#CDE0FC"},
+ bottomNavPressed:{opacity:.88},
  bottomNavIcon:{fontSize:25,color:"#93A1B3",lineHeight:29},
  bottomNavIconSelected:{color:colors.blue},
- bottomNavLabel:{fontSize:10,fontWeight:"700",marginTop:2,color:"#929DAE"},
+ bottomNavLabel:{fontSize:11,lineHeight:15,fontWeight:"700",marginTop:2,color:"#687D97"},
  bottomNavLabelSelected:{color:colors.blue,fontWeight:"900"},
  hero:{minHeight:197,backgroundColor:colors.blue,borderRadius:22,
   padding:23,overflow:"hidden",justifyContent:"center"},
@@ -1307,6 +1309,7 @@ const s=StyleSheet.create({
  ctaText:{fontWeight:"900",fontSize:14,color:colors.white,textAlign:"center"},
  ctaLight:{backgroundColor:colors.pale,borderWidth:1,borderColor:"#CCE0FF"},
  ctaTextLight:{color:colors.blue},
+ ctaPressed:{opacity:.9,transform:[{scale:.988}]},
  disabled:{opacity:.4},
  clinicCard:{gap:12,padding:15},
  cardList:{gap:13},
