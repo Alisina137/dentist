@@ -2,6 +2,9 @@
 import React,{useEffect,useState} from "react";
 import {CareIcon,InlineAlert,usePreferences} from "./index";
 import {ClinicSectionHeading,ClinicMetricValue,ClinicEmptyState} from "./clinic-primitives";
+import {clinicErrorText} from "./clinic-feedback";
+import {ClinicDashboardSnapshot,ClinicDashboardInsights,clinicReportWindow,
+ type ClinicInsights} from "./clinic-command-widgets";
 
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
@@ -138,7 +141,7 @@ function useClinicRead<T>(path:string|null){
 type SkeletonVariant="metrics"|"list"|"summary";
 function PanelState({loading,error,retry,variant="summary"}:{loading:boolean;error:string;
  retry:()=>void;variant?:SkeletonVariant}){
- const {t}=useLabels();
+ const {t,lang}=useLabels();
  if(loading)return <div className={"h-loading h-loading-"+variant} role="status"
   aria-live="polite" aria-label={t("loading")}>
   <span className="h-loading-label"><span className="h-spinner" aria-hidden="true"/>{t("loading")}</span>
@@ -153,7 +156,7 @@ function PanelState({loading,error,retry,variant="summary"}:{loading:boolean;err
    <span className="h-skeleton h-skeleton-wide"/><span className="h-skeleton h-skeleton-short"/>
   </div>}
  </div>;
- if(error)return <div className="h-error" role="alert"><span>{t("error")} <bdi>{error}</bdi></span>
+ if(error)return <div className="h-error" role="alert"><span>{t("error")} <span>{clinicErrorText(error,lang)}</span></span>
   <button type="button" className="btn btn-secondary" onClick={retry}>{t("retry")}</button></div>;
  return null;
 }
@@ -203,7 +206,9 @@ function actionsFor(space:Space):Action[]{
 }
 export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
  const {t,lang}=useLabels();
+ const [insightDays,setInsightDays]=useState<7|30>(7);
  const canSchedule=space.role!=="cashier";
+ const canSeeReports=["owner","manager","cashier"].includes(space.role);
  const canPatients=space.role!=="assistant";
  const canOperate=["owner","manager","dentist","receptionist"].includes(space.role);
  const canReadRequests=canOperate;
@@ -213,6 +218,9 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
  const operations=useClinicRead<Operations>(canOperate?"/v1/operations/clinics/"+prefix+"/summary":null);
  const bookingRequests=useClinicRead<BookingRequests>(canReadRequests?
   "/v1/booking/clinics/"+prefix+"/requests?state=pending":null);
+ const window=clinicReportWindow(insightDays);
+ const insights=useClinicRead<ClinicInsights>(canSeeReports?
+  "/v1/insights/clinics/"+prefix+"/report?from="+window.from+"&to="+window.to:null);
  const links=actionsFor(space);
  const checks=[
   {key:"service",label:"service",href:"/clinic/services"},
@@ -222,6 +230,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
  ];
  const completed=checks.filter(x=>operations.data?.checklist.some(row=>row.key===x.key&&row.done)).length;
  function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();bookingRequests.refresh();}
+ function refreshDashboard(){refreshAll();insights.refresh();}
  return <div className="h-clinic" lang={lang}>
   <header className="h-head">
    <div><span className="h-eyebrow"><CareIcon name="activity" size={17}/>{t("eyebrow")}</span>
@@ -232,7 +241,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
      <span className={"h-status h-"+(space.clinicStatus==="approved"?"approved":"pending")}>
       {t("status")}: {t(space.clinicStatus)||space.clinicStatus}</span>
     </div></div>
-   <button className="btn btn-secondary h-refresh" onClick={refreshAll} type="button">
+   <button className="btn btn-secondary h-refresh" onClick={refreshDashboard} type="button">
     <CareIcon name="activity" size={17}/>{t("refresh")}</button>
   </header>
   {space.clinicStatus!=="approved"&&<div className="h-warning" role="status">
@@ -240,6 +249,10 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
     <p>{t("statusNote")}</p></div>
    {space.role==="owner"&&<a className="btn btn-secondary" href={"/clinic/onboarding?clinic="+prefix}>
     {t("setup")}</a>}</div>}
+  <ClinicDashboardSnapshot role={space.role} clinicId={space.clinicId}
+   clinicStatus={space.clinicStatus} lang={lang}
+   schedule={appointments} patients={patients} requests={bookingRequests}
+   operations={operations} insights={insights}/>
   <section className="h-primary" aria-label={t("overview")}>
    {canSchedule&&<div className="h-card h-schedule">
     <ClinicSectionHeading icon="calendar" eyebrow={t("overview")} title={t("today")}
@@ -266,6 +279,8 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
     </div>}
    </div>}
   </section>
+  {canSeeReports&&<ClinicDashboardInsights clinicId={space.clinicId} lang={lang}
+   days={insightDays} onDaysChange={setInsightDays} read={insights}/>}
   <div className="h-layout">
    <section className="h-card h-shortcuts">
     <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="rocket" size={16}/>{t("quick")}</span>
