@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
-import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {NativeAuthProvider,useNativeAuth,type NativeAccount} from "./native-auth";
+import {NativeAppointmentDetails,NativeNextAppointment} from "./native-journeys";
 import {patientError} from "./patient-errors";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
@@ -23,7 +24,10 @@ declare const process:{readonly env:{
 type Language="fa-AF"|"ps-AF"|"en";
 type Calendar="solar_hijri"|"gregorian";
 type Tab="home"|"explore"|"appointments"|"saved"|"account";
-type Route={kind:"clinic";clinicId:string}|{kind:"dentist";clinicId:string;dentistId:string}|{kind:"booking";clinicId:string;dentistId?:string;booking?:Booking;fromDentistId?:string;returnTab?:Tab};
+type AccountSection="overview"|"profile"|"family"|"notifications"|"reviews"|"settings"|"records"|"security"|"support";
+type Route={kind:"clinic";clinicId:string;fromBookingId?:string}|{kind:"dentist";clinicId:string;dentistId:string}|
+ {kind:"appointment";bookingId:string}|
+ {kind:"booking";clinicId:string;dentistId?:string;booking?:Booking;fromDentistId?:string;returnTab?:Tab};
 type Remote<T>={loading:boolean;data:T|null;error:string|null;refresh:()=>void};
 type Clinic={id:string;name:string;city:string;province:string;address:string;phone:string};
 type Service={id:string;name:string;category:string;priceAfn:number;durationMinutes:number;version?:number};
@@ -64,6 +68,7 @@ const colors={
 };
 const en={
  home:"Home",explore:"Explore",saved:"Saved",account:"Account",back:"Back",
+ appointments:"Appointments",quickActions:"Quick actions",
  brand:"DandanLink",hello:"Your smile, your care",intro:"Verified dental clinics in Afghanistan",
  goodCare:"Find care you can trust",heroBody:"Compare verified professionals, published fees and real clinic schedules.",
  find:"Find a dentist, clinic or treatment",findLabel:"Search clinics and dentists",
@@ -131,6 +136,7 @@ const en={
 };
 const fa:Record<keyof typeof en,string>={
  home:"خانه",explore:"جستجو",saved:"ذخیره‌ها",account:"حساب",back:"بازگشت",
+ appointments:"نوبت‌ها",quickActions:"دسترسی سریع",
  brand:"دندان‌لینک",hello:"لبخند شما، مراقبت شما",intro:"کلینیک‌های دندان تأییدشده در افغانستان",
  goodCare:"خدمات دندان مطمئن پیدا کنید",heroBody:"داکتران تأییدشده، قیمت‌های نشرشده و تقسیم اوقات واقعی کلینیک را مقایسه کنید.",
  find:"داکتر، کلینیک یا تداوی را جستجو کنید",findLabel:"جستجوی کلینیک و داکتر",
@@ -205,6 +211,7 @@ const fa:Record<keyof typeof en,string>={
 };
 const ps:Record<keyof typeof en,string>={
  home:"کور",explore:"لټون",saved:"ساتل شوي",account:"حساب",back:"ستنېدل",
+ appointments:"ملاقاتونه",quickActions:"چټک لاسرسی",
  brand:"دندان‌لینک",hello:"ستاسو موسکا، ستاسو پاملرنه",intro:"په افغانستان کې تایید شوي د غاښونو کلینیکونه",
  goodCare:"باوري د غاښونو خدمتونه ومومئ",
  heroBody:"تایید شوي ډاکټران، خپرې شوې بیې او د کلینیک رښتینې مهال‌وېش پرتله کړئ.",
@@ -603,17 +610,16 @@ function DentistCard({dentist,ui,onPress}:{dentist:Dentist;ui:UI;onPress:()=>voi
 function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicId:string;ui:UI;
  onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void;onBook:()=>void}){
  const detail=usePublic<ClinicDetail>("/clinics/"+encodeURIComponent(clinicId));
- const [tab,setTab]=useState<"overview"|"dentists"|"services"|"gallery"|"hours"|"times">("overview");
- const [photo,setPhoto]=useState(0);
+ const [tab,setTab]=useState<"overview"|"dentists"|"services"|"times">("overview");
+ const [photo,setPhoto]=useState(0),[showAllPhotos,setShowAllPhotos]=useState(false);
  if(detail.loading)return <LoadingCards ui={ui}/>;
  if(detail.error||!detail.data)return <Failure ui={ui} error={detail.error} retry={detail.refresh}/>;
  const {clinic,profile:p,hours}=detail.data;
  const mapUrl="https://www.openstreetmap.org/?mlat="+p.latitude+
   "&mlon="+p.longitude+"#map=16/"+p.latitude+"/"+p.longitude;
- const tabs:["overview"|"dentists"|"services"|"gallery"|"hours"|"times",string][]=[
+ const tabs:([typeof tab,string])[]=[
   ["overview",ui.t("overview")],["dentists",ui.t("dentists")],
-  ["services",ui.t("treatments")],["gallery",ui.t("gallery")],
-  ["hours",ui.t("hours")],["times",ui.t("times")]];
+  ["services",ui.t("treatments")],["times",ui.t("times")]];
  return <View style={s.sectionGap}>
   <View style={s.detailPhotoFrame}>
    <PublishedPhoto large photo={p.photos[photo]||null} label={clinic.name}/>
@@ -689,14 +695,22 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicI
    {p.dentists.map(x=><DentistCard key={x.id} dentist={x} ui={ui}
     onPress={()=>onOpenDentist(x.id)}/>)}</CardShell>}
   {tab==="services"&&<ServicesCard ui={ui} services={p.services}/>}
-  {tab==="gallery"&&<CardShell>
-   <SectionHead ui={ui} title={ui.t("gallery")} sub={ui.t("photoDesc")}/>
-   {p.photos.length?p.photos.map((x,i)=><Pressable key={x.id} onPress={()=>setPhoto(i)}
-    style={{marginBottom:13}}><PublishedPhoto large photo={x} label={clinic.name}/>
-    {x.caption&&<TextLine ui={ui} style={{marginTop:6}}>{x.caption}</TextLine>}</Pressable>):
-    <Empty ui={ui} heading={ui.t("photosEmpty")} detail={ui.t("photoDesc")}/>}
-  </CardShell>}
-  {tab==="hours"&&<HoursCard hours={hours} ui={ui}/>}
+  {tab==="overview"&&<>
+   <CardShell>
+    <SectionHead ui={ui} title={ui.t("gallery")} sub={ui.t("photoDesc")}
+     action={p.photos.length>2?<Pressable accessibilityRole="button"
+      onPress={()=>setShowAllPhotos(v=>!v)}>
+      <Text style={s.link}>{ui.t(showAllPhotos?"close":"viewAll")}  ›</Text>
+     </Pressable>:undefined}/>
+    {p.photos.length?p.photos.slice(0,showAllPhotos?p.photos.length:2).map((x,i)=>
+     <Pressable key={x.id} onPress={()=>setPhoto(i)} accessibilityRole="button"
+      accessibilityLabel={x.caption||clinic.name} style={{marginBottom:13}}>
+      <PublishedPhoto large photo={x} label={clinic.name}/>
+      {!!x.caption&&<TextLine ui={ui} style={{marginTop:6}}>{x.caption}</TextLine>}
+     </Pressable>):<TextLine ui={ui}>{ui.t("photosEmpty")}</TextLine>}
+   </CardShell>
+   <HoursCard hours={hours} ui={ui}/>
+  </>}
   {tab==="times"&&<Availability ui={ui} clinicId={clinicId}
    dentists={p.dentists} services={p.services} horizon={p.bookingRules.horizonDays}/>}
   <View style={s.detailFooter}><TextLine ui={ui} style={s.footerNotice}>
@@ -765,9 +779,11 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
   <TextLine ui={ui} style={s.footerNotice}>{ui.t("medical")}</TextLine>
  </View>;
 }
-function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSaved,onSave}:{ui:UI;
+function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSaved,onSave,
+ onAppointment,onAppointments,onSaved}:{ui:UI;
  city:string;onCity:(v:string)=>void;onSearch:(q:string)=>void;onBrowse:()=>void;
  onSpecialty:(specialty:string)=>void;onClinic:(id:string)=>void;
+ onAppointment:(bookingId:string)=>void;onAppointments:()=>void;onSaved:()=>void;
  isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
  const [search,setSearch]=useState(""),[showCity,setShowCity]=useState(false);
  const facets=usePublic<Facets>("/facets");
@@ -782,6 +798,8 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
     <Tag positive label={ui.t("verify")}/><Tag label={ui.t("free")}/>
    </View>
   </View>
+  <NativeNextAppointment locale={ui.locale} calendar={ui.calendar}
+   onOpen={onAppointment} onAll={onAppointments} onExplore={onBrowse}/>
   <CardShell style={s.searchBox}>
    <Text style={[s.fieldLabel,{textAlign:ui.align}]}>{ui.t("findLabel")}</Text>
    <View style={[s.inputLine,{flexDirection:ui.flow}]}>
@@ -806,6 +824,19 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
        {x.city?cityLabel(x.city,ui.locale):ui.t("allCities")}</Text>
      </Pressable>)}</View>}
   </CardShell>
+  <SectionHead ui={ui} title={ui.t("quickActions")}/>
+  <View style={[s.quickActions,{flexDirection:ui.flow}]}>
+   {([
+    [ui.t("explore"),"⌕",onBrowse],
+    [ui.t("appointments"),"▦",onAppointments],
+    [ui.t("saved"),"♡",onSaved]
+   ] as [string,string,()=>void][]).map(([label,icon,action])=>
+    <Pressable key={label} accessibilityRole="button" accessibilityLabel={label}
+     onPress={action} style={s.quickAction}>
+     <Text style={s.quickActionIcon}>{icon}</Text>
+     <Text style={s.quickActionLabel} numberOfLines={2}>{label}</Text>
+    </Pressable>)}
+  </View>
   <SectionHead ui={ui} title={ui.t("featured")} sub={ui.t("featuredSub")}
    action={<Pressable onPress={onBrowse}><Text style={s.link}>{ui.t("viewAll")}  ›</Text></Pressable>}/>
   {result.loading?<LoadingCards ui={ui}/>:
@@ -1029,6 +1060,141 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
   <View style={s.notice}><TextLine ui={ui}>{ui.t("medical")}</TextLine></View>
  </View>;
 }
+
+const accountWords={
+ en:{
+  accountTitle:"Your patient account",accountGuest:"Browse as a guest",accountGuestSub:"Sign in to manage appointments and your own account.",
+  verified:"Verified patient account",signIn:"Sign in / Create account",care:"Your care",
+  manage:"Account and support",profile:"Personal profile",profileSub:"Name, city and contact details",
+  family:"Family members",familySub:"Manage authorized people and children",
+  records:"Shared clinic records",recordsSub:"Open individually released records on the secure website",
+  notifications:"Booking updates",notificationsSub:"Email delivery history and preferences",
+  reviews:"Your reviews",reviewsSub:"Reviews from verified completed visits",
+  security:"Account security",securitySub:"Manage sessions and security on the secure website",
+  settings:"App preferences",settingsSub:"Language, calendar and selected city",
+  support:"Help and support",supportSub:"Guidance through the patient website",
+  appointments:"My appointments",appointmentsSub:"View upcoming and past bookings",
+  explore:"Find dental care",webOnly:"Secure patient website",openWeb:"Open secure website",
+  unavailable:"The secure patient website is not configured on this device yet.",
+  webNote:"Your medical records are only shared after separate identity checks and clinic approval. Opening a website may require signing in again.",
+  webSecurity:"Account security and session controls remain on the secure patient website.",
+  webSupport:"Help and support are available on the patient website.",
+  return:"Back to account",signInFirst:"Sign in before opening your account records or security."
+ },
+ "fa-AF":{
+  accountTitle:"حساب مریض",accountGuest:"به صورت مهمان هستید",accountGuestSub:"برای مدیریت نوبت‌ها و حساب خود وارد شوید.",
+  verified:"حساب مریض تأییدشده",signIn:"ورود / ایجاد حساب",care:"مراقبت شما",
+  manage:"حساب و پشتیبانی",profile:"معلومات شخصی",profileSub:"نام، شهر و معلومات تماس",
+  family:"اعضای خانواده",familySub:"مدیریت اشخاص مجاز و اطفال",
+  records:"اسناد مشترک کلینیک",recordsSub:"مشاهده اسناد جداگانه مجازشده در وبسایت مصون",
+  notifications:"تازه‌های نوبت",notificationsSub:"تاریخچه و تنظیمات ایمیل",
+  reviews:"نظرات شما",reviewsSub:"نظرات مراجعه‌های تکمیل‌شده",
+  security:"امنیت حساب",securitySub:"مدیریت نشست‌ها و امنیت در وبسایت مصون",
+  settings:"تنظیمات برنامه",settingsSub:"زبان، تقویم و شهر انتخاب‌شده",
+  support:"کمک و پشتیبانی",supportSub:"راهنمایی در وبسایت مریضان",
+  appointments:"نوبت‌های من",appointmentsSub:"مشاهده نوبت‌های آینده و گذشته",
+  explore:"جستجوی خدمات دندان",webOnly:"وبسایت مصون مریضان",openWeb:"بازکردن وبسایت مصون",
+  unavailable:"وبسایت مصون مریضان هنوز در این دستگاه تنظیم نشده است.",
+  webNote:"اسناد صحی فقط بعد از بررسی جداگانه هویت و اجازه کلینیک شریک می‌شوند. ممکن است لازم شود در وبسایت دوباره وارد شوید.",
+  webSecurity:"امنیت حساب و مدیریت نشست‌ها فعلاً در وبسایت مصون مریضان است.",
+  webSupport:"کمک و پشتیبانی در وبسایت مریضان در دسترس است.",
+  return:"بازگشت به حساب",signInFirst:"برای دسترسی به اسناد و امنیت حساب ابتدا وارد شوید."
+ },
+ "ps-AF":{
+  accountTitle:"د ناروغ حساب",accountGuest:"تاسو د مېلمه په توګه ګورئ",accountGuestSub:"د ملاقاتونو او حساب سمبالولو لپاره ننوځئ.",
+  verified:"تایید شوی د ناروغ حساب",signIn:"ننوتل / حساب جوړول",care:"ستاسو پاملرنه",
+  manage:"حساب او ملاتړ",profile:"شخصي معلومات",profileSub:"نوم، ښار او اړیکه",
+  family:"د کورنۍ غړي",familySub:"د مجاز کسانو او ماشومانو سمبالول",
+  records:"شریک شوي کلینیکي ریکارډونه",recordsSub:"په خوندي وېب کې یوازې د اجازه شوو ریکارډونو لیدل",
+  notifications:"د ملاقات خبرونه",notificationsSub:"د ایمیل خبرتیاوې او تنظیمات",
+  reviews:"ستاسو نظرونه",reviewsSub:"د بشپړو شویو کتنو نظرونه",
+  security:"د حساب امنیت",securitySub:"په خوندي وېب کې د ناستو او امنیت سمبالول",
+  settings:"د اپ تنظیمات",settingsSub:"ژبه، کلیزه او غوره شوی ښار",
+  support:"مرسته او ملاتړ",supportSub:"د ناروغانو په وېبپاڼه کې لارښوونې",
+  appointments:"زما ملاقاتونه",appointmentsSub:"راتلونکي او تېر ملاقاتونه وګورئ",
+  explore:"د غاښونو خدمتونه لټول",webOnly:"د ناروغانو خوندي وېبپاڼه",openWeb:"خوندي وېبپاڼه پرانیزئ",
+  unavailable:"په دې وسیله کې د ناروغانو خوندي وېبپاڼه لا نه ده تنظیم شوې.",
+  webNote:"طبي ریکارډونه یوازې له بېلې پېژندنې او د کلینیک له اجازې وروسته شریکېږي. کېدای شي په وېبپاڼه کې بیا ننوتل وغواړي.",
+  webSecurity:"د حساب امنیت او ناستې د ناروغانو په خوندي وېبپاڼه کې سمبالېږي.",
+  webSupport:"مرسته او ملاتړ د ناروغانو په وېبپاڼه کې شته.",
+  return:"حساب ته ستنېدل",signInFirst:"د ریکارډونو او امنیت لپاره لومړی ننوځئ."
+ }
+} as const;
+
+function AccountHub({ui,account,onSection,onAppointments,onExplore}:{
+ ui:UI;account:NativeAccount|null;onSection:(section:AccountSection)=>void;
+ onAppointments:()=>void;onExplore:()=>void}){
+ const t=accountWords[ui.locale];
+ const registered=Boolean(account?.registered);
+ const groups:{title:string;items:{key:AccountSection;icon:string;title:string;sub:string}[]}[]=[
+  {title:t.care,items:[
+   {key:"family",icon:"◇",title:t.family,sub:t.familySub},
+   {key:"records",icon:"▤",title:t.records,sub:t.recordsSub},
+   {key:"reviews",icon:"☆",title:t.reviews,sub:t.reviewsSub}]},
+  {title:t.manage,items:[
+   {key:"profile",icon:"☺",title:t.profile,sub:t.profileSub},
+   {key:"notifications",icon:"♧",title:t.notifications,sub:t.notificationsSub},
+   {key:"security",icon:"♙",title:t.security,sub:t.securitySub},
+   {key:"settings",icon:"⚙",title:t.settings,sub:t.settingsSub},
+   {key:"support",icon:"ⓘ",title:t.support,sub:t.supportSub}]}
+ ];
+ return <View style={s.sectionGap}>
+  <View style={s.accountSegment}>
+   <CardShell>
+    <Text accessibilityRole="header" style={[s.sectionTitle,{textAlign:ui.align}]}>{t.accountTitle}</Text>
+    <TextLine ui={ui} style={{marginTop:8}}>
+     {registered?(account?.profile?.preferredName||account?.user.name||t.verified):t.accountGuest}</TextLine>
+    <TextLine ui={ui} style={{marginTop:3}}>{registered?account?.user.email||t.verified:t.accountGuestSub}</TextLine>
+    {!registered&&<View style={{marginTop:14}}>
+     <CTA label={t.signIn} onPress={()=>onSection("profile")}/></View>}
+   </CardShell>
+  </View>
+  {registered&&<>
+   <View style={s.quickActions}>
+    <CTA label={t.appointments} onPress={onAppointments}/>
+    <CTA label={t.explore} onPress={onExplore} secondary/>
+   </View>
+   {groups.map(group=><View key={group.title} style={s.accountGroup}>
+    <Text accessibilityRole="header" style={[s.sectionTitle,{textAlign:ui.align}]}>{group.title}</Text>
+    <CardShell>
+     {group.items.map((row,index)=><Pressable
+      accessibilityRole="button" accessibilityLabel={row.title}
+      key={row.key} onPress={()=>onSection(row.key)}
+      style={[s.accountRow,{flexDirection:ui.flow},index>0&&s.accountRowBorder]}>
+      <View style={s.accountRowGlyph}><Text style={s.accountRowIcon}>{row.icon}</Text></View>
+      <View style={{flex:1}}>
+       <Text style={[s.accountRowTitle,{textAlign:ui.align}]}>{row.title}</Text>
+       <Text style={[s.accountRowSubtitle,{textAlign:ui.align}]}>{row.sub}</Text>
+      </View>
+      <Text style={s.accountRowArrow}>{ui.rtl?"‹":"›"}</Text>
+     </Pressable>)}
+    </CardShell>
+   </View>)}
+  </>}
+  {!registered&&<CTA secondary label={t.settings} onPress={()=>onSection("settings")}/>}
+ </View>;
+}
+function AccountWebSection({ui,section,onBack,onProfile,registered}:{
+ ui:UI;section:"records"|"security"|"support";onBack:()=>void;onProfile:()=>void;registered:boolean}){
+ const t=accountWords[ui.locale],labels={records:t.records,security:t.security,support:t.support};
+ const path=section==="records"?"/account/records":section==="security"?"/account/security":"/help";
+ const message=section==="records"?t.webNote:section==="security"?t.webSecurity:t.webSupport;
+ const [openError,setOpenError]=useState(false);
+ return <View style={s.sectionGap}><CardShell>
+  <Text accessibilityRole="header" style={[s.sectionTitle,{textAlign:ui.align}]}>{labels[section]}</Text>
+  <TextLine ui={ui} style={{marginTop:10}}>{message}</TextLine>
+  {!registered&&section!=="support"?
+   <View style={{marginTop:15}}><TextLine ui={ui}>{t.signInFirst}</TextLine>
+    <CTA label={t.signIn} onPress={onProfile}/></View>:
+   PATIENT_WEB?<View style={{marginTop:16}}>
+    <CTA label={t.openWeb+" ↗"} onPress={()=>void Linking.openURL(PATIENT_WEB+path)
+     .catch(()=>setOpenError(true))}/>
+    {openError&&<TextLine ui={ui} style={{marginTop:10}}>{t.unavailable}</TextLine>}
+   </View>:<TextLine ui={ui} style={{marginTop:16}}>{t.unavailable}</TextLine>}
+  <View style={{marginTop:12}}><CTA secondary label={t.return} onPress={onBack}/></View>
+ </CardShell></View>;
+}
+
 function PatientApp(){
  const native=useNativeAuth();
  const identityKey=native.account?.user.id||null;
@@ -1041,7 +1207,7 @@ function PatientApp(){
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
  const [viewIdentity,setViewIdentity]=useState<string|null>(identityKey);
  const previousIdentity=useRef<string|null>(identityKey);
- const [accountSection,setAccountSection]=useState<"profile"|"reviews"|"settings">("profile");
+ const [accountSection,setAccountSection]=useState<AccountSection>("overview");
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
  const [refreshVersion,setRefreshVersion]=useState(0),[pullRefreshing,setPullRefreshing]=useState(false);
@@ -1053,7 +1219,7 @@ function PatientApp(){
   if(previousIdentity.current!==identityKey){
    previousIdentity.current=identityKey;
    // Never display a previous user's booking route while another user signs in.
-   setRoute(null);setAccountSection("profile");setTab("account");
+   setRoute(null);setAccountSection("overview");setTab("account");
    setViewIdentity(identityKey);
   }
  },[identityKey]);
@@ -1114,13 +1280,14 @@ function PatientApp(){
   setPullRefreshing(true);setRefreshVersion(x=>x+1);
   void checkApi().finally(()=>setPullRefreshing(false));
  },[checkApi]);
- function select(next:Tab){setRoute(null);setTab(next);setAccountSection("profile")}
+ function select(next:Tab){setRoute(null);setTab(next);setAccountSection("overview")}
  function book(clinicId:string,dentistId?:string,booking?:Booking){
   setRoute({kind:"booking",clinicId,dentistId,booking,
    fromDentistId:route?.kind==="dentist"?route.dentistId:undefined,
    returnTab:booking?"appointments":tab});
  }
- function openClinic(clinicId:string){setRoute({kind:"clinic",clinicId})}
+ function openClinic(clinicId:string,fromBookingId?:string){setRoute({kind:"clinic",clinicId,fromBookingId})}
+ function openAppointment(bookingId:string){setRoute({kind:"appointment",bookingId})}
  function openDentist(clinicId:string,dentistId:string){setRoute({kind:"dentist",clinicId,dentistId})}
  function back(){
   if(route?.kind==="booking"){
@@ -1128,6 +1295,8 @@ function PatientApp(){
    else if(route.returnTab==="appointments"){setRoute(null);setTab("appointments");}
    else setRoute({kind:"clinic",clinicId:route.clinicId});
   }else if(route?.kind==="dentist")setRoute({kind:"clinic",clinicId:route.clinicId});
+  else if(route?.kind==="clinic"&&route.fromBookingId)
+   setRoute({kind:"appointment",bookingId:route.fromBookingId});
   else setRoute(null);
  }
  function toggleFavorite(clinicId:string,dentistId?:string){
@@ -1152,13 +1321,14 @@ function PatientApp(){
  useEffect(()=>{
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(route){back();return true;}
-   if(tab==="account"&&accountSection!=="profile"){setAccountSection("profile");return true;}
+   if(tab==="account"&&accountSection!=="overview"){setAccountSection("overview");return true;}
    if(tab!=="home"){select("home");return true;}
    return false;
   });
   return ()=>subscription.remove();
  },[route,tab,accountSection]);
- const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
+ const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="appointment"?
+  ui.t("appointments"):route?.kind==="booking"?
   (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
  // Block even a single render of a stale, private route during an account switch.
  if(viewIdentity!==identityKey)return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
@@ -1184,12 +1354,16 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
+  <ScrollView key={(route?route.kind+":"+(route.kind==="appointment"?route.bookingId:route.clinicId)+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
     onRefresh={pullToRefresh} tintColor={colors.blue}/>:undefined}>
-   {route?.kind==="booking"?<NativeBookingWizard locale={locale} calendar={calendar}
+   {route?.kind==="appointment"?<NativeAppointmentDetails bookingId={route.bookingId}
+    locale={locale} calendar={calendar} onBack={back}
+    onReschedule={b=>book(b.clinicId,b.dentistId,b)}
+    onClinic={id=>openClinic(id,route.bookingId)}/>:
+    route?.kind==="booking"?<NativeBookingWizard locale={locale} calendar={calendar}
     clinicId={route.clinicId} dentistId={route.dentistId} booking={route.booking}
     onAccount={()=>select("account")} onDone={()=>select("appointments")}/>:
     route?.kind==="clinic"?<ClinicScreen clinicId={route.clinicId} ui={ui}
@@ -1201,6 +1375,7 @@ function PatientApp(){
      isSaved={isSavedDentist(route.clinicId,route.dentistId)}
      onSave={()=>saveDentist(route.clinicId,route.dentistId)}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
+     onAppointment={openAppointment} onAppointments={()=>select("appointments")} onSaved={()=>select("saved")}
      onSearch={q=>{setSearchSeed(q.trim());setSpecialtySeed("");select("explore")}}
      onBrowse={()=>{setSearchSeed("");setSpecialtySeed("");select("explore")}}
      onSpecialty={specialty=>{setSearchSeed("");setSpecialtySeed(specialty);select("explore")}}
@@ -1208,38 +1383,32 @@ function PatientApp(){
     tab==="explore"?<ExploreScreen ui={ui} city={city} onCity={setCity}
      seed={searchSeed} specialtySeed={specialtySeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
     tab==="appointments"?<NativeAppointments locale={locale} calendar={calendar}
-     onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}/>:
+     onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}
+     onOpen={openAppointment}/>:
     tab==="saved"?(native.account?.registered?<NativeSaved locale={locale}
      onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}/>:
      <SavedScreen ui={ui} ids={savedIds} onRemove={save}
       onClinic={openClinic} onExplore={()=>select("explore")}/>):
     <View style={s.sectionGap}>
-     <View style={[s.accountSegment,{flexDirection:ui.flow,gap:6}]}>
-      <Pressable style={[s.cardButton,accountSection==="profile"&&s.cardButtonPrimary]}
-       accessibilityRole="tab" accessibilityState={{selected:accountSection==="profile"}}
-       onPress={()=>setAccountSection("profile")}>
-       <Text style={[s.cardButtonText,accountSection==="profile"&&s.cardButtonPrimaryText]}>
-        {locale==="en"?"Profile":locale==="ps-AF"?"پروفایل":"پروفایل"}</Text></Pressable>
-      <Pressable style={[s.cardButton,accountSection==="reviews"&&s.cardButtonPrimary]}
-       accessibilityRole="tab" accessibilityState={{selected:accountSection==="reviews"}}
-       onPress={()=>setAccountSection("reviews")}>
-       <Text style={[s.cardButtonText,accountSection==="reviews"&&s.cardButtonPrimaryText]}>
-        {locale==="en"?"Reviews":locale==="ps-AF"?"نظرونه":"نظرات"}</Text></Pressable>
-      <Pressable style={[s.cardButton,accountSection==="settings"&&s.cardButtonPrimary]}
-       accessibilityRole="tab" accessibilityState={{selected:accountSection==="settings"}}
-       onPress={()=>setAccountSection("settings")}>
-       <Text style={[s.cardButtonText,accountSection==="settings"&&s.cardButtonPrimaryText]}>
-        {locale==="en"?"Settings":locale==="ps-AF"?"تنظیمات":"تنظیمات"}</Text></Pressable>
-     </View>
-     {accountSection==="reviews"?<NativeReviews locale={locale}/>:
+     {accountSection!=="overview"&&<Pressable style={[s.accountBack,{flexDirection:ui.flow}]}
+      accessibilityRole="button" onPress={()=>setAccountSection("overview")}>
+      <Text style={s.link}>{ui.rtl?"→":"←"}  {accountWords[locale].return}</Text>
+     </Pressable>}
+     {accountSection==="overview"?<AccountHub ui={ui} account={native.account}
+      onSection={setAccountSection} onAppointments={()=>select("appointments")} onExplore={()=>select("explore")}/>:
+      accountSection==="reviews"?<NativeReviews locale={locale}/>:
       accountSection==="settings"?<AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
        signedIn={Boolean(native.account?.registered)}
        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
        checkApi={()=>{void checkApi()}} onOpenProfile={()=>setAccountSection("profile")}
        connection={connection} checking={checking}/>:
-      <NativeAccountArea locale={locale} calendar={calendar} city={city}
-       onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
-
+      accountSection==="records"||accountSection==="security"||accountSection==="support"?
+       <AccountWebSection ui={ui} section={accountSection}
+        registered={Boolean(native.account?.registered)}
+        onBack={()=>setAccountSection("overview")} onProfile={()=>setAccountSection("profile")}/>:
+       <NativeAccountArea locale={locale} calendar={calendar} city={city}
+        section={accountSection}
+        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
     </View>}
   </ScrollView>
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
@@ -1288,6 +1457,23 @@ const s=StyleSheet.create({
  detailTopTitle:{fontSize:18,fontWeight:"900",color:colors.navy},
  accountSegment:{backgroundColor:colors.white,borderColor:colors.line,borderWidth:1,
   padding:5,borderRadius:16},
+ quickActions:{gap:10},
+ quickAction:{flex:1,minHeight:87,justifyContent:"center",alignItems:"center",
+  backgroundColor:colors.white,borderWidth:1,borderColor:colors.line,
+  borderRadius:16,paddingHorizontal:6,paddingVertical:12,gap:5},
+ quickActionIcon:{fontSize:25,fontWeight:"700",color:colors.blue},
+ quickActionLabel:{fontSize:12,fontWeight:"800",lineHeight:18,color:colors.navy,textAlign:"center"},
+ accountGroup:{gap:10},
+ accountRow:{minHeight:68,alignItems:"center",gap:12,paddingVertical:10},
+ accountRowBorder:{borderTopWidth:1,borderColor:"#ECF1F7"},
+ accountRowGlyph:{width:42,height:42,borderRadius:12,backgroundColor:colors.pale,
+  alignItems:"center",justifyContent:"center"},
+ accountRowIcon:{fontSize:21,fontWeight:"800",color:colors.blue},
+ accountRowTitle:{fontSize:14,fontWeight:"800",color:colors.navy},
+ accountRowSubtitle:{fontSize:12,color:colors.muted,lineHeight:18,marginTop:3},
+ accountRowArrow:{fontSize:26,color:colors.blue,fontWeight:"500"},
+ accountBack:{minHeight:44,alignItems:"center",paddingVertical:9},
+
  bottomNav:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
   justifyContent:"space-around",paddingHorizontal:7,paddingTop:8,paddingBottom:3},
  bottomNavItem:{flex:1,minHeight:57,alignItems:"center",justifyContent:"center",

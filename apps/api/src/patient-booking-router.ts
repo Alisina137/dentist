@@ -434,9 +434,23 @@ export function patientBookingRouter(){
   res.json({appointments:await myBookings(req.patientUserId!),timezone:"Asia/Kabul"});
  }));
  api.get("/my/:bookingId",route(async(req:PatientReq,res)=>{
-  const [found]=await myBookings(req.patientUserId!,id(req.params.bookingId));
+  // First authorize against the *patient's* own booking (never the clinic's
+  // patient number). The joined timeline deliberately excludes staff identity,
+  // reasons, medical notes and unrelated clinic/patient activity.
+  const user=req.patientUserId!,bookingId=id(req.params.bookingId);
+  const [found]=await myBookings(user,bookingId);
   if(!found)fail(404,"BOOKING_NOT_FOUND");
-  res.json({booking:found});
+  const rows=await sqlClient`SELECT e.action,e.after_status,e.after_start_at,e.created_at
+   FROM clinic_appointment_events e
+   JOIN patient_public_bookings b
+     ON b.appointment_id=e.appointment_id AND b.clinic_id=e.clinic_id
+   WHERE b.id=${bookingId} AND b.user_id=${user}
+   ORDER BY e.created_at DESC,e.id DESC LIMIT 101`;
+  const timeline=rows.slice(0,100).reverse().map(e=>({
+   action:e.action,status:e.after_status,occurredAt:iso(e.created_at),
+   appointmentAt:iso(e.after_start_at)
+  }));
+  res.json({booking:found,timeline,timelineTruncated:rows.length>100});
  }));
  api.post("/my/:bookingId/cancel",route(async(req:PatientReq,res)=>{
   const user=req.patientUserId!,booking=id(req.params.bookingId);

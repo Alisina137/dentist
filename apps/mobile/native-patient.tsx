@@ -222,8 +222,9 @@ async function publicGet<T>(path:string):Promise<T>{
   return data;
  }finally{clearTimeout(timer)}
 }
-export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCity}:{locale:Language;calendar:Calendar;
- city:string;onLocale:(v:Language)=>void;onCalendar:(v:Calendar)=>void;onCity:(v:string)=>void}){
+export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCity,section="profile"}:{locale:Language;calendar:Calendar;
+ city:string;onLocale:(v:Language)=>void;onCalendar:(v:Calendar)=>void;onCity:(v:string)=>void;
+ section?:"profile"|"family"|"notifications"}){
  const t=tr(locale),auth=useNativeAuth();
  const [mode,setMode]=useState<"login"|"signup"|"recover">("login");
  const [name,setName]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");
@@ -317,7 +318,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
  </Block>;
  const profile=auth.account.profile;
  return <View style={{gap:13,direction:locale==="en"?"ltr":"rtl"}}>
-  <Block><Text style={p.title}>{t.profile}</Text>
+  {section==="profile"&&<Block><Text style={p.title}>{t.profile}</Text>
    <Text style={p.copy}>{auth.account.user.email}</Text>
    <Text style={p.label}>{profile?.preferredName} · {profile?.city}</Text>
    <Button secondary title={t.profileUpdate} onPress={()=>{setName(profile?.preferredName||"");setPhone(profile?.phone||"");onCity(profile?.city||city);setNotice("edit")}}/>
@@ -332,8 +333,8 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
     })}/>
    </>}
    <Button secondary title={t.signout} disabled={busy} onPress={()=>void run(async()=>await auth.signOut())}/>
-  </Block>
-  <Block><Text style={p.title}>{t.family}</Text>
+  </Block>}
+  {section==="family"&&<Block><Text style={p.title}>{t.family}</Text>
    {family?.members.map(m=><Text key={m.id} style={p.item}>
     {m.displayName} · {m.memberType==="minor"?t.minor:t.adultDelegate}
    </Text>)}
@@ -352,8 +353,8 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
     setChild("");setBirth("");setGuardian(false);
     setFamily(await auth.request<Family>("/v1/patients/family"));
    })}/>
-  </Block>
-  <Block><Text style={p.title}>{t.preferences}</Text><Text style={p.copy}>{t.emailNote}</Text>
+  </Block>}
+  {section==="notifications"&&<Block><Text style={p.title}>{t.preferences}</Text><Text style={p.copy}>{t.emailNote}</Text>
    <Pressable style={p.check} onPress={()=>setLocalEmail(!localEmail)}>
     <Text>{localEmail?"☑":"□"} {t.bookingEmail}</Text></Pressable>
    <Pressable style={p.check} onPress={()=>setUpdateEmail(!updateEmail)}>
@@ -365,12 +366,8 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
      revision:prefs.revision
     });setPrefs(await auth.request<Prefs>("/v1/patients/preferences"));
    })}/>
-  </Block>
-  <NativePatientNotifications locale={locale} calendar={calendar}/>
-  {WEB&&<Block><Text style={p.title}>{t.linkedRecords}</Text>
-   <Text style={p.copy}>{t.visitWeb}</Text>
-   <Button secondary title={t.visitWeb} onPress={()=>void Linking.openURL(WEB+"/account/records")}/>
   </Block>}
+  {section==="notifications"&&<NativePatientNotifications locale={locale} calendar={calendar}/>}
   {error&&<ErrorBox message={error}/>}
  </View>;
 }
@@ -435,8 +432,8 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   </>}
  </Block>;
 }
-export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
- calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
+export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpen}:{locale:Language;
+ calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void;onOpen:(bookingId:string)=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
  const [busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
@@ -506,6 +503,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    <Text style={p.label}>{formatDate(b.startAt,locale,calendar)}</Text>
    <Text style={p.copy}>{b.priceAfn.toLocaleString("en")} AFN</Text>
    <Text style={p.small}>{t.reference}: {b.id.slice(0,12)}</Text>
+   <Button secondary title={t.view} onPress={()=>onOpen(b.id)}/>
    {["confirmed","requested"].includes(b.status)&&Date.parse(b.startAt)>Date.now()&&<>
     {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
      <Button secondary title={t.reschedule} disabled={!!busy} onPress={()=>onReschedule(b)}/>}
