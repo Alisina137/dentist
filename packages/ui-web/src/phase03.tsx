@@ -3,6 +3,7 @@ import React, { useEffect, useState, type FormEvent, type ReactNode } from "reac
 import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls, CareIcon, type CareIconName } from "./index";
 import { ClinicOperationsOverview } from "./clinic-operations-dashboard";
 import { Phase02Portal } from "./phase02";
+import {usePersistentClinicShell} from "./clinic-shell-context";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
   membershipId:string;role:Role;clinicianEnabled:boolean;capabilities:string[]};
@@ -266,7 +267,11 @@ function navigation(space:Space,t:(key:string)=>string){
  return options;
 }
 export function Shell({ctx,space,active,children}:{ctx:Context,space:Space,active:string,children:ReactNode}){
- const {t}=useLang();const nav=navigation(space,t);
+ const {t}=useLang();const persistent=usePersistentClinicShell();
+ const nav=navigation(space,t);
+ // /clinic/layout.tsx now owns the sidebar/header across client-side routes.
+ // Retain the original stand-alone shell as a safe fallback in other contexts.
+ if(persistent)return <>{children}</>;
  const pageHasOwnHeading=["home","patients","services","resources","hours","appointments","queue","bookingRequests","notifications","clinical","finance","reports","export","listing","myVerification","subscription","settings"].includes(active);
  return <div className="work-layout phase-layout staff-shell">
   <aside className="card side-panel staff-side">
