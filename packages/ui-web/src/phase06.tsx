@@ -2,7 +2,7 @@
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences } from "./index";
 import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
-import {clinicValidDay,clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
+import {clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
  type ClinicDateWindow} from "./clinic-scheduling-dates";
 import { Shell } from "./phase03";
 
@@ -411,7 +411,11 @@ function useData(path:string|null){
  return {data:snapshot.path===path?snapshot.data:null,
   error:snapshot.path===path?snapshot.error:"",refresh};
 }
-function validIsoDay(value:string){return clinicValidDay(value);}
+function validIsoDay(value:string){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const parsed=new Date(value+"T12:00:00Z");
+ return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+}
 function dayKabul(){
  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
   year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
