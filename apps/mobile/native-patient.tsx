@@ -124,7 +124,8 @@ function Field({value,onChangeText,label,secure=false,keyboardType="default"}:{v
   value={value} onChangeText={onChangeText} autoCapitalize={secure||keyboardType==="email-address"?"none":"sentences"}
   autoCorrect={false} secureTextEntry={secure} keyboardType={keyboardType}
   accessibilityLabel={label}
-  textAlign={keyboardType==="email-address"||keyboardType==="numeric"||secure?"left":"auto"}
+  textAlign={keyboardType==="email-address"||keyboardType==="numeric"||secure?"left":
+   /[\u0590-\u08FF]/.test(label+" "+value)?"right":"left"}
   style={p.input}/></View>;
 }
 function Button({title,onPress,secondary=false,danger=false,disabled=false}:{title:string;onPress:()=>void;
