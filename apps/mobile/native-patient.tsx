@@ -688,22 +688,28 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
 export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Language;
  onClinic:(id:string)=>void;onDentist:(clinic:string,dentist:string)=>void;onExplore:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
- const [favorites,setFavorites]=useState<Favorite[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
- const [reload,setReload]=useState(0),[busy,setBusy]=useState("");
+ const user=auth.account?.registered?auth.account.user.id:null;
+ const [snapshot,setSnapshot]=useState<{user:string;rows:Favorite[];error:string;loading:boolean}|null>(null);
+ const [reload,setReload]=useState(0),[busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
  useEffect(()=>{
-  if(!auth.account?.registered)return;
-  let alive=true;setLoading(true);setError("");
+  setActionError("");setBusy("");
+ },[user]);
+ useEffect(()=>{
+  if(!user){setSnapshot(null);return;}
+  let alive=true;
+  setSnapshot({user,rows:[],error:"",loading:true});
   auth.request<{favorites:Favorite[]}>("/v1/patient-favorites").then(x=>{
-   if(alive)setFavorites(x.favorites);
-  }).catch(e=>{if(alive)setError(patientError(e,locale))})
-   .finally(()=>{if(alive)setLoading(false)});
+   if(alive)setSnapshot({user,rows:x.favorites||[],error:"",loading:false});
+  }).catch(e=>{if(alive)setSnapshot({user,rows:[],error:patientError(e,locale),loading:false})});
   return()=>{alive=false};
- },[auth.account?.user.id,auth.account?.registered,reload]);
+ },[user,auth.request,reload]);
+ const current=snapshot?.user===user?snapshot:null;
+ const favorites=current?.rows||[],loading=current?.loading??true,error=current?.error||"";
  async function remove(f:Favorite){
-  setBusy(f.clinicId+(f.dentistId||""));setError("");
+  setBusy(f.clinicId+(f.dentistId||""));setActionError("");
   try{await auth.request("/v1/patient-favorites","DELETE",{clinicId:f.clinicId,dentistId:f.dentistId});
    setReload(x=>x+1);
-  }catch(e){setError(patientError(e,locale))}
+  }catch(e){setActionError(patientError(e,locale))}
   finally{setBusy("")}
  }
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -711,6 +717,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   {loading&&<NativeLoadingList label={t.loadingData}/> }
   {!!error&&<><ErrorBox message={error}/><Button secondary title={t.retry}
    onPress={()=>setReload(x=>x+1)}/></>}
+  {!!actionError&&<ErrorBox message={actionError}/>
   {!loading&&!error&&!favorites.length&&<Block><Text style={p.copy}>{t.noFavorites}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {!loading&&!error&&favorites.map(f=><Block key={f.clinicId+f.dentistId}>
