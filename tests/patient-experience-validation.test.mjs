@@ -28,8 +28,8 @@ test("Native patient UX shows real public approved search, profile and live prev
 
 test("Mobile reference design uses five working navigation tabs, no fake unfinished features",()=>{
  const app=read("apps/mobile/App.tsx");
- assert.ok(app.includes('[["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]]'));
- assert.ok(app.includes('["appointments","▦"]'));
+ assert.ok(app.includes('[["home","home"],["explore","search"],["appointments","calendar"],["saved","bookmark"],["account","user"]]'));
+ assert.ok(app.includes('["appointments","calendar"]'));
  assert.ok(!app.includes('["rewards","'));
  assert.ok(!app.includes('["reviews","'));
  assert.ok(!app.includes('["bills","'));

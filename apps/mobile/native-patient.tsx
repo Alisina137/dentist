@@ -2,6 +2,8 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
 import {patientError,patientText,isSlotConflict} from "./patient-errors";
+import {patientTheme} from "./patient-theme";
+import {PatientIcon} from "./patient-icons";
 
 declare const process:{readonly env:{readonly EXPO_PUBLIC_API_URL?:string;readonly EXPO_PUBLIC_PATIENT_WEB_URL?:string}};
 const API=(process.env.EXPO_PUBLIC_API_URL||"").replace(/\/+$/,"");
@@ -141,7 +143,7 @@ const words={
  checkAppointments:"زما ملاقاتونه وګورئ"}
 } as const;
 function tr(lang:Language){return words[lang]}
-const dark="#152b4c",blue="#075BF2",muted="#677a92";
+const dark=patientTheme.colors.ink,blue=patientTheme.colors.brand,muted=patientTheme.colors.muted;
 function Block({children}:{children:React.ReactNode}){return <View style={p.card}>{children}</View>}
 function Label({children}:{children:React.ReactNode}){return <Text style={p.label}>{children}</Text>}
 function Field({value,onChangeText,label,secure=false,keyboardType="default"}:{value:string;
@@ -157,7 +159,8 @@ function Field({value,onChangeText,label,secure=false,keyboardType="default"}:{v
 function Button({title,onPress,secondary=false,danger=false,disabled=false}:{title:string;onPress:()=>void;
  secondary?:boolean;danger?:boolean;disabled?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled}
-  style={[p.button,secondary&&p.buttonSecondary,danger&&p.buttonDanger,disabled&&{opacity:.45}]}
+  style={({pressed})=>[p.button,secondary&&p.buttonSecondary,danger&&p.buttonDanger,
+   disabled&&{opacity:.45},pressed&&!disabled&&{opacity:.9,transform:[{scale:.99}]}]}
   onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText,danger&&p.dangerText]}>{title}</Text></Pressable>;
 }
 function ErrorBox({message}:{message:string}){return <View style={p.errorBox}><Text style={p.errorText}>{message}</Text></View>}
@@ -481,7 +484,9 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpe
    finally{setBusy("")}
   })()}]);
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
-  <Text style={p.title}>{t.appointments}</Text>
+  <View style={{flexDirection:locale==="en"?"row":"row-reverse",alignItems:"center",gap:10}}>
+   <PatientIcon name="calendar" size={23} color={blue}/>
+   <Text style={p.title}>{t.appointments}</Text></View>
   <View style={[p.filters,{flexDirection:locale==="en"?"row":"row-reverse"}]}>{(["upcoming","past","cancelled"] as const).map(key=>
    <Pressable key={key} onPress={()=>setFilter(key)}
     style={[p.filter,filter===key&&p.filterOn]} accessibilityRole="tab"
@@ -495,7 +500,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpe
   {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {!loading&&!error&&current.map(b=><Block key={b.id}>
-   <View style={p.between}><Text style={p.title}>{b.clinicName}</Text>
+   <View style={[p.between,{flexDirection:locale==="en"?"row":"row-reverse"}]}><Text style={p.title}>{b.clinicName}</Text>
     <Text style={[p.badge,["cancelled","rejected","no_show"].includes(b.status)?p.badgeDanger:
      b.status==="requested"?p.badgePending:null]}>{appointmentStatus(b.status,locale)}</Text>
    </View>
@@ -700,53 +705,62 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
  </View>;
 }
 const p=StyleSheet.create({
- card:{backgroundColor:"#fff",borderRadius:18,padding:18,borderWidth:1,borderColor:"#E2EAF2",
-  gap:10,shadowOpacity:.04,shadowRadius:9,shadowColor:"#1B3556",elevation:1},
- title:{fontSize:20,fontWeight:"800",color:dark,flexShrink:1},
- copy:{fontSize:13,lineHeight:21,color:muted},
- label:{fontSize:14,fontWeight:"700",color:dark},
- small:{fontSize:11,color:muted},
- input:{borderWidth:1,borderColor:"#CBD9EA",borderRadius:12,paddingHorizontal:12,
-  minHeight:47,fontSize:14,color:dark,backgroundColor:"#FDFEFF"},
- button:{backgroundColor:blue,borderRadius:12,minHeight:44,justifyContent:"center",
-  alignItems:"center",paddingHorizontal:16,paddingVertical:8,marginTop:6},
+ card:{backgroundColor:patientTheme.colors.surface,borderRadius:patientTheme.radius.card,
+  padding:patientTheme.spacing.card,borderWidth:1,borderColor:patientTheme.colors.stroke,
+  gap:12,...patientTheme.shadow},
+ title:{fontSize:patientTheme.type.section,lineHeight:26,fontWeight:"800",color:dark,flexShrink:1},
+ copy:{fontSize:patientTheme.type.body,lineHeight:23,color:muted},
+ label:{fontSize:patientTheme.type.body,fontWeight:"700",color:dark},
+ small:{fontSize:patientTheme.type.caption,lineHeight:18,color:muted},
+ input:{borderWidth:1,borderColor:"#CBD9EA",borderRadius:patientTheme.radius.control,paddingHorizontal:14,
+  minHeight:patientTheme.controlHeight,fontSize:patientTheme.type.body,color:dark,
+  backgroundColor:patientTheme.colors.surface},
+ button:{backgroundColor:blue,borderRadius:patientTheme.radius.control,
+  minHeight:patientTheme.controlHeight,justifyContent:"center",
+  alignItems:"center",paddingHorizontal:16,paddingVertical:10,marginTop:6},
  buttonSecondary:{backgroundColor:"#EEF4FF",borderWidth:1,borderColor:"#C5D8FD"},
  buttonDanger:{backgroundColor:"#FFF1F1",borderWidth:1,borderColor:"#F3C8CD"},
  dangerText:{color:"#AC3443"},
- buttonText:{fontWeight:"800",color:"#fff",textAlign:"center",fontSize:13},
+ buttonText:{fontWeight:"800",color:"#fff",textAlign:"center",fontSize:patientTheme.type.body},
  secondaryText:{color:blue},
- errorBox:{backgroundColor:"#FFF0F0",padding:13,borderRadius:11},
- errorText:{color:"#9A2530",fontSize:13},
+ errorBox:{backgroundColor:patientTheme.colors.dangerSoft,padding:14,borderRadius:12},
+ errorText:{color:patientTheme.colors.danger,fontSize:patientTheme.type.body,lineHeight:21},
  success:{color:"#137655",fontWeight:"700"},
- item:{paddingVertical:7,borderBottomWidth:1,borderBottomColor:"#F0F4FA",color:dark},
+ item:{paddingVertical:11,borderBottomWidth:1,borderBottomColor:"#F0F4FA",color:dark,
+  fontSize:patientTheme.type.body},
  skeletonCard:{backgroundColor:"#F8FBFE",borderWidth:1,borderColor:"#DFEAF2",
   borderRadius:15,padding:16,minHeight:105},
  skeletonRow:{flexDirection:"row",gap:13,alignItems:"center"},
  skeletonAvatar:{width:46,height:46,borderRadius:12,backgroundColor:"#E3EDF5"},
  skeletonText:{height:12,borderRadius:6,backgroundColor:"#E3EDF5"},
  recoveryNote:{backgroundColor:"#E8F2FF",color:"#114C9D",borderWidth:1,borderColor:"#B8D5FC",padding:12,borderRadius:12,fontSize:13,lineHeight:20},
- notificationItem:{paddingVertical:9,borderTopWidth:1,borderTopColor:"#EDF2F8",gap:5},
- notificationBadge:{fontSize:11,fontWeight:"800",padding:6,borderRadius:16,overflow:"hidden"},
- check:{paddingVertical:10,minHeight:42},
+ notificationItem:{paddingVertical:13,borderTopWidth:1,borderTopColor:"#EDF2F8",gap:7},
+ notificationBadge:{fontSize:patientTheme.type.caption,fontWeight:"800",padding:7,borderRadius:16,overflow:"hidden"},
+ check:{paddingVertical:12,minHeight:patientTheme.controlHeight,
+  backgroundColor:"#F8FAFE",borderWidth:1,borderColor:"#E6ECF5",borderRadius:12,
+  paddingHorizontal:12,justifyContent:"center"},
  filters:{flexDirection:"row",gap:7},
- filter:{flex:1,borderRadius:12,backgroundColor:"#EFF4FB",padding:10,alignItems:"center"},
+ filter:{flex:1,borderRadius:12,backgroundColor:"#EFF4FB",padding:12,
+  minHeight:patientTheme.controlHeight,alignItems:"center",justifyContent:"center"},
  filterOn:{backgroundColor:blue},
- filterText:{color:dark,fontSize:12,fontWeight:"700"},
+ filterText:{color:dark,fontSize:patientTheme.type.caption,fontWeight:"700",textAlign:"center"},
  filterTextOn:{color:"#fff"},
  between:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:6},
- badge:{fontSize:11,fontWeight:"800",color:"#0F8063",backgroundColor:"#E7F7F0",
+ badge:{fontSize:patientTheme.type.caption,fontWeight:"800",color:"#0F8063",backgroundColor:"#E7F7F0",
   padding:7,borderRadius:20,overflow:"hidden"},
  badgePending:{color:"#946019",backgroundColor:"#FFF1D5"},
  badgeDanger:{color:"#AC3443",backgroundColor:"#FFF0F1"},
  stepper:{flexDirection:"row",flexWrap:"wrap",gap:6},
- step:{borderRadius:10,backgroundColor:"#EAF0F9",padding:7},
+ step:{borderRadius:12,backgroundColor:"#EAF0F9",paddingHorizontal:11,paddingVertical:10,minHeight:42,
+  justifyContent:"center"},
  stepActive:{backgroundColor:blue},
- stepText:{fontSize:11,color:"#48617E"},
+ stepText:{fontSize:patientTheme.type.caption,fontWeight:"700",color:"#48617E"},
  stepTextActive:{color:"#fff"},
- choice:{padding:13,borderRadius:12,borderWidth:1,borderColor:"#D8E3F5",marginTop:6,gap:5},
+ choice:{padding:15,borderRadius:14,borderWidth:1,borderColor:"#D8E3F5",marginTop:6,gap:7,
+  minHeight:patientTheme.controlHeight,justifyContent:"center"},
  choiceActive:{backgroundColor:"#E9F2FF",borderColor:blue,borderWidth:2},
- day:{minWidth:64,padding:10,borderWidth:1,borderColor:"#D8E3F5",borderRadius:12},
+ day:{minWidth:72,padding:12,borderWidth:1,borderColor:"#D8E3F5",borderRadius:13},
  times:{flexDirection:"row",flexWrap:"wrap",gap:8},
- time:{width:"47%",padding:12,borderWidth:1,borderColor:"#D8E3F5",borderRadius:12},
+ time:{width:"47%",minHeight:52,padding:13,borderWidth:1,borderColor:"#D8E3F5",borderRadius:13},
  actions:{flexDirection:"row",flexWrap:"wrap",gap:10,justifyContent:"flex-end",marginTop:10}
 });

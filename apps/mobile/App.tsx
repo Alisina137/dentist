@@ -3,6 +3,8 @@ import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth,type NativeAccount} from "./native-auth";
 import {NativeAppointmentDetails,NativeNextAppointment} from "./native-journeys";
 import {patientError} from "./patient-errors";
+import {patientTheme} from "./patient-theme";
+import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
@@ -61,10 +63,13 @@ const PATIENT_WEB=(process.env.EXPO_PUBLIC_PATIENT_WEB_URL||"").trim().replace(/
 const PREF_KEY="dandanlink.patient.preferences.v1";
 const SAVED_KEY="dandanlink.patient.savedPublicClinicIds.v1";
 const colors={
- blue:"#075BF2",blueDeep:"#1247BE",navy:"#11274A",ink:"#263854",muted:"#6A788D",
- pale:"#EEF4FF",soft:"#F4F7FC",white:"#FFFFFF",line:"#E2EAF2",
- green:"#138464",greenSoft:"#E7F8F0",amber:"#9A6514",amberSoft:"#FFF6DF",
- gray:"#A3B0BF",red:"#BC4854"
+ blue:patientTheme.colors.brand,blueDeep:patientTheme.colors.brandDark,
+ navy:patientTheme.colors.ink,ink:patientTheme.colors.inkSecondary,muted:patientTheme.colors.muted,
+ pale:patientTheme.colors.brandSoft,soft:patientTheme.colors.background,
+ white:patientTheme.colors.surface,line:patientTheme.colors.stroke,
+ green:patientTheme.colors.green,greenSoft:patientTheme.colors.greenSoft,
+ amber:patientTheme.colors.amber,amberSoft:patientTheme.colors.amberSoft,
+ gray:patientTheme.colors.inactive,red:patientTheme.colors.danger
 };
 const en={
  home:"Home",explore:"Explore",saved:"Saved",account:"Account",back:"Back",
@@ -373,8 +378,10 @@ function TextLine({children,ui,style}:{children:React.ReactNode;ui:UI;style?:obj
  return <Text style={[s.body,{textAlign:ui.align},style]}>{children}</Text>;
 }
 function Icon({glyph,filled=false}:{glyph:string;filled?:boolean}){
+ const icon:PatientIconName=glyph==="⌕"?"search":glyph==="▦"?"calendar":
+  glyph==="☺"?"user":glyph==="!"?"help":"shield";
  return <View style={[s.iconSquare,filled&&s.iconSquareBlue]}>
-  <Text style={[s.iconText,filled&&{color:colors.white}]}>{glyph}</Text>
+  <PatientIcon name={icon} size={25} color={filled?colors.white:colors.blue}/>
  </View>;
 }
 function CardShell({children,style}:{children:React.ReactNode;style?:object}){
@@ -446,7 +453,7 @@ function PublishedPhoto({photo,label,large=false}:{photo:Photo|null|undefined;la
  const [bad,setBad]=useState(false);
  useEffect(()=>setBad(false),[photo?.id]);
  if(!photo||bad)return <View style={[s.photoFallback,large&&s.photoFallbackLarge]}>
-  <Text style={[s.photoFallbackIcon,large&&{fontSize:56}]}>✧</Text>
+  <PatientIcon name="clinic" size={large?51:34} color="#86A8D8"/>
   <Text style={s.photoFallbackLabel}>DANDANLINK</Text></View>;
  const url=photo.url.startsWith("/")?API+photo.url:photo.url;
  return <Image source={{uri:url}} resizeMode="cover" fadeDuration={160}
@@ -457,7 +464,7 @@ function SavedButton({saved,onPress,ui}:{saved:boolean;onPress:()=>void;ui:UI}){
  return <Pressable style={[s.heart,saved&&s.heartSelected]}
   accessibilityRole="button" accessibilityState={{selected:saved}}
   accessibilityLabel={ui.t(saved?"removeFromSaved":"addToSaved")} onPress={onPress}>
-  <Text style={[s.heartText,saved&&{color:colors.blue}]}>{saved?"♥":"♡"}</Text>
+  <PatientIcon name="bookmark" size={21} color={saved?colors.blue:colors.muted} filled={saved}/>
  </Pressable>;
 }
 function ClinicCard({card,ui,saved,onSave,onOpen}:{card:Card;ui:UI;saved:boolean;
@@ -490,7 +497,9 @@ function ClinicCard({card,ui,saved,onSave,onOpen}:{card:Card;ui:UI;saved:boolean
    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={()=>onOpen(c.id)}
     accessibilityRole="button"><Text style={s.cardButtonPrimaryText}>{ui.t("details")}  ›</Text></Pressable>
    <Pressable style={s.cardButton} onPress={()=>{void Linking.openURL("tel:"+c.phone)}}
-    accessibilityRole="button"><Text style={s.cardButtonText}>☎  {ui.t("call")}</Text></Pressable>
+    accessibilityRole="button" accessibilityLabel={ui.t("call")}>
+    <View style={s.iconButtonRow}><PatientIcon name="phone" size={18} color={colors.blue}/>
+     <Text style={s.cardButtonText}>{ui.t("call")}</Text></View></Pressable>
   </View>
  </CardShell>;
 }
@@ -561,7 +570,8 @@ function Availability({ui,clinicId,services,dentists,horizon,doctorId}:{ui:UI;cl
       </View>:<View style={s.scheduleEmpty}><Icon glyph="▦"/>
        <Text style={s.emptyCopy}>{ui.t("noSlots")}</Text></View>}
    <View style={[s.notice,{flexDirection:ui.flow}]}>
-    <Text style={s.noticeIcon}>ⓘ</Text><Text style={[s.noticeText,{textAlign:ui.align}]}>
+    <PatientIcon name="help" size={19} color={colors.amber}/>
+    <Text style={[s.noticeText,{textAlign:ui.align}]}>
      {ui.t("pending")} {ui.t("timezone")}</Text></View>
   </CardShell>
  </View>;
@@ -645,14 +655,20 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicI
    <TextLine ui={ui} style={[s.verifiedTiny,{marginTop:12}]}>
     ✓ {ui.t("updated")} · {hours.now.isWithinPublishedHours?
      ui.t("openScheduled"):ui.t("closedScheduled")}</TextLine>
-   <View style={[s.row,{flexDirection:ui.flow,gap:9,marginTop:18}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
-     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book appointment":ui.locale==="ps-AF"?"د ملاقات وخت":"رزرو نوبت"}</Text></Pressable>
-    <Pressable style={s.cardButton} onPress={()=>{
-     void Linking.openURL("tel:"+clinic.phone)}}><Text style={s.cardButtonText}>
-     ☎ {ui.t("call")}</Text></Pressable>
-    <Pressable style={s.cardButton} onPress={()=>{void Linking.openURL(mapUrl)}}>
-     <Text style={s.cardButtonText}>⌖  {ui.t("directions")}</Text></Pressable>
+   <View style={[s.row,{flexDirection:ui.flow,gap:9,flexWrap:"wrap",marginTop:18}]}>
+    <Pressable accessibilityRole="button" style={[s.cardButton,s.cardButtonPrimary,{minWidth:105}]}
+     onPress={onBook}>
+     <View style={s.iconButtonRow}><PatientIcon name="calendar" size={18} color={colors.white}/>
+      <Text style={[s.cardButtonPrimaryText,{textAlign:"center",flexShrink:1}]}>
+       {ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text></View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("call")}
+     style={[s.cardButton,{minWidth:105}]} onPress={()=>{void Linking.openURL("tel:"+clinic.phone)}}>
+     <View style={s.iconButtonRow}><PatientIcon name="phone" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("call")}</Text></View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("directions")}
+     style={[s.cardButton,{minWidth:105}]} onPress={()=>{void Linking.openURL(mapUrl)}}>
+     <View style={s.iconButtonRow}><PatientIcon name="map" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("directions")}</Text></View></Pressable>
    </View>
   </CardShell>
   <ScrollView horizontal showsHorizontalScrollIndicator={false}
@@ -734,20 +750,29 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
      {d.displayName}</Text><TextLine ui={ui}>{d.specialty||ui.t("notListed")}</TextLine>
      <Tag label={ui.t("verify")} positive/></View>
    </View>
-   <Pressable accessibilityRole="button" onPress={onSave} style={[s.heart,{marginTop:10,alignSelf:"flex-start"}]}>
-    <Text style={[s.heartText,isSaved&&{color:colors.blue}]}>{isSaved?"♥":"♡"}</Text>
+   <Pressable accessibilityRole="button" accessibilityState={{selected:isSaved}}
+    accessibilityLabel={ui.t(isSaved?"removeFromSaved":"addToSaved")}
+    onPress={onSave} style={[s.heart,{marginTop:10,alignSelf:"flex-start"}]}>
+    <PatientIcon name="bookmark" size={21} color={isSaved?colors.blue:colors.muted} filled={isSaved}/>
    </Pressable>
    <Pressable onPress={onBackToClinic} style={[s.row,{flexDirection:ui.flow,gap:8,marginTop:17}]}>
     <Text style={[s.link,{textAlign:ui.align,flex:1}]}>{clinic.name} ›</Text></Pressable>
    <TextLine ui={ui} style={{marginTop:8}}>⌖ {cityLabel(clinic.city,ui.locale)}, {clinic.province}</TextLine>
-   <View style={[s.row,{flexDirection:ui.flow,gap:10,marginTop:16}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
-     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text></Pressable>
-    <Pressable style={s.cardButton} onPress={()=>{
+   <View style={[s.row,{flexDirection:ui.flow,gap:10,flexWrap:"wrap",marginTop:16}]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("times")}
+     style={[s.cardButton,s.cardButtonPrimary,{minWidth:105}]} onPress={onBook}>
+     <View style={s.iconButtonRow}><PatientIcon name="calendar" size={19} color={colors.white}/>
+      <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text>
+     </View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("call")}
+     style={[s.cardButton,{minWidth:105}]} onPress={()=>{
      void Linking.openURL("tel:"+clinic.phone)}}>
-     <Text style={s.cardButtonPrimaryText}>☎  {ui.t("call")}</Text></Pressable>
-    <Pressable onPress={()=>setTab("times")} style={s.cardButton}>
-     <Text style={s.cardButtonText}>▦  {ui.t("times")}</Text></Pressable>
+     <View style={s.iconButtonRow}><PatientIcon name="phone" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("call")}</Text></View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("times")}
+     onPress={()=>setTab("times")} style={[s.cardButton,{minWidth:105}]}>
+     <View style={s.iconButtonRow}><PatientIcon name="clock" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("times")}</Text></View></Pressable>
    </View>
   </CardShell>
   <ScrollView horizontal showsHorizontalScrollIndicator={false}
@@ -803,7 +828,7 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
   <CardShell style={s.searchBox}>
    <Text style={[s.fieldLabel,{textAlign:ui.align}]}>{ui.t("findLabel")}</Text>
    <View style={[s.inputLine,{flexDirection:ui.flow}]}>
-    <Text style={s.inputIcon}>⌕</Text>
+    <PatientIcon name="search" size={22} color={colors.blue}/>
     <TextInput value={search} onChangeText={setSearch}
      onSubmitEditing={()=>onSearch(search)} returnKeyType="search"
      style={[s.searchInput,{textAlign:ui.align}]} placeholder={ui.t("find")}
@@ -827,13 +852,13 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
   <SectionHead ui={ui} title={ui.t("quickActions")}/>
   <View style={[s.quickActions,{flexDirection:ui.flow}]}>
    {([
-    [ui.t("explore"),"⌕",onBrowse],
-    [ui.t("appointments"),"▦",onAppointments],
-    [ui.t("saved"),"♡",onSaved]
-   ] as [string,string,()=>void][]).map(([label,icon,action])=>
+    [ui.t("explore"),"search",onBrowse],
+    [ui.t("appointments"),"calendar",onAppointments],
+    [ui.t("saved"),"bookmark",onSaved]
+   ] as [string,PatientIconName,()=>void][]).map(([label,icon,action])=>
     <Pressable key={label} accessibilityRole="button" accessibilityLabel={label}
      onPress={action} style={s.quickAction}>
-     <Text style={s.quickActionIcon}>{icon}</Text>
+     <View style={s.quickActionIconBox}><PatientIcon name={icon} size={24} color={colors.blue}/></View>
      <Text style={s.quickActionLabel} numberOfLines={2}>{label}</Text>
     </Pressable>)}
   </View>
@@ -875,7 +900,7 @@ function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSav
  return <View style={s.sectionGap}>
   <SectionHead ui={ui} title={ui.t("listings")} sub={ui.t("intro")}/>
   <View style={[s.inputLine,s.exploreInput,{flexDirection:ui.flow}]}>
-   <Text style={s.inputIcon}>⌕</Text>
+   <PatientIcon name="search" size={22} color={colors.blue}/>
    <TextInput value={draft} onChangeText={setDraft} placeholder={ui.t("find")}
     onSubmitEditing={()=>{setQ(draft.trim());setPage(1)}} returnKeyType="search"
     style={[s.searchInput,{textAlign:ui.align}]} placeholderTextColor={colors.gray}/>
@@ -1126,17 +1151,17 @@ function AccountHub({ui,account,onSection,onAppointments,onExplore}:{
  onAppointments:()=>void;onExplore:()=>void}){
  const t=accountWords[ui.locale];
  const registered=Boolean(account?.registered);
- const groups:{title:string;items:{key:AccountSection;icon:string;title:string;sub:string}[]}[]=[
+ const groups:{title:string;items:{key:AccountSection;icon:PatientIconName;title:string;sub:string}[]}[]=[
   {title:t.care,items:[
-   {key:"family",icon:"◇",title:t.family,sub:t.familySub},
-   {key:"records",icon:"▤",title:t.records,sub:t.recordsSub},
-   {key:"reviews",icon:"☆",title:t.reviews,sub:t.reviewsSub}]},
+   {key:"family",icon:"users",title:t.family,sub:t.familySub},
+   {key:"records",icon:"file",title:t.records,sub:t.recordsSub},
+   {key:"reviews",icon:"star",title:t.reviews,sub:t.reviewsSub}]},
   {title:t.manage,items:[
-   {key:"profile",icon:"☺",title:t.profile,sub:t.profileSub},
-   {key:"notifications",icon:"♧",title:t.notifications,sub:t.notificationsSub},
-   {key:"security",icon:"♙",title:t.security,sub:t.securitySub},
-   {key:"settings",icon:"⚙",title:t.settings,sub:t.settingsSub},
-   {key:"support",icon:"ⓘ",title:t.support,sub:t.supportSub}]}
+   {key:"profile",icon:"user",title:t.profile,sub:t.profileSub},
+   {key:"notifications",icon:"bell",title:t.notifications,sub:t.notificationsSub},
+   {key:"security",icon:"shield",title:t.security,sub:t.securitySub},
+   {key:"settings",icon:"settings",title:t.settings,sub:t.settingsSub},
+   {key:"support",icon:"help",title:t.support,sub:t.supportSub}]}
  ];
  return <View style={s.sectionGap}>
   <View style={s.accountSegment}>
@@ -1161,7 +1186,7 @@ function AccountHub({ui,account,onSection,onAppointments,onExplore}:{
       accessibilityRole="button" accessibilityLabel={row.title}
       key={row.key} onPress={()=>onSection(row.key)}
       style={[s.accountRow,{flexDirection:ui.flow},index>0&&s.accountRowBorder]}>
-      <View style={s.accountRowGlyph}><Text style={s.accountRowIcon}>{row.icon}</Text></View>
+      <View style={s.accountRowGlyph}><PatientIcon name={row.icon} size={22} color={colors.blue}/></View>
       <View style={{flex:1}}>
        <Text style={[s.accountRowTitle,{textAlign:ui.align}]}>{row.title}</Text>
        <Text style={[s.accountRowSubtitle,{textAlign:ui.align}]}>{row.sub}</Text>
@@ -1341,18 +1366,21 @@ function PatientApp(){
    backgroundColor={route?colors.white:colors.blue}/>
   {route?<View style={[s.detailTop,{flexDirection:ui.flow}]}>
     <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={ui.t("back")}
-     style={s.backButton}><Text style={s.backGlyph}>{ui.rtl?"→":"←"}</Text></Pressable>
+     style={s.backButton}>
+     <View style={ui.rtl?{transform:[{rotate:"180deg"}]}:undefined}>
+      <PatientIcon name="arrow" size={24} color={colors.blue}/>
+     </View></Pressable>
     <Text style={s.detailTopTitle}>{screenTitle}</Text><View style={{width:44}}/>
    </View>:
    <View style={[s.mainHeader,{flexDirection:ui.flow}]}>
     <View style={[s.row,{flexDirection:ui.flow,alignItems:"center",gap:11}]}>
-     <View style={s.brandSquare}><Text style={s.brandGlyph}>✦</Text></View>
+     <View style={s.brandSquare}><PatientIcon name="tooth" size={29} color={colors.blue}/></View>
      <View><Text style={s.brandText}>DandanLink</Text>
       <Text style={s.brandSmall}>{ui.t("intro")}</Text></View>
     </View>
     <Pressable onPress={()=>select("account")} accessibilityLabel={ui.t("openSettings")}
      accessibilityRole="button" style={s.headerAccount}>
-     <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
+     <PatientIcon name="user" size={25} color={colors.white}/></Pressable>
    </View>}
   <ScrollView key={(route?route.kind+":"+(route.kind==="appointment"?route.bookingId:route.clinicId)+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
@@ -1411,12 +1439,26 @@ function PatientApp(){
         onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
     </View>}
   </ScrollView>
+  {(route?.kind==="clinic"||route?.kind==="dentist")&&<View style={s.stickyBookingBar}>
+   <Pressable style={({pressed})=>[s.stickyBookingButton,pressed&&s.ctaPressed]}
+    accessibilityRole="button" accessibilityLabel={locale==="en"?"Book appointment":
+     locale==="ps-AF"?"د ملاقات وخت اخیستل":"رزرو نوبت"}
+    onPress={()=>route?.kind==="dentist"?book(route.clinicId,route.dentistId):
+     route?.kind==="clinic"?book(route.clinicId):undefined}>
+    <PatientIcon name="calendar" size={21} color={colors.white}/>
+    <Text style={s.stickyBookingText}>{locale==="en"?"Book appointment":
+     locale==="ps-AF"?"د ملاقات وخت اخیستل":"رزرو نوبت"}</Text>
+   </Pressable>
+  </View>}
   {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
-   {([["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
+   {([["home","home"],["explore","search"],["appointments","calendar"],["saved","bookmark"],["account","user"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
      accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
      style={({pressed})=>[s.bottomNavItem,tab===value&&s.bottomNavItemActive,pressed&&s.bottomNavPressed]}>
-     <Text style={[s.bottomNavIcon,tab===value&&s.bottomNavIconSelected]}>{icon}</Text>
+     <View style={[s.bottomNavIconContainer,tab===value&&s.bottomNavIconContainerSelected]}>
+      <PatientIcon name={icon} size={23}
+       color={tab===value?colors.blue:colors.muted} filled={tab===value}/>
+     </View>
      <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
       {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
     </Pressable>)}
@@ -1428,72 +1470,78 @@ export default function App(){return <SafeAreaProvider><NativeAuthProvider><Pati
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:colors.soft},
  screenScroll:{flex:1},
- screenContent:{paddingHorizontal:17,paddingTop:18,paddingBottom:40},
- sectionGap:{gap:16},
+ screenContent:{paddingHorizontal:patientTheme.spacing.screen,paddingTop:20,paddingBottom:32},
+ sectionGap:{gap:patientTheme.spacing.section},
  row:{alignItems:"center"},
- body:{fontSize:13,lineHeight:22,color:colors.muted},
- helpText:{fontSize:12,color:colors.muted,marginTop:10},
- card:{backgroundColor:colors.white,borderRadius:18,borderWidth:1,
-  borderColor:colors.line,padding:17,shadowColor:colors.navy,
-  shadowOpacity:.035,shadowRadius:8,elevation:1},
- sectionTitleRow:{alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:0},
- sectionTitle:{fontSize:20,fontWeight:"800",lineHeight:27,color:colors.navy},
- sectionSubtitle:{marginTop:4,fontSize:12},
- mainHeader:{minHeight:79,paddingHorizontal:20,backgroundColor:colors.blue,
+ body:{fontSize:patientTheme.type.body,lineHeight:23,color:colors.muted},
+ helpText:{fontSize:patientTheme.type.secondary,color:colors.muted,marginTop:10},
+ card:{backgroundColor:colors.white,borderRadius:patientTheme.radius.card,borderWidth:1,
+  borderColor:colors.line,padding:patientTheme.spacing.card,...patientTheme.shadow},
+ sectionTitleRow:{alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:1},
+ sectionTitle:{fontSize:patientTheme.type.section,fontWeight:"800",lineHeight:27,color:colors.navy},
+ sectionSubtitle:{marginTop:4,fontSize:patientTheme.type.secondary},
+ mainHeader:{minHeight:76,paddingHorizontal:18,backgroundColor:colors.blue,
   alignItems:"center",justifyContent:"space-between"},
- brandSquare:{width:42,height:42,borderRadius:13,backgroundColor:"#F6FBFF",
+ brandSquare:{width:44,height:44,borderRadius:15,backgroundColor:"#F3F8FF",
   alignItems:"center",justifyContent:"center"},
- brandGlyph:{fontSize:27,fontWeight:"800",color:colors.blue},
- brandText:{fontSize:21,color:colors.white,fontWeight:"900",letterSpacing:-.4},
- brandSmall:{fontSize:10,color:"#D6E6FF",marginTop:3},
- headerAccount:{width:42,height:42,borderRadius:21,
+ brandText:{fontSize:21,color:colors.white,fontWeight:"800",letterSpacing:-.25},
+ brandSmall:{fontSize:patientTheme.type.minimum,color:"#E1EDFF",marginTop:2},
+ headerAccount:{width:46,height:46,borderRadius:15,
   borderWidth:1,borderColor:"#B9D7FF77",backgroundColor:"#2D72F4",alignItems:"center",justifyContent:"center"},
- headerAccountGlyph:{fontSize:26,color:colors.white},
- detailTop:{minHeight:67,paddingHorizontal:17,backgroundColor:colors.white,
+ detailTop:{minHeight:65,paddingHorizontal:18,backgroundColor:colors.white,
   borderBottomWidth:1,borderColor:colors.line,alignItems:"center",justifyContent:"space-between"},
- backButton:{height:44,width:44,borderRadius:13,backgroundColor:colors.pale,
+ backButton:{height:46,width:46,borderRadius:14,backgroundColor:colors.pale,
   alignItems:"center",justifyContent:"center"},
- backGlyph:{fontSize:26,fontWeight:"700",color:colors.blue},
- detailTopTitle:{fontSize:18,fontWeight:"900",color:colors.navy},
+ detailTopTitle:{fontSize:patientTheme.type.section,fontWeight:"800",color:colors.navy,
+  maxWidth:"70%"},
  accountSegment:{backgroundColor:colors.white,borderColor:colors.line,borderWidth:1,
   padding:5,borderRadius:16},
  quickActions:{gap:10},
- quickAction:{flex:1,minHeight:87,justifyContent:"center",alignItems:"center",
+ quickAction:{flex:1,minHeight:104,justifyContent:"center",alignItems:"center",
   backgroundColor:colors.white,borderWidth:1,borderColor:colors.line,
-  borderRadius:16,paddingHorizontal:6,paddingVertical:12,gap:5},
- quickActionIcon:{fontSize:25,fontWeight:"700",color:colors.blue},
- quickActionLabel:{fontSize:12,fontWeight:"800",lineHeight:18,color:colors.navy,textAlign:"center"},
- accountGroup:{gap:10},
- accountRow:{minHeight:68,alignItems:"center",gap:12,paddingVertical:10},
- accountRowBorder:{borderTopWidth:1,borderColor:"#ECF1F7"},
- accountRowGlyph:{width:42,height:42,borderRadius:12,backgroundColor:colors.pale,
+  borderRadius:18,paddingHorizontal:6,paddingVertical:14,gap:8,...patientTheme.shadow},
+ quickActionIconBox:{width:44,height:44,borderRadius:14,backgroundColor:colors.pale,
   alignItems:"center",justifyContent:"center"},
- accountRowIcon:{fontSize:21,fontWeight:"800",color:colors.blue},
- accountRowTitle:{fontSize:14,fontWeight:"800",color:colors.navy},
- accountRowSubtitle:{fontSize:12,color:colors.muted,lineHeight:18,marginTop:3},
- accountRowArrow:{fontSize:26,color:colors.blue,fontWeight:"500"},
+ quickActionLabel:{fontSize:patientTheme.type.caption,fontWeight:"800",
+  lineHeight:18,color:colors.navy,textAlign:"center"},
+ accountGroup:{gap:10},
+ accountRow:{minHeight:74,alignItems:"center",gap:12,paddingVertical:11},
+ accountRowBorder:{borderTopWidth:1,borderColor:"#ECF1F7"},
+ accountRowGlyph:{width:44,height:44,borderRadius:14,backgroundColor:colors.pale,
+  alignItems:"center",justifyContent:"center"},
+ accountRowTitle:{fontSize:patientTheme.type.body,fontWeight:"800",color:colors.navy},
+ accountRowSubtitle:{fontSize:patientTheme.type.caption,color:colors.muted,lineHeight:19,marginTop:4},
+ accountRowArrow:{fontSize:24,color:colors.blue,fontWeight:"500"},
  accountBack:{minHeight:44,alignItems:"center",paddingVertical:9},
 
  bottomNav:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
-  justifyContent:"space-around",paddingHorizontal:7,paddingTop:8,paddingBottom:3},
- bottomNavItem:{flex:1,minHeight:57,alignItems:"center",justifyContent:"center",
-  borderRadius:12,marginHorizontal:3,borderWidth:1,borderColor:"transparent"},
- bottomNavItemActive:{backgroundColor:"#EAF3FF",borderColor:"#CDE0FC"},
+  justifyContent:"space-around",paddingHorizontal:7,paddingTop:8,paddingBottom:6},
+ bottomNavItem:{flex:1,minHeight:64,alignItems:"center",justifyContent:"center",
+  borderRadius:14,marginHorizontal:2,borderWidth:1,borderColor:"transparent",gap:4},
+ bottomNavItemActive:{backgroundColor:colors.pale,borderColor:"#D4E4FB"},
  bottomNavPressed:{opacity:.88},
- bottomNavIcon:{fontSize:25,color:"#93A1B3",lineHeight:29},
- bottomNavIconSelected:{color:colors.blue},
- bottomNavLabel:{fontSize:11,lineHeight:15,fontWeight:"700",marginTop:2,color:"#687D97"},
- bottomNavLabelSelected:{color:colors.blue,fontWeight:"900"},
- hero:{minHeight:197,backgroundColor:colors.blue,borderRadius:22,
+ bottomNavIconContainer:{minHeight:28,minWidth:40,borderRadius:11,
+  alignItems:"center",justifyContent:"center"},
+ bottomNavIconContainerSelected:{backgroundColor:"#D9EAFE"},
+ bottomNavLabel:{fontSize:patientTheme.type.minimum,lineHeight:18,fontWeight:"700",
+  color:colors.muted,textAlign:"center"},
+ bottomNavLabelSelected:{color:colors.blue,fontWeight:"800"},
+ stickyBookingBar:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
+  paddingHorizontal:18,paddingTop:12,paddingBottom:12},
+ stickyBookingButton:{minHeight:54,backgroundColor:colors.blue,borderRadius:16,
+  flexDirection:"row",justifyContent:"center",alignItems:"center",gap:11,
+  paddingHorizontal:18,shadowColor:colors.blue,shadowOpacity:.16,shadowRadius:9,elevation:3},
+ stickyBookingText:{fontSize:patientTheme.type.body,fontWeight:"800",color:colors.white},
+ hero:{minHeight:204,backgroundColor:colors.blueDeep,borderRadius:24,
   padding:23,overflow:"hidden",justifyContent:"center"},
  heroCircle:{position:"absolute",width:200,height:200,borderRadius:100,
   backgroundColor:"#2878FF",opacity:.55,right:-55,top:-99},
  heroCircle2:{position:"absolute",width:130,height:130,borderRadius:70,
   backgroundColor:"#4D95FF",opacity:.26,left:-67,bottom:-66},
- heroKicker:{fontSize:11,fontWeight:"900",color:"#DAE9FF",letterSpacing:.7},
- heroHeadline:{fontSize:29,fontWeight:"900",color:colors.white,
+ heroKicker:{fontSize:patientTheme.type.minimum,fontWeight:"800",color:"#E1EEFF",letterSpacing:.6},
+ heroHeadline:{fontSize:patientTheme.type.hero,fontWeight:"900",color:colors.white,
   lineHeight:38,marginTop:11,maxWidth:330},
- heroBody:{fontSize:13,color:"#E0EBFF",lineHeight:21,marginTop:9,maxWidth:335},
+ heroBody:{fontSize:patientTheme.type.body,color:"#E0EBFF",lineHeight:23,marginTop:9,maxWidth:335},
  searchBox:{marginTop:-1,gap:5},
  fieldLabel:{fontSize:13,fontWeight:"800",color:colors.navy,marginBottom:8},
  inputLine:{borderWidth:1,borderColor:colors.line,minHeight:52,
@@ -1510,7 +1558,8 @@ const s=StyleSheet.create({
   minHeight:44,justifyContent:"center"},
  citySelectorText:{fontSize:12,fontWeight:"800",color:colors.blue},
  cityChoiceGroup:{flexWrap:"wrap",gap:8,marginTop:5},
- cta:{borderRadius:13,backgroundColor:colors.blue,minHeight:48,
+ cta:{borderRadius:patientTheme.radius.control,backgroundColor:colors.blue,
+  minHeight:patientTheme.controlHeight,
   alignItems:"center",justifyContent:"center",paddingHorizontal:16},
  ctaText:{fontWeight:"900",fontSize:14,color:colors.white,textAlign:"center"},
  ctaLight:{backgroundColor:colors.pale,borderWidth:1,borderColor:"#CCE0FF"},
@@ -1527,11 +1576,11 @@ const s=StyleSheet.create({
  photoFallbackLarge:{width:"100%",height:220,borderRadius:17},
  photoFallbackIcon:{fontSize:32,fontWeight:"700",color:"#7FA6E4"},
  photoFallbackLabel:{fontSize:8,fontWeight:"800",color:"#90A9CF",letterSpacing:1},
- clinicName:{fontSize:16,fontWeight:"900",lineHeight:22,color:colors.navy},
- clinicSub:{fontSize:11,color:colors.muted,lineHeight:17},
+ clinicName:{fontSize:patientTheme.type.cardTitle,fontWeight:"800",lineHeight:23,color:colors.navy},
+ clinicSub:{fontSize:patientTheme.type.caption,color:colors.muted,lineHeight:19},
  tag:{borderRadius:20,backgroundColor:colors.pale,paddingHorizontal:9,
   paddingVertical:6,alignSelf:"flex-start",maxWidth:"100%"},
- tagText:{color:colors.blueDeep,fontSize:10,fontWeight:"800"},
+ tagText:{color:colors.blueDeep,fontSize:patientTheme.type.minimum,fontWeight:"800"},
  tagGreen:{backgroundColor:colors.greenSoft},
  tagTextGreen:{color:colors.green},
  heart:{width:37,height:37,alignItems:"center",justifyContent:"center",
@@ -1540,19 +1589,20 @@ const s=StyleSheet.create({
  heartText:{fontSize:24,color:colors.gray,lineHeight:28},
  cardMeta:{justifyContent:"space-between",gap:12,
   borderTopWidth:1,borderBottomWidth:1,borderColor:"#EDF1F5",paddingVertical:12},
- metaLabel:{color:colors.muted,fontSize:11,fontWeight:"700"},
- metaValue:{fontSize:13,fontWeight:"900",color:colors.navy,marginTop:4},
- metaTime:{fontSize:11,color:colors.green},
- cardButton:{flex:1,backgroundColor:colors.white,borderWidth:1.5,
-  borderColor:"#C6D9F5",height:45,borderRadius:12,
-  alignItems:"center",justifyContent:"center"},
+ metaLabel:{color:colors.muted,fontSize:patientTheme.type.caption,fontWeight:"700"},
+ metaValue:{fontSize:patientTheme.type.body,fontWeight:"800",color:colors.navy,marginTop:4},
+ metaTime:{fontSize:patientTheme.type.caption,color:colors.green},
+ cardButton:{flex:1,backgroundColor:colors.white,borderWidth:1,
+  borderColor:"#C6D9F5",minHeight:patientTheme.controlHeight,borderRadius:14,
+  paddingHorizontal:8,alignItems:"center",justifyContent:"center"},
+ iconButtonRow:{flexDirection:"row",alignItems:"center",justifyContent:"center",gap:7},
  cardButtonPrimary:{backgroundColor:colors.blue,borderColor:colors.blue},
- cardButtonText:{color:colors.blue,fontWeight:"900",fontSize:12},
- cardButtonPrimaryText:{color:colors.white,fontWeight:"900",fontSize:12},
+ cardButtonText:{color:colors.blue,fontWeight:"800",fontSize:patientTheme.type.label},
+ cardButtonPrimaryText:{color:colors.white,fontWeight:"800",fontSize:patientTheme.type.label},
  chip:{borderWidth:1,borderColor:colors.line,backgroundColor:colors.white,
   paddingHorizontal:13,paddingVertical:10,borderRadius:24},
  chipActive:{backgroundColor:colors.blue,borderColor:colors.blue},
- chipText:{fontSize:12,fontWeight:"700",color:colors.ink},
+ chipText:{fontSize:patientTheme.type.label,fontWeight:"700",color:colors.ink},
  chipActiveText:{color:colors.white},
  filterTrigger:{borderColor:"#AFCBF9",backgroundColor:colors.pale},
  filtersPanel:{gap:10},
@@ -1584,13 +1634,13 @@ const s=StyleSheet.create({
  detailTab:{paddingHorizontal:16,paddingVertical:13,borderBottomWidth:3,
   borderBottomColor:"transparent",borderRadius:9},
  detailTabActive:{borderBottomColor:colors.blue,backgroundColor:colors.pale},
- detailTabText:{fontWeight:"800",fontSize:12,color:colors.muted},
+ detailTabText:{fontWeight:"800",fontSize:patientTheme.type.label,color:colors.muted},
  detailTabTextActive:{color:colors.blue},
  overviewStats:{backgroundColor:colors.white,borderRadius:17,
   padding:16,borderWidth:1,borderColor:colors.line,alignItems:"center"},
  overviewStat:{flex:1,alignItems:"center",gap:5},
  overviewCount:{fontSize:24,fontWeight:"900",color:colors.blue},
- overviewLabel:{fontSize:11,color:colors.muted,fontWeight:"700",textAlign:"center"},
+ overviewLabel:{fontSize:patientTheme.type.caption,color:colors.muted,fontWeight:"700",textAlign:"center"},
  overviewDivider:{width:1,height:38,backgroundColor:colors.line},
  doctorRow:{paddingVertical:14,alignItems:"center",gap:12,
   borderBottomWidth:1,borderColor:"#EDF2F6"},
@@ -1602,9 +1652,9 @@ const s=StyleSheet.create({
  forward:{fontSize:25,color:colors.blue},
  serviceRow:{borderBottomWidth:1,borderColor:"#ECF0F5",paddingVertical:15,
   gap:12,alignItems:"center"},
- serviceName:{fontSize:13,color:colors.navy,fontWeight:"800",lineHeight:21},
- serviceSub:{fontSize:11,color:colors.muted,lineHeight:18,marginTop:3},
- serviceFee:{fontSize:12,fontWeight:"900",color:colors.blueDeep,maxWidth:100},
+ serviceName:{fontSize:patientTheme.type.body,color:colors.navy,fontWeight:"800",lineHeight:22},
+ serviceSub:{fontSize:patientTheme.type.caption,color:colors.muted,lineHeight:19,marginTop:3},
+ serviceFee:{fontSize:patientTheme.type.label,fontWeight:"800",color:colors.blueDeep,maxWidth:120},
  simpleFact:{paddingVertical:13,borderBottomWidth:1,borderColor:colors.line,
   justifyContent:"space-between",alignItems:"center",gap:12},
  largeAvatar:{width:80,height:80,borderRadius:22,backgroundColor:colors.pale,
@@ -1625,8 +1675,8 @@ const s=StyleSheet.create({
  slotItem:{width:"47%",backgroundColor:colors.pale,borderRadius:12,
   padding:12,borderWidth:1,borderColor:"#DCE7F8",gap:4},
  slotTime:{fontSize:13,color:colors.blue,fontWeight:"900"},
- slotSub:{fontSize:10,color:colors.muted,lineHeight:15},
- slotFee:{fontSize:11,color:colors.navy,fontWeight:"800"},
+ slotSub:{fontSize:patientTheme.type.caption,color:colors.muted,lineHeight:19},
+ slotFee:{fontSize:patientTheme.type.label,color:colors.navy,fontWeight:"800"},
  scheduleEmpty:{padding:24,alignItems:"center",gap:11},
  notice:{backgroundColor:colors.amberSoft,borderRadius:12,padding:12,
   gap:9,marginTop:13,borderWidth:1,borderColor:"#F3E1B9"},
@@ -1637,7 +1687,7 @@ const s=StyleSheet.create({
  hoursDay:{fontSize:12,fontWeight:"800",flex:1},
  hoursValue:{fontSize:12,fontWeight:"700"},
  detailFooter:{paddingBottom:12},
- footerNotice:{fontSize:11,lineHeight:20,color:colors.muted},
+ footerNotice:{fontSize:patientTheme.type.caption,lineHeight:20,color:colors.muted},
  centerLoading:{minHeight:93,alignItems:"center",justifyContent:"center"},
  ribbonWrap:{paddingTop:10},
  savedThumb:{width:80,height:80,borderRadius:13,overflow:"hidden"},

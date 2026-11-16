@@ -2,12 +2,14 @@ import React,{useEffect,useState} from "react";
 import {ActivityIndicator,Alert,Linking,Pressable,StyleSheet,Text,View} from "react-native";
 import {ApiError,useNativeAuth} from "./native-auth";
 import {patientError} from "./patient-errors";
+import {patientTheme} from "./patient-theme";
+import {PatientIcon} from "./patient-icons";
 import type {Booking} from "./native-patient";
 
 type Lang="en"|"fa-AF"|"ps-AF";
 type Calendar="gregorian"|"solar_hijri";
 type BookingEvent={action:string;status:string;occurredAt:string;appointmentAt:string};
-const blue="#075BF2",ink="#163255",muted="#657993";
+const blue=patientTheme.colors.brand,ink=patientTheme.colors.ink,muted=patientTheme.colors.muted;
 const copy={
  en:{upcoming:"Your next appointment",appointment:"Appointment details",all:"All appointments",
   view:"View details",noUpcoming:"You have no upcoming appointments.",
@@ -86,7 +88,8 @@ const future=(b:Booking)=>Date.parse(b.startAt)>Date.now()&&["requested","confir
 function Button({label,onPress,secondary=false,disabled=false,danger=false}:{
  label:string;onPress:()=>void;secondary?:boolean;disabled?:boolean;danger?:boolean}){
  return <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled}
-  style={[css.action,secondary&&css.secondary,danger&&css.danger,disabled&&css.disabled]}>
+  style={({pressed})=>[css.action,secondary&&css.secondary,danger&&css.danger,
+   disabled&&css.disabled,pressed&&!disabled&&{opacity:.9,transform:[{scale:.99}]}]}>
    <Text style={[css.actionText,(secondary||danger)&&css.secondaryText,danger&&css.dangerText]}>{label}</Text>
  </Pressable>;
 }
@@ -118,7 +121,9 @@ export function NativeNextAppointment({locale,calendar,onOpen,onAll,onExplore}:{
  const booking=view?.booking||null;
  return <View style={css.card}>
   <View style={[css.row,{flexDirection:locale==="en"?"row":"row-reverse"}]}>
-   <Text style={css.title}>{t.upcoming}</Text>
+   <View style={{flexDirection:locale==="en"?"row":"row-reverse",alignItems:"center",gap:9,flex:1}}>
+    <PatientIcon name="calendar" size={21} color={blue}/>
+    <Text style={css.title}>{t.upcoming}</Text></View>
    <Pressable accessibilityRole="button" onPress={onAll}>
     <Text style={css.link}>{t.all} ›</Text>
    </Pressable>
@@ -196,7 +201,10 @@ export function NativeAppointmentDetails({bookingId,locale,calendar,onBack,onRes
  const label=booking.status==="requested"?t.requestedHint:booking.status==="confirmed"?t.confirmedHint:t.finalHint;
  return <View style={{gap:14,direction:locale==="en"?"ltr":"rtl"}}>
   <View style={css.card}>
-   <Text accessibilityRole="header" style={css.title}>{t.appointment}</Text>
+   <View style={{flexDirection:locale==="en"?"row":"row-reverse",alignItems:"center",gap:9}}>
+    <PatientIcon name="calendar" size={23} color={blue}/>
+    <Text accessibilityRole="header" style={css.title}>{t.appointment}</Text>
+   </View>
    <Text style={css.caption}>{t.private}</Text>
    <Text style={css.sectionTitle}>{booking.clinicName}</Text>
    <Text style={[css.pill,{alignSelf:"flex-start"},booking.status==="requested"&&css.pending]}>
@@ -254,28 +262,31 @@ export function NativeAppointmentDetails({bookingId,locale,calendar,onBack,onRes
 }
 
 const css=StyleSheet.create({
- card:{backgroundColor:"#fff",borderWidth:1,borderColor:"#DCE8F5",
-  borderRadius:18,padding:17,gap:11},
+ card:{backgroundColor:patientTheme.colors.surface,borderWidth:1,
+  borderColor:patientTheme.colors.stroke,borderRadius:patientTheme.radius.card,
+  padding:patientTheme.spacing.card,gap:12,...patientTheme.shadow},
  row:{justifyContent:"space-between",alignItems:"center",gap:10},
- title:{fontSize:18,color:ink,fontWeight:"800",flexShrink:1},
- sectionTitle:{fontSize:21,color:ink,fontWeight:"900"},
- value:{fontSize:14,color:ink,fontWeight:"700",flexShrink:1},
- caption:{fontSize:13,color:muted,lineHeight:20},
- dateText:{fontSize:15,fontWeight:"800",color:blue},
- link:{color:blue,fontSize:12,fontWeight:"800"},
- pill:{fontSize:12,color:"#13694E",backgroundColor:"#E7F8F0",
+ title:{fontSize:patientTheme.type.section,color:ink,fontWeight:"800",flexShrink:1},
+ sectionTitle:{fontSize:patientTheme.type.page,color:ink,fontWeight:"800"},
+ value:{fontSize:patientTheme.type.body,color:ink,fontWeight:"700",flexShrink:1},
+ caption:{fontSize:patientTheme.type.secondary,color:muted,lineHeight:21},
+ dateText:{fontSize:16,fontWeight:"800",color:blue,lineHeight:24},
+ link:{color:blue,fontSize:patientTheme.type.caption,fontWeight:"800"},
+ pill:{fontSize:patientTheme.type.caption,color:patientTheme.colors.green,backgroundColor:patientTheme.colors.greenSoft,
   borderRadius:12,overflow:"hidden",paddingHorizontal:10,paddingVertical:6,fontWeight:"700"},
  pending:{color:"#915A11",backgroundColor:"#FFF5DC"},
- pair:{paddingVertical:8,borderBottomColor:"#EFF3F7",borderBottomWidth:1,gap:4},
- timelineRow:{flexDirection:"row",gap:12,paddingVertical:10,borderBottomWidth:1,borderColor:"#EFF3F7"},
+ pair:{paddingVertical:11,borderBottomColor:"#EFF3F7",borderBottomWidth:1,gap:5},
+ timelineRow:{flexDirection:"row",gap:12,paddingVertical:13,borderBottomWidth:1,borderColor:"#EFF3F7"},
  timelineDot:{width:10,height:10,borderRadius:5,backgroundColor:blue,marginTop:5},
- action:{backgroundColor:blue,paddingHorizontal:14,paddingVertical:12,minHeight:44,
-  borderRadius:12,alignItems:"center",justifyContent:"center"},
- actionText:{color:"#fff",fontSize:14,fontWeight:"800",textAlign:"center"},
+ action:{backgroundColor:blue,paddingHorizontal:16,paddingVertical:12,
+  minHeight:patientTheme.controlHeight,borderRadius:patientTheme.radius.control,
+  alignItems:"center",justifyContent:"center"},
+ actionText:{color:"#fff",fontSize:patientTheme.type.body,fontWeight:"800",textAlign:"center"},
  secondary:{backgroundColor:"#EEF4FF",borderWidth:1,borderColor:"#CCE1FC"},
  secondaryText:{color:blue},
  danger:{backgroundColor:"#FFF0F1",borderWidth:1,borderColor:"#F3CDD2"},
  dangerText:{color:"#AE3145"},
  disabled:{opacity:.45},
- error:{color:"#AE3145",backgroundColor:"#FFF0F1",padding:12,borderRadius:9}
+ error:{color:patientTheme.colors.danger,backgroundColor:patientTheme.colors.dangerSoft,
+  fontSize:patientTheme.type.body,padding:14,borderRadius:12}
 });

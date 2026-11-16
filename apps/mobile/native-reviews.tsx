@@ -2,6 +2,8 @@ import React,{useEffect,useState} from "react";
 import {ActivityIndicator,Alert,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {useNativeAuth} from "./native-auth";
 import {patientError} from "./patient-errors";
+import {patientTheme} from "./patient-theme";
+import {PatientIcon} from "./patient-icons";
 
 /** PH17 native reviews never cache clinical notes, patient names or raw private review data. */
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -44,21 +46,39 @@ const labels={
  appealReason:"د بیاکتنې دلیل ولیکئ",sent:"نظر څېړنې ته واستول شو."}
 } as const;
 const style=StyleSheet.create({
- card:{backgroundColor:"white",borderWidth:1,borderColor:"#dae5f7",borderRadius:15,padding:16,gap:9,marginBottom:11},
- title:{fontSize:20,fontWeight:"800",color:"#15315a"},lead:{fontSize:12,color:"#5d708a",lineHeight:20},
- badge:{fontSize:12,color:"#0c7b5a",backgroundColor:"#e6f7ef",padding:5,alignSelf:"flex-start",borderRadius:12},
- tabs:{flexDirection:"row",gap:7,marginVertical:15},tab:{flex:1,backgroundColor:"#edf3fd",padding:10,borderRadius:12,alignItems:"center"},
- selected:{backgroundColor:"#075BF2"},text:{fontSize:12,color:"#244066",fontWeight:"700"},
- selectedText:{color:"white"},input:{borderWidth:1,borderColor:"#c6d8f1",padding:12,borderRadius:12,minHeight:46,
-  backgroundColor:"#fff",fontSize:14,color:"#1b3257"},
- area:{minHeight:115,textAlignVertical:"top"},button:{borderRadius:12,backgroundColor:"#075BF2",
-  minHeight:44,justifyContent:"center",alignItems:"center",paddingHorizontal:15,marginTop:6},
- buttonText:{fontSize:13,fontWeight:"800",color:"white"},warning:{backgroundColor:"#fff1f1",padding:12,borderRadius:12,color:"#9d273a"},
- stars:{flexDirection:"row",gap:7},star:{fontSize:31,color:"#abb8ca"},starChosen:{color:"#d7a016"}
+ card:{backgroundColor:patientTheme.colors.surface,borderWidth:1,
+  borderColor:patientTheme.colors.stroke,borderRadius:patientTheme.radius.card,
+  padding:patientTheme.spacing.card,gap:12,marginBottom:14,...patientTheme.shadow},
+ title:{fontSize:patientTheme.type.section,fontWeight:"800",color:patientTheme.colors.ink},
+ lead:{fontSize:patientTheme.type.body,color:patientTheme.colors.muted,lineHeight:23},
+ badge:{fontSize:patientTheme.type.caption,fontWeight:"700",color:patientTheme.colors.green,
+  backgroundColor:patientTheme.colors.greenSoft,paddingHorizontal:11,paddingVertical:7,
+  alignSelf:"flex-start",borderRadius:16,overflow:"hidden"},
+ tabs:{flexDirection:"row",gap:7,marginVertical:16},
+ tab:{flex:1,backgroundColor:patientTheme.colors.brandSoft,padding:12,
+  minHeight:patientTheme.controlHeight,borderRadius:14,alignItems:"center",justifyContent:"center"},
+ selected:{backgroundColor:patientTheme.colors.brand},
+ text:{fontSize:patientTheme.type.caption,color:patientTheme.colors.inkSecondary,
+  fontWeight:"700",textAlign:"center"},
+ selectedText:{color:"white"},
+ input:{borderWidth:1,borderColor:"#C8D9EF",padding:14,
+  borderRadius:patientTheme.radius.control,minHeight:patientTheme.controlHeight,
+  backgroundColor:patientTheme.colors.surface,fontSize:patientTheme.type.body,
+  color:patientTheme.colors.ink},
+ area:{minHeight:128,textAlignVertical:"top"},
+ button:{borderRadius:patientTheme.radius.control,backgroundColor:patientTheme.colors.brand,
+  minHeight:patientTheme.controlHeight,justifyContent:"center",alignItems:"center",
+  paddingHorizontal:16,paddingVertical:10,marginTop:6},
+ buttonText:{fontSize:patientTheme.type.body,fontWeight:"800",color:"white"},
+ warning:{backgroundColor:patientTheme.colors.dangerSoft,padding:14,borderRadius:12,
+  color:patientTheme.colors.danger,fontSize:patientTheme.type.body},
+ stars:{flexDirection:"row",gap:6,flexWrap:"wrap"},
+ star:{fontSize:30,color:"#ABB8CA"},starChosen:{color:"#D49A12"}
 });
 function Button({text,onPress,disabled=false,secondary=false}:{text:string;onPress:()=>void;disabled?:boolean;secondary?:boolean}){
  return <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled}
-  style={[style.button,secondary&&{backgroundColor:"#e8f0ff"},disabled&&{opacity:.45}]}>
+  style={({pressed})=>[style.button,secondary&&{backgroundColor:patientTheme.colors.brandSoft},
+   disabled&&{opacity:.45},pressed&&!disabled&&{opacity:.9,transform:[{scale:.99}]}]}>
   <Text style={[style.buttonText,secondary&&{color:"#1558cb"}]}>{text}</Text></Pressable>
 }
 export function NativeReviews({locale}:{locale:Lang}){
@@ -112,8 +132,10 @@ export function NativeReviews({locale}:{locale:Lang}){
    finally{setBusy(false)}
   })()}]);
  return <View>
-  <Text style={style.title}>{t.title}</Text><Text style={style.lead}>{t.subtitle}</Text>
-  <View style={style.tabs}>{(["eligible","mine","updates"] as const).map(k=><Pressable
+  <View style={{flexDirection:locale==="en"?"row":"row-reverse",alignItems:"center",gap:10}}>
+  <PatientIcon name="star" size={24} color={patientTheme.colors.brand}/>
+  <Text style={style.title}>{t.title}</Text></View><Text style={style.lead}>{t.subtitle}</Text>
+  <View style={[style.tabs,{flexDirection:locale==="en"?"row":"row-reverse"}]}>{(["eligible","mine","updates"] as const).map(k=><Pressable
    accessibilityRole="tab" accessibilityState={{selected:view===k}}
    key={k} onPress={()=>{setView(k);setMode(null)}} style={[style.tab,view===k&&style.selected]}>
    <Text style={[style.text,view===k&&style.selectedText]}>{t[k]}</Text></Pressable>)}</View>
@@ -151,7 +173,9 @@ export function NativeReviews({locale}:{locale:Lang}){
     <Text style={style.text}>{t.stars}</Text>
     <View style={style.stars}>{[1,2,3,4,5].map(value=><Pressable
      accessibilityRole="radio" accessibilityState={{checked:rating===value}}
-     key={value} onPress={()=>setRating(value)}>
+     key={value} onPress={()=>setRating(value)}
+     accessibilityLabel={locale==="en"?value+" stars":locale==="ps-AF"?value+" ستوري":value+" ستاره"}
+     style={{minWidth:44,minHeight:48,justifyContent:"center",alignItems:"center"}}>
       <Text style={[style.star,value<=rating&&style.starChosen]}>★</Text></Pressable>)}</View>
     <Text style={style.text}>{t.headline}</Text>
     <TextInput value={headline} onChangeText={setHeadline} maxLength={100} style={style.input}/>
