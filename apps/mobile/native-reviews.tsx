@@ -156,7 +156,7 @@ export function NativeReviews({locale}:{locale:Lang}){
   {loading&&<ActivityIndicator color="#075BF2"/>}
   {!!loadError&&<View style={style.card}><Text accessibilityRole="alert" style={style.warning}>{loadError}</Text>
    <Button text={t.retry} onPress={()=>setRefresh(x=>x+1)}/></View>}
-  {!!error&&<View style={style.card}><Text accessibilityRole="alert" style={style.warning}>{error}</Text></View>
+  {!!error&&<View style={style.card}><Text accessibilityRole="alert" style={style.warning}>{error}</Text></View>}
   {!loading&&!loadError&&view==="eligible"&&eligible.map(row=><View key={row.bookingId} style={style.card}>
    <Text style={style.badge}>✓ {t.report}</Text>
    <Text style={style.title}>{row.clinicName}</Text>
