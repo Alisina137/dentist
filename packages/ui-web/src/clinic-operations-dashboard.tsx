@@ -229,7 +229,8 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
   {key:"dentistHours",label:"dentistHours",href:"/clinic/settings/hours"}
  ];
  const completed=checks.filter(x=>operations.data?.checklist.some(row=>row.key===x.key&&row.done)).length;
- function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();bookingRequests.refresh();insights.refresh();}
+ function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();bookingRequests.refresh();}
+ function refreshDashboard(){refreshAll();insights.refresh();}
  return <div className="h-clinic" lang={lang}>
   <header className="h-head">
    <div><span className="h-eyebrow"><CareIcon name="activity" size={17}/>{t("eyebrow")}</span>
@@ -240,7 +241,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
      <span className={"h-status h-"+(space.clinicStatus==="approved"?"approved":"pending")}>
       {t("status")}: {t(space.clinicStatus)||space.clinicStatus}</span>
     </div></div>
-   <button className="btn btn-secondary h-refresh" onClick={refreshAll} type="button">
+   <button className="btn btn-secondary h-refresh" onClick={refreshDashboard} type="button">
     <CareIcon name="activity" size={17}/>{t("refresh")}</button>
   </header>
   {space.clinicStatus!=="approved"&&<div className="h-warning" role="status">
