@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
+import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -178,16 +179,17 @@ const day=()=>{
 function Banner({children,kind="info"}:{children:ReactNode;kind?:"info"|"error"|"success"|"warning"}){
  return <InlineAlert kind={kind}>{children}</InlineAlert>;
 }
-function Loading(){const {t}=useW();return <section className="card phase07-loading" aria-live="polite">
- <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</section>;}
+function Loading(){const {t}=useW();return <ClinicLoadingState
+ className="card phase07-loading" label={t("loading")} variant="form"/>;}
 function ErrorBox({error,retry}:{error:string;retry?:()=>void}){
- const {t}=useW();return <section className="card phase07-error" role="alert">
- <strong>{t("errors")}</strong><p>{error==="STALE_ENCOUNTER_REVISION"?t("revisionConflict"):error}</p>
- {retry&&<button className="btn btn-secondary" onClick={retry}>{t("retry")}</button>}</section>;
+ const {t,error:describe}=useClinicFeedback();
+ return <ClinicFailureState className="card phase07-error" title={t("failed")}
+  message={describe(error)} onRetry={retry} retryLabel={t("retry")}/>;
 }
 function Tabs({space,patientId,current}:{space:Space;patientId:string;current:View}){
  const {t}=useW();return <nav className="phase07-tabs" aria-label={t("patient")}>
- <a href={link(space.clinicId,patientId)}>{t("overview")}</a>
+ <a aria-current={current==="overview"?"page":undefined}
+  href={link(space.clinicId,patientId)}>{t("overview")}</a>
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
