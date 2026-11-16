@@ -3,6 +3,8 @@ import React,{useEffect,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
+import {CareIcon} from "./care-icons";
+import {clinicValidDay} from "./clinic-scheduling-dates";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
@@ -54,7 +56,24 @@ const labels:Record<Language,Record<string,string>>={
  newIntake:"Check recorded medical alerts before treatment.",chooseFile:"Choose at least one file.",
  attachment:"Attachment",chooseAppointment:"Link to appointment",leaveUnlinked:"Unlinked",
  uploadFailed:"Upload failed; selected files remain available for retry.",protected:"Restricted clinical data",
- assistantHint:"Assistants may prepare their own assigned appointment drafts but cannot sign or amend."
+ assistantHint:"Assistants may prepare their own assigned appointment drafts but cannot sign or amend.",
+ chart:"Dental chart",treatments:"Treatment plans",
+ handoff:"Reception-to-clinician handoff",handoffIntro:"Check in the patient at reception, then document care in the assigned clinical workspace.",
+ handoffReception:"Reception check-in",handoffReview:"Clinician reviews intake",handoffDocument:"Document and sign actual care",
+ handoffWarning:"Check-in does not establish clinical readiness or patient consent. Review medical alerts and permissions before treatment.",
+ handoffQueue:"Reception queue",handoffCalendar:"Appointments calendar",
+ handoffSearch:"Search this worklist",handoffSearchHint:"Patient, clinic ID or service",
+ handoffStatus:"Appointment status",handoffAll:"All active stages",handoffAwaiting:"Awaiting check-in",
+ handoffChecked:"Checked in",handoffTreatment:"In treatment",handoffCompleted:"Completed",
+ handoffNoMatch:"No matching cases in the latest loaded worklist. Clear the search or switch dates.",
+ handoffOpenPatient:"Patient overview",handoffOpenAppointment:"Appointment details",handoffContinue:"Open clinical record",
+ handoffDateHint:"Choose the date of the appointments to review.",handoffRange:"Up to 100 appointments, 60 draft notes and 60 signed cases are returned by the server; counts are for this loaded window only.",
+ handoffRefresh:"Refresh worklist",handoffClear:"Clear filters",handoffVisit:"Start clinical note",
+ handoffNoVisit:"There is no clinical encounter linked to this appointment. Opening Visits does not automatically create one.",
+ handoffAlready:"Linked clinical encounter",handoffUnknown:"Status not yet refreshed",
+ handoffActive:"Appointments on selected day",handoffLinked:"Clinical record",
+ handoffDesk:"Open reception queue to record arrival. Only authorized reception staff can check a patient in.",
+ handoffNeedsVerification:"Confirm the patient identity, clinical alerts and consent before documenting care.",
  },
  "fa-AF":{
  clinical:"کلینیکی",operational:"پیشرفت عملیاتی · فقط آمار کلی",scheduled:"وقت‌های امروز",arrived:"پذیرش‌شده",inTreatment:"در حال تداوی",completed:"تکمیل‌شده امروز",pendingCount:"یادداشت‌های ناتمام",signedCount:"معاینات امضاشده",worklist:"فهرست کارهای کلینیکی",today:"امروز",pending:"یادداشت‌های ناتمام",cases:"موارد من",
@@ -93,7 +112,24 @@ const labels:Record<Language,Record<string,string>>={
  newIntake:"پیش از تداوی، هشدارهای صحی ثبت‌شده را بررسی کنید.",chooseFile:"حداقل یک فایل انتخاب کنید.",
  attachment:"ضمیمه",chooseAppointment:"اتصال به وقت ملاقات",leaveUnlinked:"بدون اتصال",
  uploadFailed:"بارگذاری ناکام شد؛ فایل‌های انتخاب‌شده برای تلاش دوباره حفظ می‌شوند.",protected:"داده‌های کلینیکی محرمانه",
- assistantHint:"دستیار می‌تواند پیش‌نویس وظیفه مربوط را بسازد؛ اما امضا یا اصلاحیه انجام نمی‌دهد."
+ assistantHint:"دستیار می‌تواند پیش‌نویس وظیفه مربوط را بسازد؛ اما امضا یا اصلاحیه انجام نمی‌دهد.",
+ chart:"چارت دندان",treatments:"پلان‌های تداوی",
+ handoff:"تحویل کار از پذیرش به داکتر",handoffIntro:"ابتدا حضور مریض در پذیرش ثبت شود؛ سپس در بخش کلینیکی اسناد تداوی نوشته شوند.",
+ handoffReception:"ثبت حضور در پذیرش",handoffReview:"بررسی سابقه طبی توسط داکتر",handoffDocument:"ثبت و امضای خدمات انجام‌شده",
+ handoffWarning:"حضور مریض به معنی آمادگی طبی یا رضایت او نیست. قبل از تداوی هشدارها و اجازه‌ها را بررسی کنید.",
+ handoffQueue:"صف پذیرش",handoffCalendar:"تقویم ملاقات‌ها",
+ handoffSearch:"جستجو در فهرست کار",handoffSearchHint:"نام، شماره مریض یا خدمت",
+ handoffStatus:"حالت ملاقات",handoffAll:"تمام مراحل فعال",handoffAwaiting:"منتظر پذیرش",
+ handoffChecked:"پذیرش‌شده",handoffTreatment:"تحت تداوی",handoffCompleted:"تکمیل‌شده",
+ handoffNoMatch:"در فهرست بارگیری‌شده موردی یافت نشد. فیلتر را پاک یا تاریخ را تغییر دهید.",
+ handoffOpenPatient:"نمای کلی مریض",handoffOpenAppointment:"جزئیات ملاقات",handoffContinue:"بازکردن سند کلینیکی",
+ handoffDateHint:"تاریخ ملاقات‌های مورد نظر را انتخاب کنید.",handoffRange:"سرور حداکثر ۱۰۰ ملاقات، ۶۰ پیش‌نویس و ۶۰ مورد امضاشده را می‌دهد. ارقام فقط برای همین فهرست هستند.",
+ handoffRefresh:"تازه‌سازی فهرست",handoffClear:"پاک‌کردن فیلترها",handoffVisit:"ایجاد یادداشت کلینیکی",
+ handoffNoVisit:"معاینه‌ای به این ملاقات وصل نیست. بازکردن معاینات به‌طور خودکار سند ایجاد نمی‌کند.",
+ handoffAlready:"سند کلینیکی وصل‌شده",handoffUnknown:"هنوز تازه نشده",
+ handoffActive:"ملاقات‌های تاریخ انتخاب‌شده",handoffLinked:"سند کلینیکی",
+ handoffDesk:"برای ثبت حضور صف پذیرش را باز کنید. فقط پذیرش مجاز می‌تواند حضور را ثبت کند.",
+ handoffNeedsVerification:"قبل از ثبت تداوی، هویت مریض، هشدارهای صحی و رضایت را بررسی کنید.",
  },
  "ps-AF":{
  clinical:"کلینیکي",operational:"د چارو لنډیز · یوازې شمېرې",scheduled:"نن ټاکل شوې",arrived:"رارسېدلي",inTreatment:"تر درملنې لاندې",completed:"نن بشپړ شوي",pendingCount:"پاتې یادښتونه",signedCount:"لاسلیک شوې معاینې",worklist:"د کلینیکي کارونو لړلیک",today:"نن",pending:"نیمګړې یادښتونه",cases:"زما قضیې",
@@ -130,7 +166,24 @@ const labels:Record<Language,Record<string,string>>={
  newIntake:"له درملنې وړاندې طبي خبرتیاوې وګورئ.",chooseFile:"لږترلږه یو فایل غوره کړئ.",
  attachment:"ضمیمه",chooseAppointment:"نوبت ونښلوئ",leaveUnlinked:"بې ارتباطه",
  uploadFailed:"پورته کول ناکام شول؛ فایلونه د بیا هڅې لپاره ساتل شوي.",protected:"خوندي کلینیکي معلومات",
- assistantHint:"مرستیال خپله سپارل شوې مسوده جوړوي، خو لاسلیک یا سمون نه شي کولی."
+ assistantHint:"مرستیال خپله سپارل شوې مسوده جوړوي، خو لاسلیک یا سمون نه شي کولی.",
+ chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",
+ handoff:"له استقبال څخه ډاکټر ته سپارل",handoffIntro:"لومړی د ناروغ راتګ په استقبال کې ثبت کړئ؛ بیا رښتینې درملنه په کلینیکي برخه کې ولیکئ.",
+ handoffReception:"په استقبال کې د راتګ ثبت",handoffReview:"د ډاکټر له خوا د طبي تاریخ کتنه",handoffDocument:"د ترسره شوې درملنې ثبت او لاسلیک",
+ handoffWarning:"د راتګ ثبت طبي چمتووالی یا رضا نه ثابتوي؛ تر درملنې وړاندې طبي خبرتیاوې او اجازې وګورئ.",
+ handoffQueue:"د استقبال کتار",handoffCalendar:"د ملاقاتونو مهالوېش",
+ handoffSearch:"د کارلړ پلټنه",handoffSearchHint:"نوم، د ناروغ شمېره یا خدمت",
+ handoffStatus:"د ملاقات حالت",handoffAll:"ټول فعال پړاوونه",handoffAwaiting:"د راتګ په تمه",
+ handoffChecked:"رارسېدلی",handoffTreatment:"تر درملنې لاندې",handoffCompleted:"بشپړ",
+ handoffNoMatch:"په پورته شوي کارلړ کې پایله نشته؛ چاڼ پاک یا نېټه بدله کړئ.",
+ handoffOpenPatient:"د ناروغ لنډیز",handoffOpenAppointment:"د ملاقات جزیات",handoffContinue:"کلینیکي ریکارډ پرانیزئ",
+ handoffDateHint:"د لیدنو نېټه وټاکئ.",handoffRange:"سرور تر ۱۰۰ ملاقاتونو، ۶۰ مسودو او ۶۰ لاسلیک شویو ریکارډونو پورې ښيي؛ شمېرې یوازې د پورته شوي لړ دي.",
+ handoffRefresh:"کارلړ تازه کړئ",handoffClear:"چاڼونه پاک کړئ",handoffVisit:"کلینیکي یادښت جوړ کړئ",
+ handoffNoVisit:"دې ملاقات ته کلینیکي ریکارډ نه دی نښلول شوی؛ د معایناتو پاڼه په خپله نوی ریکارډ نه جوړوي.",
+ handoffAlready:"نښلول شوی کلینیکي ریکارډ",handoffUnknown:"لا نه دی تازه شوی",
+ handoffActive:"د ټاکلې ورځې ملاقاتونه",handoffLinked:"کلینیکي ریکارډ",
+ handoffDesk:"د راتګ د ثبت لپاره د استقبال کتار پرانیزئ. یوازې اجازه لرونکی استقبال راتګ ثبتوي.",
+ handoffNeedsVerification:"تر ثبت وړاندې د ناروغ هویت، طبي خبرتیاوې او رضایت وګورئ.",
  }
 };
 function useW(){
