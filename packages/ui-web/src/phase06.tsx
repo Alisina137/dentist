@@ -361,7 +361,7 @@ function useWords(){
  };
  const time=(value:unknown)=>fmt(value,{year:undefined,month:undefined,day:undefined,
   hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
- return {t,fmt,time,lang};
+ return {t,fmt,time,lang,calendar};
 }
 async function call(path:string,method="GET",body?:unknown):Promise<any>{
  const r=await fetch(API+"/v1/appointments"+path,{method,credentials:"include",
@@ -426,10 +426,10 @@ function moveMonth(date:string,delta:number){
  return d.toISOString().slice(0,10);
 }
 const weekLabels=["daySat","daySun","dayMon","dayTue","dayWed","dayThu","dayFri"] as const;
-function dateTitle(value:string,lang:Lang){
+function dateTitle(value:string,lang:Lang,calendar:"solar_hijri"|"gregorian"){
  const date=new Date(value+"T12:00:00Z");
  return new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",day:"numeric",
-  calendar:"gregory"}).format(date);
+  calendar:calendar==="solar_hijri"?"persian":"gregory"}).format(date);
 }
 function dateRange(date:string,view:ViewMode){
  if(view==="day")return {from:date,to:date};
@@ -572,7 +572,7 @@ function CalendarCard({space,a,compact=false}:{space:Space;a:Appointment;compact
  </a>;
 }
 function CalendarPanel({space}:{space:Space}){
- const {t,fmt,lang}=useWords();
+ const {t,fmt,lang,calendar}=useWords();
  const [date,setDate]=useState(dayKabul());
  const [mode,setMode]=useState<ViewMode>(space.role==="receptionist"?"day":"week");
  const [doctor,setDoctor]=useState(""),[chair,setChair]=useState(""),[status,setStatus]=useState("all");
@@ -610,8 +610,8 @@ function CalendarPanel({space}:{space:Space}){
   return grouped;
  },[appointments]);
  const counts=overview?.counts||{};
- const dateLabel=mode==="day"?dateTitle(date,lang):
-  mode==="week"?dateTitle(period.from,lang)+" — "+dateTitle(period.to,lang):
+ const dateLabel=mode==="day"?dateTitle(date,lang,calendar):
+  mode==="week"?dateTitle(period.from,lang,calendar)+" — "+dateTitle(period.to,lang,calendar):
   new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",
    calendar:"gregory"}).format(new Date(date.slice(0,7)+"-01T12:00:00Z"));
  const next=()=>navigate(mode==="day"?advance(date,1):mode==="week"?advance(date,7):moveMonth(date,1));
@@ -683,7 +683,7 @@ function CalendarPanel({space}:{space:Space}){
  </div>;
 }
 function DayGrid({space,date,appointments}:{space:Space;date:string;appointments:Appointment[]}){
- const {t,lang}=useWords();
+ const {t,lang,calendar}=useWords();
  const earliest=appointments.length?Math.max(0,Math.floor(Math.min(...appointments.map(a=>
   Number(localClock(a.startAt).slice(0,2)))))-1):8;
  const latest=appointments.length?Math.min(23,Math.ceil(Math.max(...appointments.map(a=>
@@ -698,7 +698,7 @@ function DayGrid({space,date,appointments}:{space:Space;date:string;appointments
   <div className="phase06-day-heading">
    <div><span className="phase06-day-number">
     {new Date(date+"T12:00:00Z").getUTCDate()}</span>
-    <div><strong>{dateTitle(date,lang)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
+    <div><strong>{dateTitle(date,lang,calendar)}</strong><span>{t("timeZone")} · {appointments.length} {t("count")}</span></div>
    </div>
    {canBook(space)&&<a className="phase06-text-action"
      href={appHref(space.clinicId,"new")+"&date="+date}>{t("newAppointment")} ↗</a>}
@@ -878,7 +878,7 @@ function QueueCard({space,a,changed}:{space:Space;a:Appointment;changed:()=>void
  </article>;
 }
 function QueuePanel({space}:{space:Space}){
- const {t,fmt,lang}=useWords();
+ const {t,fmt,lang,calendar}=useWords();
  const [day,setDay]=useState(dayKabul()),[provider,setProvider]=useState("");
  useEffect(()=>{
   const q=new URLSearchParams(location.search);
@@ -900,7 +900,7 @@ function QueuePanel({space}:{space:Space}){
  return <div className="phase06-queue-page">
   <section className="phase06-queue-intro card">
    <div><span className="phase06-eyebrow">{t("queueToday")}</span>
-    <h2>{dateTitle(day,lang)}</h2><p>{t("queueDateHint")}</p></div>
+    <h2>{dateTitle(day,lang,calendar)}</h2><p>{t("queueDateHint")}</p></div>
    <div className="phase06-queue-controls">
     <button className="btn btn-secondary" onClick={()=>setDay(dayKabul())}>{t("today")}</button>
     <label className="phase06-field"><span>{t("queuePast")}</span>
