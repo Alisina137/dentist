@@ -5,6 +5,7 @@ import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-
 import {Shell} from "./phase03";
 import {CareIcon} from "./care-icons";
 import {clinicValidDay} from "./clinic-scheduling-dates";
+import {clinicCanLinkClinicalEncounter,clinicHandoffStatusKey} from "./clinic-handoff-model";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
@@ -64,7 +65,7 @@ const labels:Record<Language,Record<string,string>>={
  handoffWarning:"Check-in does not establish clinical readiness or patient consent. Review medical alerts and permissions before treatment.",
  handoffQueue:"Reception queue",handoffCalendar:"Appointments calendar",
  handoffSearch:"Search this worklist",handoffSearchHint:"Patient, clinic ID or service",
- handoffStatus:"Appointment status",handoffAll:"All active stages",handoffAwaiting:"Awaiting check-in",
+ handoffStatus:"Appointment status",handoffAll:"All active stages",handoffRequested:"Awaiting clinic approval",handoffAwaiting:"Awaiting check-in",
  handoffChecked:"Checked in",handoffTreatment:"In treatment",handoffCompleted:"Completed",
  handoffNoMatch:"No matching cases in the latest loaded worklist. Clear the search or switch dates.",
  handoffOpenPatient:"Patient overview",handoffOpenAppointment:"Appointment details",handoffContinue:"Open clinical record",
@@ -121,7 +122,7 @@ const labels:Record<Language,Record<string,string>>={
  handoffWarning:"حضور مریض به معنی آمادگی طبی یا رضایت او نیست. قبل از تداوی هشدارها و اجازه‌ها را بررسی کنید.",
  handoffQueue:"صف پذیرش",handoffCalendar:"تقویم ملاقات‌ها",
  handoffSearch:"جستجو در فهرست کار",handoffSearchHint:"نام، شماره مریض یا خدمت",
- handoffStatus:"حالت ملاقات",handoffAll:"تمام مراحل فعال",handoffAwaiting:"منتظر پذیرش",
+ handoffStatus:"حالت ملاقات",handoffAll:"تمام مراحل فعال",handoffRequested:"منتظر تأیید درخواست",handoffAwaiting:"منتظر پذیرش",
  handoffChecked:"پذیرش‌شده",handoffTreatment:"تحت تداوی",handoffCompleted:"تکمیل‌شده",
  handoffNoMatch:"در فهرست بارگیری‌شده موردی یافت نشد. فیلتر را پاک یا تاریخ را تغییر دهید.",
  handoffOpenPatient:"نمای کلی مریض",handoffOpenAppointment:"جزئیات ملاقات",handoffContinue:"بازکردن سند کلینیکی",
@@ -176,7 +177,7 @@ const labels:Record<Language,Record<string,string>>={
  handoffWarning:"د راتګ ثبت طبي چمتووالی یا رضا نه ثابتوي؛ تر درملنې وړاندې طبي خبرتیاوې او اجازې وګورئ.",
  handoffQueue:"د استقبال کتار",handoffCalendar:"د ملاقاتونو مهالوېش",
  handoffSearch:"د کارلړ پلټنه",handoffSearchHint:"نوم، د ناروغ شمېره یا خدمت",
- handoffStatus:"د ملاقات حالت",handoffAll:"ټول فعال پړاوونه",handoffAwaiting:"د راتګ په تمه",
+ handoffStatus:"د ملاقات حالت",handoffAll:"ټول فعال پړاوونه",handoffRequested:"د کلینیک د تایید په تمه",handoffAwaiting:"د راتګ په تمه",
  handoffChecked:"رارسېدلی",handoffTreatment:"تر درملنې لاندې",handoffCompleted:"بشپړ",
  handoffNoMatch:"په پورته شوي کارلړ کې پایله نشته؛ چاڼ پاک یا نېټه بدله کړئ.",
  handoffOpenPatient:"د ناروغ لنډیز",handoffOpenAppointment:"د ملاقات جزیات",handoffContinue:"کلینیکي ریکارډ پرانیزئ",
@@ -488,16 +489,14 @@ function Worklist({space}:{space:Space}){
          <bdi dir="ltr">{a.patient_number}</bdi> · {a.service_name}
         </div>
         <span className={"clinic-phase09-visit-status stage-"+a.status}>
-         {t(a.status==="confirmed"?"handoffAwaiting":
-          a.status==="arrived"?"handoffChecked":
-          a.status==="in_treatment"?"handoffTreatment":
-          a.status==="completed"?"handoffCompleted":"handoffUnknown")}</span>
+         {t(clinicHandoffStatusKey(a.status))}</span>
         {a.encounter_id&&<small className="clinic-phase09-encounter-mark">
          <CareIcon name="check" size={14}/>{t("handoffAlready")}</small>}
        </div>
        <div className="clinic-phase09-row-actions">
-        {a.status==="confirmed"?<span className="phase07-await" aria-label={t("awaitArrival")}>
-         {t("awaitArrival")}</span>:
+        {!clinicCanLinkClinicalEncounter(a.status)?<span className="phase07-await"
+         aria-label={t(a.status==="requested"?"handoffRequested":"awaitArrival")}>
+         {t(a.status==="requested"?"handoffRequested":"awaitArrival")}</span>:
          <a className="btn btn-primary" href={a.encounter_id?
           link(space.clinicId,a.patient_id,"visits",a.encounter_id):
           link(space.clinicId,a.patient_id,"visits")+
