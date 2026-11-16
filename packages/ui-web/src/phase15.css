@@ -89,3 +89,31 @@
  .p15-review>div{display:flex;flex-direction:column;gap:4px}
 }
 @media(prefers-reduced-motion:reduce){.p15-spinner{animation:none}.p15-select-card,.p15-slot,.p15-appointment{transition:none}}
+
+/* Stage K — booking and clinic request loaders approximate the real content footprint. */
+.p15-page .p15-loading,.p15-panel .p15-loading{display:grid;align-content:start;
+ justify-items:stretch;gap:15px;padding:17px;background:#fbfdff;
+ border:1px solid #e4edf3;border-radius:15px;min-height:165px}
+.p15-loading-label{display:flex;gap:12px;align-items:center;justify-content:flex-start;
+ color:#5d7588;font-size:12px;font-weight:750}
+.p15-loading .p15-spinner{width:22px;height:22px;flex-shrink:0;border-width:2px}
+.p15-skeletons{display:grid;grid-template-columns:1fr;gap:12px}
+.p15-skeleton{display:block;height:48px;border-radius:12px;
+ background:linear-gradient(100deg,#eaf1f6 10%,#f8fbfc 40%,#e6eff5 75%);
+ background-size:200% 100%;animation:p15-skeleton-slide 1.6s ease-in-out infinite}
+@keyframes p15-skeleton-slide{from{background-position:100% 0}to{background-position:-100% 0}}
+.p15-loading-slots .p15-skeletons{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.p15-loading-slots .p15-skeleton{height:46px}
+.p15-loading-form .p15-skeletons{grid-template-columns:repeat(2,minmax(0,1fr))}
+.p15-loading-form .p15-skeleton{height:64px}
+.p15-loading-form,.p15-loading-list{min-height:195px}
+.p15-page .p15-footer .p15-button:focus-visible{outline:3px solid #1c8094;outline-offset:3px}
+.p15-page .p15-tabs button:focus-visible{outline:3px solid #1c8094;outline-offset:2px}
+.p15-page .p15-list-row,.p15-page .p15-appointment{min-width:0;overflow-wrap:anywhere}
+@media(max-width:600px){
+ .p15-loading-slots .p15-skeletons{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .p15-loading-form .p15-skeletons{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+ .p15-skeleton{animation:none!important;background:#eaf1f6}
+}

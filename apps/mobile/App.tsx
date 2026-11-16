@@ -1,10 +1,10 @@
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth} from "./native-auth";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
- ActivityIndicator,Image,Linking,Pressable,RefreshControl,ScrollView,
+ AccessibilityInfo,ActivityIndicator,Animated,Image,Linking,Pressable,RefreshControl,ScrollView,
  StatusBar,StyleSheet,Text,TextInput,View
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -321,22 +321,31 @@ async function fetchPublic<T>(path:string,signal?:AbortSignal):Promise<T>{
  return response.json() as Promise<T>;
 }
 function usePublic<T>(path:string|null):Remote<T>{
- const [state,setState]=useState<{loading:boolean;data:T|null;error:string|null}>({
- loading:!!path,data:null,error:null});
+ // Bind every public result to its current filters and location; a stale clinic
+ // list must not appear for one frame when a user changes a search facet.
+ const [state,setState]=useState<{path:string|null;loading:boolean;data:T|null;error:string|null}>({
+  path:null,loading:!!path,data:null,error:null
+ });
  const [reload,setReload]=useState(0);
  useEffect(()=>{
-  if(path===null){setState({loading:false,data:null,error:null});return}
+  if(path===null){setState({path:null,loading:false,data:null,error:null});return}
   let active=true;const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),9000);
-  setState({loading:true,data:null,error:null});
+  setState({path,loading:true,data:null,error:null});
   void fetchPublic<T>(path,controller.signal).then(data=>{
-   if(active)setState({loading:false,data,error:null});
+   if(active)setState({path,loading:false,data,error:null});
   }).catch(e=>{
-   if(active)setState({loading:false,data:null,error:e instanceof Error?e.message:"SERVICE_UNAVAILABLE"});
+   if(active)setState({path,loading:false,data:null,
+    error:e instanceof Error?e.message:"SERVICE_UNAVAILABLE"});
   }).finally(()=>clearTimeout(timer));
   return ()=>{active=false;clearTimeout(timer);controller.abort()};
  },[path,reload]);
- return {...state,refresh:()=>setReload(x=>x+1)};
+ return {
+  data:state.path===path?state.data:null,
+  error:state.path===path?state.error:null,
+  loading:state.path===path?state.loading:!!path,
+  refresh:()=>setReload(x=>x+1)
+ };
 }
 function urlSearch(fields:Record<string,string|number|undefined>){
  const params=new URLSearchParams();
@@ -365,7 +374,8 @@ function CardShell({children,style}:{children:React.ReactNode;style?:object}){
 }
 function CTA({label,onPress,secondary=false,disabled=false}:{label:string;onPress:()=>void;secondary?:boolean;disabled?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled}
- onPress={onPress} style={[s.cta,secondary&&s.ctaLight,disabled&&s.disabled]}>
+ onPress={onPress} style={({pressed})=>[s.cta,secondary&&s.ctaLight,
+  disabled&&s.disabled,pressed&&!disabled&&s.ctaPressed]}>
   <Text style={[s.ctaText,secondary&&s.ctaTextLight]}>{label}</Text>
  </Pressable>;
 }
@@ -382,15 +392,35 @@ function SectionHead({ui,title,sub,action}:{ui:UI;title:string;sub?:string;actio
  </View>;
 }
 function LoadingCards({ui}:{ui:UI}){
- return <View style={s.cardList}><View style={{alignItems:"center",paddingVertical:9}}>
-  <ActivityIndicator color={colors.blue}/><Text style={s.helpText}>{ui.t("loading")}</Text></View>
-  {[0,1].map(i=><View key={i} style={s.skeletonCard}>
-   <View style={[s.row,{flexDirection:ui.flow,gap:12}]}>
-    <View style={s.skeletonImage}/><View style={{flex:1,gap:12}}>
-     <View style={[s.skeletonLine,{width:"80%"}]}/><View style={[s.skeletonLine,{width:"52%"}]}/>
-     <View style={[s.skeletonLine,{width:"66%"}]}/></View></View>
-   <View style={[s.skeletonLine,{width:"100%",height:38,marginTop:18}]}/>
-  </View>)}</View>;
+ const fade=useRef(new Animated.Value(1)).current;
+ useEffect(()=>{
+  let active=true,loop:Animated.CompositeAnimation|null=null;
+  // Respect accessibility settings and clean up the native-driver loop.
+  void AccessibilityInfo.isReduceMotionEnabled().then(reduced=>{
+   if(!active||reduced)return;
+   loop=Animated.loop(Animated.sequence([
+    Animated.timing(fade,{toValue:.65,duration:850,useNativeDriver:true}),
+    Animated.timing(fade,{toValue:1,duration:850,useNativeDriver:true})
+   ]));loop.start();
+  }).catch(()=>{});
+  return ()=>{active=false;loop?.stop()};
+ },[fade]);
+ return <View style={s.cardList}>
+  <View accessibilityRole="progressbar" accessibilityLabel={ui.t("loading")}
+   style={{alignItems:"center",paddingVertical:9}}>
+   <ActivityIndicator color={colors.blue}/><Text style={s.helpText}>{ui.t("loading")}</Text>
+  </View>
+  <Animated.View style={{opacity:fade,gap:13}} importantForAccessibility="no-hide-descendants">
+   {[0,1,2].map(i=><View key={i} style={s.skeletonCard}>
+    <View style={[s.row,{flexDirection:ui.flow,gap:12}]}>
+     <View style={s.skeletonImage}/><View style={{flex:1,gap:12}}>
+      <View style={[s.skeletonLine,{width:"80%"}]}/>
+      <View style={[s.skeletonLine,{width:"52%"}]}/>
+      <View style={[s.skeletonLine,{width:"66%"}]}/></View></View>
+    <View style={[s.skeletonLine,{width:"100%",height:38,marginTop:18}]}/>
+   </View>)}
+  </Animated.View>
+ </View>;
 }
 function Failure({ui,error,retry}:{ui:UI;error:string|null;retry:()=>void}){
  return <CardShell style={s.blank}>
@@ -411,8 +441,8 @@ function PublishedPhoto({photo,label,large=false}:{photo:Photo|null|undefined;la
   <Text style={[s.photoFallbackIcon,large&&{fontSize:56}]}>✧</Text>
   <Text style={s.photoFallbackLabel}>DANDANLINK</Text></View>;
  const url=photo.url.startsWith("/")?API+photo.url:photo.url;
- return <Image source={{uri:url}} resizeMode="cover"
-  onError={()=>setBad(true)}
+ return <Image source={{uri:url}} resizeMode="cover" fadeDuration={160}
+  progressiveRenderingEnabled onError={()=>setBad(true)}
   accessibilityLabel={photo.caption||label} style={[s.photo,large&&s.photoLarge]}/>;
 }
 function SavedButton({saved,onPress,ui}:{saved:boolean;onPress:()=>void;ui:UI}){
@@ -1196,7 +1226,7 @@ function PatientApp(){
    {([["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
      accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
-     style={[s.bottomNavItem,tab===value&&s.bottomNavItemActive]}>
+     style={({pressed})=>[s.bottomNavItem,tab===value&&s.bottomNavItemActive,pressed&&s.bottomNavPressed]}>
      <Text style={[s.bottomNavIcon,tab===value&&s.bottomNavIconSelected]}>{icon}</Text>
      <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
       {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
@@ -1241,11 +1271,12 @@ const s=StyleSheet.create({
  bottomNav:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
   justifyContent:"space-around",paddingHorizontal:7,paddingTop:8,paddingBottom:3},
  bottomNavItem:{flex:1,minHeight:57,alignItems:"center",justifyContent:"center",
-  borderRadius:12,marginHorizontal:3},
- bottomNavItemActive:{backgroundColor:colors.pale},
+  borderRadius:12,marginHorizontal:3,borderWidth:1,borderColor:"transparent"},
+ bottomNavItemActive:{backgroundColor:"#EAF3FF",borderColor:"#CDE0FC"},
+ bottomNavPressed:{opacity:.88},
  bottomNavIcon:{fontSize:25,color:"#93A1B3",lineHeight:29},
  bottomNavIconSelected:{color:colors.blue},
- bottomNavLabel:{fontSize:10,fontWeight:"700",marginTop:2,color:"#929DAE"},
+ bottomNavLabel:{fontSize:11,lineHeight:15,fontWeight:"700",marginTop:2,color:"#687D97"},
  bottomNavLabelSelected:{color:colors.blue,fontWeight:"900"},
  hero:{minHeight:197,backgroundColor:colors.blue,borderRadius:22,
   padding:23,overflow:"hidden",justifyContent:"center"},
@@ -1278,6 +1309,7 @@ const s=StyleSheet.create({
  ctaText:{fontWeight:"900",fontSize:14,color:colors.white,textAlign:"center"},
  ctaLight:{backgroundColor:colors.pale,borderWidth:1,borderColor:"#CCE0FF"},
  ctaTextLight:{color:colors.blue},
+ ctaPressed:{opacity:.9,transform:[{scale:.988}]},
  disabled:{opacity:.4},
  clinicCard:{gap:12,padding:15},
  cardList:{gap:13},

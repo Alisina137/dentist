@@ -214,7 +214,18 @@ function LinkButton({href,children}:{href:string;children:React.ReactNode}){
 }
 function Banner({text}:{text:string}){return <InlineAlert kind="warning">{text}</InlineAlert>}
 function ErrorNote({message}:{message:string}){return message?<InlineAlert kind="error">{message}</InlineAlert>:null}
-function Spinner(){return <div className="p15-loading" role="status" aria-label="Loading"><span className="p15-spinner"/></div>}
+function Spinner({kind="list"}:{kind?:"list"|"slots"|"form"}){
+ const {t}=useWords();
+ return <div className={"p15-loading p15-loading-"+kind} role="status"
+  aria-label={t("loading")}>
+  <div className="p15-loading-label"><span className="p15-spinner" aria-hidden="true"/>
+   <span>{t("loading")}</span></div>
+  <div className="p15-skeletons" aria-hidden="true">
+   {Array.from({length:kind==="slots"?6:kind==="form"?4:3},(_,i)=>
+    <span className="p15-skeleton" key={i}/>)}
+  </div>
+ </div>;
+}
 function Badge({status}:{status:string}){const {t}=useWords();return <span className={"p15-badge p15-status-"+status}>{t(status)}</span>}
 function Page({heading,sub,children}:{heading:string;sub?:string;children:React.ReactNode}){
  const {lang}=useWords();
@@ -283,7 +294,7 @@ export function PatientBookPage({dentistId}:{dentistId:string}){
   year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
   const p=Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));
   return p.year+"-"+p.month+"-"+p.day};
- if(loading)return <Page heading={t("title")}><Spinner/></Page>;
+ if(loading)return <Page heading={t("title")}><Spinner kind="form"/></Page>;
  if(!clinic)return <Page heading={t("title")}><ErrorNote message={error||t("doctorUnavailable")}/>
   <LinkButton href="/search">{t("back")}</LinkButton></Page>;
  if(!profile?.registered)return <Page heading={t("title")}><div className="p15-panel">
@@ -309,7 +320,7 @@ export function PatientBookPage({dentistId}:{dentistId:string}){
     <h2>{t("date")}</h2>
     <label className="p15-field">{t("day")}<input type="date" value={day} min={dateMin()}
      onChange={e=>setDay(e.target.value)}/></label>
-    {loadingSlots?<Spinner/>:day?<div className="p15-slots">{slots.length?slots.map(slot=>
+    {loadingSlots?<Spinner kind="slots"/>:day?<div className="p15-slots">{slots.length?slots.map(slot=>
      <button type="button" key={slot.startAt} onClick={()=>setSelected(slot)}
       aria-pressed={selected?.startAt===slot.startAt}
       className={"p15-slot"+(selected?.startAt===slot.startAt?" chosen":"")}>
@@ -381,7 +392,10 @@ export function PatientAppointmentsPage(){
    <button key={s} aria-current={s===filter?"page":undefined} type="button"
     onClick={()=>setFilter(s)}>{t(s)}</button>)}</nav>
   <ErrorNote message={error}/>
-  {pending?<Spinner/>:filtered.length? <div className="p15-list">{filtered.map(a=>
+  {pending?<Spinner/>:error?
+   <div className="p15-footer"><button type="button" className="p15-button p15-button-secondary"
+    onClick={reload}>{t("tryAgain")}</button></div>:
+   filtered.length? <div className="p15-list">{filtered.map(a=>
    <a className="p15-appointment" href={"/appointments/"+a.id} key={a.id}>
     <div><strong>{a.clinicName}</strong><p>{a.serviceName} · {a.patientName}</p>
      <small>{fmt(a.startAt,true)}</small></div>

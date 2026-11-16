@@ -150,3 +150,49 @@
  .j-delivery-counters{grid-template-columns:repeat(2,minmax(0,1fr))}
  .j-delivery-head>.p15-button{width:100%}}
 @media(prefers-reduced-motion:reduce){.j-deliveries *{transition:none!important;animation:none!important}}
+
+/* Stage K — predictable loading geometry and lightweight, reduced-motion-aware polish. */
+.h-clinic .h-card{contain:layout style}
+.h-clinic .h-loading{display:grid;align-content:start;gap:14px;min-height:unset;
+ color:#627f8d;font-weight:700}
+.h-clinic .h-loading-metrics{min-height:220px}
+.h-clinic .h-loading-list{min-height:180px}
+.h-clinic .h-loading-summary{min-height:88px}
+.h-loading-label{display:inline-flex;align-items:center;gap:10px;font-size:12px;min-height:24px}
+.h-skeleton{display:block;position:relative;border-radius:9px;
+ background:linear-gradient(100deg,#edf3f6 12%,#f8fbfc 37%,#e8f1f4 63%);
+ background-size:220% 100%;animation:h-skeleton-move 1.5s ease-in-out infinite}
+@keyframes h-skeleton-move{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.h-skeleton-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.h-skeleton-metric{min-width:0;min-height:82px;background:#f5f9fb;border-radius:13px;
+ padding:14px 13px;display:grid;align-content:space-between;gap:12px}
+.h-skeleton-label{height:11px;width:72%;max-width:120px}.h-skeleton-value{height:25px;width:48%;max-width:65px}
+.h-skeleton-list{display:grid;gap:4px}
+.h-skeleton-row{display:flex;gap:12px;align-items:center;min-height:45px}
+.h-skeleton-icon{flex:0 0 32px;height:32px}.h-skeleton-copy{flex:1;height:13px;max-width:65%}
+.h-skeleton-trailing{height:13px;flex:0 0 33px;margin-inline-start:auto}
+.h-skeleton-summary{display:grid;gap:10px;align-content:start}
+.h-skeleton-wide{height:30px;width:44%;max-width:100px}.h-skeleton-short{height:12px;width:66%}
+.h-clinic .h-metric strong{font-variant-numeric:tabular-nums}
+.h-clinic .h-action:focus-visible,.h-clinic .h-check:focus-visible,
+.h-clinic .h-more:focus-visible{outline:3px solid #168e9b;outline-offset:3px}
+.h-clinic .h-card,.h-clinic .h-head{animation:h-fade-in .22s ease-out both}
+@keyframes h-fade-in{from{opacity:.85;transform:translateY(5px)}to{opacity:1;transform:none}}
+/* Keep intermediate staff and navigation sections visible as users wait for real data. */
+.k-team-skeleton{display:grid;gap:15px;width:100%;min-height:190px}
+.k-team-skeleton .k-skeleton-heading{display:grid;gap:11px;padding-bottom:12px}
+.k-team-skeleton .k-skeleton-heading>.h-skeleton:first-child{width:min(42%,250px);height:23px}
+.k-team-skeleton .k-skeleton-heading>.h-skeleton:last-child{width:min(68%,390px);height:12px}
+.k-team-skeleton .k-skeleton-row{display:flex;gap:12px;align-items:center;
+ padding:11px;border:1px solid #eaf0f2;border-radius:12px;min-height:55px}
+.k-team-skeleton .k-skeleton-row .h-skeleton:first-child{flex:0 0 38px;height:31px}
+.k-team-skeleton .k-skeleton-row .h-skeleton:last-child{height:12px;width:64%}
+.staff-shell .staff-content{min-width:0;overflow-wrap:anywhere}
+.staff-shell .phase04-side-nav a{transition:background-color .16s,color .16s,border-color .16s}
+@media(max-width:640px){.h-skeleton-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .h-clinic .h-loading-metrics{min-height:280px}
+ .k-team-skeleton .k-skeleton-row{min-height:48px}}
+@media(prefers-reduced-motion:reduce){
+ .h-skeleton,.h-clinic .h-card,.h-clinic .h-head{animation:none!important}
+ .staff-shell .phase04-side-nav a{transition:none!important}
+}

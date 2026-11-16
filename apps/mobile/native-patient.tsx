@@ -1,4 +1,4 @@
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
 
@@ -35,7 +35,7 @@ const words={
  accept:"I accept the patient terms and acknowledge the privacy policy.",
  adult:"I confirm I am an adult and understand the guardian policy.",save:"Save",
  profile:"My patient profile",family:"Family",addChild:"Add child",dob:"Date of birth (YYYY-MM-DD)",
- appointments:"My appointments",upcoming:"Upcoming",past:"Past",cancelled:"Cancelled",
+ appointments:"My appointments",upcoming:"Upcoming",past:"Past",cancelled:"Cancelled",loadingData:"Loading your information…",
  empty:"No appointments in this section.",find:"Find a clinic",retry:"Retry",
  cancel:"Cancel appointment",reschedule:"Reschedule",requested:"Waiting for clinic approval",
  confirmed:"Confirmed",rejected:"Declined",cancelHint:"Cancellation may be limited close to appointment time.",
@@ -70,7 +70,7 @@ const words={
  accept:"شرایط مریضان و حریم خصوصی را قبول دارم.",
  adult:"تأیید می‌کنم که بزرگسال هستم و قوانین سرپرستی را می‌فهمم.",save:"ذخیره",
  profile:"پروفایل مریض",family:"خانواده",addChild:"افزودن طفل",dob:"تاریخ تولد (YYYY-MM-DD)",
- appointments:"نوبت‌های من",upcoming:"آینده",past:"گذشته",cancelled:"لغوشده",
+ appointments:"نوبت‌های من",upcoming:"آینده",past:"گذشته",cancelled:"لغوشده",loadingData:"معلومات شما دریافت می‌شود…",
  empty:"در این بخش نوبتی موجود نیست.",find:"جستجوی کلینیک",retry:"دوباره کوشش",
  cancel:"لغو نوبت",reschedule:"تغییر وقت",requested:"در انتظار تأیید کلینیک",
  confirmed:"تأیید شده",rejected:"رد شده",cancelHint:"لغو نزدیک به وقت نوبت ممکن است محدود باشد.",
@@ -105,7 +105,7 @@ const words={
  accept:"زه د ناروغانو شرطونه او د محرمیت پالیسي منم.",
  adult:"زه بالغ یم او د سرپرستۍ اصول منم.",save:"ساتل",
  profile:"د ناروغ پروفایل",family:"کورنۍ",addChild:"ماشوم زیاتول",dob:"د زېږېدو نېټه (YYYY-MM-DD)",
- appointments:"زما ملاقاتونه",upcoming:"راتلونکي",past:"تېر",cancelled:"لغوه شوي",
+ appointments:"زما ملاقاتونه",upcoming:"راتلونکي",past:"تېر",cancelled:"لغوه شوي",loadingData:"معلومات بارېږي…",
  empty:"دلته ملاقات نشته.",find:"کلینیکونه لټول",retry:"بیا هڅه",
  cancel:"ملاقات لغوه کول",reschedule:"وخت بدلول",requested:"د کلینیک تایید ته په تمه",
  confirmed:"تایید شوی",rejected:"رد شوی",cancelHint:"ملاقات ته نږدې لغوه کول محدودېدای شي.",
@@ -154,6 +154,22 @@ function Button({title,onPress,secondary=false,danger=false,disabled=false}:{tit
   onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText,danger&&p.dangerText]}>{title}</Text></Pressable>;
 }
 function ErrorBox({message}:{message:string}){return <View style={p.errorBox}><Text style={p.errorText}>{message}</Text></View>}
+function NativeLoadingList({label,count=2}:{label:string;count?:number}){
+ return <View accessibilityRole="progressbar" accessibilityLabel={label} style={{gap:11}}>
+  <View style={{flexDirection:"row",alignItems:"center",gap:10}}>
+   <ActivityIndicator color={blue}/><Text style={p.copy}>{label}</Text>
+  </View>
+  {Array.from({length:count},(_,i)=><View key={i} style={p.skeletonCard}>
+   <View style={p.skeletonRow}>
+    <View style={p.skeletonAvatar}/>
+    <View style={{flex:1,gap:10}}>
+     <View style={[p.skeletonText,{width:"73%"}]}/>
+     <View style={[p.skeletonText,{width:"52%"}]}/></View>
+   </View>
+   <View style={[p.skeletonText,{width:"85%",marginTop:14}]}/>
+  </View>)}
+ </View>;
+}
 function formatDate(iso:string,lang:Language,calendar:Calendar="gregorian"){
  return new Intl.DateTimeFormat(lang==="en"?"en-GB":lang,{
   timeZone:"Asia/Kabul",calendar:calendar==="solar_hijri"?"persian":"gregory",
@@ -391,16 +407,30 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
 export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
  calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
  const t=tr(locale),auth=useNativeAuth();
- const [rows,setRows]=useState<Booking[]>([]),[filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
- const [busy,setBusy]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(true),[reload,setReload]=useState(0);
+ const [filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
+ const [busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
+ const [reload,setReload]=useState(0),generation=useRef(0);
+ const patientId=auth.account?.registered?auth.account.user.id:null;
+ const [snapshot,setSnapshot]=useState<{patientId:string;rows:Booking[];
+  error:string;loading:boolean}|null>(null);
  const refresh=useCallback(async()=>{
-  if(!auth.account?.registered)return;
-  setLoading(true);setError("");
-  try{const result=await auth.request<{appointments:Booking[]}>("/v1/booking/my");setRows(result.appointments)}
-  catch(e){setError(e instanceof Error?e.message:t.error)}
-  finally{setLoading(false)}
- },[auth.account?.registered,auth.request,locale]);
- useEffect(()=>{void refresh()},[refresh,reload]);
+  if(!patientId){setSnapshot(null);return;}
+  const request=++generation.current;
+  setActionError("");
+  setSnapshot({patientId,rows:[],error:"",loading:true});
+  try{
+   const result=await auth.request<{appointments:Booking[]}>("/v1/booking/my");
+   if(generation.current===request)setSnapshot({patientId,rows:result.appointments||[],
+    error:"",loading:false});
+  }catch(e){
+   if(generation.current===request)setSnapshot({patientId,rows:[],
+    error:e instanceof Error?e.message:t.error,loading:false});
+  }
+ },[patientId,auth.request,locale]);
+ useEffect(()=>{void refresh();return()=>{generation.current++};},[refresh,reload]);
+ const active=snapshot?.patientId===patientId?snapshot:null;
+ const rows=active?.rows||[],loading=active?.loading??true;
+ const error=active?.error||actionError;
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
@@ -412,11 +442,11 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    Date.parse(b.startAt)-Date.parse(a.startAt));
  const cancel=(b:Booking)=>Alert.alert(t.cancel,t.cancelHint,[
   {text:t.back,style:"cancel"},{text:t.cancel,style:"destructive",onPress:()=>void(async()=>{
-   setBusy(b.id);setError("");
+   setBusy(b.id);setActionError("");
    try{await auth.request("/v1/booking/my/"+encodeURIComponent(b.id)+"/cancel","POST",{
     revision:b.revision,reason:"Patient requested appointment cancellation"});
     await refresh();
-   }catch(e){setError(e instanceof Error?e.message:t.error)}
+   }catch(e){setActionError(e instanceof Error?e.message:t.error)}
    finally{setBusy("")}
   })()}]);
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -428,11 +458,11 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
     <Text style={[p.filterText,filter===key&&p.filterTextOn]}>{t[key]}</Text>
    </Pressable>)}</View>
   <Button secondary title={t.refresh} onPress={()=>setReload(x=>x+1)}/>
-  {loading&&<ActivityIndicator color={blue}/>}
+  {loading&&<NativeLoadingList label={t.loadingData}/> }
   {error&&<ErrorBox message={error}/>}
   {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
-  {current.map(b=><Block key={b.id}>
+  {!loading&&!error&&current.map(b=><Block key={b.id}>
    <View style={p.between}><Text style={p.title}>{b.clinicName}</Text>
     <Text style={[p.badge,["cancelled","rejected","no_show"].includes(b.status)?p.badgeDanger:
      b.status==="requested"?p.badgePending:null]}>{appointmentStatus(b.status,locale)}</Text>
@@ -607,7 +637,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
  }
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{t.favorites}</Text>
-  {loading&&<ActivityIndicator color={blue}/>}
+  {loading&&<NativeLoadingList label={t.loadingData}/> }
   {!!error&&<><ErrorBox message={error}/><Button secondary title={t.retry}
    onPress={()=>setReload(x=>x+1)}/></>}
   {!loading&&!error&&!favorites.length&&<Block><Text style={p.copy}>{t.noFavorites}</Text>
@@ -641,6 +671,11 @@ const p=StyleSheet.create({
  errorText:{color:"#9A2530",fontSize:13},
  success:{color:"#137655",fontWeight:"700"},
  item:{paddingVertical:7,borderBottomWidth:1,borderBottomColor:"#F0F4FA",color:dark},
+ skeletonCard:{backgroundColor:"#F8FBFE",borderWidth:1,borderColor:"#DFEAF2",
+  borderRadius:15,padding:16,minHeight:105},
+ skeletonRow:{flexDirection:"row",gap:13,alignItems:"center"},
+ skeletonAvatar:{width:46,height:46,borderRadius:12,backgroundColor:"#E3EDF5"},
+ skeletonText:{height:12,borderRadius:6,backgroundColor:"#E3EDF5"},
  notificationItem:{paddingVertical:9,borderTopWidth:1,borderTopColor:"#EDF2F8",gap:5},
  notificationBadge:{fontSize:11,fontWeight:"800",padding:6,borderRadius:16,overflow:"hidden"},
  check:{paddingVertical:10,minHeight:42},
