@@ -122,6 +122,8 @@ export function NativeFamilyManager({locale}:{locale:Lang}){
  useEffect(()=>{
   setEditing(undefined);setName("");setDob("");setConsent(false);
   setEmail("");setDecisionConsent({});setError("");setMessage("");
+ },[user]);
+ useEffect(()=>{
   if(!user){setSnapshot(null);return;}
   let live=true;setSnapshot(null);
   Promise.all([
@@ -227,7 +229,7 @@ export function NativeFamilyManager({locale}:{locale:Lang}){
       onPress={()=>void work(async()=>{
        await auth.request("/v1/patients/family/invite-adult","POST",{
         email:email.trim().toLowerCase(),explicitAuthorization:true});
-       setEmail("");setMessage(t.inviteSent);
+       setEmail("");
       })}/>
      <Text style={css.sub}>{t.inviteSent}</Text>
     </View>
