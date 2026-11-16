@@ -60,7 +60,7 @@ test("Stage G: booking uses live-slot pending/error states, calendar and signout
   'calendar:Calendar;clinicId:string',
   'setSlotsLoading(true)',
   'setSlotsLoading(false)',
-  'slotsLoading?<ActivityIndicator',
+  'slotsLoading?<View accessibilityRole="progressbar" accessibilityLabel={t.loadingData}',
   '!slots.length&&!error?',
   'formatDay(d,locale,calendar)',
   'formatDate(item.startAt,locale,calendar)',

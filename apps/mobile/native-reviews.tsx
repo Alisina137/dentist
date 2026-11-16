@@ -84,26 +84,40 @@ function Button({text,onPress,disabled=false,secondary=false}:{text:string;onPre
 export function NativeReviews({locale}:{locale:Lang}){
  const t=labels[locale]||labels.en,auth=useNativeAuth();
  const [view,setView]=useState<"eligible"|"mine"|"updates">("eligible");
- const [eligible,setEligible]=useState<Eligibility[]>([]),[mine,setMine]=useState<Review[]>([]);
- const [notices,setNotices]=useState<Notice[]>([]),[busy,setBusy]=useState(false);
- const [loading,setLoading]=useState(true),[error,setError]=useState("");
+ const user=auth.account?.registered?auth.account.user.id:null;
+ const [snapshot,setSnapshot]=useState<{user:string;eligible:Eligibility[];
+  mine:Review[];notices:Notice[];loading:boolean;error:string}|null>(null);
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const current=snapshot?.user===user?snapshot:null;
+ const eligible=current?.eligible||[],mine=current?.mine||[],notices=current?.notices||[];
+ const loading=current?.loading??true,loadError=current?.error||"";
  const [selected,setSelected]=useState<Eligibility|Review|null>(null);
  const [mode,setMode]=useState<"new"|"edit"|"appeal"|null>(null);
  const [rating,setRating]=useState(5),[headline,setHeadline]=useState(""),[feedback,setFeedback]=useState("");
  const [refresh,setRefresh]=useState(0);
  useEffect(()=>{
-  if(!auth.account?.registered){setLoading(false);return;}
-  let mounted=true;setLoading(true);setError("");
+  // Clear sensitive editor state on account changes; never retain a prior
+  // patient's review text, booking ID or rating while a new session loads.
+  setView("eligible");setSelected(null);setMode(null);
+  setHeadline("");setFeedback("");setRating(5);setError("");setBusy(false);
+ },[user]);
+ useEffect(()=>{
+  if(!user){setSnapshot(null);return;}
+  let mounted=true;
+  setSnapshot({user,eligible:[],mine:[],notices:[],loading:true,error:""});
   Promise.all([
    auth.request<{eligible:Eligibility[]}>("/v1/reviews/my/eligibility"),
    auth.request<{reviews:Review[]}>("/v1/reviews/my"),
    auth.request<{notices:Notice[]}>("/v1/reviews/my/notices")
   ]).then(([a,b,c])=>{
-   if(mounted){setEligible(a.eligible);setMine(b.reviews);setNotices(c.notices);}
-  }).catch(e=>{if(mounted)setError(patientError(e,locale))})
-   .finally(()=>{if(mounted)setLoading(false)});
+   if(mounted)setSnapshot({user,eligible:a.eligible||[],mine:b.reviews||[],
+    notices:c.notices||[],loading:false,error:""});
+  }).catch(e=>{
+   if(mounted)setSnapshot({user,eligible:[],mine:[],notices:[],
+    loading:false,error:patientError(e,locale)});
+  });
   return()=>{mounted=false};
- },[auth.account?.user.id,auth.account?.registered,refresh]);
+ },[user,auth.request,refresh]);
  if(!auth.account?.registered)return <View style={style.card}>
   <Text style={style.title}>{t.title}</Text><Text style={style.lead}>{t.denied}</Text></View>;
  const chooseNew=(row:Eligibility)=>{setMode("new");setSelected(row);
@@ -140,16 +154,17 @@ export function NativeReviews({locale}:{locale:Lang}){
    key={k} onPress={()=>{setView(k);setMode(null)}} style={[style.tab,view===k&&style.selected]}>
    <Text style={[style.text,view===k&&style.selectedText]}>{t[k]}</Text></Pressable>)}</View>
   {loading&&<ActivityIndicator color="#075BF2"/>}
-  {!!error&&<View style={style.card}><Text style={style.warning}>{error}</Text>
+  {!!loadError&&<View style={style.card}><Text accessibilityRole="alert" style={style.warning}>{loadError}</Text>
    <Button text={t.retry} onPress={()=>setRefresh(x=>x+1)}/></View>}
-  {!loading&&view==="eligible"&&eligible.map(row=><View key={row.bookingId} style={style.card}>
+  {!!error&&<View style={style.card}><Text accessibilityRole="alert" style={style.warning}>{error}</Text></View>}
+  {!loading&&!loadError&&view==="eligible"&&eligible.map(row=><View key={row.bookingId} style={style.card}>
    <Text style={style.badge}>✓ {t.report}</Text>
    <Text style={style.title}>{row.clinicName}</Text>
    <Text style={style.lead}>{row.serviceName}</Text>
    {row.canReview?<Button text={t.submit} onPress={()=>chooseNew(row)}/>:
     <Text style={style.lead}>✓ {t.mine}</Text>}
   </View>)}
-  {!loading&&view==="mine"&&mine.map(row=><View key={row.id} style={style.card}>
+  {!loading&&!loadError&&view==="mine"&&mine.map(row=><View key={row.id} style={style.card}>
    <Text style={style.badge}>✓ {t.report}</Text><Text style={style.title}>{row.headline}</Text>
    <Text style={style.lead}>{"★".repeat(row.stars)} · {row.state==="published"?t.published:
     row.state==="rejected"?t.rejected:t.pending}</Text>
@@ -161,13 +176,13 @@ export function NativeReviews({locale}:{locale:Lang}){
     <Button secondary text={t.withdraw} disabled={busy} onPress={()=>withdraw(row)}/>
    </>}
   </View>)}
-  {!loading&&view==="updates"&&notices.map(n=><View key={n.id} style={style.card}>
+  {!loading&&!loadError&&view==="updates"&&notices.map(n=><View key={n.id} style={style.card}>
    <Text style={style.lead}>{n.code}</Text>
    <Text style={style.text}>{new Date(n.created_at).toLocaleDateString(locale)}</Text></View>)}
-  {!loading&&view==="eligible"&&!eligible.length&&<Text style={style.lead}>{t.empty}</Text>}
-  {!loading&&view==="mine"&&!mine.length&&<Text style={style.lead}>{t.empty}</Text>}
-  {!loading&&view==="updates"&&!notices.length&&<Text style={style.lead}>{t.empty}</Text>}
-  {!!mode&&<View style={style.card}>
+  {!loading&&!loadError&&view==="eligible"&&!eligible.length&&<Text style={style.lead}>{t.empty}</Text>}
+  {!loading&&!loadError&&view==="mine"&&!mine.length&&<Text style={style.lead}>{t.empty}</Text>}
+  {!loading&&!loadError&&view==="updates"&&!notices.length&&<Text style={style.lead}>{t.empty}</Text>}
+  {!!mode&&!loadError&&!loading&&<View style={style.card}>
    <Text style={style.title}>{mode==="appeal"?t.appeal:mode==="edit"?t.edit:t.submit}</Text>
    {mode!=="appeal"&&<>
     <Text style={style.text}>{t.stars}</Text>

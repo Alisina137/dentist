@@ -453,8 +453,9 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   </>}
  </Block>;
 }
-export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpen}:{locale:Language;
- calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void;onOpen:(bookingId:string)=>void}){
+export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpen,onRefreshSettled}:{locale:Language;
+ calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void;onOpen:(bookingId:string)=>void;
+ onRefreshSettled?:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
  const [busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
@@ -480,6 +481,9 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpe
  const active=snapshot?.patientId===patientId?snapshot:null;
  const rows=active?.rows||[],loading=active?.loading??true;
  const error=active?.error||"";
+ useEffect(()=>{
+  if((!patientId||active&&!loading)&&onRefreshSettled)onRefreshSettled();
+ },[patientId,loading,active,onRefreshSettled]);
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
@@ -621,7 +625,8 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{booking?t.reschedule:t.book} · {clinic.clinic.name}</Text>
   <View style={p.stepper}>{steps.map((label,i)=><Pressable key={label} disabled={i>step}
-   accessibilityRole="button" onPress={()=>setStep(i)}
+   accessibilityRole="button" accessibilityState={{selected:i===step,disabled:i>step}}
+   accessibilityLabel={(i+1)+". "+label} onPress={()=>setStep(i)}
    style={[p.step,i===step&&p.stepActive]}><Text style={[p.stepText,i===step&&p.stepTextActive]}>
     {i+1}. {label}</Text></Pressable>)}</View>
   <Block>
@@ -644,22 +649,32 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
     <ScrollView horizontal showsHorizontalScrollIndicator={false}
      contentContainerStyle={{gap:7,marginVertical:13,flexDirection:locale==="en"?"row":"row-reverse"}}>
      {Array.from({length:Math.min(21,clinic.profile.bookingRules.horizonDays||21)},(_,i)=>addDays(isoDay(),i))
-      .map(d=><Pressable key={d} style={[p.day,day===d&&p.choiceActive]}
-       onPress={()=>{setDay(d);restartKey()}}><Text style={p.label}>{formatDay(d,locale,calendar)}</Text></Pressable>)}
+      .map(d=><Pressable key={d} accessibilityRole="radio"
+       accessibilityState={{checked:day===d}}
+       accessibilityLabel={formatDay(d,locale,calendar)}
+       style={[p.day,day===d&&p.choiceActive]}
+       onPress={()=>{setDay(d);restartKey()}}>
+       <Text style={p.label}>{formatDay(d,locale,calendar)}</Text></Pressable>)}
     </ScrollView>
-    {slotsLoading?<ActivityIndicator color={blue}/>:!slots.length&&!error?<Text style={p.copy}>{t.noSlots}</Text>:!error?
+    {slotsLoading?<View accessibilityRole="progressbar" accessibilityLabel={t.loadingData}>
+     <ActivityIndicator color={blue}/></View>:!slots.length&&!error?<Text style={p.copy}>{t.noSlots}</Text>:!error?
      <View style={p.times}>{slots.map((item,index)=><Pressable key={item.startAt+index}
       accessibilityRole="radio" accessibilityState={{checked:time===item.startAt}}
+      accessibilityLabel={formatDate(item.startAt,locale,calendar)}
       onPress={()=>{setTime(item.startAt);setKey(uniqueActionKey())}}
       style={[p.time,time===item.startAt&&p.choiceActive]}>
       <Text style={p.label}>{formatDate(item.startAt,locale,calendar)}</Text>
      </Pressable>)}</View>:null}
    </>}
    {step===3&&<>
-    <Pressable style={[p.choice,person==="self"&&p.choiceActive]}
+    <Pressable accessibilityRole="radio" accessibilityState={{checked:person==="self"}}
+     accessibilityLabel={t.self} style={[p.choice,person==="self"&&p.choiceActive]}
      onPress={()=>{setPerson("self");setKey(uniqueActionKey())}}><Text>{t.self}</Text></Pressable>
     {family?.members.filter(m=>m.eligibleForFutureBooking).map(member=>
-     <Pressable key={member.id} onPress={()=>{setPerson(member.id);setKey(uniqueActionKey())}}
+     <Pressable key={member.id} accessibilityRole="radio"
+      accessibilityState={{checked:person===member.id}}
+      accessibilityLabel={member.displayName}
+      onPress={()=>{setPerson(member.id);setKey(uniqueActionKey())}}
       style={[p.choice,person===member.id&&p.choiceActive]}>
       <Text style={p.label}>{member.displayName} · {member.memberType==="minor"?t.minor:t.adultDelegate}</Text>
      </Pressable>)}
@@ -685,25 +700,35 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   </Block>
  </View>;
 }
-export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Language;
- onClinic:(id:string)=>void;onDentist:(clinic:string,dentist:string)=>void;onExplore:()=>void}){
+export function NativeSaved({locale,onClinic,onDentist,onExplore,onRefreshSettled}:{locale:Language;
+ onClinic:(id:string)=>void;onDentist:(clinic:string,dentist:string)=>void;onExplore:()=>void;
+ onRefreshSettled?:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
- const [favorites,setFavorites]=useState<Favorite[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
- const [reload,setReload]=useState(0),[busy,setBusy]=useState("");
+ const user=auth.account?.registered?auth.account.user.id:null;
+ const [snapshot,setSnapshot]=useState<{user:string;rows:Favorite[];error:string;loading:boolean}|null>(null);
+ const [reload,setReload]=useState(0),[busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
  useEffect(()=>{
-  if(!auth.account?.registered)return;
-  let alive=true;setLoading(true);setError("");
+  setActionError("");setBusy("");
+ },[user]);
+ useEffect(()=>{
+  if(!user){setSnapshot(null);return;}
+  let alive=true;
+  setSnapshot({user,rows:[],error:"",loading:true});
   auth.request<{favorites:Favorite[]}>("/v1/patient-favorites").then(x=>{
-   if(alive)setFavorites(x.favorites);
-  }).catch(e=>{if(alive)setError(patientError(e,locale))})
-   .finally(()=>{if(alive)setLoading(false)});
+   if(alive)setSnapshot({user,rows:x.favorites||[],error:"",loading:false});
+  }).catch(e=>{if(alive)setSnapshot({user,rows:[],error:patientError(e,locale),loading:false})});
   return()=>{alive=false};
- },[auth.account?.user.id,auth.account?.registered,reload]);
+ },[user,auth.request,reload]);
+ const current=snapshot?.user===user?snapshot:null;
+ const favorites=current?.rows||[],loading=current?.loading??true,error=current?.error||"";
+ useEffect(()=>{
+  if((!user||current&&!loading)&&onRefreshSettled)onRefreshSettled();
+ },[user,loading,current,onRefreshSettled]);
  async function remove(f:Favorite){
-  setBusy(f.clinicId+(f.dentistId||""));setError("");
+  setBusy(f.clinicId+(f.dentistId||""));setActionError("");
   try{await auth.request("/v1/patient-favorites","DELETE",{clinicId:f.clinicId,dentistId:f.dentistId});
    setReload(x=>x+1);
-  }catch(e){setError(patientError(e,locale))}
+  }catch(e){setActionError(patientError(e,locale))}
   finally{setBusy("")}
  }
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -711,6 +736,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   {loading&&<NativeLoadingList label={t.loadingData}/> }
   {!!error&&<><ErrorBox message={error}/><Button secondary title={t.retry}
    onPress={()=>setReload(x=>x+1)}/></>}
+  {!!actionError&&<ErrorBox message={actionError}/>}
   {!loading&&!error&&!favorites.length&&<Block><Text style={p.copy}>{t.noFavorites}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {!loading&&!error&&favorites.map(f=><Block key={f.clinicId+f.dentistId}>

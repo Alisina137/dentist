@@ -813,15 +813,18 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
  </View>;
 }
 function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSaved,onSave,
- onAppointment,onAppointments,onSaved}:{ui:UI;
+ onAppointment,onAppointments,onSaved,onRefreshSettled}:{ui:UI;
  city:string;onCity:(v:string)=>void;onSearch:(q:string)=>void;onBrowse:()=>void;
  onSpecialty:(specialty:string)=>void;onClinic:(id:string)=>void;
  onAppointment:(bookingId:string)=>void;onAppointments:()=>void;onSaved:()=>void;
+ onRefreshSettled?:()=>void;
  isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
  const [search,setSearch]=useState(""),[showCity,setShowCity]=useState(false);
  const facets=usePublic<Facets>("/facets");
  const result=usePublic<Results>(urlSearch({city,limit:4,page:1}));
  const choices=facets.data?.cities||[];
+ useEffect(()=>{if(!facets.loading&&!result.loading)onRefreshSettled?.()},
+  [facets.loading,result.loading,onRefreshSettled]);
  return <View style={s.sectionGap}>
   <View style={s.hero}><View style={s.heroCircle}/><View style={s.heroCircle2}/>
    <Text style={[s.heroKicker,{textAlign:ui.align}]}>{ui.t("introTag")}</Text>
@@ -892,9 +895,10 @@ function HomeScreen({ui,city,onCity,onSearch,onBrowse,onSpecialty,onClinic,isSav
    <TextLine ui={ui} style={s.trustBody}>{ui.t("trustBody")}</TextLine></View>
  </View>;
 }
-function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSave}:{ui:UI;
+function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSave,onRefreshSettled}:{ui:UI;
  city:string;onCity:(v:string)=>void;seed:string;specialtySeed:string;
- onClinic:(id:string)=>void;isSaved:(id:string)=>boolean;onSave:(id:string)=>void}){
+ onClinic:(id:string)=>void;isSaved:(id:string)=>boolean;onSave:(id:string)=>void;
+ onRefreshSettled?:()=>void}){
  const [draft,setDraft]=useState(seed),[q,setQ]=useState(seed),
  [specialty,setSpecialty]=useState(""),[service,setService]=useState(""),
  [sort,setSort]=useState("relevance"),[filterOpen,setFilterOpen]=useState(false),
@@ -903,6 +907,7 @@ function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSav
  useEffect(()=>{setSpecialty(specialtySeed);setPage(1)},[specialtySeed]);
  const facets=usePublic<Facets>("/facets");
  const results=usePublic<Results>(urlSearch({q,city,specialty,service,sort,page,limit:8}));
+ useEffect(()=>{if(!results.loading)onRefreshSettled?.()},[results.loading,onRefreshSettled]);
  function selectCity(x:string){onCity(x);setPage(1)}
  function reset(){setDraft("");setQ("");setSpecialty("");setService("");setSort("relevance");setPage(1);selectCity("")}
  return <View style={s.sectionGap}>
@@ -986,11 +991,13 @@ function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSav
   <TextLine ui={ui} style={s.footerNotice}>{ui.t("locationHint")}</TextLine>
  </View>;
 }
-function SavedScreen({ui,ids,onRemove,onClinic,onExplore}:{ui:UI;ids:string[];
- onRemove:(id:string)=>void;onClinic:(id:string)=>void;onExplore:()=>void}){
+function SavedScreen({ui,ids,onRemove,onClinic,onExplore,onRefreshSettled}:{ui:UI;ids:string[];
+ onRemove:(id:string)=>void;onClinic:(id:string)=>void;onExplore:()=>void;
+ onRefreshSettled?:()=>void}){
  const [state,setState]=useState<{loading:boolean;clinics:ClinicDetail[];missing:number;error:boolean}>({
-  loading:false,clinics:[],missing:0,error:false});
+  loading:!!ids.length,clinics:[],missing:0,error:false});
  const [reload,setReload]=useState(0);
+ useEffect(()=>{if(!state.loading)onRefreshSettled?.()},[state.loading,onRefreshSettled]);
  useEffect(()=>{if(!ids.length){setState({loading:false,clinics:[],missing:0,error:false});return}
   let active=true;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
   setState(prev=>({...prev,loading:true,error:false}));
@@ -1260,23 +1267,14 @@ function PatientApp(){
   if(!patientId){setFavoriteSnapshot(null);return;}
   let active=true;
   setFavoriteSnapshot(null);
+  // Device-local guest bookmarks are never imported into a signed-in
+  // patient's server-owned favorites. Shared devices must not silently grant
+  // one account the previous guest's browsing choices or alter saved data.
   void native.request<{favorites:Favorite[]}>("/v1/patient-favorites")
-   .then(async current=>{
-    if(!active)return;
-    if(ready&&savedIds.length){
-     const missing=savedIds.filter(clinicId=>
-      !current.favorites.some(f=>!f.dentistId&&f.clinicId===clinicId));
-     if(missing.length){
-      await Promise.allSettled(missing.map(clinicId=>native.request(
-       "/v1/patient-favorites","POST",{clinicId})));
-      const updated=await native.request<{favorites:Favorite[]}>("/v1/patient-favorites");
-      if(active)setFavoriteSnapshot({patientId,rows:updated.favorites});return;
-     }
-    }
-    if(active)setFavoriteSnapshot({patientId,rows:current.favorites});
-   }).catch(()=>{});
+   .then(current=>{if(active)setFavoriteSnapshot({patientId,rows:current.favorites})})
+   .catch(()=>{if(active)setFavoriteSnapshot(null)});
   return()=>{active=false};
- },[patientId,ready,favoritesRefresh,native.request]);
+ },[patientId,favoritesRefresh,native.request]);
  useEffect(()=>{
   let live=true;
   void Promise.all([AsyncStorage.getItem(PREF_KEY),AsyncStorage.getItem(SAVED_KEY)]).then(([prefs,saved])=>{
@@ -1307,12 +1305,22 @@ function PatientApp(){
   }catch{setConnection("offline")}finally{clearTimeout(timer);setChecking(false)}
  },[]);
  useEffect(()=>{void checkApi()},[checkApi]);
+ const onRefreshSettled=useCallback(()=>setPullRefreshing(false),[]);
  const pullToRefresh=useCallback(()=>{
-  // Remount the current data view, not just the connectivity indicator.
-  // Private endpoints remain server-authorized and are never cached in AsyncStorage.
+  // Each screen owns its real fetch and explicitly completes the pull spinner.
+  // A separate /status connectivity request is not a proxy for current data.
   setPullRefreshing(true);setRefreshVersion(x=>x+1);
-  void checkApi().finally(()=>setPullRefreshing(false));
- },[checkApi]);
+ },[]);
+ useEffect(()=>{
+  // Static Account pages render immediately; private subviews have their own
+  // loading/skeleton indicators and retries. Avoid an indefinite pull spinner.
+  if(pullRefreshing&&tab==="account"&&!route)setPullRefreshing(false);
+ },[pullRefreshing,tab,route]);
+ useEffect(()=>{
+  if(!pullRefreshing)return;
+  const timeout=setTimeout(()=>setPullRefreshing(false),16500);
+  return()=>clearTimeout(timeout);
+ },[pullRefreshing]);
  function select(next:Tab){setRoute(null);setTab(next);setAccountSection("overview")}
  function accountPage(section:AccountSection){setRoute(null);setTab("account");setAccountSection(section)}
  function book(clinicId:string,dentistId?:string,booking?:Booking){
@@ -1422,19 +1430,23 @@ function PatientApp(){
      onReview={()=>accountPage("reviews")}/>:
     tab==="home"?<HomeScreen ui={ui} city={city} onCity={setCity}
      onAppointment={openAppointment} onAppointments={()=>select("appointments")} onSaved={()=>select("saved")}
+     onRefreshSettled={pullRefreshing?onRefreshSettled:undefined}
      onSearch={q=>{setSearchSeed(q.trim());setSpecialtySeed("");select("explore")}}
      onBrowse={()=>{setSearchSeed("");setSpecialtySeed("");select("explore")}}
      onSpecialty={specialty=>{setSearchSeed("");setSpecialtySeed(specialty);select("explore")}}
      onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
     tab==="explore"?<ExploreScreen ui={ui} city={city} onCity={setCity}
-     seed={searchSeed} specialtySeed={specialtySeed} onClinic={openClinic} isSaved={isSaved} onSave={save}/>:
+     seed={searchSeed} specialtySeed={specialtySeed} onClinic={openClinic} isSaved={isSaved} onSave={save}
+     onRefreshSettled={pullRefreshing?onRefreshSettled:undefined}/>:
     tab==="appointments"?<NativeAppointments locale={locale} calendar={calendar}
      onExplore={()=>select("explore")} onReschedule={b=>book(b.clinicId,b.dentistId,b)}
-     onOpen={openAppointment}/>:
+     onOpen={openAppointment} onRefreshSettled={pullRefreshing?onRefreshSettled:undefined}/>:
     tab==="saved"?(native.account?.registered?<NativeSaved locale={locale}
-     onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}/>:
+     onClinic={openClinic} onDentist={openDentist} onExplore={()=>select("explore")}
+      onRefreshSettled={pullRefreshing?onRefreshSettled:undefined}/>:
      <SavedScreen ui={ui} ids={savedIds} onRemove={save}
-      onClinic={openClinic} onExplore={()=>select("explore")}/>):
+      onClinic={openClinic} onExplore={()=>select("explore")}
+      onRefreshSettled={pullRefreshing?onRefreshSettled:undefined}/>):
     <View style={s.sectionGap}>
      {accountSection!=="overview"&&<Pressable style={[s.accountBack,{flexDirection:ui.flow}]}
       accessibilityRole="button" onPress={()=>setAccountSection("overview")}>
