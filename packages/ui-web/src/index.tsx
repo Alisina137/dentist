@@ -1,7 +1,6 @@
 "use client";
 import React, { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import QRCode from "react-qr-code";
-import {usePathname} from "next/navigation";
 import { CareIcon } from "./care-icons";
 export { CareIcon } from "./care-icons";
 export type { CareIconName } from "./care-icons";
@@ -141,15 +140,12 @@ function PatientBottomNav({path}:{path:string}){
   })}
  </nav>;
 }
-export function SiteLayout({ children, audience }: { children: ReactNode; audience: "clinic" | "admin" | "patient" }) {
+export function SiteLayout({ children, audience, clinicWorkspace=false }: { children: ReactNode; audience: "clinic" | "admin" | "patient"; clinicWorkspace?:boolean }) {
  const {t,locale}=usePreferences();
  const [open,setOpen]=useState(false);
- const path=usePathname()||"";
+ const [path,setPath]=useState("");
  const home=audience==="clinic"?"/clinic":audience==="admin"?"/admin":"/";
- // Clinic route navigation is handled by a persistent workspace shell: never
- // render a second site header/footer around authenticated workspace pages.
- const clinicWorkspace=audience==="clinic" && /^\/clinic(?:\/|$)/.test(path) &&
-  !/^\/clinic\/(?:login|signup|verify|invite|onboarding|reset-password|2fa)(?:\/|$)/.test(path);
+ useEffect(()=>setPath(window.location.pathname),[]);
  const active=(href:string)=>href===home
   ? path===home || (home!=="/" && path===home+"/")
   :path===href||(href!=="/"&&path.startsWith(href+"/"));
