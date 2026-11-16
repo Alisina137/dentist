@@ -87,7 +87,7 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
  const clear=useCallback(async()=>{
   sessionGeneration.current++;
   activeToken.current=null;
-  setToken(null);setAccount(null);setOnlineError(null);
+  setToken(null);setAccount(null);setOnlineError(null);setLoading(false);
   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
  },[]);
  const validate=useCallback(async(value:string)=>{
