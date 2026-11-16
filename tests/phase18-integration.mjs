@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {createRequire} from "node:module";
-import {request,ok,signup,admin,owner,stranger,clinic,unrelated} from "./phase07-fixture.mjs";
+import {API,request,ok,signup,admin,owner,stranger,clinic,unrelated} from "./phase07-fixture.mjs";
 await import("./phase17-integration.mjs");
 const require=createRequire(new URL("../packages/db/package.json",import.meta.url));
 const postgres=require("postgres");
@@ -86,6 +86,45 @@ try{
 
  const requester=await signup("ph18-requester");
  const outsider=await signup("ph18-outsider");
+ // Patient Phase D: Expo Go bearer writes have no Origin but retain strict
+ // ownership, browser CSRF protection and denial of privileged endpoints.
+ const login=await fetch(API+"/api/auth/sign-in/email",{
+  method:"POST",headers:{origin:"http://localhost:3002","content-type":"application/json"},
+  body:JSON.stringify({email:requester.email,password:"Dandan-PH07-Booked#2026"})});
+ assert.equal(login.status,200,"native support bearer sign-in");
+ const nativeBearer=login.headers.get("set-auth-token");
+ assert.ok(nativeBearer&&nativeBearer.length>12);
+ async function nativeSupport(path,method="POST",body,customHeaders={}){
+  const response=await fetch(API+root+path,{method,headers:{
+   authorization:"Bearer "+nativeBearer,"content-type":"application/json",...customHeaders
+  },body:JSON.stringify(body)});
+  return {status:response.status,data:await response.json().catch(()=>({})),headers:response.headers};
+ }
+ const nativeTicket=ok(await nativeSupport("/tickets","POST",{
+  category:"booking",title:"Mobile ticket for a booking",
+  message:"My booking request is pending and I need a status explanation."
+ }),[201],"native bearer support ticket created without an Origin");
+ ok(await nativeSupport("/tickets/"+nativeTicket.id+"/messages","POST",{
+  message:"I can provide further nonmedical details about the request."
+ }),[201],"native bearer support ticket follow-up");
+ ok(await nativeSupport("/admin/tickets/"+nativeTicket.id+"/status","POST",{
+  status:"resolved"
+ }),[403],"native exception never grants administrative support mutations");
+ ok(await nativeSupport("/tickets","POST",{
+  category:"booking",title:"Invalid browser origin attempt",
+  message:"This request should never pass browser Origin restrictions."
+ },{origin:"https://untrusted.example.test"}),[403],
+  "untrusted browser Origin remains denied even when bearer is valid");
+ const unauthNative=await fetch(API+root+"/tickets",{
+  method:"POST",headers:{"content-type":"application/json"},
+  body:JSON.stringify({category:"booking",title:"Missing bearer",
+   message:"Anonymous support request should be rejected."})});
+ assert.equal(unauthNative.status,403,"origin-less ticket write without bearer blocked");
+ const nativeDetail=ok(await nativeSupport("/tickets/"+nativeTicket.id,"GET",undefined),
+  [200],"native bearer can read own ticket");
+ assert.equal(nativeDetail.messages.length,2);
+ ok(await request(root+"/tickets/"+nativeTicket.id,"GET",undefined,outsider.session),
+  [403],"native-created ticket remains owner private");
  ok(await request(root+"/tickets","POST",{
   category:"booking",title:"Clinical diagnosis in request",message:"I was diagnosed with something and need help."
  },requester.session),[422],"PHI in support rejected");

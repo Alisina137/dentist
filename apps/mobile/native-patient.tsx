@@ -53,6 +53,7 @@ const words={
  updatesEmail:"Appointment updates",emailNote:"Email only when configured and opted in. No SMS/push.",
  notificationHistory:"My booking updates",notificationIntro:"Recent email delivery status. Open Appointments for secure details.",
  notificationEmpty:"No booking updates have been queued.",notificationRefresh:"Refresh updates",
+ notificationAll:"All",notificationSentOnly:"Sent",notificationFailedOnly:"Failed",notificationMore:"Show older updates",notificationFiltered:"No updates match this filter.",
  notificationQueued:"Queued",notificationSent:"Sent",notificationFailed:"Failed",notificationSkipped:"Email disabled",
  notificationRequest:"Booking requested",notificationAccepted:"Booking confirmed",notificationRejected:"Request rejected",
  notificationRescheduled:"Appointment rescheduled",notificationCancelled:"Appointment cancelled",
@@ -90,6 +91,7 @@ const words={
  updatesEmail:"تغییرات نوبت",emailNote:"ایمیل فقط با اجازه و تنظیمات ارسال می‌شود. پیامک و پوش فعال نیست.",
  notificationHistory:"تازه‌های رزرو من",notificationIntro:"وضعیت ارسال ایمیل اخیر؛ جزئیات محفوظ را در نوبت‌ها ببینید.",
  notificationEmpty:"هنوز خبر رزرو ثبت نشده است.",notificationRefresh:"تازه‌سازی خبرها",
+ notificationAll:"همه",notificationSentOnly:"ارسال‌شده",notificationFailedOnly:"ناکام",notificationMore:"نمایش خبرهای قدیمی‌تر",notificationFiltered:"خبری با این فیلتر موجود نیست.",
  notificationQueued:"در صف",notificationSent:"ارسال‌شده",notificationFailed:"ناکام",notificationSkipped:"ایمیل غیرفعال",
  notificationRequest:"درخواست نوبت",notificationAccepted:"نوبت تأیید شد",notificationRejected:"درخواست رد شد",
  notificationRescheduled:"وقت ملاقات تغییر کرد",notificationCancelled:"نوبت لغو شد",
@@ -127,6 +129,7 @@ const words={
  updatesEmail:"د ملاقات بدلونونه",emailNote:"ایمیل د اجازې سره، SMS او push فعال نه دي.",
  notificationHistory:"زما د ملاقات خبرونه",notificationIntro:"د برېښنالیک وروستی حالت؛ خوندي جزئیات په لیدنو کې وګورئ.",
  notificationEmpty:"تر اوسه د ملاقات خبر نشته.",notificationRefresh:"خبرونه تازه کړئ",
+ notificationAll:"ټول",notificationSentOnly:"استول شوي",notificationFailedOnly:"ناکام",notificationMore:"زاړه خبرونه وګورئ",notificationFiltered:"د دې چاڼ لپاره خبر نشته.",
  notificationQueued:"په کتار کې",notificationSent:"لېږل شوی",notificationFailed:"ناکام",notificationSkipped:"برېښنالیک بند دی",
  notificationRequest:"د ملاقات غوښتنه",notificationAccepted:"ملاقات تایید شو",notificationRejected:"غوښتنه رد شوه",
  notificationRescheduled:"د ملاقات وخت بدل شو",notificationCancelled:"ملاقات لغوه شو",
@@ -378,9 +381,12 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
  const t=tr(locale),auth=useNativeAuth();
  const user=auth.account?.registered?auth.account.user.id:null;
  const [revision,setRevision]=useState(0);
+ const [filter,setFilter]=useState<"all"|"sent"|"failed">("all");
+ const [visible,setVisible]=useState(8);
  const [snapshot,setSnapshot]=useState<{user:string;data:NotificationFeed|null;
   error:string;loading:boolean}|null>(null);
  const reload=useCallback(()=>setRevision(x=>x+1),[]);
+ useEffect(()=>{setFilter("all");setVisible(8)},[user]);
  useEffect(()=>{
   if(!user){setSnapshot(null);return;}
   let live=true;
@@ -415,6 +421,7 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
  const status=(name:string)=>name==="sent"?t.notificationSent:
   name==="failed"?t.notificationFailed:name==="skipped"?t.notificationSkipped:
    t.notificationQueued;
+ const matching=(data?.events||[]).filter(event=>filter==="all"||event.status===filter);
  return <Block>
   <Text style={p.title}>{t.notificationHistory}</Text>
   <Text style={p.copy}>{t.notificationIntro}</Text>
@@ -423,8 +430,17 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   {error&&<ErrorBox message={error}/>}
   {!loading&&!error&&data&&<>
    <Text style={p.copy}>{data.emailConfigured?t.notificationChannelOn:t.notificationChannelOff}</Text>
+   <View style={p.filters}>
+    {(["all","sent","failed"] as const).map(x=><Pressable key={x}
+     accessibilityRole="tab" accessibilityState={{selected:filter===x}}
+     style={[p.filter,filter===x&&p.filterOn]} onPress={()=>{setFilter(x);setVisible(8)}}>
+     <Text style={[p.filterText,filter===x&&p.filterTextOn]}>{x==="all"?t.notificationAll:
+      x==="sent"?t.notificationSentOnly:t.notificationFailedOnly}</Text>
+    </Pressable>)}
+   </View>
    {!data.events.length&&<Text style={p.copy}>{t.notificationEmpty}</Text>}
-   {data.events.slice(0,8).map((event,index)=><View key={event.created_at+":"+event.event_name+":"+index}
+   {!!data.events.length&&!matching.length&&<Text style={p.copy}>{t.notificationFiltered}</Text>}
+   {matching.slice(0,visible).map((event,index)=><View key={event.created_at+":"+event.event_name+":"+index}
     style={p.notificationItem} accessibilityRole="text">
     <View style={p.between}><Text style={p.label}>{label(event.event_name)}</Text>
      <Text style={[p.notificationBadge,
@@ -432,6 +448,8 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
       {status(event.status)}</Text></View>
     <Text style={p.small}>{formatDate(event.created_at,locale,calendar)}</Text>
    </View>)}
+   {matching.length>visible&&<Button secondary title={t.notificationMore}
+    onPress={()=>setVisible(x=>Math.min(x+8,100))}/>}
   </>}
  </Block>;
 }
