@@ -6,12 +6,15 @@ import type {Booking} from "./native-patient";
 
 type Lang="en"|"fa-AF"|"ps-AF";
 type Calendar="gregorian"|"solar_hijri";
+type BookingEvent={action:string;status:string;occurredAt:string;appointmentAt:string};
 const blue="#075BF2",ink="#163255",muted="#657993";
 const copy={
  en:{upcoming:"Your next appointment",appointment:"Appointment details",all:"All appointments",
   view:"View details",noUpcoming:"You have no upcoming appointments.",
   find:"Find dental care",loading:"Loading your appointment…",retry:"Try again",
-  current:"Current booking status",statusHelp:"This is the latest confirmed status from the clinic, not a full event history.",
+  current:"Current booking status",statusHelp:"Only real booking status changes are shown. Private clinic notes are never shared here.",
+  timeline:"Booking activity",timelineNone:"No booking activity has been recorded.",timelinePartial:"Showing the latest 100 activity entries.",
+  newTime:"New time",
   requested:"Waiting for clinic approval",confirmed:"Confirmed",completed:"Completed",
   cancelled:"Cancelled",rejected:"Declined",no_show:"Did not attend",
   checked_in:"Checked in",in_progress:"In progress",rescheduled:"Rescheduled",
@@ -29,7 +32,9 @@ const copy={
  "fa-AF":{upcoming:"نوبت آینده شما",appointment:"جزئیات نوبت",all:"تمام نوبت‌ها",
   view:"مشاهده جزئیات",noUpcoming:"فعلاً نوبت آینده ندارید.",
   find:"جستجوی خدمات دندان",loading:"نوبت شما دریافت می‌شود…",retry:"دوباره کوشش",
-  current:"حالت فعلی نوبت",statusHelp:"این آخرین حالت معتبر کلینیک است، نه تاریخچه کامل رویدادها.",
+  current:"حالت فعلی نوبت",statusHelp:"فقط تغییرات واقعی نوبت نمایش داده می‌شود؛ یادداشت‌های خصوصی کلینیک شریک نمی‌گردند.",
+  timeline:"رویدادهای نوبت",timelineNone:"هنوز رویدادی برای این نوبت ثبت نشده است.",timelinePartial:"آخرین ۱۰۰ رویداد نمایش داده می‌شود.",
+  newTime:"وقت جدید",
   requested:"در انتظار تأیید کلینیک",confirmed:"تأییدشده",completed:"تکمیل‌شده",
   cancelled:"لغوشده",rejected:"ردشده",no_show:"حاضر نشده",
   checked_in:"حاضرشده",in_progress:"در جریان",rescheduled:"وقت تغییر یافته",
@@ -47,7 +52,9 @@ const copy={
  "ps-AF":{upcoming:"ستاسو راتلونکی ملاقات",appointment:"د ملاقات جزئیات",all:"ټول ملاقاتونه",
   view:"جزئیات وګورئ",noUpcoming:"اوس مهال راتلونکی ملاقات نه لرئ.",
   find:"د غاښونو خدمتونه ومومئ",loading:"ستاسو ملاقات لوستل کېږي…",retry:"بیا هڅه",
-  current:"د ملاقات اوسنی حالت",statusHelp:"دا د کلینیک وروستی تایید شوی حالت دی، بشپړ تاریخ نه دی.",
+  current:"د ملاقات اوسنی حالت",statusHelp:"یوازې د ملاقات رښتیني بدلونونه ښودل کېږي؛ د کلینیک محرم یادښتونه نه خپرېږي.",
+  timeline:"د ملاقات فعالیت",timelineNone:"تر اوسه فعالیت نه دی ثبت شوی.",timelinePartial:"وروستي ۱۰۰ فعالیتونه ښودل کېږي.",
+  newTime:"نوی وخت",
   requested:"د کلینیک تایید ته په تمه",confirmed:"تایید شوی",completed:"بشپړ شوی",
   cancelled:"لغوه شوی",rejected:"رد شوی",no_show:"نه دی حاضر شوی",
   checked_in:"حاضر شوی",in_progress:"روان",rescheduled:"وخت بدل شوی",
@@ -142,16 +149,19 @@ export function NativeAppointmentDetails({bookingId,locale,calendar,onBack,onRes
  const t=copy[locale];
  const [reload,setReload]=useState(0);
  const [snapshot,setSnapshot]=useState<{user:string;bookingId:string;booking:Booking|null;
-  error:string;loading:boolean}|null>(null);
+  timeline:BookingEvent[];timelineTruncated:boolean;error:string;loading:boolean}|null>(null);
  const [busy,setBusy]=useState(false),[actionError,setActionError]=useState("");
  useEffect(()=>{
   if(!user){setSnapshot(null);return;}
   let current=true;
-  setSnapshot({user,bookingId,booking:null,error:"",loading:true});
-  auth.request<{booking:Booking}>("/v1/booking/my/"+encodeURIComponent(bookingId)).then(data=>{
-   if(current)setSnapshot({user,bookingId,booking:data.booking,error:"",loading:false});
+  setSnapshot({user,bookingId,booking:null,timeline:[],timelineTruncated:false,error:"",loading:true});
+  auth.request<{booking:Booking;timeline:BookingEvent[];timelineTruncated:boolean}>(
+   "/v1/booking/my/"+encodeURIComponent(bookingId)).then(data=>{
+   if(current)setSnapshot({user,bookingId,booking:data.booking,
+    timeline:data.timeline||[],timelineTruncated:!!data.timelineTruncated,error:"",loading:false});
   }).catch(error=>{
-   if(current)setSnapshot({user,bookingId,booking:null,error:patientError(error,locale),loading:false});
+   if(current)setSnapshot({user,bookingId,booking:null,timeline:[],timelineTruncated:false,
+    error:patientError(error,locale),loading:false});
   });
   return()=>{current=false};
  },[user,bookingId,auth.request,reload]);
@@ -201,6 +211,21 @@ export function NativeAppointmentDetails({bookingId,locale,calendar,onBack,onRes
    <Text style={css.caption}>{t.statusHelp}</Text>
   </View>
   <View style={css.card}>
+   <Text accessibilityRole="header" style={css.title}>{t.timeline}</Text>
+   {!view.timeline.length&&<Text style={css.caption}>{t.timelineNone}</Text>}
+   {view.timeline.map((event,index)=><View
+    key={event.occurredAt+":"+event.action+":"+index} style={css.timelineRow}>
+    <View style={css.timelineDot}/>
+    <View style={{flex:1,gap:4}}>
+     <Text style={css.value}>{statusOf(event.status,locale)}</Text>
+     <Text style={css.caption}>{time(event.occurredAt,locale,calendar)}</Text>
+     {event.action==="rescheduled"&&<Text style={css.caption}>
+      {t.newTime}: {time(event.appointmentAt,locale,calendar)}</Text>}
+    </View>
+   </View>)}
+   {view.timelineTruncated&&<Text style={css.caption}>{t.timelinePartial}</Text>}
+  </View>
+  <View style={css.card}>
    <Text accessibilityRole="header" style={css.title}>{t.booked}</Text>
    <Pair label={t.patient} value={booking.patientName}/>
    <Pair label={t.clinic} value={booking.clinicName}/>
@@ -242,6 +267,8 @@ const css=StyleSheet.create({
   borderRadius:12,overflow:"hidden",paddingHorizontal:10,paddingVertical:6,fontWeight:"700"},
  pending:{color:"#915A11",backgroundColor:"#FFF5DC"},
  pair:{paddingVertical:8,borderBottomColor:"#EFF3F7",borderBottomWidth:1,gap:4},
+ timelineRow:{flexDirection:"row",gap:12,paddingVertical:10,borderBottomWidth:1,borderColor:"#EFF3F7"},
+ timelineDot:{width:10,height:10,borderRadius:5,backgroundColor:blue,marginTop:5},
  action:{backgroundColor:blue,paddingHorizontal:14,paddingVertical:12,minHeight:44,
   borderRadius:12,alignItems:"center",justifyContent:"center"},
  actionText:{color:"#fff",fontSize:14,fontWeight:"800",textAlign:"center"},
