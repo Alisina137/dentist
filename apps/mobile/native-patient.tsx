@@ -123,18 +123,42 @@ function Field({value,onChangeText,label,secure=false,keyboardType="default"}:{v
  return <View style={{gap:6,marginTop:12}}><Label>{label}</Label><TextInput
   value={value} onChangeText={onChangeText} autoCapitalize={secure||keyboardType==="email-address"?"none":"sentences"}
   autoCorrect={false} secureTextEntry={secure} keyboardType={keyboardType}
-  textAlign="left" style={p.input}/></View>;
+  accessibilityLabel={label}
+  textAlign={keyboardType==="email-address"||keyboardType==="numeric"||secure?"left":
+   /[\u0590-\u08FF]/.test(label+" "+value)?"right":"left"}
+  style={p.input}/></View>;
 }
-function Button({title,onPress,secondary=false,disabled=false}:{title:string;onPress:()=>void;secondary?:boolean;disabled?:boolean}){
+function Button({title,onPress,secondary=false,danger=false,disabled=false}:{title:string;onPress:()=>void;
+ secondary?:boolean;danger?:boolean;disabled?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled}
-  style={[p.button,secondary&&p.buttonSecondary,disabled&&{opacity:.45}]}
-  onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText]}>{title}</Text></Pressable>;
+  style={[p.button,secondary&&p.buttonSecondary,danger&&p.buttonDanger,disabled&&{opacity:.45}]}
+  onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText,danger&&p.dangerText]}>{title}</Text></Pressable>;
 }
 function ErrorBox({message}:{message:string}){return <View style={p.errorBox}><Text style={p.errorText}>{message}</Text></View>}
-function formatDate(iso:string,lang:Language){
+function formatDate(iso:string,lang:Language,calendar:Calendar="gregorian"){
  return new Intl.DateTimeFormat(lang==="en"?"en-GB":lang,{
-  timeZone:"Asia/Kabul",dateStyle:"medium",timeStyle:"short"
+  timeZone:"Asia/Kabul",calendar:calendar==="solar_hijri"?"persian":"gregory",
+  dateStyle:"medium",timeStyle:"short"
  }).format(new Date(iso));
+}
+function formatDay(day:string,lang:Language,calendar:Calendar){
+ return new Intl.DateTimeFormat(lang==="en"?"en-GB":lang,{
+  timeZone:"Asia/Kabul",calendar:calendar==="solar_hijri"?"persian":"gregory",
+  month:"short",day:"numeric"
+ }).format(new Date(day+"T12:00:00Z"));
+}
+function appointmentStatus(status:string,lang:Language){
+ const extra:Record<Language,Record<string,string>>={
+  en:{completed:"Completed",checked_in:"Checked in",in_progress:"In progress",
+   cancelled:"Cancelled",no_show:"Did not attend",rescheduled:"Rescheduled"},
+  "fa-AF":{completed:"تکمیل‌شده",checked_in:"حاضر شده",in_progress:"در جریان",
+   cancelled:"لغوشده",no_show:"حاضر نشده",rescheduled:"وقت تغییر یافته"},
+  "ps-AF":{completed:"بشپړ شوی",checked_in:"حاضر شوی",in_progress:"روان",
+   cancelled:"لغوه شوی",no_show:"نه دی حاضر شوی",rescheduled:"وخت بدل شوی"}
+ };
+ const t=tr(lang);
+ return status==="requested"?t.requested:status==="confirmed"?t.confirmed:
+  status==="rejected"?t.rejected:extra[lang][status]||status.replace(/_/g," ");
 }
 function isoDay(instant=new Date()){
  const x=Object.fromEntries(new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
@@ -222,9 +246,11 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
     termsVersion:versions.termsVersion,privacyVersion:versions.privacyVersion
    });await auth.refresh();
   })}/>
+  <Button secondary title={t.signout} disabled={busy}
+   onPress={()=>void run(async()=>await auth.signOut())}/>
  </Block>;
  const profile=auth.account.profile;
- return <View style={{gap:13}}>
+ return <View style={{gap:13,direction:locale==="en"?"ltr":"rtl"}}>
   <Block><Text style={p.title}>{t.profile}</Text>
    <Text style={p.copy}>{auth.account.user.email}</Text>
    <Text style={p.label}>{profile?.preferredName} · {profile?.city}</Text>
@@ -281,11 +307,11 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
   {error&&<ErrorBox message={error}/>}
  </View>;
 }
-export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Language;
- onExplore:()=>void;onReschedule:(b:Booking)=>void}){
+export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
+ calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [rows,setRows]=useState<Booking[]>([]),[filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
- const [busy,setBusy]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(false),[reload,setReload]=useState(0);
+ const [busy,setBusy]=useState(""),[error,setError]=useState(""),[loading,setLoading]=useState(true),[reload,setReload]=useState(0);
  const refresh=useCallback(async()=>{
   if(!auth.account?.registered)return;
   setLoading(true);setError("");
@@ -297,8 +323,12 @@ export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Langu
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
-  filter==="past"?new Date(b.startAt).getTime()<Date.now()&&!["cancelled","rejected","no_show"].includes(b.status):
-  new Date(b.startAt).getTime()>=Date.now()&&!["cancelled","rejected","no_show"].includes(b.status));
+  filter==="past"?new Date(b.startAt).getTime()<Date.now()||
+   ["completed","checked_in","in_progress"].includes(b.status):
+  new Date(b.startAt).getTime()>=Date.now()&&
+   ["requested","confirmed"].includes(b.status))
+  .sort((a,b)=>filter==="upcoming"?Date.parse(a.startAt)-Date.parse(b.startAt):
+   Date.parse(b.startAt)-Date.parse(a.startAt));
  const cancel=(b:Booking)=>Alert.alert(t.cancel,t.cancelHint,[
   {text:t.back,style:"cancel"},{text:t.cancel,style:"destructive",onPress:()=>void(async()=>{
    setBusy(b.id);setError("");
@@ -308,9 +338,9 @@ export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Langu
    }catch(e){setError(e instanceof Error?e.message:t.error)}
    finally{setBusy("")}
   })()}]);
- return <View style={{gap:12}}>
+ return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{t.appointments}</Text>
-  <View style={p.filters}>{(["upcoming","past","cancelled"] as const).map(key=>
+  <View style={[p.filters,{flexDirection:locale==="en"?"row":"row-reverse"}]}>{(["upcoming","past","cancelled"] as const).map(key=>
    <Pressable key={key} onPress={()=>setFilter(key)}
     style={[p.filter,filter===key&&p.filterOn]} accessibilityRole="tab"
     accessibilityState={{selected:filter===key}}>
@@ -319,26 +349,30 @@ export function NativeAppointments({locale,onExplore,onReschedule}:{locale:Langu
   <Button secondary title={t.refresh} onPress={()=>setReload(x=>x+1)}/>
   {loading&&<ActivityIndicator color={blue}/>}
   {error&&<ErrorBox message={error}/>}
-  {!loading&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
+  {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {current.map(b=><Block key={b.id}>
    <View style={p.between}><Text style={p.title}>{b.clinicName}</Text>
-    <Text style={p.badge}>{b.status==="requested"?t.requested:
-     b.status==="confirmed"?t.confirmed:b.status==="rejected"?t.rejected:t.cancelledStatus}</Text>
+    <Text style={[p.badge,["cancelled","rejected","no_show"].includes(b.status)?p.badgeDanger:
+     b.status==="requested"?p.badgePending:null]}>{appointmentStatus(b.status,locale)}</Text>
    </View>
    <Text style={p.copy}>{b.serviceName} · {b.patientName}</Text>
-   <Text style={p.label}>{formatDate(b.startAt,locale)}</Text>
+   <Text style={p.label}>{formatDate(b.startAt,locale,calendar)}</Text>
    <Text style={p.copy}>{b.priceAfn.toLocaleString("en")} AFN</Text>
    <Text style={p.small}>{t.reference}: {b.id.slice(0,12)}</Text>
-   {["confirmed","requested"].includes(b.status)&&<>
-    <Button secondary title={t.reschedule} disabled={busy===b.id} onPress={()=>onReschedule(b)}/>
-    <Button secondary title={t.cancel} disabled={busy===b.id} onPress={()=>cancel(b)}/>
+   {["confirmed","requested"].includes(b.status)&&Date.parse(b.startAt)>Date.now()&&<>
+    {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
+     <Button secondary title={t.reschedule} disabled={!!busy} onPress={()=>onReschedule(b)}/>}
+    {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
+     <Button danger title={t.cancel} disabled={!!busy} onPress={()=>cancel(b)}/>}
+    {b.status==="confirmed"&&Date.parse(b.cancelUntil)<=Date.now()&&
+     <Text style={p.copy}>{t.cancelHint}</Text>}
    </>}
   </Block>)}
  </View>;
 }
-export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,onAccount}:{locale:Language;
- clinicId:string;dentistId?:string;booking?:Booking;onDone:()=>void;onAccount:()=>void}){
+export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,onDone,onAccount}:{locale:Language;
+ calendar:Calendar;clinicId:string;dentistId?:string;booking?:Booking;onDone:()=>void;onAccount:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [clinic,setClinic]=useState<Clinic|null>(null),[family,setFamily]=useState<Family|null>(null);
  const [step,setStep]=useState(0),[service,setService]=useState(booking?.serviceId||"");
@@ -346,7 +380,8 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
  const [day,setDay]=useState(isoDay()),[slots,setSlots]=useState<Time[]>([]);
  const [time,setTime]=useState(""),[person,setPerson]=useState("self"),[consent,setConsent]=useState(false);
  const [key,setKey]=useState(uniqueActionKey()),[receipt,setReceipt]=useState<Booking|null>(null);
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [loading,setLoading]=useState(true),[slotsLoading,setSlotsLoading]=useState(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [retry,setRetry]=useState(0);
  const reserved=booking!=null;
  useEffect(()=>{
@@ -360,11 +395,12 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
  },[clinicId,auth.account?.user.id,auth.account?.registered,retry]);
  useEffect(()=>{
   if(!service||!dentist)return;
-  let active=true;setSlots([]);setError("");
+  let active=true;setSlots([]);setError("");setSlotsLoading(true);
   const params=new URLSearchParams({date:day,serviceId:service,dentistId:dentist});
   publicGet<{slots:Time[]}>("/v1/discovery/clinics/"+encodeURIComponent(clinicId)+
    "/availability?"+params.toString()).then(x=>{if(active)setSlots(x.slots)})
-   .catch(e=>{if(active)setError(e instanceof Error?e.message:t.error)});
+   .catch(e=>{if(active)setError(e instanceof Error?e.message:t.error)})
+   .finally(()=>{if(active)setSlotsLoading(false)});
   return()=>{active=false};
  },[clinicId,service,dentist,day,retry]);
  function restartKey(){setTime("");setKey(uniqueActionKey())}
@@ -396,14 +432,14 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
   <Button secondary title={t.retry} onPress={()=>setRetry(x=>x+1)}/></Block>;
  if(receipt)return <Block><Text style={p.title}>{t.done}</Text><Text style={p.success}>{t.success}</Text>
   <Text style={p.label}>{receipt.clinicName||clinic.clinic.name}</Text>
-  <Text>{receipt.serviceName}</Text><Text>{formatDate(receipt.startAt,locale)}</Text>
+  <Text>{receipt.serviceName}</Text><Text>{formatDate(receipt.startAt,locale,calendar)}</Text>
   <Text style={p.badge}>{receipt.status==="requested"?t.pending:t.confirmed}</Text>
   <Text style={p.small}>{t.reference}: {receipt.id}</Text>
   <Button title={t.appointments} onPress={onDone}/></Block>;
  const picked=slots.find(s=>s.startAt===time);
  const allowed=step===0?!!service:step===1?!!dentist:step===2?!!picked:
   step===3?person==="self"||!!family?.members.find(x=>x.id===person&&x.eligibleForFutureBooking):consent;
- return <View style={{gap:12}}>
+ return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{booking?t.reschedule:t.book} · {clinic.clinic.name}</Text>
   <View style={p.stepper}>{steps.map((label,i)=><Pressable key={label} disabled={i>step}
    accessibilityRole="button" onPress={()=>setStep(i)}
@@ -425,20 +461,20 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
      <Text style={p.label}>{item.displayName}</Text>
     </Pressable>)}
    {step===2&&<>
-    <Text style={p.copy}>{t.date}: {day}</Text>
+    <Text style={p.copy}>{t.date}: {formatDay(day,locale,calendar)}</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false}
-     contentContainerStyle={{gap:7,marginVertical:13}}>
+     contentContainerStyle={{gap:7,marginVertical:13,flexDirection:locale==="en"?"row":"row-reverse"}}>
      {Array.from({length:Math.min(21,clinic.profile.bookingRules.horizonDays||21)},(_,i)=>addDays(isoDay(),i))
       .map(d=><Pressable key={d} style={[p.day,day===d&&p.choiceActive]}
-       onPress={()=>{setDay(d);restartKey()}}><Text style={p.label}>{d.slice(5)}</Text></Pressable>)}
+       onPress={()=>{setDay(d);restartKey()}}><Text style={p.label}>{formatDay(d,locale,calendar)}</Text></Pressable>)}
     </ScrollView>
-    {!slots.length?<Text style={p.copy}>{t.noSlots}</Text>:
+    {slotsLoading?<ActivityIndicator color={blue}/>:!slots.length&&!error?<Text style={p.copy}>{t.noSlots}</Text>:!error?
      <View style={p.times}>{slots.map((item,index)=><Pressable key={item.startAt+index}
       accessibilityRole="radio" accessibilityState={{checked:time===item.startAt}}
       onPress={()=>{setTime(item.startAt);setKey(uniqueActionKey())}}
       style={[p.time,time===item.startAt&&p.choiceActive]}>
-      <Text style={p.label}>{formatDate(item.startAt,locale)}</Text>
-     </Pressable>)}</View>}
+      <Text style={p.label}>{formatDate(item.startAt,locale,calendar)}</Text>
+     </Pressable>)}</View>:null}
    </>}
    {step===3&&<>
     <Pressable style={[p.choice,person==="self"&&p.choiceActive]}
@@ -453,7 +489,7 @@ export function NativeBookingWizard({locale,clinicId,dentistId,booking,onDone,on
     <Text style={p.label}>{clinic.clinic.name}</Text>
     <Text>{clinic.profile.services.find(x=>x.id===service)?.name}</Text>
     <Text>{clinic.profile.dentists.find(x=>x.id===dentist)?.displayName}</Text>
-    <Text>{formatDate(time,locale)}</Text>
+    <Text>{formatDate(time,locale,calendar)}</Text>
     <Text style={p.label}>{t.fee}: {picked?.priceAfn||booking?.priceAfn} AFN</Text>
     <Text style={p.copy}>{clinic.profile.bookingRules.approvalMode==="manual"?t.pending:t.confirmed}</Text>
     <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}}
@@ -488,17 +524,17 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   }catch(e){setError(e instanceof Error?e.message:t.error)}
   finally{setBusy("")}
  }
- return <View style={{gap:12}}>
+ return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{t.favorites}</Text>
   {loading&&<ActivityIndicator color={blue}/>}
   {!!error&&<><ErrorBox message={error}/><Button secondary title={t.retry}
    onPress={()=>setReload(x=>x+1)}/></>}
   {!loading&&!error&&!favorites.length&&<Block><Text style={p.copy}>{t.noFavorites}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
-  {favorites.map(f=><Block key={f.clinicId+f.dentistId}>
+  {!loading&&!error&&favorites.map(f=><Block key={f.clinicId+f.dentistId}>
    <Text style={p.label}>{f.dentistName||f.clinicName}</Text>
    {f.dentistName&&<Text style={p.copy}>{f.clinicName}</Text>}
-   <View style={p.actions}><Button title={t.view} onPress={()=>f.dentistId?
+   <View style={p.actions}><Button title={t.view} disabled={!!busy} onPress={()=>f.dentistId?
     onDentist(f.clinicId,f.dentistId):onClinic(f.clinicId)}/>
     <Button secondary title={t.remove} disabled={!!busy} onPress={()=>void remove(f)}/></View>
   </Block>)}
@@ -516,6 +552,8 @@ const p=StyleSheet.create({
  button:{backgroundColor:blue,borderRadius:12,minHeight:44,justifyContent:"center",
   alignItems:"center",paddingHorizontal:16,paddingVertical:8,marginTop:6},
  buttonSecondary:{backgroundColor:"#EEF4FF",borderWidth:1,borderColor:"#C5D8FD"},
+ buttonDanger:{backgroundColor:"#FFF1F1",borderWidth:1,borderColor:"#F3C8CD"},
+ dangerText:{color:"#AC3443"},
  buttonText:{fontWeight:"800",color:"#fff",textAlign:"center",fontSize:13},
  secondaryText:{color:blue},
  errorBox:{backgroundColor:"#FFF0F0",padding:13,borderRadius:11},
@@ -530,7 +568,9 @@ const p=StyleSheet.create({
  filterTextOn:{color:"#fff"},
  between:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:6},
  badge:{fontSize:11,fontWeight:"800",color:"#0F8063",backgroundColor:"#E7F7F0",
-  padding:7,borderRadius:20},
+  padding:7,borderRadius:20,overflow:"hidden"},
+ badgePending:{color:"#946019",backgroundColor:"#FFF1D5"},
+ badgeDanger:{color:"#AC3443",backgroundColor:"#FFF0F1"},
  stepper:{flexDirection:"row",flexWrap:"wrap",gap:6},
  step:{borderRadius:10,backgroundColor:"#EAF0F9",padding:7},
  stepActive:{backgroundColor:blue},
