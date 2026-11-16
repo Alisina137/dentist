@@ -603,17 +603,16 @@ function DentistCard({dentist,ui,onPress}:{dentist:Dentist;ui:UI;onPress:()=>voi
 function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicId:string;ui:UI;
  onOpenDentist:(id:string)=>void;isSaved:boolean;onSave:()=>void;onBook:()=>void}){
  const detail=usePublic<ClinicDetail>("/clinics/"+encodeURIComponent(clinicId));
- const [tab,setTab]=useState<"overview"|"dentists"|"services"|"gallery"|"hours"|"times">("overview");
- const [photo,setPhoto]=useState(0);
+ const [tab,setTab]=useState<"overview"|"dentists"|"services"|"times">("overview");
+ const [photo,setPhoto]=useState(0),[showAllPhotos,setShowAllPhotos]=useState(false);
  if(detail.loading)return <LoadingCards ui={ui}/>;
  if(detail.error||!detail.data)return <Failure ui={ui} error={detail.error} retry={detail.refresh}/>;
  const {clinic,profile:p,hours}=detail.data;
  const mapUrl="https://www.openstreetmap.org/?mlat="+p.latitude+
   "&mlon="+p.longitude+"#map=16/"+p.latitude+"/"+p.longitude;
- const tabs:["overview"|"dentists"|"services"|"gallery"|"hours"|"times",string][]=[
+ const tabs:([typeof tab,string])[]=[
   ["overview",ui.t("overview")],["dentists",ui.t("dentists")],
-  ["services",ui.t("treatments")],["gallery",ui.t("gallery")],
-  ["hours",ui.t("hours")],["times",ui.t("times")]];
+  ["services",ui.t("treatments")],["times",ui.t("times")]];
  return <View style={s.sectionGap}>
   <View style={s.detailPhotoFrame}>
    <PublishedPhoto large photo={p.photos[photo]||null} label={clinic.name}/>
@@ -689,14 +688,22 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicI
    {p.dentists.map(x=><DentistCard key={x.id} dentist={x} ui={ui}
     onPress={()=>onOpenDentist(x.id)}/>)}</CardShell>}
   {tab==="services"&&<ServicesCard ui={ui} services={p.services}/>}
-  {tab==="gallery"&&<CardShell>
-   <SectionHead ui={ui} title={ui.t("gallery")} sub={ui.t("photoDesc")}/>
-   {p.photos.length?p.photos.map((x,i)=><Pressable key={x.id} onPress={()=>setPhoto(i)}
-    style={{marginBottom:13}}><PublishedPhoto large photo={x} label={clinic.name}/>
-    {x.caption&&<TextLine ui={ui} style={{marginTop:6}}>{x.caption}</TextLine>}</Pressable>):
-    <Empty ui={ui} heading={ui.t("photosEmpty")} detail={ui.t("photoDesc")}/>}
-  </CardShell>}
-  {tab==="hours"&&<HoursCard hours={hours} ui={ui}/>}
+  {tab==="overview"&&<>
+   <CardShell>
+    <SectionHead ui={ui} title={ui.t("gallery")} sub={ui.t("photoDesc")}
+     action={p.photos.length>2?<Pressable accessibilityRole="button"
+      onPress={()=>setShowAllPhotos(v=>!v)}>
+      <Text style={s.link}>{ui.t(showAllPhotos?"close":"viewAll")}  ›</Text>
+     </Pressable>:undefined}/>
+    {p.photos.length?p.photos.slice(0,showAllPhotos?p.photos.length:2).map((x,i)=>
+     <Pressable key={x.id} onPress={()=>setPhoto(i)} accessibilityRole="button"
+      accessibilityLabel={x.caption||clinic.name} style={{marginBottom:13}}>
+      <PublishedPhoto large photo={x} label={clinic.name}/>
+      {!!x.caption&&<TextLine ui={ui} style={{marginTop:6}}>{x.caption}</TextLine>}
+     </Pressable>):<TextLine ui={ui}>{ui.t("photosEmpty")}</TextLine>}
+   </CardShell>
+   <HoursCard hours={hours} ui={ui}/>
+  </>}
   {tab==="times"&&<Availability ui={ui} clinicId={clinicId}
    dentists={p.dentists} services={p.services} horizon={p.bookingRules.horizonDays}/>}
   <View style={s.detailFooter}><TextLine ui={ui} style={s.footerNotice}>
