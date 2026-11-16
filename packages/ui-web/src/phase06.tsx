@@ -573,17 +573,40 @@ function CalendarPanel({space}:{space:Space}){
   const queryDate=q.get("date");
   const queryView=q.get("view");
   if(queryDate&&validIsoDay(queryDate))setDate(queryDate);
-  if(["day","week","month"].includes(queryView||""))setMode(queryView as ViewMode);
+  if(["day","week","month","agenda"].includes(queryView||""))setMode(queryView as ViewMode);
   else if(window.innerWidth<=740)setMode("day");
+  setDoctor(q.get("providerId")||"");
+  setChair(q.get("resourceId")||"");
+  const requestedStatus=q.get("status");
+  if(["confirmed","arrived","in_treatment","completed","cancelled","no_show"].includes(requestedStatus||""))
+   setStatus(requestedStatus!);
   setReady(true);
  },[]);
- function navigate(value:string,view=mode){
-  setDate(value);setMode(view);
+ function updateQuery(params:Record<string,string>){
   const q=new URLSearchParams(location.search);
-  q.set("clinic",space.clinicId);q.set("date",value);q.set("view",view);
-  history.replaceState(null,"",location.pathname+"?"+q);
+  q.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries(params)){
+   if(value)q.set(key,value);else q.delete(key);
+  }
+  history.replaceState(null,"",location.pathname+"?"+q.toString());
  }
- const period=dateRange(date,mode);
+ function navigate(value:string,view=mode){
+  if(!validIsoDay(value))return;
+  setDate(value);setMode(view);
+  updateQuery({date:value,view});
+ }
+ function updateFilter(key:"providerId"|"resourceId"|"status",value:string){
+  if(key==="providerId")setDoctor(value);
+  else if(key==="resourceId")setChair(value);
+  else setStatus(value||"all");
+  updateQuery({[key]:value==="all"?"":value});
+ }
+ function clearFilters(){
+  setDoctor("");setChair("");setStatus("all");
+  updateQuery({providerId:"",resourceId:"",status:""});
+ }
+ const filtered=Boolean(doctor||chair||status!=="all");
+ const period=clinicScheduleWindow(date,mode,calendar);
  const query=ready?new URLSearchParams({from:period.from,to:period.to,
    ...(doctor?{providerId:doctor}:{}),
    ...(chair?{resourceId:chair}:{}),
@@ -602,11 +625,12 @@ function CalendarPanel({space}:{space:Space}){
  },[appointments]);
  const counts=overview?.counts||{};
  const dateLabel=mode==="day"?dateTitle(date,lang,calendar):
-  mode==="week"?dateTitle(period.from,lang,calendar)+" — "+dateTitle(period.to,lang,calendar):
+  mode==="week"||mode==="agenda"?dateTitle(period.from,lang,calendar)+" — "+dateTitle(period.to,lang,calendar):
   new Intl.DateTimeFormat(lang,{timeZone:"Asia/Kabul",year:"numeric",month:"long",
-   calendar:"gregory"}).format(new Date(date.slice(0,7)+"-01T12:00:00Z"));
- const next=()=>navigate(mode==="day"?advance(date,1):mode==="week"?advance(date,7):moveMonth(date,1));
- const previous=()=>navigate(mode==="day"?advance(date,-1):mode==="week"?advance(date,-7):moveMonth(date,-1));
+   calendar:calendar==="solar_hijri"?"persian":"gregory"
+  }).format(new Date(period.from+"T12:00:00Z"));
+ const next=()=>navigate(clinicShiftPeriod(date,mode,1,calendar));
+ const previous=()=>navigate(clinicShiftPeriod(date,mode,-1,calendar));
  const controls=<div className="phase06-controls">
   <div className="phase06-date-controls">
     <button className="phase06-icon-btn" aria-label={t("prevPeriod")} onClick={previous}>‹</button>
@@ -618,8 +642,8 @@ function CalendarPanel({space}:{space:Space}){
         onChange={e=>{if(e.target.value)navigate(e.target.value);}}/></label>
   </div>
   <div className="phase06-view-toggle" role="group" aria-label={t("views")}>
-    {(["day","week","month"] as ViewMode[]).map(view=><button key={view}
-      aria-pressed={mode===view} onClick={()=>navigate(date,view)}>{t(view)}</button>)}
+    {(["day","week","month","agenda"] as ViewMode[]).map(view=><button key={view}
+      type="button" aria-pressed={mode===view} onClick={()=>navigate(date,view)}>{t(view)}</button>)}
   </div>
  </div>;
  const legend=<div className="phase06-status-legend" aria-label={t("statusLegend")}>
@@ -643,29 +667,40 @@ function CalendarPanel({space}:{space:Space}){
    </div>
    <div className="phase06-calendar-tools">{controls}
     <div className="phase06-filterbar">
-     <Select label={t("filterDentist")} value={doctor} onChange={setDoctor}
+     <Select label={t("filterDentist")} value={doctor} onChange={value=>updateFilter("providerId",value)}
       options={[{value:"",label:t("allDentists")},...(catalog?.providers||[]).map((p:Provider)=>({
        value:p.membershipId,label:p.name}))]}/>
-     <Select label={t("filterChair")} value={chair} onChange={setChair}
+     <Select label={t("filterChair")} value={chair} onChange={value=>updateFilter("resourceId",value)}
       options={[{value:"",label:t("allChairs")},...(catalog?.resources||[]).map((r:Resource)=>({
        value:r.id,label:r.label}))]}/>
-     <Select label={t("filterStatus")} value={status} onChange={setStatus}
+     <Select label={t("filterStatus")} value={status} onChange={value=>updateFilter("status",value)}
       options={[{value:"all",label:t("allStatuses")},
        ...(["confirmed","arrived","in_treatment","completed","cancelled","no_show"] as AppointmentStatus[])
         .map(s=>({value:s,label:t(s)}))]}/>
-     <button className="btn btn-secondary" onClick={()=>{refresh();refreshOverview();}}>{t("refresh")} ↻</button>
+     {filtered&&<button type="button" className="btn btn-secondary phase06-filter-clear"
+       onClick={clearFilters}>{t("clearFilters")}</button>}
+     <button type="button" className="btn btn-secondary phase06-reload"
+       onClick={()=>{refresh();refreshOverview();}}>{t("refresh")} ↻</button>
     </div>
-    <div className="phase06-calendar-meta"><span>{appointments.length} {t("count")}
-      {data?.truncated?" · "+t("limitReached"):""}</span>{legend}</div>
+    <div className="phase06-calendar-meta">
+     <span role="status" aria-live="polite" className="phase06-result-count">
+      {data?data.total:t("loading")} {data?t("count"):""}
+      {filtered&&<strong className="phase06-filter-active">{t("activeFilters")}</strong>}
+     </span>{legend}</div>
    </div>
+   {data?.truncated&&<div className="phase06-range-warning" role="alert">
+    {t("limitReached")}</div>}
    {error?<Problem error={error} retry={refresh}/>:!data?<Busy/>:
-    <div className="phase06-calendar-body">
+    <div className="phase06-calendar-body" aria-label={t("calendar")} aria-busy="false">
      {mode==="day"?<DayGrid space={space} date={date} appointments={byDate.get(date)||[]}/>:
       mode==="week"?<WeekGrid space={space} start={period.from} byDate={byDate}
         onSelect={d=>navigate(d,"day")}/>:
-       <MonthGrid space={space} date={date} byDate={byDate}
+      mode==="agenda"?<AgendaGrid space={space} period={period} byDate={byDate}
+        onSelect={d=>navigate(d,"day")}/>:
+       <MonthGrid space={space} period={period} byDate={byDate}
         onSelect={d=>navigate(d,"day")}/>}
     </div>}
+   <p className="phase06-availability-disclaimer">{t("candidateNotice")}</p>
   </section>
   <section className="phase06-bottom-strip card">
    <div><h3>{t("nextBookings")}</h3><p>{t("noPublic")}</p></div>
