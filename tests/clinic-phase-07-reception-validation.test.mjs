@@ -166,7 +166,7 @@ test("Clinic Phase 07: translations, accessible responsive design are clinic-onl
   '.clinic-persistent-shell .clinic-reception-requests',
   '.clinic-persistent-shell .clinic-reception-modal',
   '.clinic-persistent-shell .clinic-reception-queue-tools',
-  '.clinic-persistent-shell .clinic-reception-one-column',
+  '.clinic-persistent-shell .phase06-queue-board.clinic-reception-one-column',
   '@media(max-width:950px)','@media(max-width:680px)',
   '@media(max-width:375px)','@media(prefers-reduced-motion:reduce)',
   ':focus-visible','max-height:92dvh','overscroll-behavior:contain'
