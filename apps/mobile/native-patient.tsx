@@ -251,7 +251,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
  },[patientId,auth.request]);
  const run=async(fn:()=>Promise<void>)=>{
   setBusy(true);setError("");setNotice("");
-  try{await fn()}catch(e){setError(patientError(e,locale))}
+  try{await fn()}catch(e){setError(e instanceof Error&&e.message===t.invalid?t.invalid:patientError(e,locale))}
   finally{setBusy(false)}
  };
  if(auth.loading)return <Block><Text>{t.checking}</Text><ActivityIndicator color={blue}/></Block>;
@@ -282,8 +282,12 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
    onPress={()=>{setMode("recover");setError("");setNotice("");setPassword("")}}/>}
   {mode!=="recover"&&<Button secondary title={t.resendVerification}
    disabled={busy||!email.includes("@")} onPress={()=>void run(async()=>{
-    // Always show the same outcome, regardless of whether this address exists.
-    await auth.resendVerification(email);
+    // Do not disclose whether the email address has an account. Preserve
+    // actionable connection/rate limit failures; all other outcomes are neutral.
+    try{await auth.resendVerification(email);}
+    catch(e){
+     if(e instanceof ApiError&&(e.status===0||e.status===429))throw e;
+    }
     setNotice(patientText(locale,"verifySent"));
    })}/>}
   {error===patientText(locale,"mfaWeb")&&WEB&&<Button secondary title={t.login}
@@ -327,7 +331,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
      });await auth.refresh();
     })}/>
    </>}
-   <Button secondary title={t.signout} onPress={()=>void run(async()=>await auth.signOut())}/>
+   <Button secondary title={t.signout} disabled={busy} onPress={()=>void run(async()=>await auth.signOut())}/>
   </Block>
   <Block><Text style={p.title}>{t.family}</Text>
    {family?.members.map(m=><Text key={m.id} style={p.item}>
