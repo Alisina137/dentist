@@ -4,6 +4,7 @@ import { InlineAlert, usePreferences } from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import { Shell } from "./phase03";
 import {CareIcon} from "./care-icons";
+import {clinicPickHandoffAppointment,clinicCanLinkClinicalEncounter,clinicHandoffKabulDay} from "./clinic-handoff-model";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
@@ -904,12 +905,7 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
 }
 type HandoffAppointment={id:string;startAt:string;endAt?:string;status:string;
  serviceName:string;providerName:string};
-function localDayFromInstant(value:string):string{
- const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
-  year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(value));
- const day=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
- return day.year+"-"+day.month+"-"+day.day;
-}
+
 /** Coordination reads only authorized, clinic-scoped appointment rows already
  * returned by the existing patient booking history API. It does not infer
  * clinical consent, signed encounter notes or medical readiness. */
@@ -919,18 +915,13 @@ function PatientCareHandoff({space,patientId,appointments}:{space:Space;
  const clinical=space.role==="dentist"||
   (["owner","manager"].includes(space.role)&&space.clinicianEnabled);
  const receptionist=["owner","manager","receptionist"].includes(space.role);
- const cutoff=Date.now()-86400000;
- const open=appointments.filter(a=>
-  ["requested","confirmed","arrived","in_treatment"].includes(a.status)&&
-  Date.parse(a.endAt||a.startAt)>=cutoff)
-  .sort((a,b)=>Date.parse(a.startAt)-Date.parse(b.startAt));
- const selected=open[0]||appointments[0];
+ const selected=clinicPickHandoffAppointment(appointments);
  const info=selected?.status==="requested"?"careRequested":
   selected?.status==="confirmed"?"careConfirmed":
   selected?.status==="arrived"?"careArrived":
   selected?.status==="in_treatment"?"careInProgress":
   selected?.status==="completed"?"careCompleted":null;
- const canOpenVisit=clinical&&selected&&["arrived","in_treatment","completed"].includes(selected.status);
+ const canOpenVisit=clinical&&selected&&clinicCanLinkClinicalEncounter(selected.status);
  return <section className="clinic-phase09-patient-coordination"
   aria-label={t("careHandoff")}>
   <div className="clinic-phase09-patient-coordination-head">
@@ -959,7 +950,7 @@ function PatientCareHandoff({space,patientId,appointments}:{space:Space;
      <CareIcon name="calendar" size={16}/>{t("careDetails")}</a>
     {receptionist&&["confirmed","arrived","in_treatment"].includes(selected.status)&&
      <a className="btn btn-secondary" href={"/clinic/appointments/queue?clinic="+
-      encodeURIComponent(space.clinicId)+"&date="+encodeURIComponent(localDayFromInstant(selected.startAt))}>
+      encodeURIComponent(space.clinicId)+"&date="+encodeURIComponent(clinicHandoffKabulDay(selected.startAt))}>
       <CareIcon name="clock" size={16}/>{t("careQueue")}</a>}
     {canOpenVisit&&<a className="btn btn-primary"
      href={"/clinic/patients/"+encodeURIComponent(patientId)+"/visits?clinic="+
