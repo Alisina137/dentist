@@ -134,10 +134,24 @@ function useClinicRead<T>(path:string|null){
   loading:state.path===path?state.loading:!!path,
   refresh:()=>setRevision(x=>x+1)};
 }
-function PanelState({loading,error,retry}:{loading:boolean;error:string;retry:()=>void}){
+type SkeletonVariant="metrics"|"list"|"summary";
+function PanelState({loading,error,retry,variant="summary"}:{loading:boolean;error:string;
+ retry:()=>void;variant?:SkeletonVariant}){
  const {t}=useLabels();
- if(loading)return <div className="h-loading" role="status" aria-live="polite">
-  <span className="h-spinner" aria-hidden="true"/>{t("loading")}</div>;
+ if(loading)return <div className={"h-loading h-loading-"+variant} role="status"
+  aria-live="polite" aria-label={t("loading")}>
+  <span className="h-loading-label"><span className="h-spinner" aria-hidden="true"/>{t("loading")}</span>
+  {variant==="metrics"?<div className="h-skeleton-metrics" aria-hidden="true">
+   {Array.from({length:6},(_,i)=><div className="h-skeleton-metric" key={i}>
+    <span className="h-skeleton h-skeleton-label"/><span className="h-skeleton h-skeleton-value"/></div>)}
+  </div>:variant==="list"?<div className="h-skeleton-list" aria-hidden="true">
+   {Array.from({length:4},(_,i)=><div className="h-skeleton-row" key={i}>
+    <span className="h-skeleton h-skeleton-icon"/><span className="h-skeleton h-skeleton-copy"/>
+    <span className="h-skeleton h-skeleton-trailing"/></div>)}
+  </div>:<div className="h-skeleton-summary" aria-hidden="true">
+   <span className="h-skeleton h-skeleton-wide"/><span className="h-skeleton h-skeleton-short"/>
+  </div>}
+ </div>;
  if(error)return <div className="h-error" role="alert"><span>{t("error")} <bdi>{error}</bdi></span>
   <button type="button" className="btn btn-secondary" onClick={retry}>{t("retry")}</button></div>;
  return null;
@@ -230,7 +244,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
     <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="calendar" size={16}/>{t("overview")}</span>
      <h2>{t("today")}</h2></div><a href={"/clinic/appointments?clinic="+prefix} className="h-more">
      {t("appointments")} <CareIcon name="arrow" size={16}/></a></div>
-    <PanelState loading={appointments.loading} error={appointments.error} retry={appointments.refresh}/>
+    <PanelState loading={appointments.loading} error={appointments.error} retry={appointments.refresh} variant="metrics"/>
     {appointments.data&&<div className="h-metrics">
      {([{key:"todayTotal",label:"today"},{key:"confirmed",label:"confirmed"},
        {key:"arrived",label:"arrived"},{key:"in_treatment",label:"in_treatment"},
@@ -244,7 +258,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
     <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="users" size={16}/>{t("patients")}</span>
      <h2>{t("totalPatients")}</h2></div><a href={"/clinic/patients?clinic="+prefix} className="h-more">
       {t("patientsLink")} <CareIcon name="arrow" size={16}/></a></div>
-    <PanelState loading={patients.loading} error={patients.error} retry={patients.refresh}/>
+    <PanelState loading={patients.loading} error={patients.error} retry={patients.refresh} variant="metrics"/>
     {patients.data&&<div className="h-metrics">
      <div className="h-metric h-main-metric"><span>{t("totalPatients")}</span><strong>{patients.data.total}</strong></div>
      <div className="h-metric"><span>{t("activePatients")}</span><strong>{patients.data.counts.active}</strong></div>
@@ -277,7 +291,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
        <h2>{t("bookingPending")}</h2></div>
        <a className="h-more" href={"/clinic/appointments/requests?clinic="+prefix}>
         {t("requests")} <CareIcon name="arrow" size={16}/></a></div>
-      <PanelState loading={bookingRequests.loading} error={bookingRequests.error} retry={bookingRequests.refresh}/>
+      <PanelState loading={bookingRequests.loading} error={bookingRequests.error} retry={bookingRequests.refresh} variant="summary"/>
       {bookingRequests.data&&<div className="h-request-count">
        <strong>{bookingRequests.data.requests.length===100?t("atLeast")+" 100":bookingRequests.data.requests.length}</strong>
        <span>{bookingRequests.data.requests.length? t("bookingPending"):t("noBookingPending")}</span>
@@ -288,7 +302,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
       <h2>{t("checkSummary")}</h2></div>
       {operations.data&&<span className="h-progress">{completed}/{checks.length} {t("progress")}</span>}</div>
      <p className="h-help">{t("setupBody")}</p>
-     <PanelState loading={operations.loading} error={operations.error} retry={operations.refresh}/>
+     <PanelState loading={operations.loading} error={operations.error} retry={operations.refresh} variant="list"/>
      {operations.data&&<><div className="h-progressbar" role="progressbar" aria-label={t("progress")}
       aria-valuemin={0} aria-valuemax={4} aria-valuenow={completed}>
       <span style={{width:(completed/4*100)+"%"}}/></div>
@@ -304,7 +318,7 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
      <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="clock" size={16}/>{t("recent")}</span>
       <h2>{t("recent")}</h2></div><a className="h-more" href={"/clinic/appointments?clinic="+prefix}>
        {t("appointments")} <CareIcon name="arrow" size={16}/></a></div>
-     <PanelState loading={appointments.loading} error={appointments.error} retry={appointments.refresh}/>
+     <PanelState loading={appointments.loading} error={appointments.error} retry={appointments.refresh} variant="list"/>
      {appointments.data&&(appointments.data.upcoming.length?<div className="h-upcoming">
       {appointments.data.upcoming.map((a,i)=><a key={a.id||i} className="h-upcoming-row"
        href={"/clinic/appointments/"+encodeURIComponent(a.id)+"?clinic="+prefix}>
