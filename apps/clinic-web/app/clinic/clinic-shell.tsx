@@ -116,7 +116,9 @@ function navigation(space:Space):Item[]{
   "finance","resources","services","hours","myProfile","security"
  ]:space.role==="assistant"?[
   "overview","appointments","queue","clinical","myProfile","security"
- ]:["overview","finance","reports","patients","myProfile","security"];
+ ]:space.role==="cashier"?[
+  "overview","finance","reports","patients","myProfile","security"
+ ]:["overview","myProfile","security"];
  return wanted.flatMap(key=>nav.filter(item=>item.key===key));
 }
 function pathActive(pathname:string,href:string){
