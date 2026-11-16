@@ -7,7 +7,7 @@ type Locale="en"|"fa-AF"|"ps-AF";
 type Variant="cards"|"rows"|"form";
 const words:Record<Locale,Record<string,string>>={
  en:{
-  loading:"Loading clinic information…",
+  loading:"Loading clinic information…",signIn:"Sign in",
   failed:"Unable to load this section",retry:"Try again",
   network:"Connection unavailable. Check your internet connection and try again.",
   unauthorized:"Your session has expired. Sign in again.",
@@ -20,7 +20,7 @@ const words:Record<Locale,Record<string,string>>={
   formHint:"Fields marked * are required."
  },
  "fa-AF":{
-  loading:"در حال بارگیری معلومات کلینیک…",
+  loading:"در حال بارگیری معلومات کلینیک…",signIn:"ورود",
   failed:"این بخش بارگیری نشد",retry:"دوباره کوشش کنید",
   network:"اتصال برقرار نیست. اینترنت را بررسی کرده و دوباره کوشش کنید.",
   unauthorized:"نشست شما پایان یافته است. دوباره وارد شوید.",
@@ -33,7 +33,7 @@ const words:Record<Locale,Record<string,string>>={
   formHint:"خانه‌هایی که با * مشخص شده‌اند ضروری هستند."
  },
  "ps-AF":{
-  loading:"د کلینیک معلومات پورته کېږي…",
+  loading:"د کلینیک معلومات پورته کېږي…",signIn:"ننوتل",
   failed:"دا برخه پورته نه شوه",retry:"بیا هڅه وکړئ",
   network:"اړیکه نشته. انټرنټ وګورئ او بیا هڅه وکړئ.",
   unauthorized:"ستاسو ناسته پای ته رسېدلې ده. بیا ننوځئ.",
