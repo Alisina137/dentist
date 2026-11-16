@@ -999,6 +999,8 @@ function BookingWizard({space}:{space:Space}){
  const {data:available,error:slotError,refresh:refreshSlots}=useData(slotQuery?
   base+"/slots?"+slotQuery:null);
  const slots:Slot[]=(available?.slots||[]).filter((s:Slot)=>Date.parse(s.startAt)>Date.now()-30000);
+ const selectedSlotValid=Boolean(slot&&available&&slots.some(s=>
+  s.startAt===slot.startAt&&s.endAt===slot.endAt&&s.resourceId===slot.resourceId));
  useEffect(()=>{
   if(initialStart&&slots.length){
    const selected=slots.find(x=>x.start===initialStart);
@@ -1014,6 +1016,7 @@ function BookingWizard({space}:{space:Space}){
  function chooseChair(id:string){setChair(id);resetRequest();}
  function chooseSlot(s:Slot){setSlot(s);setIdempotencyKey(crypto.randomUUID());
   setError("");setAlternatives([]);}
+ function recheckSlots(){setSlot(null);setIdempotencyKey(crypto.randomUUID());refreshSlots();}
  async function addInline(event:FormEvent){
   event.preventDefault();setPatientBusy(true);setPatientError("");setCandidate([]);
   try{
@@ -1029,7 +1032,7 @@ function BookingWizard({space}:{space:Space}){
  }
  async function submit(event:FormEvent){
   event.preventDefault();
-  if(!patient||!slot||!selectedService||!providerId)return;
+  if(!patient||!slot||!selectedSlotValid||!selectedService||!providerId)return;
   setBusy(true);setError("");setAlternatives([]);
   try{
    const response=await call(base+"/appointments","POST",{
@@ -1040,7 +1043,7 @@ function BookingWizard({space}:{space:Space}){
   }catch(e:any){
    setError(e.message);setAlternatives(e.alternatives||[]);
    if(e.message==="APPOINTMENT_SLOT_UNAVAILABLE"){
-    setStep(2);setSlot(null);refreshSlots();
+    setStep(2);recheckSlots();
    }
   }finally{setBusy(false);}
  }
@@ -1180,7 +1183,7 @@ function BookingWizard({space}:{space:Space}){
      <div className="phase06-slot-section">
       <div className="phase06-between"><div><h3>{t("slots")}</h3>
        <p>{t("timeZone")} · {t("candidateOnly")||t("noPublic")}</p></div>
-       <button type="button" className="btn btn-secondary" onClick={refreshSlots}>
+       <button type="button" className="btn btn-secondary" onClick={recheckSlots}>
         {t("checkAvailability")} ↻</button></div>
       {slotError?<Problem error={slotError} retry={refreshSlots}/>:!available?<Busy/>:
        !slots.length?<div className="phase06-slot-empty"><span aria-hidden="true">◷</span>
@@ -1204,7 +1207,7 @@ function BookingWizard({space}:{space:Space}){
        <span>{t("chooseAlternative")} ↗</span></button>)}</div></div>}
      <div className="phase06-form-footer">
       <button type="button" className="btn btn-secondary" onClick={()=>setStep(1)}>{t("back")}</button>
-      <button type="button" className="btn btn-primary" disabled={!slot||!selectedService||!providerId}
+      <button type="button" className="btn btn-primary" disabled={!selectedSlotValid||!selectedService||!providerId}
        onClick={()=>setStep(3)}>{t("continue")} →</button>
      </div>
     </section>}
@@ -1232,7 +1235,7 @@ function BookingWizard({space}:{space:Space}){
      <form onSubmit={submit}><div className="phase06-form-footer">
       <button type="button" className="btn btn-secondary" onClick={()=>setStep(2)}
        disabled={busy}>{t("back")}</button>
-      <button className="btn btn-primary" disabled={busy||!slot||!patient}>
+      <button className="btn btn-primary" disabled={busy||!selectedSlotValid||!patient}>
        {busy?t("saving"):t("book")}</button>
      </div></form>
     </section>}
