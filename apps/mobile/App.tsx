@@ -453,7 +453,7 @@ function PublishedPhoto({photo,label,large=false}:{photo:Photo|null|undefined;la
  const [bad,setBad]=useState(false);
  useEffect(()=>setBad(false),[photo?.id]);
  if(!photo||bad)return <View style={[s.photoFallback,large&&s.photoFallbackLarge]}>
-  <Text style={[s.photoFallbackIcon,large&&{fontSize:56}]}>✧</Text>
+  <PatientIcon name="clinic" size={large?51:34} color="#86A8D8"/>
   <Text style={s.photoFallbackLabel}>DANDANLINK</Text></View>;
  const url=photo.url.startsWith("/")?API+photo.url:photo.url;
  return <Image source={{uri:url}} resizeMode="cover" fadeDuration={160}
@@ -570,7 +570,8 @@ function Availability({ui,clinicId,services,dentists,horizon,doctorId}:{ui:UI;cl
       </View>:<View style={s.scheduleEmpty}><Icon glyph="▦"/>
        <Text style={s.emptyCopy}>{ui.t("noSlots")}</Text></View>}
    <View style={[s.notice,{flexDirection:ui.flow}]}>
-    <Text style={s.noticeIcon}>ⓘ</Text><Text style={[s.noticeText,{textAlign:ui.align}]}>
+    <PatientIcon name="help" size={19} color={colors.amber}/>
+    <Text style={[s.noticeText,{textAlign:ui.align}]}>
      {ui.t("pending")} {ui.t("timezone")}</Text></View>
   </CardShell>
  </View>;
@@ -654,14 +655,20 @@ function ClinicScreen({clinicId,ui,onOpenDentist,isSaved,onSave,onBook}:{clinicI
    <TextLine ui={ui} style={[s.verifiedTiny,{marginTop:12}]}>
     ✓ {ui.t("updated")} · {hours.now.isWithinPublishedHours?
      ui.t("openScheduled"):ui.t("closedScheduled")}</TextLine>
-   <View style={[s.row,{flexDirection:ui.flow,gap:9,marginTop:18}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
-     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book appointment":ui.locale==="ps-AF"?"د ملاقات وخت":"رزرو نوبت"}</Text></Pressable>
-    <Pressable style={s.cardButton} onPress={()=>{
-     void Linking.openURL("tel:"+clinic.phone)}}><Text style={s.cardButtonText}>
-     ☎ {ui.t("call")}</Text></Pressable>
-    <Pressable style={s.cardButton} onPress={()=>{void Linking.openURL(mapUrl)}}>
-     <Text style={s.cardButtonText}>⌖  {ui.t("directions")}</Text></Pressable>
+   <View style={[s.row,{flexDirection:ui.flow,gap:9,flexWrap:"wrap",marginTop:18}]}>
+    <Pressable accessibilityRole="button" style={[s.cardButton,s.cardButtonPrimary,{minWidth:105}]}
+     onPress={onBook}>
+     <View style={s.iconButtonRow}><PatientIcon name="calendar" size={18} color={colors.white}/>
+      <Text style={[s.cardButtonPrimaryText,{textAlign:"center",flexShrink:1}]}>
+       {ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text></View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("call")}
+     style={[s.cardButton,{minWidth:105}]} onPress={()=>{void Linking.openURL("tel:"+clinic.phone)}}>
+     <View style={s.iconButtonRow}><PatientIcon name="phone" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("call")}</Text></View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("directions")}
+     style={[s.cardButton,{minWidth:105}]} onPress={()=>{void Linking.openURL(mapUrl)}}>
+     <View style={s.iconButtonRow}><PatientIcon name="map" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("directions")}</Text></View></Pressable>
    </View>
   </CardShell>
   <ScrollView horizontal showsHorizontalScrollIndicator={false}
@@ -743,20 +750,29 @@ function DentistScreen({clinicId,dentistId,ui,onBackToClinic,onBook,isSaved,onSa
      {d.displayName}</Text><TextLine ui={ui}>{d.specialty||ui.t("notListed")}</TextLine>
      <Tag label={ui.t("verify")} positive/></View>
    </View>
-   <Pressable accessibilityRole="button" onPress={onSave} style={[s.heart,{marginTop:10,alignSelf:"flex-start"}]}>
-    <Text style={[s.heartText,isSaved&&{color:colors.blue}]}>{isSaved?"♥":"♡"}</Text>
+   <Pressable accessibilityRole="button" accessibilityState={{selected:isSaved}}
+    accessibilityLabel={ui.t(isSaved?"removeFromSaved":"addToSaved")}
+    onPress={onSave} style={[s.heart,{marginTop:10,alignSelf:"flex-start"}]}>
+    <PatientIcon name="bookmark" size={21} color={isSaved?colors.blue:colors.muted} filled={isSaved}/>
    </Pressable>
    <Pressable onPress={onBackToClinic} style={[s.row,{flexDirection:ui.flow,gap:8,marginTop:17}]}>
     <Text style={[s.link,{textAlign:ui.align,flex:1}]}>{clinic.name} ›</Text></Pressable>
    <TextLine ui={ui} style={{marginTop:8}}>⌖ {cityLabel(clinic.city,ui.locale)}, {clinic.province}</TextLine>
-   <View style={[s.row,{flexDirection:ui.flow,gap:10,marginTop:16}]}>
-    <Pressable style={[s.cardButton,s.cardButtonPrimary]} onPress={onBook}>
-     <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text></Pressable>
-    <Pressable style={s.cardButton} onPress={()=>{
+   <View style={[s.row,{flexDirection:ui.flow,gap:10,flexWrap:"wrap",marginTop:16}]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("times")}
+     style={[s.cardButton,s.cardButtonPrimary,{minWidth:105}]} onPress={onBook}>
+     <View style={s.iconButtonRow}><PatientIcon name="calendar" size={19} color={colors.white}/>
+      <Text style={s.cardButtonPrimaryText}>{ui.locale==="en"?"Book":ui.locale==="ps-AF"?"وخت":"رزرو"}</Text>
+     </View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("call")}
+     style={[s.cardButton,{minWidth:105}]} onPress={()=>{
      void Linking.openURL("tel:"+clinic.phone)}}>
-     <Text style={s.cardButtonPrimaryText}>☎  {ui.t("call")}</Text></Pressable>
-    <Pressable onPress={()=>setTab("times")} style={s.cardButton}>
-     <Text style={s.cardButtonText}>▦  {ui.t("times")}</Text></Pressable>
+     <View style={s.iconButtonRow}><PatientIcon name="phone" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("call")}</Text></View></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={ui.t("times")}
+     onPress={()=>setTab("times")} style={[s.cardButton,{minWidth:105}]}>
+     <View style={s.iconButtonRow}><PatientIcon name="clock" size={18} color={colors.blue}/>
+      <Text style={s.cardButtonText}>{ui.t("times")}</Text></View></Pressable>
    </View>
   </CardShell>
   <ScrollView horizontal showsHorizontalScrollIndicator={false}
