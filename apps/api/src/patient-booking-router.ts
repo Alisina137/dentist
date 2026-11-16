@@ -201,13 +201,17 @@ export function patientBookingRouter(){
    WHERE b.clinic_id=${clinic}
     AND (${state}='pending' AND a.status='requested'
       OR ${state}='processed' AND a.status<>'requested')
+    AND (${ctx.role}<>'dentist' OR a.provider_membership_id=${ctx.membership.id})
    ORDER BY b.created_at DESC LIMIT 100`;
+  // Apply clinician scoping *before* LIMIT so a busy clinic cannot push the
+  // dentist's own requests beyond the first 100 of another provider.
   res.json({requests:rows.filter(x=>ctx.role!=="dentist"||
     x.provider_membership_id===ctx.membership.id).map(x=>({
     id:x.id,patientName:x.subject_name,createdAt:x.created_at,
     appointmentId:x.appointment_id,providerId:x.provider_membership_id,
     serviceName:x.service_name,startAt:iso(x.start_at),endAt:iso(x.end_at),
-    priceAfn:x.service_price_afn,status:x.status,revision:x.revision})),filter:state});
+    priceAfn:x.service_price_afn,status:x.status,revision:x.revision})),
+   filter:state,limitReached:rows.length===100});
  }));
  staff.post("/requests/:bookingId/decision",route(async(req:StaffRequest,res)=>{
   const {clinic,ctx}=await clinicScheduler(req);

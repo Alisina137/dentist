@@ -41,6 +41,9 @@ const words:Record<Lang,Record<string,string>>={
   appointments:"Appointments",calendar:"Calendar",queue:"Patient queue",newAppointment:"New appointment",
   appointmentDetail:"Appointment details",welcome:"Clinic scheduling",intro:"Coordinate visits, staff and chairs on one reliable schedule.",
   queueIntro:"Today’s arrivals, treatment progress and completed appointments in one place.",
+  queueSearch:"Find in queue",queueSearchHint:"Patient name, number or service",
+  queueFilter:"Queue stage",queueShowAll:"All stages",queueNoMatch:"No arrivals match these filters.",
+  queueClear:"Clear search",queueNew:"Register a walk-in",queueRequests:"Review online requests",
   newIntro:"Choose a real clinic patient, procedure, clinician and available time.",
   detailIntro:"Review details, appointment history and permitted actions.",
   today:"Today",previous:"Previous",next:"Next",day:"Day",week:"Week",month:"Month",agenda:"Agenda",
@@ -144,6 +147,9 @@ const words:Record<Lang,Record<string,string>>={
   appointmentDetail:"جزئیات وقت ملاقات",welcome:"برنامه‌ریزی کلینیک",
   intro:"مریضان، داکتران و چوکی‌ها را در یک تقویم منظم مدیریت کنید.",
   queueIntro:"حضور مریضان، پیشرفت تداوی و تکمیل ملاقات‌ها در یک صفحه.",
+  queueSearch:"جستجو در صف",queueSearchHint:"نام، شماره مریض یا خدمت",
+  queueFilter:"مرحله صف",queueShowAll:"تمام مراحل",queueNoMatch:"مریضی مطابق فیلتر پیدا نشد.",
+  queueClear:"پاک‌کردن جستجو",queueNew:"ثبت مریض حضوری",queueRequests:"بررسی درخواست‌های آنلاین",
   newIntro:"مریض، خدمت، داکتر و وقت واقعاً موجود را انتخاب کنید.",
   detailIntro:"معلومات، تاریخچه و عملیات مجاز وقت ملاقات.",
   today:"امروز",previous:"قبلی",next:"بعدی",day:"روز",week:"هفته",month:"ماه",agenda:"فهرست نوبت‌ها",
@@ -253,6 +259,9 @@ const words:Record<Lang,Record<string,string>>={
   newAppointment:"نوی وخت ثبت کړئ",appointmentDetail:"د لیدنې جزییات",
   welcome:"د کلینیک مهالویش",intro:"ناروغان، ډاکټران او څوکۍ په یوه منظم مهالوېش کې تنظیم کړئ.",
   queueIntro:"د ناروغانو راتګ، درملنې او بشپړو شوو لیدنو یو ځای مدیریت.",
+  queueSearch:"په کتار کې پلټنه",queueSearchHint:"نوم، د ناروغ شمېره یا خدمت",
+  queueFilter:"د کتار پړاو",queueShowAll:"ټول پړاوونه",queueNoMatch:"د دې چاڼ سره سم ناروغان نشته.",
+  queueClear:"پلټنه پاکه کړئ",queueNew:"حضوري ناروغ ثبت کړئ",queueRequests:"آنلاین غوښتنې وګورئ",
   newIntro:"ناروغ، خدمت، ډاکټر او شته وخت غوره کړئ.",
   detailIntro:"د لیدنې معلومات، تاریخچه او مجازې کړنې.",
   today:"نن",previous:"مخکېنی",next:"راتلونکی",day:"ورځ",week:"اونۍ",month:"میاشت",agenda:"د لیدنو لړلیک",
@@ -948,8 +957,11 @@ function QueueCard({space,a,changed}:{space:Space;a:Appointment;changed:()=>void
     <button key={s} className="btn btn-primary" onClick={()=>setAction(s)}>
      {actionName(t,s)} →</button>)}
    <a className="btn btn-secondary" href={appHref(space.clinicId,a.id)}>{t("viewDetails")}</a>
-   {available.includes("no_show")&&<button className="phase06-text-action"
+   {available.includes("no_show")&&<button type="button" className="phase06-text-action"
      onClick={()=>setAction("no_show")}>{t("markNoShow")}</button>}
+   {available.includes("cancelled")&&<button type="button"
+     className="phase06-text-action clinic-reception-cancel"
+     onClick={()=>setAction("cancelled")}>{t("cancelBooking")}</button>}
   </div>
   {action&&<ActionDialog space={space} appointment={a} action={action}
    close={()=>setAction(null)} done={()=>{setAction(null);changed();}}/>}
@@ -958,6 +970,8 @@ function QueueCard({space,a,changed}:{space:Space;a:Appointment;changed:()=>void
 function QueuePanel({space}:{space:Space}){
  const {t,fmt,lang,calendar}=useWords();
  const [day,setDay]=useState(dayKabul()),[provider,setProvider]=useState("");
+ const [queueSearch,setQueueSearch]=useState("");
+ const [queueStage,setQueueStage]=useState<"all"|"confirmed"|"arrived"|"in_treatment"|"completed">("all");
  useEffect(()=>{
   const q=new URLSearchParams(location.search);
   const requested=q.get("date");
@@ -976,8 +990,11 @@ function QueuePanel({space}:{space:Space}){
  const base="/clinics/"+space.clinicId;
  const {data,error,refresh}=useData(base+"/queue?date="+day);
  const {data:catalog}=useData(base+"/catalog");
+ const term=queueSearch.trim().toLocaleLowerCase();
  const filtered:Appointment[]=(data?.queue||[]).filter((a:Appointment)=>
-  !provider||a.providerMembershipId===provider);
+  (!provider||a.providerMembershipId===provider)&&(!term||
+   (patientDisplay(a)+" "+(a.patient?.patientNumber||"")+" "+a.serviceName)
+    .toLocaleLowerCase().includes(term)));
  const columns=[
   {status:"confirmed",key:"queueExpected",icon:"◷"},
   {status:"arrived",key:"queueArrived",icon:"◎"},
@@ -985,6 +1002,7 @@ function QueuePanel({space}:{space:Space}){
   {status:"completed",key:"queueComplete",icon:"✓"}
  ] as const;
  const counts=columns.map(c=>filtered.filter(a=>a.status===c.status).length);
+ const visibleColumns=queueStage==="all"?columns:columns.filter(c=>c.status===queueStage);
  return <div className="phase06-queue-page">
   <section className="phase06-queue-intro card">
    <div><span className="phase06-eyebrow">{t("queueToday")}</span>
@@ -996,7 +1014,14 @@ function QueuePanel({space}:{space:Space}){
     <Select label={t("filterDentist")} value={provider} onChange={value=>queueNavigate(day,value)}
      options={[{value:"",label:t("allDentists")},
       ...(catalog?.providers||[]).map((p:Provider)=>({value:p.membershipId,label:p.name}))]}/>
-    <button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
+    <button type="button" className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>
+   </div>
+   <div className="clinic-reception-queue-links">
+    {canBook(space)&&<a href={appHref(space.clinicId,"new")+"&date="+day}
+     className="btn btn-primary"><span aria-hidden="true">+</span>{t("queueNew")}</a>}
+    {["owner","manager","receptionist","dentist"].includes(space.role)&&
+     <a href={"/clinic/appointments/requests?clinic="+encodeURIComponent(space.clinicId)}
+      className="btn btn-secondary">{t("queueRequests")} ↗</a>}
    </div>
   </section>
   <div className="phase06-queue-kpis">
@@ -1005,9 +1030,25 @@ function QueuePanel({space}:{space:Space}){
     <div><span>{t(c.key)}</span><strong>{data?counts[i]:"—"}</strong></div>
    </div>)}
   </div>
+  <section className="clinic-reception-queue-tools" aria-label={t("queueFilter")}>
+   <label className="clinic-reception-queue-search"><span>{t("queueSearch")}</span>
+    <input type="search" value={queueSearch} placeholder={t("queueSearchHint")}
+     maxLength={100} autoComplete="off"
+     onChange={event=>setQueueSearch(event.target.value)}/></label>
+   <div className="clinic-reception-queue-stages" role="group" aria-label={t("queueFilter")}>
+    <button type="button" aria-pressed={queueStage==="all"}
+     onClick={()=>setQueueStage("all")}>{t("queueShowAll")}</button>
+    {columns.map(column=><button type="button" key={column.status}
+     aria-pressed={queueStage===column.status}
+     onClick={()=>setQueueStage(column.status)}>{t(column.key)}</button>)}
+   </div>
+   {queueSearch&&<button type="button" className="btn btn-secondary"
+    onClick={()=>setQueueSearch("")}>{t("queueClear")}</button>}
+  </section>
   {error?<Problem error={error} retry={refresh}/>:!data?<Busy/>:
-   <section className="phase06-queue-board" aria-label={t("queueToday")}>
-    {columns.map(column=>{
+   <section className={"phase06-queue-board"+(queueStage!=="all"?" clinic-reception-one-column":"")}
+    aria-label={t("queueToday")}>
+    {visibleColumns.map(column=>{
      const patients=filtered.filter(a=>a.status===column.status);
      return <div className="phase06-queue-column" key={column.status}>
       <header className={"phase06-queue-column-head phase06-column-"+column.status}>
@@ -1015,8 +1056,8 @@ function QueuePanel({space}:{space:Space}){
       </header>
       <div className="phase06-queue-column-content">
        {patients.length?patients.map(a=><QueueCard space={space} a={a} key={a.id} changed={refresh}/>):
-        <div className="phase06-queue-empty"><span>◇</span>
-         <p>{t("queueEmpty")}</p></div>}
+        <div className="phase06-queue-empty" role="status"><span aria-hidden="true">◇</span>
+         <p>{term?t("queueNoMatch"):t("queueEmpty")}</p></div>}
       </div>
      </div>;
     })}

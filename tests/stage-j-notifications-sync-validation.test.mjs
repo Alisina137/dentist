@@ -35,14 +35,14 @@ test("Stage J: requests read current tenant, cancel obsolete reads and refresh a
   'const current=snapshot?.key===key?snapshot:null',
   'const rows=current?.rows||[],links=current?.links||[]',
   'const controller=new AbortController()',
-  'canReviewLinks?api<{links:LinkRequest[]}>',
+  'identityOpen&&canReviewLinks?',
   'return()=>controller.abort()',
   'document.addEventListener("visibilitychange",visible)',
   'window.addEventListener("focus",visible)',
   'window.setInterval(visible,45000)',
   'window.clearInterval(timer)',
   'setSnapshot(null);reload()',
-  'loading?<Spinner/>:error?<button'
+  'loading?<Spinner/>:loadError?null:visible.length?'
  ])assert.ok(clinic.includes(part),part);
 });
 test("Stage J: delivery monitoring shows explicit channel status, bounded metadata and accessible retry",()=>{
