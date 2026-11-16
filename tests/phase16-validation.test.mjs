@@ -7,7 +7,7 @@ test("PH16 native patient app has five complete navigation destinations",()=>{
  const app=read("apps/mobile/App.tsx");
  for(const s of ["NativeAuthProvider","NativeAccountArea","NativeBookingWizard",
   "NativeAppointments","NativeSaved","saveDentist","onReschedule",
-  '[["home","⌂"],["explore","⌕"],["appointments","▦"],["saved","♡"],["account","☺"]]'])
+  '[["home","home"],["explore","search"],["appointments","calendar"],["saved","bookmark"],["account","user"]]'])
   assert.ok(app.includes(s),s);
  assert.ok(!app.includes('"Book Appointment"'));
 });
