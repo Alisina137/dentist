@@ -66,7 +66,7 @@ test("Patient B: every appointment row opens its secure, dedicated server-author
  assert.ok(journeys.includes("view.timeline.map((event,index)"),
   "must render real patient-scoped chronology, not fabricated status milestones");
  assert.ok(journeys.includes("timeline:data.timeline||[]"));
- assert.ok(journeys.includes("event.action===\\"rescheduled\\"".replaceAll("\\\\"","\\"")));
+ assert.ok(journeys.includes('event.action==="rescheduled"'));
  const api=read("apps/api/src/patient-booking-router.ts");
  for(const part of [
   "JOIN patient_public_bookings b",
