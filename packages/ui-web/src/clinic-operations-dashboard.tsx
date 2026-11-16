@@ -11,12 +11,15 @@ type Appointments={today:string;todayTotal:number;weekTotal:number;timezone:stri
  counts:{confirmed:number;arrived:number;in_treatment:number;completed:number;no_show:number};
  upcoming:{id:string;startAt:string;serviceName:string;status:string}[]};
 type Patients={counts:{active:number;inactive:number;archived:number};total:number};
+type BookingRequests={requests:{id:string}[];filter:"pending"};
 type Operations={timezone:string;metrics:{services:number;chairs:number;openDays:number;scheduledDentists:number};
  checklist:{key:string;done:boolean}[];readyForPreview:boolean};
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 const copy:Record<Lang,Record<string,string>>={
  en:{
   title:"Clinic command center",eyebrow:"CLINIC OPERATIONS",intro:"One place to manage today's care, staff and readiness.",
+  bookingPending:"Pending online requests",noBookingPending:"No new booking requests.",atLeast:"At least",
+  owner:"Clinic owner",manager:"Clinic manager",dentist:"Dentist",receptionist:"Receptionist",assistant:"Dental assistant",cashier:"Cashier",
   overview:"Today's schedule",today:"Appointments today",confirmed:"Confirmed",arrived:"Arrived",
   in_treatment:"In treatment",completed:"Completed",no_show:"No-shows",week:"Next 7 days",
   patients:"Patient directory",totalPatients:"Patient records",activePatients:"Active records",
@@ -42,6 +45,8 @@ const copy:Record<Lang,Record<string,string>>={
  },
  "fa-AF":{
   title:"مرکز مدیریت کلینیک",eyebrow:"عملیات کلینیک",intro:"مدیریت نوبت‌های امروز، کارمندان و آمادگی در یک صفحه.",
+  bookingPending:"درخواست‌های آنلاین در انتظار",noBookingPending:"درخواست تازه موجود نیست.",atLeast:"حداقل",
+  owner:"مالک کلینیک",manager:"مدیر کلینیک",dentist:"داکتر دندان",receptionist:"پذیرش",assistant:"دستیار دندان",cashier:"حسابدار",
   overview:"تقویم امروز",today:"نوبت‌های امروز",confirmed:"تأییدشده",arrived:"حاضر",
   in_treatment:"در تداوی",completed:"تکمیل‌شده",no_show:"حاضرنشده",week:"هفت روز آینده",
   patients:"فهرست مریضان",totalPatients:"مریضان ثبت‌شده",activePatients:"سوابق فعال",
@@ -69,6 +74,8 @@ const copy:Record<Lang,Record<string,string>>={
  "ps-AF":{
   title:"د کلینیک د مدیریت مرکز",eyebrow:"د کلینیک چارې",
   intro:"د نن لیدنې، کارکوونکي او چمتووالی په یوه پاڼه کې وګورئ.",
+  bookingPending:"ناڅېړل شوې آنلاین غوښتنې",noBookingPending:"نوې غوښتنې نشته.",atLeast:"لږ تر لږه",
+  owner:"د کلینیک خاوند",manager:"د کلینیک مدیر",dentist:"د غاښونو ډاکټر",receptionist:"پذیرش",assistant:"د غاښونو مرستیال",cashier:"حسابدار",
   overview:"د نن مهالوېش",today:"د نن لیدنې",confirmed:"تایید شوي",
   arrived:"راغلي",in_treatment:"د درملنې لاندې",completed:"بشپړ شوي",
   no_show:"نه حاضر شوي",week:"راتلونکې اووه ورځې",
@@ -184,10 +191,13 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
  const canSchedule=space.role!=="cashier";
  const canPatients=space.role!=="assistant";
  const canOperate=["owner","manager","dentist","receptionist"].includes(space.role);
+ const canReadRequests=canOperate;
  const prefix=encodeURIComponent(space.clinicId);
  const appointments=useClinicRead<Appointments>(canSchedule?"/v1/appointments/clinics/"+prefix+"/overview":null);
  const patients=useClinicRead<Patients>(canPatients?"/v1/registry/clinics/"+prefix+"/patients/summary":null);
  const operations=useClinicRead<Operations>(canOperate?"/v1/operations/clinics/"+prefix+"/summary":null);
+ const bookingRequests=useClinicRead<BookingRequests>(canReadRequests?
+  "/v1/booking/clinics/"+prefix+"/requests?state=pending":null);
  const links=actionsFor(space);
  const checks=[
   {key:"service",label:"service",href:"/clinic/services"},
@@ -196,14 +206,14 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
   {key:"dentistHours",label:"dentistHours",href:"/clinic/settings/hours"}
  ];
  const completed=checks.filter(x=>operations.data?.checklist.some(row=>row.key===x.key&&row.done)).length;
- function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();}
+ function refreshAll(){appointments.refresh();patients.refresh();operations.refresh();bookingRequests.refresh();}
  return <div className="h-clinic" lang={lang}>
   <header className="h-head">
    <div><span className="h-eyebrow"><CareIcon name="activity" size={17}/>{t("eyebrow")}</span>
     <h1>{t("title")}</h1><p>{t("intro")}</p>
     <div className="h-identity">
      <span><CareIcon name="clinic" size={16}/>{space.clinicName}</span>
-     <span><CareIcon name="account" size={16}/>{t("workspaceRole")}: {space.role}</span>
+     <span><CareIcon name="account" size={16}/>{t("workspaceRole")}: {t(space.role)}</span>
      <span className={"h-status h-"+(space.clinicStatus==="approved"?"approved":"pending")}>
       {t("status")}: {t(space.clinicStatus)||space.clinicStatus}</span>
     </div></div>
@@ -261,6 +271,18 @@ export function ClinicOperationsOverview({ctx,space}:{ctx:Context;space:Space}){
     </div>
    </section>
    <div className="h-stack">
+    {canReadRequests&&<section className="h-card h-online-requests">
+      <div className="h-card-heading"><div><span className="h-kicker">
+       <CareIcon name="bell" size={16}/>{t("requests")}</span>
+       <h2>{t("bookingPending")}</h2></div>
+       <a className="h-more" href={"/clinic/appointments/requests?clinic="+prefix}>
+        {t("requests")} <CareIcon name="arrow" size={16}/></a></div>
+      <PanelState loading={bookingRequests.loading} error={bookingRequests.error} retry={bookingRequests.refresh}/>
+      {bookingRequests.data&&<div className="h-request-count">
+       <strong>{bookingRequests.data.requests.length===100?t("atLeast")+" 100":bookingRequests.data.requests.length}</strong>
+       <span>{bookingRequests.data.requests.length? t("bookingPending"):t("noBookingPending")}</span>
+      </div>}
+     </section>}
     {canOperate&&<section className="h-card">
      <div className="h-card-heading"><div><span className="h-kicker"><CareIcon name="shield-check" size={16}/>{t("readiness")}</span>
       <h2>{t("checkSummary")}</h2></div>
