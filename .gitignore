@@ -11,3 +11,6 @@ coverage/
 .DS_Store
 *.log
 .pnpm-store/
+
+# Physical-device acceptance evidence may contain private test notes; local only.
+.patient-acceptance/
