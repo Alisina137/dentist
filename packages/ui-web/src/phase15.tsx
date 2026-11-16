@@ -527,7 +527,8 @@ function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,chil
  // A supplied clinic ID must never silently fall back to a different tenant.
  const space=clinic===null?ctx.clinics[0]:ctx.clinics.find(c=>c.clinicId===clinic);
  if(!space)return <Page heading={title}><Banner text={t(clinic===null?"signClinic":"clinicUnavailable")}/></Page>;
- if(ownerManagerOnly&&!["owner","manager"].includes(space.role))
+ if((ownerManagerOnly&&!["owner","manager"].includes(space.role))||
+    (activeKey==="bookingRequests"&&!["owner","manager","receptionist","dentist"].includes(space.role)))
   return <Page heading={title}><Banner text={t("roleRestricted")}/></Page>;
  return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
   <Page heading={title} sub={space.clinicName}>
@@ -544,39 +545,71 @@ type StaffRequestRow={id:string;patientName:string;serviceName:string;startAt:st
 type LinkRequest={id:string;state:string;suppliedPatientNumber:string;
  requestedAt:string;patientId:string|null;method:string|null;applicantName:string};
 export function ClinicBookingRequestsPage(){
- return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=><Requests cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
+ return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=><Requests key={clinicId} cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
 }
 function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianEnabled:boolean}){
  const {t,fmt}=useWords(),[filter,setFilter]=useState("pending");
- const [rows,setRows]=useState<StaffRequestRow[]>([]),[links,setLinks]=useState<LinkRequest[]>([]);
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false);
+ const [actionError,setActionError]=useState("");
+ const [snapshot,setSnapshot]=useState<{key:string;rows:StaffRequestRow[];
+  links:LinkRequest[];error:string;loading:boolean;syncedAt:string|null}|null>(null);
  const [reasons,setReasons]=useState<Record<string,string>>({});
  const [patientIds,setPatientIds]=useState<Record<string,string>>({});
  const [verified,setVerified]=useState<Record<string,boolean>>({});
  const [methods,setMethods]=useState<Record<string,string>>({});
- const load=()=>{setLoading(true);
-  Promise.all([api<{requests:StaffRequestRow[]}>("/v1/booking/clinics/"+cid+"/requests?state="+filter),
-   api<{links:LinkRequest[]}>("/v1/booking/clinics/"+cid+"/record-links")])
-   .then(([q,l])=>{setRows(q.requests);setLinks(l.links);})
-   .catch(e=>setError(e.message)).finally(()=>setLoading(false))};
- useEffect(load,[cid,filter]);
+ const reload=useCallback(()=>setRevision(x=>x+1),[]);
+ const key=cid+":"+filter;
+ const current=snapshot?.key===key?snapshot:null;
+ const rows=current?.rows||[],links=current?.links||[];
+ const loading=current?.loading??true,error=current?.error||actionError;
+ const canReviewLinks=role!=="dentist"||clinicianEnabled;
+ useEffect(()=>{
+  const controller=new AbortController();
+  setSnapshot({key,rows:[],links:[],error:"",loading:true,syncedAt:null});
+  setActionError("");
+  Promise.all([
+   api<{requests:StaffRequestRow[]}>("/v1/booking/clinics/"+cid+"/requests?state="+filter,"GET",undefined,controller.signal),
+   canReviewLinks?api<{links:LinkRequest[]}>("/v1/booking/clinics/"+cid+"/record-links","GET",undefined,controller.signal):
+    Promise.resolve({links:[] as LinkRequest[]})
+  ]).then(([requests,records])=>{
+   if(!controller.signal.aborted)setSnapshot({key,rows:requests.requests,links:records.links,
+    error:"",loading:false,syncedAt:new Date().toISOString()});
+  }).catch(e=>{
+   if(!controller.signal.aborted)setSnapshot({key,rows:[],links:[],
+    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,syncedAt:null});
+  });
+  return()=>controller.abort();
+ },[cid,filter,revision,key,canReviewLinks]);
+ useEffect(()=>{
+  const visible=()=>{if(document.visibilityState==="visible")reload();};
+  window.addEventListener("focus",visible);
+  document.addEventListener("visibilitychange",visible);
+  const timer=window.setInterval(visible,45000);
+  return()=>{window.clearInterval(timer);window.removeEventListener("focus",visible);
+   document.removeEventListener("visibilitychange",visible);};
+ },[cid,reload]);
  async function decision(r:StaffRequestRow,action:"accept"|"reject"){
   setBusy(true);setError("");
   try{await api("/v1/booking/clinics/"+cid+"/requests/"+r.id+"/decision","POST",
-   {action,reason:reasons[r.id],revision:r.revision});load();}
-  catch(e:any){setError(e.message)}finally{setBusy(false)}
+   {action,reason:reasons[r.id],revision:r.revision});setSnapshot(null);reload();}
+  catch(e:any){setActionError(e.message)}finally{setBusy(false)}
  }
  async function linkDecision(l:LinkRequest,action:"approve"|"reject"){
   setBusy(true);setError("");
   try{await api("/v1/booking/clinics/"+cid+"/record-links/"+l.id+"/decision","POST",
    {action,patientId:patientIds[l.id],reason:reasons[l.id],
-    verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});load();}
-  catch(e:any){setError(e.message)}finally{setBusy(false)}
+    verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});setSnapshot(null);reload();}
+  catch(e:any){setActionError(e.message)}finally{setBusy(false)}
  }
  return <><ErrorNote message={error}/>
   <div className="p15-tabs">{["pending","processed"].map(s=><button key={s} type="button"
-   aria-current={filter===s?"page":undefined} onClick={()=>setFilter(s)}>{t(s)}</button>)}</div>
-  {loading?<Spinner/>:rows.length?<div className="p15-list">{rows.map(r=>
+   aria-current={filter===s?"page":undefined} onClick={()=>setFilter(s)}>{t(s)}</button>)}
+   <button type="button" className="p15-button p15-button-secondary" onClick={reload}
+    disabled={busy||loading}>{t("requestRefresh")}</button>
+   {current?.syncedAt&&!loading&&<small aria-live="polite">{t("requestSynced")} · {fmt(current.syncedAt,true)}</small>}
+  </div>
+  {loading?<Spinner/>:error?<button type="button" className="p15-button p15-button-secondary"
+   onClick={reload}>{t("tryAgain")}</button>:rows.length?<div className="p15-list">{rows.map(r=>
    <div className="p15-panel p15-request" key={r.id}>
     <div className="p15-topline"><strong>{r.patientName}</strong><Badge status={r.status}/></div>
     <p>{r.serviceName} · {fmt(r.startAt,true)} · {r.priceAfn} AFN</p>
@@ -589,7 +622,7 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
        onClick={()=>void decision(r,"reject")}>{t("reject")}</button></div>
     </>}
    </div>)}</div>:<div className="p15-empty">{t("noneProcessed")}</div>}
-  <div className="p15-panel"><h2>{t("proof")}</h2><p>{t("secure")}</p>
+  {canReviewLinks&&!loading&&!error&&<div className="p15-panel"><h2>{t("proof")}</h2><p>{t("secure")}</p>
    <div className="p15-list">{links.filter(l=>l.state==="pending").map(l=>
     <article className="p15-list-row" key={l.id}>
      <strong>{l.applicantName}</strong>
@@ -611,7 +644,7 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
     </article>)}</div>
    {links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
      cid={cid} link={l} enabled={role==="dentist"||clinicianEnabled}/>) }
-  </div>
+  </div>}
  </>;
 }
 
