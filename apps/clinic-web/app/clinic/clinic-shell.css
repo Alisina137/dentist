@@ -226,7 +226,8 @@
  transform:rotate(90deg)}
 [dir="rtl"] .clinic-nav-section-toggle[aria-expanded="true"] .clinic-nav-section-chevron{
  transform:rotate(-90deg)}
-.clinic-nav-section-links{display:grid;gap:2px;padding:0 0 4px 15px;
+.clinic-nav-section-links{display:grid;gap:2px;padding-block:0 4px;
+ padding-inline-start:15px;padding-inline-end:0;
  margin-inline-start:18px;border-inline-start:1px solid #e3ecf6}
 .clinic-nav-section-links[hidden]{display:none}
 .clinic-persistent-nav .clinic-nav-subitem{min-height:42px!important;
