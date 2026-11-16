@@ -213,7 +213,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   const target=event.target;if(!(target instanceof Element))return;
   const anchor=target.closest("a[href]");
   if(!(anchor instanceof HTMLAnchorElement)||anchor.hasAttribute("download")||
-    anchor.hasAttribute("data-hard-navigation")||
+    anchor.hasAttribute("data-hard-navigation")||anchor.hasAttribute("data-next-nav")||
     (anchor.target&&anchor.target!=="_self"))return;
   const url=new URL(anchor.href,window.location.href);
   if(url.origin!==window.location.origin||
@@ -247,7 +247,8 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
  }
  const restricted=error==="AUTH_REQUIRED"||requestedInvalid;
  const showPage=!loading&&!error&&!requestedInvalid;
- return <PersistentClinicShellProvider>
+ return <PersistentClinicShellProvider value={{ctx,space:selected,requested,error,
+  reload:()=>setRequestIndex(x=>x+1)}}>
   <div className={"work-layout phase-layout staff-shell clinic-persistent-shell"+
    (collapsed?" clinic-sidebar-collapsed":"")+(mobileOpen?" clinic-mobile-open":"")}>
    {mobileOpen&&<button type="button" className="clinic-mobile-backdrop"
@@ -281,7 +282,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
        const active=pathActive(pathname,item.path);
        return <React.Fragment key={item.key}>
         {groupStart&&<span className="phase04-side-group clinic-sidebar-group">{t(item.group)}</span>}
-        <Link href={hrefFor(item.path)} prefetch={false}
+        <Link href={hrefFor(item.path)} prefetch={false} data-next-nav
          onClick={()=>setMobileOpen(false)}
          className="phase04-side-link clinic-sidebar-link" aria-label={t(item.key)}
          aria-current={active?"page":undefined} title={collapsed?t(item.key):undefined}>
@@ -308,7 +309,7 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
        <CareIcon name={mobileOpen?"close":"menu"} size={22}/></button>
       <div className="clinic-header-copy">
        <nav className="clinic-breadcrumb" aria-label={t("breadcrumb")}>
-        <Link href={hrefFor("/clinic")} prefetch={false}>{t("clinic")}</Link>
+        <Link href={hrefFor("/clinic")} prefetch={false} data-next-nav>{t("clinic")}</Link>
         <CareIcon name="chevron" size={13}/>
         <span aria-current="page">{activeTitle}</span>
        </nav>
