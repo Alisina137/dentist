@@ -736,7 +736,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore,onRefreshSettle
   {loading&&<NativeLoadingList label={t.loadingData}/> }
   {!!error&&<><ErrorBox message={error}/><Button secondary title={t.retry}
    onPress={()=>setReload(x=>x+1)}/></>}
-  {!!actionError&&<ErrorBox message={actionError}/>
+  {!!actionError&&<ErrorBox message={actionError}/>}
   {!loading&&!error&&!favorites.length&&<Block><Text style={p.copy}>{t.noFavorites}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {!loading&&!error&&favorites.map(f=><Block key={f.clinicId+f.dentistId}>
