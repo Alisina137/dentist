@@ -608,45 +608,75 @@ function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,chil
  </Shell>;
 }
 type StaffRequestRow={id:string;patientName:string;serviceName:string;startAt:string;
+ createdAt:string;appointmentId:string;providerId:string;endAt:string;
  status:string;revision:number;priceAfn:number};
+type RequestBatch={requests:StaffRequestRow[];limitReached?:boolean;filter:string};
 type LinkRequest={id:string;state:string;suppliedPatientNumber:string;
  requestedAt:string;patientId:string|null;method:string|null;applicantName:string};
+type RequestDecision={row:StaffRequestRow;action:"accept"|"reject"};
+const RECEPTION_PAGE_SIZE=5;
 export function ClinicBookingRequestsPage(){
- return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=><Requests key={clinicId} cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
+ return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=>
+  <Requests key={clinicId} cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
 }
 function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianEnabled:boolean}){
- const {t,fmt}=useWords(),[filter,setFilter]=useState("pending");
+ const {t,fmt,lang}=useWords();
+ const [filter,setFilter]=useState("pending");
  const [revision,setRevision]=useState(0),[busy,setBusy]=useState(false);
- const [actionError,setActionError]=useState("");
+ const [actionError,setActionError]=useState(""),[success,setSuccess]=useState("");
+ const [search,setSearch]=useState(""),[sort,setSort]=useState<"newest"|"appointment">("newest");
+ const [page,setPage]=useState(1),[identityOpen,setIdentityOpen]=useState(false);
+ const [confirm,setConfirm]=useState<RequestDecision|null>(null);
  const [snapshot,setSnapshot]=useState<{key:string;rows:StaffRequestRow[];
-  links:LinkRequest[];error:string;loading:boolean;syncedAt:string|null}|null>(null);
+  links:LinkRequest[];error:string;loading:boolean;syncedAt:string|null;
+  limitReached:boolean}|null>(null);
  const [reasons,setReasons]=useState<Record<string,string>>({});
  const [patientIds,setPatientIds]=useState<Record<string,string>>({});
  const [verified,setVerified]=useState<Record<string,boolean>>({});
  const [methods,setMethods]=useState<Record<string,string>>({});
  const reload=useCallback(()=>setRevision(x=>x+1),[]);
- const key=cid+":"+filter;
+ const canReviewLinks=role!=="dentist"||clinicianEnabled;
+ const key=cid+":"+filter+":"+(identityOpen?"links":"bookings");
  const current=snapshot?.key===key?snapshot:null;
  const rows=current?.rows||[],links=current?.links||[];
- const loading=current?.loading??true,error=current?.error||actionError;
- const canReviewLinks=role!=="dentist"||clinicianEnabled;
+ const loading=current?.loading??true;
+ const loadError=current?.error||"";
+ const filtered=useMemo(()=>{
+  const term=search.trim().toLocaleLowerCase();
+  const selected=rows.filter(row=>!term||
+   (row.patientName+" "+row.serviceName).toLocaleLowerCase().includes(term));
+  return selected.sort((a,b)=>sort==="appointment"?
+   Date.parse(a.startAt)-Date.parse(b.startAt)||
+    Date.parse(b.createdAt)-Date.parse(a.createdAt):
+   Date.parse(b.createdAt)-Date.parse(a.createdAt));
+ },[rows,search,sort]);
+ const pages=Math.max(1,Math.ceil(filtered.length/RECEPTION_PAGE_SIZE));
+ const safePage=Math.min(page,pages);
+ const visible=filtered.slice((safePage-1)*RECEPTION_PAGE_SIZE,safePage*RECEPTION_PAGE_SIZE);
+ const showError=loadError?clinicErrorText(loadError,lang):
+  actionError==="REQUEST_ALREADY_PROCESSED"?t("deskStale"):
+  actionError?clinicErrorText(actionError,lang):"";
  useEffect(()=>{
   const controller=new AbortController();
-  setSnapshot({key,rows:[],links:[],error:"",loading:true,syncedAt:null});
-  setActionError("");
+  setSnapshot({key,rows:[],links:[],error:"",loading:true,syncedAt:null,limitReached:false});
   Promise.all([
-   api<{requests:StaffRequestRow[]}>("/v1/booking/clinics/"+cid+"/requests?state="+filter,"GET",undefined,controller.signal),
-   canReviewLinks?api<{links:LinkRequest[]}>("/v1/booking/clinics/"+cid+"/record-links","GET",undefined,controller.signal):
+   api<RequestBatch>("/v1/booking/clinics/"+cid+"/requests?state="+filter,
+    "GET",undefined,controller.signal),
+   identityOpen&&canReviewLinks?
+    api<{links:LinkRequest[]}>("/v1/booking/clinics/"+cid+"/record-links",
+     "GET",undefined,controller.signal):
     Promise.resolve({links:[] as LinkRequest[]})
   ]).then(([requests,records])=>{
    if(!controller.signal.aborted)setSnapshot({key,rows:requests.requests,links:records.links,
-    error:"",loading:false,syncedAt:new Date().toISOString()});
+    error:"",loading:false,syncedAt:new Date().toISOString(),
+    limitReached:requests.limitReached===true||requests.requests.length===100});
   }).catch(e=>{
    if(!controller.signal.aborted)setSnapshot({key,rows:[],links:[],
-    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,syncedAt:null});
+    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,
+    syncedAt:null,limitReached:false});
   });
   return()=>controller.abort();
- },[cid,filter,revision,key,canReviewLinks]);
+ },[cid,filter,revision,key,canReviewLinks,identityOpen]);
  useEffect(()=>{
   const visible=()=>{if(document.visibilityState==="visible")reload();};
   window.addEventListener("focus",visible);
@@ -655,64 +685,235 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
   return()=>{window.clearInterval(timer);window.removeEventListener("focus",visible);
    document.removeEventListener("visibilitychange",visible);};
  },[cid,reload]);
+ useEffect(()=>{
+  if(!confirm)return;
+  const handle=(event:KeyboardEvent)=>{if(event.key==="Escape"&&!busy)setConfirm(null);};
+  document.addEventListener("keydown",handle);
+  return()=>document.removeEventListener("keydown",handle);
+ },[confirm,busy]);
+ function selectFilter(value:string){
+  setFilter(value);setPage(1);setConfirm(null);setActionError("");setSuccess("");
+ }
+ function refreshRequests(){setActionError("");setSuccess("");reload();}
  async function decision(r:StaffRequestRow,action:"accept"|"reject"){
-  setBusy(true);setActionError("");
-  try{await api("/v1/booking/clinics/"+cid+"/requests/"+r.id+"/decision","POST",
-   {action,reason:reasons[r.id],revision:r.revision});setSnapshot(null);reload();}
-  catch(e:any){setActionError(e.message)}finally{setBusy(false)}
+  if(busy)return;
+  setBusy(true);setActionError("");setSuccess("");
+  try{
+   await api("/v1/booking/clinics/"+cid+"/requests/"+r.id+"/decision","POST",
+    {action,reason:action==="reject"?reasons[r.id]?.trim():undefined,revision:r.revision});
+   setConfirm(null);
+   setSuccess(t(action==="accept"?"deskApproved":"deskRejected"));
+   setSnapshot(null);reload();
+  }catch(e:any){
+   if(e.message==="REQUEST_ALREADY_PROCESSED"){
+    setConfirm(null);setActionError(e.message);reload();
+   }else setActionError(e.message||"NETWORK_UNAVAILABLE");
+  }finally{setBusy(false);}
  }
  async function linkDecision(l:LinkRequest,action:"approve"|"reject"){
-  setBusy(true);setActionError("");
-  try{await api("/v1/booking/clinics/"+cid+"/record-links/"+l.id+"/decision","POST",
-   {action,patientId:patientIds[l.id],reason:reasons[l.id],
-    verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});setSnapshot(null);reload();}
-  catch(e:any){setActionError(e.message)}finally{setBusy(false)}
+  if(busy)return;
+  setBusy(true);setActionError("");setSuccess("");
+  try{
+   await api("/v1/booking/clinics/"+cid+"/record-links/"+l.id+"/decision","POST",
+    {action,patientId:patientIds[l.id],reason:reasons[l.id],
+     verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});
+   setSnapshot(null);reload();
+  }catch(e:any){setActionError(e.message||"NETWORK_UNAVAILABLE");}
+  finally{setBusy(false);}
  }
- return <><ErrorNote message={error}/>
-  <div className="p15-tabs">{["pending","processed"].map(s=><button key={s} type="button"
-   aria-current={filter===s?"page":undefined} onClick={()=>setFilter(s)}>{t(s)}</button>)}
-   <button type="button" className="p15-button p15-button-secondary" onClick={reload}
-    disabled={busy||loading}>{t("requestRefresh")}</button>
-   {current?.syncedAt&&!loading&&<small aria-live="polite">{t("requestSynced")} · {fmt(current.syncedAt,true)}</small>}
-  </div>
-  {loading?<Spinner/>:error?<button type="button" className="p15-button p15-button-secondary"
-   onClick={reload}>{t("tryAgain")}</button>:rows.length?<div className="p15-list">{rows.map(r=>
-   <div className="p15-panel p15-request" key={r.id}>
-    <div className="p15-topline"><strong>{r.patientName}</strong><Badge status={r.status}/></div>
-    <p>{r.serviceName} · {fmt(r.startAt,true)} · {r.priceAfn} AFN</p>
-    {r.status==="requested"&&<>
-     <label className="p15-field">{t("reason")}<input maxLength={300} value={reasons[r.id]||""}
-      onChange={e=>setReasons(x=>({...x,[r.id]:e.target.value}))}/></label>
-     <div className="p15-actions">
-      <button className="p15-button" disabled={busy} onClick={()=>void decision(r,"accept")}>{t("accept")}</button>
-      <button className="p15-button p15-button-danger" disabled={busy||(reasons[r.id]||"").trim().length<10}
-       onClick={()=>void decision(r,"reject")}>{t("reject")}</button></div>
-    </>}
-   </div>)}</div>:<div className="p15-empty">{t("noneProcessed")}</div>}
-  {canReviewLinks&&!loading&&!error&&<div className="p15-panel"><h2>{t("proof")}</h2><p>{t("secure")}</p>
-   <div className="p15-list">{links.filter(l=>l.state==="pending").map(l=>
-    <article className="p15-list-row" key={l.id}>
-     <strong>{l.applicantName}</strong>
-     <p>{t("number")}: <bdi dir="ltr">{l.suppliedPatientNumber}</bdi></p>
-     <label className="p15-field">{t("selectedPatient")}<input value={patientIds[l.id]||""}
-      onChange={e=>setPatientIds(x=>({...x,[l.id]:e.target.value}))}/></label>
-     <label className="p15-field">{t("method")}<select value={methods[l.id]||"in_person_document"}
-      onChange={e=>setMethods(x=>({...x,[l.id]:e.target.value}))}>
-      <option value="in_person_document">In-person document</option>
-      <option value="in_person_care">Known patient confirmed in person</option></select></label>
-     <label className="p15-consent"><input type="checkbox" checked={!!verified[l.id]}
-      onChange={e=>setVerified(x=>({...x,[l.id]:e.target.checked}))}/>{t("verify")}</label>
-     <label className="p15-field">{t("reason")}<input value={reasons[l.id]||""}
-      onChange={e=>setReasons(x=>({...x,[l.id]:e.target.value}))}/></label>
-     <div className="p15-actions"><button className="p15-button" disabled={busy||!verified[l.id]||!patientIds[l.id]}
-      onClick={()=>void linkDecision(l,"approve")}>{t("approveLink")}</button>
-      <button className="p15-button p15-button-danger" disabled={busy||!verified[l.id]||
-       (reasons[l.id]||"").trim().length<10} onClick={()=>void linkDecision(l,"reject")}>{t("rejectLink")}</button></div>
-    </article>)}</div>
-   {links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
-     cid={cid} link={l} enabled={role==="dentist"||clinicianEnabled}/>) }
+ return <div className="clinic-reception-inbox">
+  <section className="clinic-reception-hero" aria-label={t("deskTitle")}>
+   <div>
+    <span className="clinic-reception-kicker"><CareIcon name="bell" size={16}/>
+     {t("clinicQueue")}</span>
+    <h2>{t("deskTitle")}</h2><p>{t("deskIntro")}</p>
+   </div>
+   <nav className="clinic-reception-quick" aria-label={t("overview")}>
+    <a href={"/clinic/appointments?clinic="+encodeURIComponent(cid)}>
+     <CareIcon name="calendar" size={17}/>{t("deskCalendar")}</a>
+    <a href={"/clinic/appointments/queue?clinic="+encodeURIComponent(cid)}>
+     <CareIcon name="clock" size={17}/>{t("deskQueue")}</a>
+    <a href={"/clinic/appointments/new?clinic="+encodeURIComponent(cid)}>
+     <CareIcon name="plus" size={17}/>{t("deskNew")}</a>
+   </nav>
+  </section>
+  {success&&<div className="clinic-reception-success" role="status" aria-live="polite">
+   <CareIcon name="check" size={17}/>{success}
+   <button type="button" aria-label={t("close")} onClick={()=>setSuccess("")}>×</button>
   </div>}
- </>;
+  {showError&&<section className="clinic-reception-error" role="alert">
+   <CareIcon name="about" size={19}/><p>{showError}</p>
+   <button type="button" className="p15-button p15-button-secondary"
+    onClick={refreshRequests}>{t("tryAgain")}</button></section>}
+  <section className="clinic-reception-workflow" aria-label={t("clinicQueue")}>
+   <div className="clinic-reception-tabs" role="group" aria-label={t("deskStatus")}>
+    {(["pending","processed"] as const).map(s=><button key={s} type="button"
+     aria-pressed={filter===s} className={filter===s?"is-active":""}
+     onClick={()=>selectFilter(s)} disabled={busy}>
+     <CareIcon name={s==="pending"?"clock":"check"} size={17}/>
+     {t(s==="pending"?"deskPending":"deskProcessed")}
+     {filter===s&&!loading&&!loadError&&<strong dir="auto">{rows.length}{current?.limitReached?"+":""}</strong>}
+    </button>)}
+   </div>
+   <button type="button" className="p15-button p15-button-secondary"
+    onClick={refreshRequests} disabled={busy||loading}>
+    <CareIcon name="activity" size={17}/>{t("requestRefresh")}</button>
+  </section>
+  <div className="clinic-reception-toolbar">
+   <label className="clinic-reception-search">
+    <span>{t("deskSearch")}</span>
+    <span className="clinic-reception-search-control">
+     <CareIcon name="search" size={17}/>
+     <input type="search" value={search} placeholder={t("deskSearchHint")}
+      onChange={event=>{setSearch(event.target.value);setPage(1);}}
+      maxLength={100} autoComplete="off"/>
+    </span>
+   </label>
+   <label className="clinic-reception-sort">
+    <span>{t("deskSort")}</span>
+    <select value={sort} onChange={event=>{
+     setSort(event.target.value as "newest"|"appointment");setPage(1);
+    }}>
+     <option value="newest">{t("deskNewest")}</option>
+     <option value="appointment">{t("deskSoonest")}</option>
+    </select>
+   </label>
+   {search&&<button type="button" className="p15-button p15-button-secondary"
+    onClick={()=>{setSearch("");setPage(1);}}>{t("deskClear")}</button>}
+  </div>
+  {current?.syncedAt&&!loading&&!loadError&&<p className="clinic-reception-synced" aria-live="polite">
+   <CareIcon name="check" size={15}/>{t("deskSynced")} · {fmt(current.syncedAt,true)}
+  </p>}
+  {current?.limitReached&&!loadError&&<p className="clinic-reception-limit" role="status">
+   <CareIcon name="about" size={16}/>{t("deskLimit")}</p>}
+  {loading?<Spinner/>:loadError?null:visible.length?
+   <div className="clinic-reception-requests">
+    {visible.map(row=><article className="clinic-reception-request" key={row.id}>
+     <div className="clinic-reception-request-head">
+      <span className="clinic-reception-patient-icon" aria-hidden="true">
+       <CareIcon name="account" size={20}/></span>
+      <div className="clinic-reception-patient">
+       <h3>{row.patientName}</h3>
+       <span>{row.serviceName}</span>
+      </div><Badge status={row.status}/>
+     </div>
+     <dl className="clinic-reception-meta">
+      <div><dt>{t("date")}</dt><dd><time dateTime={row.startAt}>{fmt(row.startAt,true)}</time></dd></div>
+      <div><dt>{t("deskCreated")}</dt><dd><time dateTime={row.createdAt}>{fmt(row.createdAt,true)}</time></dd></div>
+      <div><dt>{t("price")}</dt><dd><bdi dir="ltr">{row.priceAfn.toLocaleString("en-US")} AFN</bdi></dd></div>
+     </dl>
+     <div className="clinic-reception-actions">
+      {row.status==="requested"&&<>
+       <button className="p15-button" type="button" disabled={busy}
+        onClick={()=>{setActionError("");setConfirm({row,action:"accept"});}}>
+        <CareIcon name="check" size={16}/>{t("accept")}</button>
+       <button className="p15-button p15-button-danger" type="button" disabled={busy}
+        onClick={()=>{setActionError("");setConfirm({row,action:"reject"});}}>
+        <CareIcon name="close" size={16}/>{t("reject")}</button>
+      </>}
+      <a className="p15-button p15-button-secondary"
+       href={"/clinic/appointments/"+encodeURIComponent(row.appointmentId)+
+        "?clinic="+encodeURIComponent(cid)}>
+       <CareIcon name="arrow" size={16}/>{t("deskDetails")}</a>
+     </div>
+    </article>)}
+   </div>:
+   <div className="clinic-reception-empty" role="status">
+    <CareIcon name="search" size={24}/>
+    <strong>{search?t("deskNoMatch"):t("noneProcessed")}</strong>
+    {search&&<button type="button" className="p15-button p15-button-secondary"
+     onClick={()=>{setSearch("");setPage(1);}}>{t("deskClear")}</button>}
+   </div>}
+  {!loading&&!loadError&&filtered.length>0&&<nav className="clinic-reception-pagination"
+   aria-label={t("deskPage")}>
+   <span aria-live="polite">{t("deskCount")} {(safePage-1)*RECEPTION_PAGE_SIZE+1}–
+    {Math.min(safePage*RECEPTION_PAGE_SIZE,filtered.length)} {t("deskOf")} {filtered.length}</span>
+   <div>
+    <button type="button" className="p15-button p15-button-secondary"
+     disabled={safePage===1} onClick={()=>setPage(x=>Math.max(1,x-1))}>
+     {t("deskPrev")}</button>
+    <strong dir="auto">{t("deskPage")} {safePage}/{pages}</strong>
+    <button type="button" className="p15-button p15-button-secondary"
+     disabled={safePage===pages} onClick={()=>setPage(x=>Math.min(pages,x+1))}>
+     {t("deskNext")}</button>
+   </div>
+  </nav>}
+  {canReviewLinks&&<section className="clinic-reception-identity">
+   <div>
+    <span className="clinic-reception-kicker"><CareIcon name="shield-check" size={16}/>{t("proof")}</span>
+    <h3>{t("deskLinks")}</h3><p>{t("deskLinksHelp")}</p>
+   </div>
+   <button type="button" className="p15-button p15-button-secondary"
+    aria-expanded={identityOpen} aria-controls="clinic-reception-identity-content"
+    onClick={()=>{setIdentityOpen(x=>!x);setActionError("");}}>
+    <CareIcon name="shield" size={17}/>{t(identityOpen?"deskHideLinks":"deskShowLinks")}
+   </button>
+   {identityOpen&&!loading&&!loadError&&<div className="clinic-reception-identity-content"
+    id="clinic-reception-identity-content">
+    {links.filter(l=>l.state==="pending").map(l=>
+     <article className="p15-list-row" key={l.id}>
+      <strong>{l.applicantName}</strong>
+      <p>{t("number")}: <bdi dir="ltr">{l.suppliedPatientNumber}</bdi></p>
+      <label className="p15-field">{t("selectedPatient")}<input value={patientIds[l.id]||""}
+       onChange={e=>setPatientIds(x=>({...x,[l.id]:e.target.value}))}/></label>
+      <label className="p15-field">{t("method")}<select value={methods[l.id]||"in_person_document"}
+       onChange={e=>setMethods(x=>({...x,[l.id]:e.target.value}))}>
+       <option value="in_person_document">In-person document</option>
+       <option value="in_person_care">Known patient confirmed in person</option></select></label>
+      <label className="p15-consent"><input type="checkbox" checked={!!verified[l.id]}
+       onChange={e=>setVerified(x=>({...x,[l.id]:e.target.checked}))}/>{t("verify")}</label>
+      <label className="p15-field">{t("reason")}<input value={reasons[l.id]||""}
+       onChange={e=>setReasons(x=>({...x,[l.id]:e.target.value}))}/></label>
+      <div className="p15-actions">
+       <button type="button" className="p15-button" disabled={busy||!verified[l.id]||!patientIds[l.id]}
+        onClick={()=>void linkDecision(l,"approve")}>{t("approveLink")}</button>
+       <button type="button" className="p15-button p15-button-danger"
+        disabled={busy||!verified[l.id]||(reasons[l.id]||"").trim().length<10}
+        onClick={()=>void linkDecision(l,"reject")}>{t("rejectLink")}</button>
+      </div>
+     </article>)}
+    {links.filter(l=>l.state==="approved").map(l=><ApprovedRecordReleases key={l.id}
+     cid={cid} link={l} enabled={role==="dentist"||clinicianEnabled}/>)}
+    {!links.length&&<p className="clinic-reception-no-identity">{t("noLinks")}</p>}
+   </div>}
+  </section>}
+  {confirm&&<div className="clinic-reception-modal-backdrop" onMouseDown={event=>{
+   if(event.currentTarget===event.target&&!busy)setConfirm(null);
+  }}>
+   <section className="clinic-reception-modal" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-reception-modal-title">
+    <div className="clinic-reception-modal-head">
+     <span className="clinic-reception-modal-icon" aria-hidden="true">
+      <CareIcon name={confirm.action==="accept"?"check":"shield"} size={22}/></span>
+     <button type="button" className="clinic-reception-modal-close"
+      disabled={busy} aria-label={t("close")} onClick={()=>setConfirm(null)}>×</button>
+    </div>
+    <h2 id="clinic-reception-modal-title">{t(confirm.action==="accept"?
+     "deskConfirmAccept":"deskConfirmReject")}</h2>
+    <p>{t(confirm.action==="accept"?"deskAcceptInfo":"deskRejectInfo")}</p>
+    <div className="clinic-reception-review">
+     <strong>{confirm.row.patientName}</strong>
+     <span>{confirm.row.serviceName}</span>
+     <time dateTime={confirm.row.startAt}>{fmt(confirm.row.startAt,true)}</time>
+    </div>
+    {confirm.action==="reject"&&<label className="p15-field">{t("deskExplain")} *
+     <textarea rows={3} minLength={10} maxLength={300} required autoFocus
+      value={reasons[confirm.row.id]||""}
+      onChange={event=>setReasons(x=>({...x,[confirm.row.id]:event.target.value}))}/>
+    </label>}
+    {showError&&<div className="clinic-reception-modal-error" role="alert">{showError}</div>}
+    <div className="clinic-reception-modal-actions">
+     <button type="button" className="p15-button p15-button-secondary" autoFocus={confirm.action==="accept"}
+      disabled={busy} onClick={()=>{setConfirm(null);setActionError("");}}>{t("deskDismiss")}</button>
+     <button type="button"
+      className={"p15-button "+(confirm.action==="reject"?"p15-button-danger":"")}
+      disabled={busy||(confirm.action==="reject"&&(reasons[confirm.row.id]||"").trim().length<10)}
+      onClick={()=>void decision(confirm.row,confirm.action)}>
+      {busy?t("saving"):t(confirm.action==="accept"?"accept":"reject")}</button>
+    </div>
+   </section>
+  </div>}
+ </div>;
 }
 
 type ReleaseItem={id:string;released:boolean;title?:string;signedAt?:string;
