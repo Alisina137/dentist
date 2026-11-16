@@ -31,7 +31,7 @@ const authenticated=await raw("/v1/me","GET",{cookie:owner.session,origin});
 deny(authenticated,200,"verified account can read own identity");
 notCached(authenticated);
 const identity=await authenticated.json();
-assert.equal(identity.user.id,owner.id);
+assert.equal(identity.user.email,owner.email);
 assert.ok(!JSON.stringify(identity).includes("passwordHash"));
 const session=await raw("/api/auth/get-session","GET",{cookie:owner.session,origin});
 deny(session,200,"auth API session endpoint");
