@@ -91,7 +91,7 @@ const vocab:Record<Lang,Record<string,string>>={
   deskLinksHelp:"Review record-link identity checks separately from appointment decisions.",
   deskShowLinks:"Show identity requests",deskHideLinks:"Hide identity requests",
   deskSynced:"Updated",deskStatus:"Appointment status",deskCreated:"Received",
-  deskDetails:"Open appointment",deskPending:"Pending requests",deskProcessed:"Processed requests",
+  deskDetails:"Open appointment",deskVisit:"Visit time",identityDocument:"In-person document",identityKnown:"Known patient verified in person",deskPending:"Pending requests",deskProcessed:"Processed requests",
  noneProcessed:"No requests in this category",signClinic:"Sign in to the clinic workspace",
  overview:"Appointments calendar",settings:"Clinic notifications",details:"Details",
  network:"Network connection is unavailable",noFamily:"No authorized family members available.",
@@ -162,7 +162,7 @@ const vocab:Record<Lang,Record<string,string>>={
   deskLinksHelp:"تأیید هویت برای وصل سوابق را جدا از تصمیم ملاقات بررسی کنید.",
   deskShowLinks:"نمایش درخواست‌های هویت",deskHideLinks:"پنهان‌کردن درخواست‌های هویت",
   deskSynced:"به‌روز",deskStatus:"حالت ملاقات",deskCreated:"دریافت‌شده",
-  deskDetails:"جزئیات ملاقات",deskPending:"در انتظار",deskProcessed:"پردازش‌شده",
+  deskDetails:"جزئیات ملاقات",deskVisit:"وقت ملاقات",identityDocument:"سند هویت بررسی‌شده حضوری",identityKnown:"مریض شناخته‌شده و تأییدشده حضوری",deskPending:"در انتظار",deskProcessed:"پردازش‌شده",
  noneProcessed:"درخواستی در این بخش نیست",signClinic:"وارد حساب کلینیک شوید",
  overview:"تقویم ملاقات‌ها",settings:"اطلاعیه‌های کلینیک",details:"جزئیات",
  network:"ارتباط با سرور برقرار نشد",noFamily:"عضو مجاز خانواده موجود نیست",
@@ -233,7 +233,7 @@ const vocab:Record<Lang,Record<string,string>>={
   deskLinksHelp:"د ریکارډ د نښلولو هویت له ملاقاتونو جلا وڅېړئ.",
   deskShowLinks:"د هویت غوښتنې وښایئ",deskHideLinks:"د هویت غوښتنې پټې کړئ",
   deskSynced:"تازه شوی",deskStatus:"د ملاقات حالت",deskCreated:"رارسېدلي",
-  deskDetails:"ملاقات پرانیزئ",deskPending:"منتظر",deskProcessed:"پروسس شوي",
+  deskDetails:"ملاقات پرانیزئ",deskVisit:"د لیدنې وخت",identityDocument:"په مخامخ ډول تایید شوی سند",identityKnown:"پېژندل شوی ناروغ چې مخامخ تایید شوی",deskPending:"منتظر",deskProcessed:"پروسس شوي",
  noneProcessed:"دلته غوښتنه نشته",signClinic:"د کلینیک حساب ته ننوځه",
  overview:"د ملاقات جدول",settings:"د کلینیک خبرتیاوې",details:"جزئیات",
  network:"د سرور سره اړیکه نشته",noFamily:"د کورنۍ اجازه لرونکی غړی نشته",
@@ -616,7 +616,8 @@ type LinkRequest={id:string;state:string;suppliedPatientNumber:string;
 type RequestDecision={row:StaffRequestRow;action:"accept"|"reject"};
 const RECEPTION_PAGE_SIZE=5;
 export function ClinicBookingRequestsPage(){
- return <ClinicShell title={vocab.en.clinicQueue} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=>
+ const {t}=useWords();
+ return <ClinicShell title={t("clinicQueue")} activeKey="bookingRequests">{(clinicId,role,clinicianEnabled)=>
   <Requests key={clinicId} cid={clinicId} role={role} clinicianEnabled={clinicianEnabled}/>}</ClinicShell>;
 }
 function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianEnabled:boolean}){
@@ -798,7 +799,7 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
       </div><Badge status={row.status}/>
      </div>
      <dl className="clinic-reception-meta">
-      <div><dt>{t("date")}</dt><dd><time dateTime={row.startAt}>{fmt(row.startAt,true)}</time></dd></div>
+      <div><dt>{t("deskVisit")}</dt><dd><time dateTime={row.startAt}>{fmt(row.startAt,true)}</time></dd></div>
       <div><dt>{t("deskCreated")}</dt><dd><time dateTime={row.createdAt}>{fmt(row.createdAt,true)}</time></dd></div>
       <div><dt>{t("price")}</dt><dd><bdi dir="ltr">{row.priceAfn.toLocaleString("en-US")} AFN</bdi></dd></div>
      </dl>
@@ -858,8 +859,8 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
        onChange={e=>setPatientIds(x=>({...x,[l.id]:e.target.value}))}/></label>
       <label className="p15-field">{t("method")}<select value={methods[l.id]||"in_person_document"}
        onChange={e=>setMethods(x=>({...x,[l.id]:e.target.value}))}>
-       <option value="in_person_document">In-person document</option>
-       <option value="in_person_care">Known patient confirmed in person</option></select></label>
+       <option value="in_person_document">{t("identityDocument")}</option>
+       <option value="in_person_care">{t("identityKnown")}</option></select></label>
       <label className="p15-consent"><input type="checkbox" checked={!!verified[l.id]}
        onChange={e=>setVerified(x=>({...x,[l.id]:e.target.checked}))}/>{t("verify")}</label>
       <label className="p15-field">{t("reason")}<input value={reasons[l.id]||""}
