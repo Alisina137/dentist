@@ -163,3 +163,18 @@
  .clinic-page-skeleton span,.clinic-sidebar-skeleton span,
  .clinic-route-progress:after{animation:none!important;transition:none!important}
 }
+
+/* PH01 continuation: single-header workspace, accessible links and failures. */
+.clinic-workspace-skip{position:fixed;inset-block-start:-100px;inset-inline-start:18px;
+ z-index:200;padding:12px 16px;border-radius:12px;background:#fff;
+ color:#115caf;border:2px solid #347fcd;font-weight:800}
+.clinic-workspace-skip:focus-visible{inset-block-start:8px;outline:3px solid #347fcd;outline-offset:2px}
+.clinic-sidebar-extras{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.clinic-sidebar-extras a{font-size:12px;line-height:20px;color:#476a89;
+ text-decoration:underline;text-underline-offset:3px}
+.clinic-shell-error{border:1px solid #f3c4cc;color:#8e2541;background:#fff0f2;
+ border-radius:12px;padding:13px 16px;margin-bottom:14px;font-size:13px;line-height:1.5}
+.clinic-sidebar-collapsed .clinic-sidebar-extras{display:none}
+@media(max-width:900px){
+ .clinic-mobile-open.clinic-sidebar-collapsed .clinic-sidebar-extras{display:flex}
+}
