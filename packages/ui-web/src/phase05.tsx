@@ -711,7 +711,7 @@ function PatientEditor({space,existing}:{space:Space,existing?:Patient}){
 
 
 function PatientDetail({space,edit}:{space:Space,edit:boolean}){
- const {t,date}=useWords();
+ const {t,date}=useWords(),{error:describe}=useClinicFeedback();
  const [id,setId]=useState<string|null>(null);
  useEffect(()=>{const bits=location.pathname.split("/").filter(Boolean);
   const index=bits.indexOf("patients");setId(index>=0?bits[index+1]||"":null);},[]);
@@ -719,15 +719,24 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
  const {data,error,retry}=useResource(base);
  const [status,setStatus]=useState("inactive"),[statusReason,setStatusReason]=useState("");
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[problem,setProblem]=useState("");
+ const [statusConfirm,setStatusConfirm]=useState(false);
  const {data:intake,error:intakeError,retry:retryIntake}=useResource(data?.clinicalAvailable?base+"/intake":null);
  const p:Patient|undefined=data?.patient;
  useEffect(()=>{if(p)setStatus(p.status==="active"?"inactive":"active");},[p]);
+ useEffect(()=>{
+  if(!statusConfirm)return;
+  const escape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy)setStatusConfirm(false);
+  };
+  document.addEventListener("keydown",escape);
+  return()=>document.removeEventListener("keydown",escape);
+ },[statusConfirm,busy]);
  async function updateStatus(){
-  if(!p||statusReason.trim().length<10||!confirm(t("confirm")))return;
+  if(!p||!statusConfirm||busy||statusReason.trim().length<10)return;
   setBusy(true);setProblem("");setNotice("");
   try{
    await api(base+"/status","PATCH",{status,revision:p.revision,reason:statusReason.trim()});
-   setNotice(t("success"));setStatusReason("");retry();
+   setNotice(t("success"));setStatusReason("");setStatusConfirm(false);retry();
   }catch(e:any){setProblem(e.message);}finally{setBusy(false);}
  }
  if(error)return <ErrorPanel message={error} retry={retry}/>;
@@ -735,12 +744,20 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
  if(edit)return <PatientEditor key={p.id+":"+p.revision} space={space} existing={p}/>;
  const canEdit=["owner","manager","dentist","receptionist"].includes(space.role);
  return <div className="phase05-gap">
-  <section className="card panel">
+  <section className="card panel clinic-phase08-profile-hero">
    <div className="phase05-patient-head">
-    <div><p className="muted">{t("patientNumber")} <bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></p>
+    <div className="clinic-phase08-profile-ident"><span className="clinic-phase08-profile-avatar" aria-hidden="true">
+     {p.preferredName.slice(0,1)}</span>
+     <div><p className="muted">{t("patientNumber")} <bdi dir="ltr" className="phase05-patient-code">{p.patientNumber}</bdi></p>
      <h2 className="phase05-name">{p.preferredName} {p.familyName||""}</h2>
-     <p className="muted">{t("lastUpdated")}: {date(p.updatedAt)}</p></div>
+     <p className="muted">{t("lastUpdated")}: {date(p.updatedAt)}</p></div></div>
     <div className="phase05-head-actions"><Chip value={p.status}/>
+     <a className="btn btn-secondary" href={patientHref(space.clinicId)}>
+      <CareIcon name="arrow" size={16}/>{t("directoryGoBack")}</a>
+     {canEdit&&p.status==="active"&&<a className="btn btn-primary"
+      href={"/clinic/appointments/new?clinic="+encodeURIComponent(space.clinicId)+
+       "&patientId="+encodeURIComponent(p.id)}>
+      <CareIcon name="calendar" size={16}/>{t("directoryBook")}</a>
      {canEdit&&<a className="btn btn-secondary" href={"/clinic/patients/"+p.id+"/edit?clinic="+space.clinicId}>
        {t("edit")}</a>}</div>
    </div>
@@ -798,11 +815,44 @@ function PatientDetail({space,edit}:{space:Space,edit:boolean}){
         .map(s=>({value:s,label:t(s)}))}/>
       <Field name={t("statusReason")} value={statusReason} onChange={setStatusReason} maxLength={300}/>
     </div>
-    <button className="btn btn-secondary" disabled={busy||statusReason.trim().length<10}
-      onClick={updateStatus}>{busy?t("loading"):t("confirm")}</button>
+    <button className="btn btn-secondary" type="button"
+      disabled={busy||statusReason.trim().length<10}
+      onClick={()=>setStatusConfirm(true)}>{t("confirm")}</button>
     {notice&&<Notice kind="success">{notice}</Notice>}
-    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):problem}</Notice>}
+    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):describe(problem)}</Notice>}
   </section>}
+  {statusConfirm&&p&&<div className="clinic-phase08-status-backdrop" onMouseDown={event=>{
+   if(event.currentTarget===event.target&&!busy)setStatusConfirm(false);
+  }}>
+   <section className="clinic-phase08-status-modal" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase08-status-title">
+    <div className="clinic-phase08-status-modal-heading">
+     <span className="clinic-phase08-status-icon"><CareIcon name="shield" size={22}/></span>
+     <button className="clinic-phase08-status-close" type="button"
+      aria-label={t("cancel")} disabled={busy} onClick={()=>setStatusConfirm(false)}>
+      <CareIcon name="close" size={19}/></button>
+    </div>
+    <h2 id="clinic-phase08-status-title">{t("directoryStatusTitle")}</h2>
+    <p>{t("directoryStatusHelp")}</p>
+    <div className="clinic-phase08-status-preview">
+     <strong>{p.preferredName} {p.familyName||""}</strong>
+     <span>{t("patientNumber")}: <bdi dir="ltr">{p.patientNumber}</bdi></span>
+     <div><Chip value={p.status}/><CareIcon name="arrow" size={17}/><Chip value={status}/></div>
+    </div>
+    <label className="field"><span>{t("statusReason")} *</span>
+     <textarea value={statusReason} minLength={10} maxLength={300} rows={3} required
+      onChange={event=>setStatusReason(event.target.value)}/>
+    </label>
+    {problem&&<Notice kind="error">{problem==="STALE_PATIENT_REVISION"?t("stale"):describe(problem)}</Notice>}
+    <div className="clinic-phase08-status-modal-actions">
+     <button type="button" className="btn btn-secondary" disabled={busy}
+      onClick={()=>setStatusConfirm(false)}>{t("directoryStatusCancel")}</button>
+     <button type="button" className="btn btn-primary"
+      disabled={busy||statusReason.trim().length<10} onClick={()=>void updateStatus()}>
+      {busy?t("directoryStatusPending"):t("directoryStatusProceed")}</button>
+    </div>
+   </section>
+  </div>}
  </div>;
 }
 type VisitFilter="all"|"planned"|"finished"|"cancelled";
