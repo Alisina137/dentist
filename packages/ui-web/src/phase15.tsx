@@ -702,19 +702,111 @@ function ApprovedRecordReleases({cid,link,enabled}:{cid:string;link:LinkRequest;
  </article>;
 }
 
+type DeliveryStatus="all"|"queued"|"sent"|"failed"|"skipped";
+type DeliveryEvent={event_name:string;status:string;attempt_count:number;
+ created_at:string;sent_at:string|null;last_error_code:string|null};
+type DeliveryRead={deliveries:DeliveryEvent[];emailConfigured:boolean;
+ smsConfigured:boolean;pushConfigured:boolean};
+function deliveryGroup(value:string):Exclude<DeliveryStatus,"all">{
+ if(value==="sent")return "sent";
+ if(value==="failed")return "failed";
+ if(value==="skipped")return "skipped";
+ return "queued";
+}
 export function ClinicNotificationsPage(){
- const {t,fmt}=useWords();
- return <ClinicShell title={t("settings")} activeKey="notifications">{cid=><Notifications cid={cid}/>}</ClinicShell>;
+ const {t}=useWords();
+ return <ClinicShell title={t("settings")} activeKey="notifications" ownerManagerOnly>
+  {cid=><Notifications key={cid} cid={cid}/>}</ClinicShell>;
 }
 function Notifications({cid}:{cid:string}){
- const {t,fmt}=useWords(),[items,setItems]=useState<any[]>([]);
- const [configured,setConfigured]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState("");
- useEffect(()=>{api<{deliveries:any[];emailConfigured:boolean}>("/v1/booking/clinics/"+cid+"/notifications")
-  .then(r=>{setItems(r.deliveries);setConfigured(r.emailConfigured)})
-  .catch(e=>setError(e.message)).finally(()=>setLoading(false))},[cid]);
- return <div className="p15-panel"><p>{t("provider")}: {configured?"✓":"—"}</p>
-  <p>{t("secure")}</p><ErrorNote message={error}/>{loading?<Spinner/>:
-  items.length?items.map((i,n)=><div key={n} className="p15-list-row">
-   <strong>{i.event_name}</strong><Badge status={i.status}/><small>{fmt(i.created_at,true)}</small>
-   <small>{i.attempt_count} attempts</small></div>):<p>{t("noMessages")}</p>}</div>;
+ const {t,fmt}=useWords();
+ const [filter,setFilter]=useState<DeliveryStatus>("all"),[page,setPage]=useState(1);
+ const [revision,setRevision]=useState(0);
+ const [snapshot,setSnapshot]=useState<{cid:string;data:DeliveryRead|null;
+  error:string;loading:boolean;syncedAt:string|null}|null>(null);
+ const reload=useCallback(()=>setRevision(x=>x+1),[]);
+ const current=snapshot?.cid===cid?snapshot:null;
+ const data=current?.data,loading=current?.loading??true,error=current?.error||"";
+ useEffect(()=>{
+  const controller=new AbortController();
+  setSnapshot({cid,data:null,error:"",loading:true,syncedAt:null});
+  api<DeliveryRead>("/v1/booking/clinics/"+encodeURIComponent(cid)+"/notifications",
+   "GET",undefined,controller.signal).then(result=>{
+   if(!controller.signal.aborted)setSnapshot({cid,data:result,error:"",loading:false,
+    syncedAt:new Date().toISOString()});
+  }).catch(e=>{
+   if(!controller.signal.aborted)setSnapshot({cid,data:null,
+    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,syncedAt:null});
+  });
+  return()=>controller.abort();
+ },[cid,revision]);
+ useEffect(()=>{
+  const visible=()=>{if(document.visibilityState==="visible")reload();};
+  window.addEventListener("focus",visible);
+  document.addEventListener("visibilitychange",visible);
+  const timer=window.setInterval(visible,45000);
+  return()=>{window.clearInterval(timer);window.removeEventListener("focus",visible);
+   document.removeEventListener("visibilitychange",visible)};
+ },[cid,reload]);
+ const deliveries=data?.deliveries||[];
+ const counts={queued:0,sent:0,failed:0,skipped:0};
+ for(const event of deliveries)counts[deliveryGroup(event.status)]++;
+ const matches=deliveries.filter(event=>filter==="all"||deliveryGroup(event.status)===filter);
+ const pages=Math.max(1,Math.ceil(matches.length/10));
+ const safePage=Math.min(page,pages);
+ const visible=matches.slice((safePage-1)*10,safePage*10);
+ const filters:DeliveryStatus[]=["all","queued","sent","failed","skipped"];
+ const title=(value:DeliveryStatus)=>value==="all"?t("deliveryAll"):
+  value==="queued"?t("deliveryQueued"):value==="sent"?t("deliverySent"):
+  value==="failed"?t("deliveryFailed"):t("deliverySkipped");
+ return <section className="p15-panel j-deliveries" aria-label={t("notificationStatus")}>
+  <div className="j-delivery-head"><div><h2>{t("notificationStatus")}</h2>
+   <p>{t("deliveryHint")}</p></div>
+   <button type="button" className="p15-button p15-button-secondary"
+    onClick={reload} disabled={loading}>{t("refreshDelivery")}</button>
+  </div>
+  <p className="j-delivery-help">{t("deliverySync")}</p>
+  <ErrorNote message={error}/>
+  {loading?<Spinner/>:error?
+   <button type="button" className="p15-button p15-button-secondary" onClick={reload}>{t("tryAgain")}</button>:
+   data&&<>
+    <div className="j-channel-grid">
+     {([{name:t("deliveryEmail"),configured:data.emailConfigured},
+       {name:t("deliverySms"),configured:data.smsConfigured},
+       {name:t("deliveryPush"),configured:data.pushConfigured}] as const).map(channel=>
+       <div className="j-channel" key={channel.name}><span>{channel.name}</span>
+        <strong className={channel.configured?"j-channel-on":"j-channel-off"}>
+         {t(channel.configured?"deliveryOn":"deliveryOff")}</strong></div>)}
+    </div>
+    <p className="j-delivery-help">{t("deliveryNoPush")}</p>
+    <div className="j-delivery-counters" role="group" aria-label={t("deliveryRecent")}>
+     {(["queued","sent","failed","skipped"] as const).map(status=>
+      <button key={status} type="button" className={"j-delivery-count j-"+status}
+       aria-pressed={filter===status} onClick={()=>{setFilter(status);setPage(1)}}>
+       <span>{title(status)}</span><strong>{counts[status]}</strong></button>)}
+    </div>
+    <div className="j-delivery-filters" role="group" aria-label={t("deliveryRecent")}>
+     {filters.map(value=><button key={value} type="button" aria-pressed={filter===value}
+      className={"j-delivery-filter"+(filter===value?" active":"")}
+      onClick={()=>{setFilter(value);setPage(1)}}>{title(value)}</button>)}
+    </div>
+    {visible.length?<div className="j-delivery-items">{visible.map((event,index)=>
+     <article className="j-delivery-row" key={event.created_at+":"+event.event_name+":"+index}>
+      <div><strong>{event.event_name.replace(/_/g," ")}</strong>
+       <small>{t("deliveryTime")}: {fmt(event.created_at,true)}</small></div>
+      <span className={"j-delivery-badge j-"+deliveryGroup(event.status)}>
+       {title(deliveryGroup(event.status))}</span>
+      <small>{t("deliveryAttempts")}: {event.attempt_count}</small>
+     </article>)}</div>:<p className="p15-empty">{t("deliveryNoData")}</p>}
+    {pages>1&&<nav className="j-delivery-paging" aria-label={t("deliveryPage")}>
+     <button type="button" className="p15-button p15-button-secondary" disabled={safePage===1}
+      onClick={()=>setPage(x=>Math.max(1,x-1))}>{t("back")}</button>
+     <span aria-live="polite">{t("deliveryPage")} {safePage}/{pages}</span>
+     <button type="button" className="p15-button p15-button-secondary" disabled={safePage===pages}
+      onClick={()=>setPage(x=>Math.min(pages,x+1))}>{t("next")}</button>
+    </nav>}
+    <p className="j-delivery-help">{t("deliveryLimit")}
+     {current?.syncedAt?" · "+fmt(current.syncedAt,true):""}</p>
+   </>}
+ </section>;
 }
