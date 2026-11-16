@@ -196,8 +196,7 @@ function ErrorBox({error,retry}:{error:string;retry?:()=>void}){
 }
 function Tabs({space,patientId,current}:{space:Space;patientId:string;current:View}){
  const {t}=useW();return <nav className="phase07-tabs" aria-label={t("patient")}>
- <a aria-current={current==="overview"?"page":undefined}
-  href={link(space.clinicId,patientId)}>{t("overview")}</a>
+ <a aria-label={t("overview")} href={link(space.clinicId,patientId)}>{t("overview")}</a>
  <a aria-current={current==="visits"||current==="encounter"?"page":undefined}
   href={link(space.clinicId,patientId,"visits")}>{t("visits")}</a>
  <a href={"/clinic/patients/"+patientId+"/chart?clinic="+encodeURIComponent(space.clinicId)}>{t("chart")}</a>
