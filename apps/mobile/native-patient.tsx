@@ -453,8 +453,9 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   </>}
  </Block>;
 }
-export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpen}:{locale:Language;
- calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void;onOpen:(bookingId:string)=>void}){
+export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpen,onRefreshSettled}:{locale:Language;
+ calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void;onOpen:(bookingId:string)=>void;
+ onRefreshSettled?:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
  const [busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
@@ -480,6 +481,9 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpe
  const active=snapshot?.patientId===patientId?snapshot:null;
  const rows=active?.rows||[],loading=active?.loading??true;
  const error=active?.error||"";
+ useEffect(()=>{
+  if((!patientId||active&&!loading)&&onRefreshSettled)onRefreshSettled();
+ },[patientId,loading,active,onRefreshSettled]);
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
@@ -685,8 +689,9 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   </Block>
  </View>;
 }
-export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Language;
- onClinic:(id:string)=>void;onDentist:(clinic:string,dentist:string)=>void;onExplore:()=>void}){
+export function NativeSaved({locale,onClinic,onDentist,onExplore,onRefreshSettled}:{locale:Language;
+ onClinic:(id:string)=>void;onDentist:(clinic:string,dentist:string)=>void;onExplore:()=>void;
+ onRefreshSettled?:()=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const user=auth.account?.registered?auth.account.user.id:null;
  const [snapshot,setSnapshot]=useState<{user:string;rows:Favorite[];error:string;loading:boolean}|null>(null);
@@ -705,6 +710,9 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
  },[user,auth.request,reload]);
  const current=snapshot?.user===user?snapshot:null;
  const favorites=current?.rows||[],loading=current?.loading??true,error=current?.error||"";
+ useEffect(()=>{
+  if((!user||current&&!loading)&&onRefreshSettled)onRefreshSettled();
+ },[user,loading,current,onRefreshSettled]);
  async function remove(f:Favorite){
   setBusy(f.clinicId+(f.dentistId||""));setActionError("");
   try{await auth.request("/v1/patient-favorites","DELETE",{clinicId:f.clinicId,dentistId:f.dentistId});
