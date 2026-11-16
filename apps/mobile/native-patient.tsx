@@ -123,12 +123,15 @@ function Field({value,onChangeText,label,secure=false,keyboardType="default"}:{v
  return <View style={{gap:6,marginTop:12}}><Label>{label}</Label><TextInput
   value={value} onChangeText={onChangeText} autoCapitalize={secure||keyboardType==="email-address"?"none":"sentences"}
   autoCorrect={false} secureTextEntry={secure} keyboardType={keyboardType}
-  textAlign="left" style={p.input}/></View>;
+  accessibilityLabel={label}
+  textAlign={keyboardType==="email-address"||keyboardType==="numeric"||secure?"left":"auto"}
+  style={p.input}/></View>;
 }
-function Button({title,onPress,secondary=false,disabled=false}:{title:string;onPress:()=>void;secondary?:boolean;disabled?:boolean}){
+function Button({title,onPress,secondary=false,danger=false,disabled=false}:{title:string;onPress:()=>void;
+ secondary?:boolean;danger?:boolean;disabled?:boolean}){
  return <Pressable accessibilityRole="button" disabled={disabled}
-  style={[p.button,secondary&&p.buttonSecondary,disabled&&{opacity:.45}]}
-  onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText]}>{title}</Text></Pressable>;
+  style={[p.button,secondary&&p.buttonSecondary,danger&&p.buttonDanger,disabled&&{opacity:.45}]}
+  onPress={onPress}><Text style={[p.buttonText,secondary&&p.secondaryText,danger&&p.dangerText]}>{title}</Text></Pressable>;
 }
 function ErrorBox({message}:{message:string}){return <View style={p.errorBox}><Text style={p.errorText}>{message}</Text></View>}
 function formatDate(iso:string,lang:Language,calendar:Calendar="gregorian"){
@@ -349,7 +352,8 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {current.map(b=><Block key={b.id}>
    <View style={p.between}><Text style={p.title}>{b.clinicName}</Text>
-    <Text style={p.badge}>{appointmentStatus(b.status,locale)}</Text>
+    <Text style={[p.badge,["cancelled","rejected","no_show"].includes(b.status)?p.badgeDanger:
+     b.status==="requested"?p.badgePending:null]}>{appointmentStatus(b.status,locale)}</Text>
    </View>
    <Text style={p.copy}>{b.serviceName} · {b.patientName}</Text>
    <Text style={p.label}>{formatDate(b.startAt,locale,calendar)}</Text>
@@ -359,7 +363,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
     {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
      <Button secondary title={t.reschedule} disabled={!!busy} onPress={()=>onReschedule(b)}/>}
     {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
-     <Button secondary title={t.cancel} disabled={!!busy} onPress={()=>cancel(b)}/>}
+     <Button danger title={t.cancel} disabled={!!busy} onPress={()=>cancel(b)}/>}
     {b.status==="confirmed"&&Date.parse(b.cancelUntil)<=Date.now()&&
      <Text style={p.copy}>{t.cancelHint}</Text>}
    </>}
@@ -547,6 +551,8 @@ const p=StyleSheet.create({
  button:{backgroundColor:blue,borderRadius:12,minHeight:44,justifyContent:"center",
   alignItems:"center",paddingHorizontal:16,paddingVertical:8,marginTop:6},
  buttonSecondary:{backgroundColor:"#EEF4FF",borderWidth:1,borderColor:"#C5D8FD"},
+ buttonDanger:{backgroundColor:"#FFF1F1",borderWidth:1,borderColor:"#F3C8CD"},
+ dangerText:{color:"#AC3443"},
  buttonText:{fontWeight:"800",color:"#fff",textAlign:"center",fontSize:13},
  secondaryText:{color:blue},
  errorBox:{backgroundColor:"#FFF0F0",padding:13,borderRadius:11},
@@ -561,7 +567,9 @@ const p=StyleSheet.create({
  filterTextOn:{color:"#fff"},
  between:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:6},
  badge:{fontSize:11,fontWeight:"800",color:"#0F8063",backgroundColor:"#E7F7F0",
-  padding:7,borderRadius:20},
+  padding:7,borderRadius:20,overflow:"hidden"},
+ badgePending:{color:"#946019",backgroundColor:"#FFF1D5"},
+ badgeDanger:{color:"#AC3443",backgroundColor:"#FFF0F1"},
  stepper:{flexDirection:"row",flexWrap:"wrap",gap:6},
  step:{borderRadius:10,backgroundColor:"#EAF0F9",padding:7},
  stepActive:{backgroundColor:blue},
