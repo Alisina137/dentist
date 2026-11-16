@@ -12,7 +12,7 @@
 | Navigation | Android hardware Back closes detail views, returns a booking to its referring dentist when appropriate, returns a reschedule to Appointments, then falls back to Home before leaving the app. Bottom navigation stays mounted while switching tabs. |
 | Appointments | Confirmed/requested upcoming bookings are separated from completed/past and cancelled/rejected/no-show; upcoming is sorted by earliest time; accurate localized status labels replace the incorrect catch-all cancelled label. Cancellation and rescheduling are hidden after confirmed-booking cutoff; pending requests can still be cancelled while future. Server remains the authority for allowed actions and revision conflicts. |
 | Booking | The booking wizard shows a spinner while **live** slots load, does not announce "no slots" while loading or after network failure, and uses a localized calendar in the ribbon, slots, review and receipt. No mock slots or accidental booking requests. |
-| Account | Patients can sign out even before finishing onboarding. Signed-in Account, Appointments, Booking and Saved layouts follow Dari/Pashto RTL or English LTR. Refresh and error states do not show stale favorites as if validated. |
+| Account | Account navigation is split into **Profile, Reviews, Settings** instead of stacking unrelated forms. Patients can sign out even before finishing onboarding. Signed-in Account, Appointments, Booking and Saved layouts follow Dari/Pashto RTL or English LTR. Fields have accessible labels, appointment statuses have semantic warning/danger colors and cancelling is a visibly destructive action. Refresh and error states do not show stale favorites as if validated. |
 
 ## Technical constraints
 
