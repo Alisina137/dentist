@@ -5,7 +5,7 @@ export type ClinicWorkspaceRole="owner"|"manager"|"dentist"|"receptionist"|"assi
 export type ClinicWorkspaceSpace={clinicId:string;clinicName:string;clinicStatus:string;
  membershipId:string;role:ClinicWorkspaceRole;clinicianEnabled:boolean;capabilities:string[]};
 export type ClinicWorkspaceAccount={name:string;email:string;mfaEnabled:boolean;clinics:ClinicWorkspaceSpace[]};
-export type ClinicWorkspaceSession={ctx:ClinicWorkspaceAccount;space:ClinicWorkspaceSpace;requested:string|null};
+export type ClinicWorkspaceSession={ctx:ClinicWorkspaceAccount;space:ClinicWorkspaceSpace|null;requested:string|null};
 const ClinicShellContext=createContext<ClinicWorkspaceSession|null>(null);
 const PersistentClinicShellContext=createContext(false);
 export function PersistentClinicShellProvider({session,children}:{
