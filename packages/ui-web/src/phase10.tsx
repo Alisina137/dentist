@@ -232,13 +232,22 @@ async function api(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useLoad(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState(""),[seq,setSeq]=useState(0);
+ // Tenant and invoice path isolation prevents a previous patient's financial
+ // data from remaining visible during a new request, even for one render.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
+ const [seq,setSeq]=useState(0);
  const refresh=()=>setSeq(x=>x+1);
- useEffect(()=>{let active=true;setData(null);setError("");
-  if(path)api(path).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message);});
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let active=true;setSnapshot({path,data:null,error:""});
+  api(path).then(x=>{if(active)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(active)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{active=false;};
  },[path,seq]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const b=(clinicId:string)=>"/clinics/"+clinicId;
 const financeHref=(clinicId:string,tab?:string)=>"/clinic/finance?clinic="+encodeURIComponent(clinicId)+(tab?"&tab="+encodeURIComponent(tab):"");
