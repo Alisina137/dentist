@@ -25,7 +25,7 @@ test("Clinic Phase 07: receptionist inbox uses real scoped API and no invented d
   'const reload=useCallback(()=>setRevision(x=>x+1),[])',
   'window.setInterval(visible,45000)',
   'if(document.visibilityState==="visible")reload()',
-  'limitReached:requests.limitReached===true||requests.requests.length===100',
+  'limitReached:requests.value.limitReached===true||requests.value.requests.length===100',
   'current?.limitReached'
  ])assert.ok(booking.includes(marker),marker);
  for(const forbidden of ["Math.random(","fakeRequest","localStorage.setItem(","sessionStorage.setItem("]){
@@ -105,7 +105,7 @@ test("Clinic Phase 07: irreversible decisions need accessible review, 10-charact
 
 test("Clinic Phase 07: private identity verification remains separate and retains consent gates",()=>{
  for(const marker of [
-  'const [identityOpen,setIdentityOpen]=useState(false)',
+  '[identityOpen,setIdentityOpen]=useState(false)',
   'identityOpen&&!loading&&!loadError',
   'links.filter(l=>l.state==="pending")',
   'verified[l.id]===true',
