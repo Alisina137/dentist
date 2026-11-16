@@ -384,7 +384,7 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   auth.request<NotificationFeed>("/v1/booking/notifications").then(data=>{
    if(live)setSnapshot({user,data,error:"",loading:false});
   }).catch(e=>{
-   if(live)setSnapshot({user,data:null,error:e instanceof Error?e.message:t.error,loading:false});
+   if(live)setSnapshot({user,data:null,error:patientError(e,locale),loading:false});
   });
   return()=>{live=false};
  },[user,auth.request,revision]);
@@ -451,13 +451,13 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
     error:"",loading:false});
   }catch(e){
    if(generation.current===request)setSnapshot({patientId,rows:[],
-    error:e instanceof Error?e.message:t.error,loading:false});
+    error:patientError(e,locale),loading:false});
   }
  },[patientId,auth.request,locale]);
  useEffect(()=>{void refresh();return()=>{generation.current++};},[refresh,reload]);
  const active=snapshot?.patientId===patientId?snapshot:null;
  const rows=active?.rows||[],loading=active?.loading??true;
- const error=active?.error||actionError;
+ const error=active?.error||"";
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
@@ -473,7 +473,10 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    try{await auth.request("/v1/booking/my/"+encodeURIComponent(b.id)+"/cancel","POST",{
     revision:b.revision,reason:"Patient requested appointment cancellation"});
     await refresh();
-   }catch(e){setActionError(e instanceof Error?e.message:t.error)}
+   }catch(e){
+    if(e instanceof ApiError&&e.status===409)await refresh();
+    setActionError(patientError(e,locale));
+   }
    finally{setBusy("")}
   })()}]);
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -487,6 +490,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
   <Button secondary title={t.refresh} onPress={()=>setReload(x=>x+1)}/>
   {loading&&<NativeLoadingList label={t.loadingData}/> }
   {error&&<ErrorBox message={error}/>}
+  {!!actionError&&<ErrorBox message={actionError}/>}
   {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {!loading&&!error&&current.map(b=><Block key={b.id}>
@@ -520,6 +524,8 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
  const [key,setKey]=useState(uniqueActionKey()),[receipt,setReceipt]=useState<Booking|null>(null);
  const [loading,setLoading]=useState(true),[slotsLoading,setSlotsLoading]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [recoveryNotice,setRecoveryNotice]=useState("");
+ const [uncertain,setUncertain]=useState(false);
  const [retry,setRetry]=useState(0);
  const reserved=booking!=null;
  useEffect(()=>{
@@ -527,7 +533,7 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   Promise.all([publicGet<Clinic>("/v1/discovery/clinics/"+encodeURIComponent(clinicId)),
    auth.account?.registered?auth.request<Family>("/v1/patients/family"):Promise.resolve(null)
   ]).then(([c,f])=>{if(current){setClinic(c);setFamily(f)}})
-   .catch(e=>{if(current)setError(e instanceof Error?e.message:t.error)})
+   .catch(e=>{if(current)setError(patientError(e,locale))})
    .finally(()=>{if(current)setLoading(false)});
   return()=>{current=false};
  },[clinicId,auth.account?.user.id,auth.account?.registered,retry]);
@@ -537,14 +543,14 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   const params=new URLSearchParams({date:day,serviceId:service,dentistId:dentist});
   publicGet<{slots:Time[]}>("/v1/discovery/clinics/"+encodeURIComponent(clinicId)+
    "/availability?"+params.toString()).then(x=>{if(active)setSlots(x.slots)})
-   .catch(e=>{if(active)setError(e instanceof Error?e.message:t.error)})
+   .catch(e=>{if(active)setError(patientError(e,locale))})
    .finally(()=>{if(active)setSlotsLoading(false)});
   return()=>{active=false};
  },[clinicId,service,dentist,day,retry]);
- function restartKey(){setTime("");setKey(uniqueActionKey())}
+ function restartKey(){setTime("");setKey(uniqueActionKey());setRecoveryNotice("");setUncertain(false)}
  async function submit(){
   if(!time||!auth.account?.registered)return;
-  setBusy(true);setError("");
+  setBusy(true);setError("");setRecoveryNotice("");setUncertain(false);
   try{
    if(booking){
     await auth.request("/v1/booking/my/"+encodeURIComponent(booking.id)+"/reschedule","POST",{
@@ -559,7 +565,17 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
    });
    setReceipt(response.booking);setStep(5);
   }catch(e){
-   setError(e instanceof Error?e.message:t.offline);
+   if(isSlotConflict(e)){
+    // Available slots are previews, not holds. Fetch fresh provider availability
+    // and require the patient to choose another time without losing other input.
+    setStep(2);setTime("");setSlots([]);setKey(uniqueActionKey());
+    setRecoveryNotice(patientText(locale,"slotTaken"));
+    setRetry(v=>v+1);
+   }else{
+    setError(patientError(e,locale));
+    if(e instanceof ApiError&&e.status===0&&e.code==="NETWORK_UNAVAILABLE")
+     setUncertain(true); // Keep idempotency key for safe retry after checking history.
+   }
   }finally{setBusy(false)}
  }
  const steps=[t.treatment,t.dentist,t.time,t.patient,t.review];
@@ -576,7 +592,7 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   <Button title={t.appointments} onPress={onDone}/></Block>;
  const picked=slots.find(s=>s.startAt===time);
  const allowed=step===0?!!service:step===1?!!dentist:step===2?!!picked:
-  step===3?person==="self"||!!family?.members.find(x=>x.id===person&&x.eligibleForFutureBooking):consent;
+  step===3?person==="self"||!!family?.members.find(x=>x.id===person&&x.eligibleForFutureBooking):consent&&!!picked;
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{booking?t.reschedule:t.book} · {clinic.clinic.name}</Text>
   <View style={p.stepper}>{steps.map((label,i)=><Pressable key={label} disabled={i>step}
@@ -634,7 +650,10 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
      style={p.check} onPress={()=>setConsent(!consent)}>
      <Text>{consent?"☑":"□"} {t.confirmConsent}</Text></Pressable>
    </>}
+   {!!recoveryNotice&&<Text accessibilityRole="alert" style={p.recoveryNote}>{recoveryNotice}</Text>}
    {!!error&&<ErrorBox message={error}/>}
+   {uncertain&&<><Text style={p.copy}>{patientText(locale,"uncertain")}</Text>
+    <Button secondary title={t.checkAppointments} onPress={onDone}/></>}
    <View style={p.actions}>{step>0&&<Button secondary title={t.back} onPress={()=>setStep(x=>x-1)}/>}
     <Button title={busy?t.saving:step===4?t.submit:t.next}
      disabled={!allowed||busy} onPress={()=>step===4?void submit():setStep(x=>x+1)}/></View>
@@ -651,7 +670,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   let alive=true;setLoading(true);setError("");
   auth.request<{favorites:Favorite[]}>("/v1/patient-favorites").then(x=>{
    if(alive)setFavorites(x.favorites);
-  }).catch(e=>{if(alive)setError(e instanceof Error?e.message:t.error)})
+  }).catch(e=>{if(alive)setError(patientError(e,locale))})
    .finally(()=>{if(alive)setLoading(false)});
   return()=>{alive=false};
  },[auth.account?.user.id,auth.account?.registered,reload]);
@@ -659,7 +678,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   setBusy(f.clinicId+(f.dentistId||""));setError("");
   try{await auth.request("/v1/patient-favorites","DELETE",{clinicId:f.clinicId,dentistId:f.dentistId});
    setReload(x=>x+1);
-  }catch(e){setError(e instanceof Error?e.message:t.error)}
+  }catch(e){setError(patientError(e,locale))}
   finally{setBusy("")}
  }
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -703,6 +722,7 @@ const p=StyleSheet.create({
  skeletonRow:{flexDirection:"row",gap:13,alignItems:"center"},
  skeletonAvatar:{width:46,height:46,borderRadius:12,backgroundColor:"#E3EDF5"},
  skeletonText:{height:12,borderRadius:6,backgroundColor:"#E3EDF5"},
+ recoveryNote:{backgroundColor:"#E8F2FF",color:"#114C9D",borderWidth:1,borderColor:"#B8D5FC",padding:12,borderRadius:12,fontSize:13,lineHeight:20},
  notificationItem:{paddingVertical:9,borderTopWidth:1,borderTopColor:"#EDF2F8",gap:5},
  notificationBadge:{fontSize:11,fontWeight:"800",padding:6,borderRadius:16,overflow:"hidden"},
  check:{paddingVertical:10,minHeight:42},
