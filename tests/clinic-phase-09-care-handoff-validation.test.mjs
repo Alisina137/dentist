@@ -105,7 +105,7 @@ test("Clinic Phase 09: patient overview uses only real authorized appointment ro
   'data.clinicalAvailable&&<>',
   'canEdit&&p.status==="active"',
   'data.maximumRows&&data.total>=data.maximumRows',
-  'className="clinic-phase09-patient-nav"',
+  'className="phase05-tabs clinic-phase09-patient-nav"',
   'aria-current="page"'
  ])assert.ok(patient.includes(token),token);
  assert.ok(patient.includes('const data=snapshot.key===key?snapshot.data:null'));
