@@ -589,13 +589,13 @@ function Requests({cid,role,clinicianEnabled}:{cid:string;role:string;clinicianE
    document.removeEventListener("visibilitychange",visible);};
  },[cid,reload]);
  async function decision(r:StaffRequestRow,action:"accept"|"reject"){
-  setBusy(true);setError("");
+  setBusy(true);setActionError("");
   try{await api("/v1/booking/clinics/"+cid+"/requests/"+r.id+"/decision","POST",
    {action,reason:reasons[r.id],revision:r.revision});setSnapshot(null);reload();}
   catch(e:any){setActionError(e.message)}finally{setBusy(false)}
  }
  async function linkDecision(l:LinkRequest,action:"approve"|"reject"){
-  setBusy(true);setError("");
+  setBusy(true);setActionError("");
   try{await api("/v1/booking/clinics/"+cid+"/record-links/"+l.id+"/decision","POST",
    {action,patientId:patientIds[l.id],reason:reasons[l.id],
     verifiedInPerson:verified[l.id]===true,method:methods[l.id]||"in_person_document"});setSnapshot(null);reload();}
