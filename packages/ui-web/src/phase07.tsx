@@ -155,14 +155,22 @@ async function call(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useLoad(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Route identity is part of the snapshot: older patient/encounter data may
+ // never flash while a new clinic/patient is loading.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [tick,setTick]=useState(0);
- const refresh=()=>{setTick(x=>x+1);setError("");setData(null);};
- useEffect(()=>{if(!path)return;let live=true;setData(null);setError("");
-  call(path).then(v=>{if(live)setData(v);}).catch(e=>{if(live)setError(e.message);});
+ const refresh=()=>setTick(x=>x+1);
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  let live=true;setSnapshot({path,data:null,error:""});
+  call(path).then(v=>{if(live)setSnapshot({path,data:v,error:""});})
+   .catch(e=>{if(live)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
   return()=>{live=false;};
  },[path,tick]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const link=(cid:string,pid:string,view:"overview"|"visits"|"files"="overview",visit?:string)=>
  "/clinic/patients/"+pid+(view==="overview"?"":"/"+view)+(visit?"/"+visit:"")+
