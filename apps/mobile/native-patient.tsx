@@ -432,8 +432,8 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   </>}
  </Block>;
 }
-export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{locale:Language;
- calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void}){
+export function NativeAppointments({locale,calendar,onExplore,onReschedule,onOpen}:{locale:Language;
+ calendar:Calendar;onExplore:()=>void;onReschedule:(b:Booking)=>void;onOpen:(bookingId:string)=>void}){
  const t=tr(locale),auth=useNativeAuth();
  const [filter,setFilter]=useState<"upcoming"|"past"|"cancelled">("upcoming");
  const [busy,setBusy]=useState(""),[actionError,setActionError]=useState("");
@@ -503,6 +503,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    <Text style={p.label}>{formatDate(b.startAt,locale,calendar)}</Text>
    <Text style={p.copy}>{b.priceAfn.toLocaleString("en")} AFN</Text>
    <Text style={p.small}>{t.reference}: {b.id.slice(0,12)}</Text>
+   <Button secondary title={t.view} onPress={()=>onOpen(b.id)}/>
    {["confirmed","requested"].includes(b.status)&&Date.parse(b.startAt)>Date.now()&&<>
     {(b.status==="requested"||Date.parse(b.cancelUntil)>Date.now())&&
      <Button secondary title={t.reschedule} disabled={!!busy} onPress={()=>onReschedule(b)}/>}
