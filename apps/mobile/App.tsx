@@ -1060,6 +1060,141 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
   <View style={s.notice}><TextLine ui={ui}>{ui.t("medical")}</TextLine></View>
  </View>;
 }
+
+const accountWords={
+ en:{
+  accountTitle:"Your patient account",accountGuest:"Browse as a guest",accountGuestSub:"Sign in to manage appointments and your own account.",
+  verified:"Verified patient account",signIn:"Sign in / Create account",care:"Your care",
+  manage:"Account and support",profile:"Personal profile",profileSub:"Name, city and contact details",
+  family:"Family members",familySub:"Manage authorized people and children",
+  records:"Shared clinic records",recordsSub:"Open individually released records on the secure website",
+  notifications:"Booking updates",notificationsSub:"Email delivery history and preferences",
+  reviews:"Your reviews",reviewsSub:"Reviews from verified completed visits",
+  security:"Account security",securitySub:"Manage sessions and security on the secure website",
+  settings:"App preferences",settingsSub:"Language, calendar and selected city",
+  support:"Help and support",supportSub:"Guidance through the patient website",
+  appointments:"My appointments",appointmentsSub:"View upcoming and past bookings",
+  explore:"Find dental care",webOnly:"Secure patient website",openWeb:"Open secure website",
+  unavailable:"The secure patient website is not configured on this device yet.",
+  webNote:"Your medical records are only shared after separate identity checks and clinic approval. Opening a website may require signing in again.",
+  webSecurity:"Account security and session controls remain on the secure patient website.",
+  webSupport:"Help and support are available on the patient website.",
+  return:"Back to account",signInFirst:"Sign in before opening your account records or security."
+ },
+ "fa-AF":{
+  accountTitle:"حساب مریض",accountGuest:"به صورت مهمان هستید",accountGuestSub:"برای مدیریت نوبت‌ها و حساب خود وارد شوید.",
+  verified:"حساب مریض تأییدشده",signIn:"ورود / ایجاد حساب",care:"مراقبت شما",
+  manage:"حساب و پشتیبانی",profile:"معلومات شخصی",profileSub:"نام، شهر و معلومات تماس",
+  family:"اعضای خانواده",familySub:"مدیریت اشخاص مجاز و اطفال",
+  records:"اسناد مشترک کلینیک",recordsSub:"مشاهده اسناد جداگانه مجازشده در وبسایت مصون",
+  notifications:"تازه‌های نوبت",notificationsSub:"تاریخچه و تنظیمات ایمیل",
+  reviews:"نظرات شما",reviewsSub:"نظرات مراجعه‌های تکمیل‌شده",
+  security:"امنیت حساب",securitySub:"مدیریت نشست‌ها و امنیت در وبسایت مصون",
+  settings:"تنظیمات برنامه",settingsSub:"زبان، تقویم و شهر انتخاب‌شده",
+  support:"کمک و پشتیبانی",supportSub:"راهنمایی در وبسایت مریضان",
+  appointments:"نوبت‌های من",appointmentsSub:"مشاهده نوبت‌های آینده و گذشته",
+  explore:"جستجوی خدمات دندان",webOnly:"وبسایت مصون مریضان",openWeb:"بازکردن وبسایت مصون",
+  unavailable:"وبسایت مصون مریضان هنوز در این دستگاه تنظیم نشده است.",
+  webNote:"اسناد صحی فقط بعد از بررسی جداگانه هویت و اجازه کلینیک شریک می‌شوند. ممکن است لازم شود در وبسایت دوباره وارد شوید.",
+  webSecurity:"امنیت حساب و مدیریت نشست‌ها فعلاً در وبسایت مصون مریضان است.",
+  webSupport:"کمک و پشتیبانی در وبسایت مریضان در دسترس است.",
+  return:"بازگشت به حساب",signInFirst:"برای دسترسی به اسناد و امنیت حساب ابتدا وارد شوید."
+ },
+ "ps-AF":{
+  accountTitle:"د ناروغ حساب",accountGuest:"تاسو د مېلمه په توګه ګورئ",accountGuestSub:"د ملاقاتونو او حساب سمبالولو لپاره ننوځئ.",
+  verified:"تایید شوی د ناروغ حساب",signIn:"ننوتل / حساب جوړول",care:"ستاسو پاملرنه",
+  manage:"حساب او ملاتړ",profile:"شخصي معلومات",profileSub:"نوم، ښار او اړیکه",
+  family:"د کورنۍ غړي",familySub:"د مجاز کسانو او ماشومانو سمبالول",
+  records:"شریک شوي کلینیکي ریکارډونه",recordsSub:"په خوندي وېب کې یوازې د اجازه شوو ریکارډونو لیدل",
+  notifications:"د ملاقات خبرونه",notificationsSub:"د ایمیل خبرتیاوې او تنظیمات",
+  reviews:"ستاسو نظرونه",reviewsSub:"د بشپړو شویو کتنو نظرونه",
+  security:"د حساب امنیت",securitySub:"په خوندي وېب کې د ناستو او امنیت سمبالول",
+  settings:"د اپ تنظیمات",settingsSub:"ژبه، کلیزه او غوره شوی ښار",
+  support:"مرسته او ملاتړ",supportSub:"د ناروغانو په وېبپاڼه کې لارښوونې",
+  appointments:"زما ملاقاتونه",appointmentsSub:"راتلونکي او تېر ملاقاتونه وګورئ",
+  explore:"د غاښونو خدمتونه لټول",webOnly:"د ناروغانو خوندي وېبپاڼه",openWeb:"خوندي وېبپاڼه پرانیزئ",
+  unavailable:"په دې وسیله کې د ناروغانو خوندي وېبپاڼه لا نه ده تنظیم شوې.",
+  webNote:"طبي ریکارډونه یوازې له بېلې پېژندنې او د کلینیک له اجازې وروسته شریکېږي. کېدای شي په وېبپاڼه کې بیا ننوتل وغواړي.",
+  webSecurity:"د حساب امنیت او ناستې د ناروغانو په خوندي وېبپاڼه کې سمبالېږي.",
+  webSupport:"مرسته او ملاتړ د ناروغانو په وېبپاڼه کې شته.",
+  return:"حساب ته ستنېدل",signInFirst:"د ریکارډونو او امنیت لپاره لومړی ننوځئ."
+ }
+} as const;
+
+function AccountHub({ui,account,onSection,onAppointments,onExplore}:{
+ ui:UI;account:NativeAccount|null;onSection:(section:AccountSection)=>void;
+ onAppointments:()=>void;onExplore:()=>void}){
+ const t=accountWords[ui.locale];
+ const registered=Boolean(account?.registered);
+ const groups:{title:string;items:{key:AccountSection;icon:string;title:string;sub:string}[]}[]=[
+  {title:t.care,items:[
+   {key:"family",icon:"◇",title:t.family,sub:t.familySub},
+   {key:"records",icon:"▤",title:t.records,sub:t.recordsSub},
+   {key:"reviews",icon:"☆",title:t.reviews,sub:t.reviewsSub}]},
+  {title:t.manage,items:[
+   {key:"profile",icon:"☺",title:t.profile,sub:t.profileSub},
+   {key:"notifications",icon:"♧",title:t.notifications,sub:t.notificationsSub},
+   {key:"security",icon:"♙",title:t.security,sub:t.securitySub},
+   {key:"settings",icon:"⚙",title:t.settings,sub:t.settingsSub},
+   {key:"support",icon:"ⓘ",title:t.support,sub:t.supportSub}]}
+ ];
+ return <View style={s.sectionGap}>
+  <View style={s.accountSegment}>
+   <CardShell>
+    <Text accessibilityRole="header" style={[s.sectionTitle,{textAlign:ui.align}]}>{t.accountTitle}</Text>
+    <TextLine ui={ui} style={{marginTop:8}}>
+     {registered?(account?.profile?.preferredName||account?.user.name||t.verified):t.accountGuest}</TextLine>
+    <TextLine ui={ui} style={{marginTop:3}}>{registered?account?.user.email||t.verified:t.accountGuestSub}</TextLine>
+    {!registered&&<View style={{marginTop:14}}>
+     <CTA label={t.signIn} onPress={()=>onSection("profile")}/></View>}
+   </CardShell>
+  </View>
+  {registered&&<>
+   <View style={s.quickActions}>
+    <CTA label={t.appointments} onPress={onAppointments}/>
+    <CTA label={t.explore} onPress={onExplore} secondary/>
+   </View>
+   {groups.map(group=><View key={group.title} style={s.accountGroup}>
+    <Text accessibilityRole="header" style={[s.sectionTitle,{textAlign:ui.align}]}>{group.title}</Text>
+    <CardShell>
+     {group.items.map((row,index)=><Pressable
+      accessibilityRole="button" accessibilityLabel={row.title}
+      key={row.key} onPress={()=>onSection(row.key)}
+      style={[s.accountRow,{flexDirection:ui.flow},index>0&&s.accountRowBorder]}>
+      <View style={s.accountRowGlyph}><Text style={s.accountRowIcon}>{row.icon}</Text></View>
+      <View style={{flex:1}}>
+       <Text style={[s.accountRowTitle,{textAlign:ui.align}]}>{row.title}</Text>
+       <Text style={[s.accountRowSubtitle,{textAlign:ui.align}]}>{row.sub}</Text>
+      </View>
+      <Text style={s.accountRowArrow}>{ui.rtl?"‹":"›"}</Text>
+     </Pressable>)}
+    </CardShell>
+   </View>)}
+  </>}
+  {!registered&&<CTA secondary label={t.settings} onPress={()=>onSection("settings")}/>}
+ </View>;
+}
+function AccountWebSection({ui,section,onBack,onProfile,registered}:{
+ ui:UI;section:"records"|"security"|"support";onBack:()=>void;onProfile:()=>void;registered:boolean}){
+ const t=accountWords[ui.locale],labels={records:t.records,security:t.security,support:t.support};
+ const path=section==="records"?"/account/records":section==="security"?"/account/security":"/help";
+ const message=section==="records"?t.webNote:section==="security"?t.webSecurity:t.webSupport;
+ const [openError,setOpenError]=useState(false);
+ return <View style={s.sectionGap}><CardShell>
+  <Text accessibilityRole="header" style={[s.sectionTitle,{textAlign:ui.align}]}>{labels[section]}</Text>
+  <TextLine ui={ui} style={{marginTop:10}}>{message}</TextLine>
+  {!registered&&section!=="support"?
+   <View style={{marginTop:15}}><TextLine ui={ui}>{t.signInFirst}</TextLine>
+    <CTA label={t.signIn} onPress={onProfile}/></View>:
+   PATIENT_WEB?<View style={{marginTop:16}}>
+    <CTA label={t.openWeb+" ↗"} onPress={()=>void Linking.openURL(PATIENT_WEB+path)
+     .catch(()=>setOpenError(true))}/>
+    {openError&&<TextLine ui={ui} style={{marginTop:10}}>{t.unavailable}</TextLine>}
+   </View>:<TextLine ui={ui} style={{marginTop:16}}>{t.unavailable}</TextLine>}
+  <View style={{marginTop:12}}><CTA secondary label={t.return} onPress={onBack}/></View>
+ </CardShell></View>;
+}
+
 function PatientApp(){
  const native=useNativeAuth();
  const identityKey=native.account?.user.id||null;
