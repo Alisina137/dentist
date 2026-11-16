@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
+import {patientError,patientText,isSlotConflict} from "./patient-errors";
 
 declare const process:{readonly env:{readonly EXPO_PUBLIC_API_URL?:string;readonly EXPO_PUBLIC_PATIENT_WEB_URL?:string}};
 const API=(process.env.EXPO_PUBLIC_API_URL||"").replace(/\/+$/,"");
@@ -61,7 +62,9 @@ const words={
  close:"Close",ack:"I am the legal guardian of this minor.",
  reference:"Appointment reference",refresh:"Refresh",created:"Registered",
  cancelledStatus:"Cancelled",profileUpdate:"Update profile",
- verification:"Verify your email from the link before signing in."},
+ verification:"Verify your email from the link before signing in.",
+ resendVerification:"Resend verification email",backToLogin:"Back to sign in",resetPassword:"Send password reset link",
+ checkAppointments:"Check My appointments"},
  "fa-AF":{login:"ورود",signup:"ایجاد حساب",name:"نام مکمل",email:"ایمیل",password:"رمز عبور",
  loginHelp:"برای مدیریت مصون نوبت‌ها وارد حساب تأییدشده شوید.",
  signupHelp:"لینک تأیید به ایمیل ارسال می‌شود. پس از تأیید وارد شوید.",
@@ -96,7 +99,9 @@ const words={
  close:"بستن",ack:"من سرپرست قانونی این طفل هستم.",
  reference:"شماره نوبت",refresh:"تازه‌سازی",created:"ثبت شده",
  cancelledStatus:"لغو شده",profileUpdate:"ویرایش پروفایل",
- verification:"لینک ارسالی به ایمیل را تأیید کنید، سپس وارد شوید."},
+ verification:"لینک ارسالی به ایمیل را تأیید کنید، سپس وارد شوید.",
+ resendVerification:"ارسال دوباره ایمیل تأیید",backToLogin:"بازگشت به ورود",resetPassword:"ارسال لینک بازیابی رمز",
+ checkAppointments:"بررسی نوبت‌های من"},
  "ps-AF":{login:"ننوځئ",signup:"حساب جوړول",name:"بشپړ نوم",email:"ایمیل",password:"پټنوم",
  loginHelp:"د ملاقاتونو د سمبالولو لپاره تایید شوي حساب ته ننوځئ.",
  signupHelp:"د تایید لینک ایمیل ته استول کېږي؛ وروسته ننوځئ.",
@@ -131,7 +136,9 @@ const words={
  close:"بندول",ack:"زه د دې ماشوم قانوني سرپرست یم.",
  reference:"د ملاقات شمېره",refresh:"تازه کول",created:"ثبت شوی",
  cancelledStatus:"لغوه شوی",profileUpdate:"پروفایل سمول",
- verification:"په ایمیل کې لینک تایید کړئ، بیا ننوځئ."}
+ verification:"په ایمیل کې لینک تایید کړئ، بیا ننوځئ.",
+ resendVerification:"د تایید ایمیل بیا استول",backToLogin:"بېرته ننوتل",resetPassword:"د پټنوم لینک واستوئ",
+ checkAppointments:"زما ملاقاتونه وګورئ"}
 } as const;
 function tr(lang:Language){return words[lang]}
 const dark="#152b4c",blue="#075BF2",muted="#677a92";
@@ -218,7 +225,7 @@ async function publicGet<T>(path:string):Promise<T>{
 export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCity}:{locale:Language;calendar:Calendar;
  city:string;onLocale:(v:Language)=>void;onCalendar:(v:Calendar)=>void;onCity:(v:string)=>void}){
  const t=tr(locale),auth=useNativeAuth();
- const [mode,setMode]=useState<"login"|"signup">("login");
+ const [mode,setMode]=useState<"login"|"signup"|"recover">("login");
  const [name,setName]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");
  const [phone,setPhone]=useState(""),[accepted,setAccepted]=useState(false),[adult,setAdult]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -226,41 +233,65 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
  const [family,setFamily]=useState<Family|null>(null);
  const [child,setChild]=useState(""),[birth,setBirth]=useState(""),[guardian,setGuardian]=useState(false);
  const [localEmail,setLocalEmail]=useState(false),[updateEmail,setUpdateEmail]=useState(false);
+ const patientId=auth.account?.registered?auth.account.user.id:null;
  useEffect(()=>{
-  if(!auth.account?.registered)return;
+  // Account boundary: immediately clear all previous patient's family, notification
+  // settings, unsaved forms and errors before fetching for the new identity.
+  setPrefs(null);setFamily(null);setLocalEmail(false);setUpdateEmail(false);
+  setChild("");setBirth("");setGuardian(false);setAccepted(false);setAdult(false);
+  setNotice("");setError("");setPassword("");
+  if(!patientId)return;
   let live=true;
   Promise.all([auth.request<Prefs>("/v1/patients/preferences"),
    auth.request<Family>("/v1/patients/family")]).then(([p,f])=>{
     if(live){setPrefs(p);setFamily(f);setLocalEmail(p.notifications.emailBookings);
      setUpdateEmail(p.notifications.emailUpdates);}
-  }).catch(e=>{if(live)setError(String(e instanceof Error?e.message:e))});
+  }).catch(e=>{if(live)setError(patientError(e,locale))});
   return()=>{live=false};
- },[auth.account?.user.id,auth.account?.registered]);
+ },[patientId,auth.request]);
  const run=async(fn:()=>Promise<void>)=>{
   setBusy(true);setError("");setNotice("");
-  try{await fn()}catch(e){setError(e instanceof Error?e.message:t.error)}
+  try{await fn()}catch(e){setError(e instanceof Error&&e.message===t.invalid?t.invalid:patientError(e,locale))}
   finally{setBusy(false)}
  };
  if(auth.loading)return <Block><Text>{t.checking}</Text><ActivityIndicator color={blue}/></Block>;
- if(auth.onlineError&&!auth.account)return <Block><ErrorBox message={auth.onlineError}/>
+ if(auth.onlineError&&!auth.account)return <Block><ErrorBox message={patientError(new ApiError(0,auth.onlineError),locale)}/>
   <Button title={t.retry} onPress={()=>void auth.refresh()}/></Block>;
- if(!auth.account)return <Block><Text style={p.title}>{mode==="login"?t.login:t.signup}</Text>
-  <Text style={p.copy}>{mode==="login"?t.loginHelp:t.signupHelp}</Text>
+ if(!auth.account)return <Block><Text style={p.title}>{mode==="login"?t.login:mode==="signup"?t.signup:t.forgot}</Text>
+  <Text style={p.copy}>{mode==="signup"?t.signupHelp:t.loginHelp}</Text>
   {mode==="signup"&&<Field label={t.name} value={name} onChangeText={setName}/>}
   <Field label={t.email} value={email} keyboardType="email-address" onChangeText={setEmail}/>
-  <Field label={t.password} value={password} secure onChangeText={setPassword}/>
+  {mode!=="recover"&&<Field label={t.password} value={password} secure onChangeText={setPassword}/>}
   {error&&<ErrorBox message={error}/>}
   {notice&&<Text style={p.success}>{notice}</Text>}
-  <Button title={busy?t.saving:mode==="login"?t.login:t.signup} disabled={busy}
+  <Button title={busy?t.saving:mode==="recover"?t.resetPassword:mode==="login"?t.login:t.signup} disabled={busy}
    onPress={()=>void run(async()=>{
-    if(!email.includes("@")||password.length<10||(mode==="signup"&&name.trim().length<2))
+    if(!email.includes("@")||(mode!=="recover"&&password.length<10)||(mode==="signup"&&name.trim().length<2))
      throw new Error(t.invalid);
+    if(mode==="recover"){
+     await auth.requestPasswordReset(email);
+     setNotice(patientText(locale,"resetSent"));setPassword("");return;
+    }
     if(mode==="signup"){await auth.signUp(name,email,password);
      setNotice(t.verification);setMode("login");setPassword("");}
     else await auth.signIn(email,password);
    })}/>
-  <Button secondary title={mode==="login"?t.signup:t.login} onPress={()=>{setMode(mode==="login"?"signup":"login");setError("");setNotice("")}}/>
-  {WEB&&<Button secondary title={t.forgot} onPress={()=>void Linking.openURL(WEB+"/forgot-password")}/>}
+  <Button secondary title={mode==="recover"?t.backToLogin:mode==="login"?t.signup:t.login}
+   disabled={busy} onPress={()=>{setMode(mode==="login"?"signup":"login");setError("");setNotice("");setPassword("")}}/>
+  {mode==="login"&&<Button secondary title={t.forgot} disabled={busy}
+   onPress={()=>{setMode("recover");setError("");setNotice("");setPassword("")}}/>}
+  {mode!=="recover"&&<Button secondary title={t.resendVerification}
+   disabled={busy||!email.includes("@")} onPress={()=>void run(async()=>{
+    // Do not disclose whether the email address has an account. Preserve
+    // actionable connection/rate limit failures; all other outcomes are neutral.
+    try{await auth.resendVerification(email);}
+    catch(e){
+     if(e instanceof ApiError&&(e.status===0||e.status===429))throw e;
+    }
+    setNotice(patientText(locale,"verifySent"));
+   })}/>}
+  {error===patientText(locale,"mfaWeb")&&WEB&&<Button secondary title={t.login}
+   onPress={()=>void Linking.openURL(WEB+"/login")}/>}
  </Block>;
  if(!auth.account.registered)return <Block><Text style={p.title}>{t.onboard}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text>
@@ -289,7 +320,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
   <Block><Text style={p.title}>{t.profile}</Text>
    <Text style={p.copy}>{auth.account.user.email}</Text>
    <Text style={p.label}>{profile?.preferredName} · {profile?.city}</Text>
-   <Button secondary title={t.profileUpdate} onPress={()=>{setName(profile?.preferredName||"");setPhone(profile?.phone||"");setNotice("edit")}}/>
+   <Button secondary title={t.profileUpdate} onPress={()=>{setName(profile?.preferredName||"");setPhone(profile?.phone||"");onCity(profile?.city||city);setNotice("edit")}}/>
    {notice==="edit"&&<>
     <Field label={t.name} value={name} onChangeText={setName}/>
     <Field label={t.city} value={city} onChangeText={onCity}/>
@@ -300,7 +331,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
      });await auth.refresh();
     })}/>
    </>}
-   <Button secondary title={t.signout} onPress={()=>void run(async()=>await auth.signOut())}/>
+   <Button secondary title={t.signout} disabled={busy} onPress={()=>void run(async()=>await auth.signOut())}/>
   </Block>
   <Block><Text style={p.title}>{t.family}</Text>
    {family?.members.map(m=><Text key={m.id} style={p.item}>
@@ -357,7 +388,7 @@ function NativePatientNotifications({locale,calendar}:{locale:Language;calendar:
   auth.request<NotificationFeed>("/v1/booking/notifications").then(data=>{
    if(live)setSnapshot({user,data,error:"",loading:false});
   }).catch(e=>{
-   if(live)setSnapshot({user,data:null,error:e instanceof Error?e.message:t.error,loading:false});
+   if(live)setSnapshot({user,data:null,error:patientError(e,locale),loading:false});
   });
   return()=>{live=false};
  },[user,auth.request,revision]);
@@ -424,13 +455,13 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
     error:"",loading:false});
   }catch(e){
    if(generation.current===request)setSnapshot({patientId,rows:[],
-    error:e instanceof Error?e.message:t.error,loading:false});
+    error:patientError(e,locale),loading:false});
   }
  },[patientId,auth.request,locale]);
  useEffect(()=>{void refresh();return()=>{generation.current++};},[refresh,reload]);
  const active=snapshot?.patientId===patientId?snapshot:null;
  const rows=active?.rows||[],loading=active?.loading??true;
- const error=active?.error||actionError;
+ const error=active?.error||"";
  if(!auth.account?.registered)return <Block><Text style={p.title}>{t.appointments}</Text>
   <Text style={p.copy}>{t.signInFirst}</Text></Block>;
  const current=rows.filter(b=>filter==="cancelled"?["cancelled","rejected","no_show"].includes(b.status):
@@ -446,7 +477,10 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
    try{await auth.request("/v1/booking/my/"+encodeURIComponent(b.id)+"/cancel","POST",{
     revision:b.revision,reason:"Patient requested appointment cancellation"});
     await refresh();
-   }catch(e){setActionError(e instanceof Error?e.message:t.error)}
+   }catch(e){
+    if(e instanceof ApiError&&e.status===409)await refresh();
+    setActionError(patientError(e,locale));
+   }
    finally{setBusy("")}
   })()}]);
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -460,6 +494,7 @@ export function NativeAppointments({locale,calendar,onExplore,onReschedule}:{loc
   <Button secondary title={t.refresh} onPress={()=>setReload(x=>x+1)}/>
   {loading&&<NativeLoadingList label={t.loadingData}/> }
   {error&&<ErrorBox message={error}/>}
+  {!!actionError&&<ErrorBox message={actionError}/>}
   {!loading&&!error&&current.length===0&&<Block><Text style={p.copy}>{t.empty}</Text>
    <Button secondary title={t.find} onPress={onExplore}/></Block>}
   {!loading&&!error&&current.map(b=><Block key={b.id}>
@@ -493,6 +528,8 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
  const [key,setKey]=useState(uniqueActionKey()),[receipt,setReceipt]=useState<Booking|null>(null);
  const [loading,setLoading]=useState(true),[slotsLoading,setSlotsLoading]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [recoveryNotice,setRecoveryNotice]=useState("");
+ const [uncertain,setUncertain]=useState(false);
  const [retry,setRetry]=useState(0);
  const reserved=booking!=null;
  useEffect(()=>{
@@ -500,7 +537,7 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   Promise.all([publicGet<Clinic>("/v1/discovery/clinics/"+encodeURIComponent(clinicId)),
    auth.account?.registered?auth.request<Family>("/v1/patients/family"):Promise.resolve(null)
   ]).then(([c,f])=>{if(current){setClinic(c);setFamily(f)}})
-   .catch(e=>{if(current)setError(e instanceof Error?e.message:t.error)})
+   .catch(e=>{if(current)setError(patientError(e,locale))})
    .finally(()=>{if(current)setLoading(false)});
   return()=>{current=false};
  },[clinicId,auth.account?.user.id,auth.account?.registered,retry]);
@@ -510,14 +547,14 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   const params=new URLSearchParams({date:day,serviceId:service,dentistId:dentist});
   publicGet<{slots:Time[]}>("/v1/discovery/clinics/"+encodeURIComponent(clinicId)+
    "/availability?"+params.toString()).then(x=>{if(active)setSlots(x.slots)})
-   .catch(e=>{if(active)setError(e instanceof Error?e.message:t.error)})
+   .catch(e=>{if(active)setError(patientError(e,locale))})
    .finally(()=>{if(active)setSlotsLoading(false)});
   return()=>{active=false};
  },[clinicId,service,dentist,day,retry]);
- function restartKey(){setTime("");setKey(uniqueActionKey())}
+ function restartKey(){setTime("");setKey(uniqueActionKey());setRecoveryNotice("");setUncertain(false)}
  async function submit(){
   if(!time||!auth.account?.registered)return;
-  setBusy(true);setError("");
+  setBusy(true);setError("");setRecoveryNotice("");setUncertain(false);
   try{
    if(booking){
     await auth.request("/v1/booking/my/"+encodeURIComponent(booking.id)+"/reschedule","POST",{
@@ -532,7 +569,17 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
    });
    setReceipt(response.booking);setStep(5);
   }catch(e){
-   setError(e instanceof Error?e.message:t.offline);
+   if(isSlotConflict(e)){
+    // Available slots are previews, not holds. Fetch fresh provider availability
+    // and require the patient to choose another time without losing other input.
+    setStep(2);setTime("");setSlots([]);setKey(uniqueActionKey());
+    setRecoveryNotice(patientText(locale,"slotTaken"));
+    setRetry(v=>v+1);
+   }else{
+    setError(patientError(e,locale));
+    if(e instanceof ApiError&&e.status===0&&e.code==="NETWORK_UNAVAILABLE")
+     setUncertain(true); // Keep idempotency key for safe retry after checking history.
+   }
   }finally{setBusy(false)}
  }
  const steps=[t.treatment,t.dentist,t.time,t.patient,t.review];
@@ -549,7 +596,7 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
   <Button title={t.appointments} onPress={onDone}/></Block>;
  const picked=slots.find(s=>s.startAt===time);
  const allowed=step===0?!!service:step===1?!!dentist:step===2?!!picked:
-  step===3?person==="self"||!!family?.members.find(x=>x.id===person&&x.eligibleForFutureBooking):consent;
+  step===3?person==="self"||!!family?.members.find(x=>x.id===person&&x.eligibleForFutureBooking):consent&&!!picked;
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
   <Text style={p.title}>{booking?t.reschedule:t.book} · {clinic.clinic.name}</Text>
   <View style={p.stepper}>{steps.map((label,i)=><Pressable key={label} disabled={i>step}
@@ -607,7 +654,10 @@ export function NativeBookingWizard({locale,calendar,clinicId,dentistId,booking,
      style={p.check} onPress={()=>setConsent(!consent)}>
      <Text>{consent?"☑":"□"} {t.confirmConsent}</Text></Pressable>
    </>}
+   {!!recoveryNotice&&<Text accessibilityRole="alert" style={p.recoveryNote}>{recoveryNotice}</Text>}
    {!!error&&<ErrorBox message={error}/>}
+   {uncertain&&<><Text style={p.copy}>{patientText(locale,"uncertain")}</Text>
+    <Button secondary title={t.checkAppointments} onPress={onDone}/></>}
    <View style={p.actions}>{step>0&&<Button secondary title={t.back} onPress={()=>setStep(x=>x-1)}/>}
     <Button title={busy?t.saving:step===4?t.submit:t.next}
      disabled={!allowed||busy} onPress={()=>step===4?void submit():setStep(x=>x+1)}/></View>
@@ -624,7 +674,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   let alive=true;setLoading(true);setError("");
   auth.request<{favorites:Favorite[]}>("/v1/patient-favorites").then(x=>{
    if(alive)setFavorites(x.favorites);
-  }).catch(e=>{if(alive)setError(e instanceof Error?e.message:t.error)})
+  }).catch(e=>{if(alive)setError(patientError(e,locale))})
    .finally(()=>{if(alive)setLoading(false)});
   return()=>{alive=false};
  },[auth.account?.user.id,auth.account?.registered,reload]);
@@ -632,7 +682,7 @@ export function NativeSaved({locale,onClinic,onDentist,onExplore}:{locale:Langua
   setBusy(f.clinicId+(f.dentistId||""));setError("");
   try{await auth.request("/v1/patient-favorites","DELETE",{clinicId:f.clinicId,dentistId:f.dentistId});
    setReload(x=>x+1);
-  }catch(e){setError(e instanceof Error?e.message:t.error)}
+  }catch(e){setError(patientError(e,locale))}
   finally{setBusy("")}
  }
  return <View style={{gap:12,direction:locale==="en"?"ltr":"rtl"}}>
@@ -676,6 +726,7 @@ const p=StyleSheet.create({
  skeletonRow:{flexDirection:"row",gap:13,alignItems:"center"},
  skeletonAvatar:{width:46,height:46,borderRadius:12,backgroundColor:"#E3EDF5"},
  skeletonText:{height:12,borderRadius:6,backgroundColor:"#E3EDF5"},
+ recoveryNote:{backgroundColor:"#E8F2FF",color:"#114C9D",borderWidth:1,borderColor:"#B8D5FC",padding:12,borderRadius:12,fontSize:13,lineHeight:20},
  notificationItem:{paddingVertical:9,borderTopWidth:1,borderTopColor:"#EDF2F8",gap:5},
  notificationBadge:{fontSize:11,fontWeight:"800",padding:6,borderRadius:16,overflow:"hidden"},
  check:{paddingVertical:10,minHeight:42},

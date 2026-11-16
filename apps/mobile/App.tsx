@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth} from "./native-auth";
+import {patientError} from "./patient-errors";
 import {NativeReviews} from "./native-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
@@ -109,7 +110,7 @@ const en={
  prefs:"App preferences",language:"Language",calendar:"Calendar",
  solar:"Solar Hijri",gregorian:"Gregorian",network:"Connection",
  connected:"Connected to verified clinic directory",checking:"Checking connection…",notConfigured:"API not configured",
- offline:"Cannot reach the server",retry:"Retry",offlineHelp:"Configure EXPO_PUBLIC_API_URL with a reachable HTTPS API or your local LAN address.",
+ offline:"Cannot reach the server",retry:"Retry",offlineHelp:"Please check your internet connection, then try again. If the problem continues, contact support.",
  refreshing:"Refreshing…",refresh:"Refresh",loading:"Loading verified clinics…",
  noMock:"The app never generates dentists, ratings, appointment bookings or fees.",
  info:"About DandanLink",howWorks:"How trust works",stepOne:"Only reviewed clinics are listed.",
@@ -181,7 +182,7 @@ const fa:Record<keyof typeof en,string>={
  solar:"هجری شمسی",gregorian:"میلادی",network:"ارتباط",
  connected:"اتصال با فهرست کلینیک‌های تأییدشده برقرار است",checking:"در حال بررسی ارتباط…",
  notConfigured:"سرور تنظیم نشده",offline:"ارتباط با سرور برقرار نشد",
- retry:"دوباره کوشش",offlineHelp:"EXPO_PUBLIC_API_URL را به آدرس HTTPS یا آدرس قابل دسترس شبکه وصل کنید.",
+ retry:"دوباره کوشش",offlineHelp:"اتصال اینترنت را بررسی کنید و دوباره کوشش کنید. اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.",
  refreshing:"در حال تازه‌سازی…",refresh:"تازه‌سازی",loading:"کلینیک‌های تأییدشده دریافت می‌شود…",
  noMock:"این برنامه داکتر، امتیاز، نوبت یا قیمت ساختگی نمی‌سازد.",
  info:"درباره دندان‌لینک",howWorks:"چگونه اعتبار سنجی می‌شود",
@@ -258,7 +259,7 @@ const ps:Record<keyof typeof en,string>={
  solar:"هجري لمریز",gregorian:"میلادي",network:"اړیکه",
  connected:"د تایید شوو کلینیکونو سره اړیکه شته",checking:"اړیکه کتل کېږي…",
  notConfigured:"API نه دی برابر شوی",offline:"له سرور سره اړیکه نشته",
- retry:"بیا هڅه",offlineHelp:"EXPO_PUBLIC_API_URL یو لاسرسي وړ HTTPS یا محلي شبکې پته وټاکئ.",
+ retry:"بیا هڅه",offlineHelp:"خپل انټرنېټ وګورئ او بیا هڅه وکړئ. که ستونزه دوام وکړي، له ملاتړ سره اړیکه ونیسئ.",
  refreshing:"تازه کېږي…",refresh:"تازه کول",loading:"تایید شوي کلینیکونه ترلاسه کېږي…",
  noMock:"اپ جعلي ډاکټران، نمرې، نوبتونه یا بیې نه جوړوي.",
  info:"د دندان‌لینک په اړه",howWorks:"باور څنګه تاییدېږي",
@@ -971,10 +972,10 @@ function SavedScreen({ui,ids,onRemove,onClinic,onExplore}:{ui:UI;ids:string[];
    </View>}
  </View>;
 }
-function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,checkApi,
+function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,checkApi,onOpenProfile,
  connection,checking,signedIn}:{ui:UI;locale:Language;calendar:Calendar;city:string;
  onLocale:(x:Language)=>void;onCalendar:(x:Calendar)=>void;onCity:(x:string)=>void;
- checkApi:()=>void;connection:"connected"|"offline"|"notConfigured"|"checking";checking:boolean;signedIn:boolean}){
+ checkApi:()=>void;onOpenProfile:()=>void;connection:"connected"|"offline"|"notConfigured"|"checking";checking:boolean;signedIn:boolean}){
  const facets=usePublic<Facets>("/facets");
  const [showCities,setShowCities]=useState(false);
  return <View style={s.sectionGap}>
@@ -982,9 +983,7 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
   {!signedIn&&<View style={s.guestCard}><Icon glyph="☺" filled/>
    <View style={{flex:1}}><Text style={[s.guestName,{textAlign:ui.align}]}>{ui.t("guest")}</Text>
     <TextLine ui={ui} style={s.guestHint}>{ui.t("secureHelp")}</TextLine></View></View>}
-  {!signedIn&&(PATIENT_WEB?<CTA label={ui.t("secureAccount")+"  ›"} onPress={()=>{
-   void Linking.openURL(PATIENT_WEB+"/account")}}/>:
-   <TextLine ui={ui} style={s.footerNotice}>{ui.t("webMissing")}</TextLine>)}
+  {!signedIn&&<CTA label={ui.t("secureAccount")+"  ›"} onPress={onOpenProfile}/>}
   <CardShell><SectionHead ui={ui} title={ui.t("prefs")}
    sub={ui.t("updated")}/>
    <TextLine ui={ui} style={s.fieldLabel}>{ui.t("language")}</TextLine>
@@ -1032,11 +1031,16 @@ function AccountScreen({ui,locale,calendar,city,onLocale,onCalendar,onCity,check
 }
 function PatientApp(){
  const native=useNativeAuth();
- const [favorites,setFavorites]=useState<Favorite[]>([]);
+ const identityKey=native.account?.user.id||null;
+ const patientId=native.account?.registered?identityKey:null;
+ const [favoriteSnapshot,setFavoriteSnapshot]=useState<{patientId:string;rows:Favorite[]}|null>(null);
+ const favorites=favoriteSnapshot?.patientId===patientId?favoriteSnapshot.rows:[];
  const [favoritesRefresh,setFavoritesRefresh]=useState(0);
  const [locale,setLocale]=useState<Language>("fa-AF"),[calendar,setCalendar]=useState<Calendar>("solar_hijri");
  const [city,setCity]=useState("Kabul"),[ready,setReady]=useState(false);
  const [tab,setTab]=useState<Tab>("home"),[route,setRoute]=useState<Route|null>(null);
+ const [viewIdentity,setViewIdentity]=useState<string|null>(identityKey);
+ const previousIdentity=useRef<string|null>(identityKey);
  const [accountSection,setAccountSection]=useState<"profile"|"reviews"|"settings">("profile");
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
@@ -1046,8 +1050,17 @@ function PatientApp(){
  const [checking,setChecking]=useState(false);
  const ui=useUI(locale,calendar);
  useEffect(()=>{
-  if(!native.account?.registered){setFavorites([]);return;}
+  if(previousIdentity.current!==identityKey){
+   previousIdentity.current=identityKey;
+   // Never display a previous user's booking route while another user signs in.
+   setRoute(null);setAccountSection("profile");setTab("account");
+   setViewIdentity(identityKey);
+  }
+ },[identityKey]);
+ useEffect(()=>{
+  if(!patientId){setFavoriteSnapshot(null);return;}
   let active=true;
+  setFavoriteSnapshot(null);
   void native.request<{favorites:Favorite[]}>("/v1/patient-favorites")
    .then(async current=>{
     if(!active)return;
@@ -1058,13 +1071,13 @@ function PatientApp(){
       await Promise.allSettled(missing.map(clinicId=>native.request(
        "/v1/patient-favorites","POST",{clinicId})));
       const updated=await native.request<{favorites:Favorite[]}>("/v1/patient-favorites");
-      if(active)setFavorites(updated.favorites);return;
+      if(active)setFavoriteSnapshot({patientId,rows:updated.favorites});return;
      }
     }
-    setFavorites(current.favorites);
+    if(active)setFavoriteSnapshot({patientId,rows:current.favorites});
    }).catch(()=>{});
   return()=>{active=false};
- },[native.account?.user.id,ready,favoritesRefresh]);
+ },[patientId,ready,favoritesRefresh,native.request]);
  useEffect(()=>{
   let live=true;
   void Promise.all([AsyncStorage.getItem(PREF_KEY),AsyncStorage.getItem(SAVED_KEY)]).then(([prefs,saved])=>{
@@ -1122,7 +1135,7 @@ function PatientApp(){
   void native.request("/v1/patient-favorites",exists?"DELETE":"POST",
    {clinicId,dentistId:dentistId||null})
    .then(()=>setFavoritesRefresh(n=>n+1))
-   .catch(err=>Alert.alert("DandanLink",err instanceof Error?err.message:"SERVICE_UNAVAILABLE"));
+   .catch(err=>Alert.alert("DandanLink",patientError(err,locale)));
  }
  function save(id:string){
   if(native.account?.registered){toggleFavorite(id);return;}
@@ -1147,6 +1160,12 @@ function PatientApp(){
  },[route,tab,accountSection]);
  const screenTitle=route?.kind==="dentist"?ui.t("provider"):route?.kind==="booking"?
   (locale==="en"?"Book appointment":locale==="ps-AF"?"ملاقات":"رزرو نوبت"):ui.t("profile");
+ // Block even a single render of a stale, private route during an account switch.
+ if(viewIdentity!==identityKey)return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
+  <View style={{flex:1,alignItems:"center",justifyContent:"center"}}>
+   <ActivityIndicator color={colors.blue}/>
+  </View>
+ </SafeAreaView>;
  return <SafeAreaView style={s.root} edges={["top","bottom","left","right"]}>
   <StatusBar barStyle={route?"dark-content":"light-content"}
    backgroundColor={route?colors.white:colors.blue}/>
@@ -1165,7 +1184,7 @@ function PatientApp(){
      accessibilityRole="button" style={s.headerAccount}>
      <Text style={s.headerAccountGlyph}>☺</Text></Pressable>
    </View>}
-  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion}
+  <ScrollView key={(route?route.kind+":"+route.clinicId+":"+(route.kind==="dentist"?route.dentistId:""):(tab==="account"?tab+":"+accountSection:tab))+":"+refreshVersion+":"+(identityKey||"guest")}
    style={s.screenScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
    contentContainerStyle={s.screenContent}
    refreshControl={!route?<RefreshControl refreshing={pullRefreshing}
@@ -1216,7 +1235,8 @@ function PatientApp(){
       accountSection==="settings"?<AccountScreen ui={ui} locale={locale} calendar={calendar} city={city}
        signedIn={Boolean(native.account?.registered)}
        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}
-       checkApi={()=>{void checkApi()}} connection={connection} checking={checking}/>:
+       checkApi={()=>{void checkApi()}} onOpenProfile={()=>setAccountSection("profile")}
+       connection={connection} checking={checking}/>:
       <NativeAccountArea locale={locale} calendar={calendar} city={city}
        onLocale={setLocale} onCalendar={setCalendar} onCity={setCity}/>}
 
