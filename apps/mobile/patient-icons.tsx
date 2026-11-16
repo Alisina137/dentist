@@ -19,7 +19,7 @@ export function PatientIcon({name,size=24,color="#1467E9",filled=false}:{
   shape.push(<View key={key} style={{position:"absolute",
    left:((x+xx-w)/2)*sc,top:((y+yy)/2)*sc-stroke/2,
    width:w*sc,height:stroke,borderRadius:stroke/2,backgroundColor:color,
-   transform:[{rotate:angle+"deg"}]}}/>);
+   transform:[{rotate:`${angle}deg` as const}]}}/>);
  };
  const outline=(key:string,x:number,y:number,w:number,h:number,r=3)=>{
   shape.push(<View key={key} style={{position:"absolute",left:x*sc,top:y*sc,
