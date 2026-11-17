@@ -191,7 +191,7 @@ test("Clinic Phase 16: pilot QA user interface is read-only, tenant-aware, acces
   'pilotGate:"مرز مجوز پایلوت خدمات صحی"',
   'pilotGate:"د طبي پایلوت د خپرېدو دروازه"'
  ])assert.ok(quality.includes(token),token);
- assert.ok(layout.includes('import "./clinic-quality.css";\nimport "./clinic-pilot-readiness.css";'));
+ assert.ok(layout.includes('import "./clinic-release-hardening.css";\nimport "./clinic-pilot-readiness.css";'));
  for(const token of [
   '.clinic-persistent-shell .clinic-phase16-gate',
   '.clinic-persistent-shell .clinic-phase16-review-grid',
