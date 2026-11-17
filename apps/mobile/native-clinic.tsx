@@ -660,10 +660,22 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      {!working&&dataIssue&&<Text style={st.warnText}>{t.noData}</Text>}
      <Action text={t.refresh} onPress={()=>setRevision(x=>x+1)} secondary icon="calendar"/>
      <Card><SectionTitle text={t.setupTitle} hint={t.setupIntro}/>
+      {active.role==="owner"&&<Action text={t.onboard} icon="check"
+       onPress={()=>{setCreatingNew(false);setTab("onboard")}}/>}
       <Action text={t.connectWeb} onPress={()=>openWeb("/clinic/onboarding?clinic="+encodeURIComponent(active.clinicId))} icon="clinic"/>
       <Text style={st.caption}>{t.webSignIn}</Text>
      </Card>
     </View>:tab==="team"?<View style={{gap:14}}>
+     {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
+      <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
+       clinicId={active.clinicId} membershipId={active.membershipId}
+       locale={locale} request={phase20Request}/>}
+     {(active.role==="owner"||active.role==="manager")&&
+      <NativeClinicTeamPhase20 key={active.clinicId} clinicId={active.clinicId}
+       locale={locale} request={phase20Request} mfa={Boolean(context?.mfaEnabled)}
+       openWeb={()=>openWeb("/clinic/staff?clinic="+encodeURIComponent(active.clinicId))}/>}
+     <NativeInviteAcceptance locale={locale} request={phase20Request}
+      onAccepted={reloadClinic}/>
      <Card><SectionTitle text={t.team} hint={t.expectedNote}/>
       {owned&&<Metric name={t.plannedDentistCount} value={owned.plannedDentistCount}/>}
       <Text style={st.body}>{t.emptyTeam}</Text>
