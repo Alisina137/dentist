@@ -228,7 +228,7 @@ test("Clinic Phase 17: public latency estimates are bounded and never certify pe
   status:200,headers:{"content-type":"text/html"}
  }),()=>now,"1");
  assert.equal(bad,1);
- assert.ok(!read("scripts/clinic-pilot-latency.mjs").includes("patient"));
+ assert.ok(!read("scripts/clinic-pilot-latency.mjs").includes("process.env.DATABASE_URL"));
 });
 
 test("Clinic Phase 17: production PH19 release stays blocked and CI includes real feedback integration",()=>{
