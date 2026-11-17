@@ -959,21 +959,52 @@ function PaymentForm({space,invoice,onRecorded,kind}:{space:Space;invoice:Invoic
 function InvoiceDetail({space,id}:{space:Space;id:string}){
  const {t,date}=useWords(),{data,error,refresh}=useLoad(b(space.clinicId)+"/invoices/"+id);
  const [editing,setEditing]=useState(false),[busy,setBusy]=useState(false),
- [failure,setFailure]=useState(""),[success,setSuccess]=useState(""),
- [voidReason,setVoidReason]=useState(""),[reverseId,setReverseId]=useState(""),[reason,setReason]=useState("");
- async function perform(path:string,body:unknown,prompt?:string){
-  if(prompt&&!confirm(prompt))return;setBusy(true);setFailure("");setSuccess("");
-  try{await api(b(space.clinicId)+"/invoices/"+id+path,"POST",body);
-   refresh();setSuccess(t("success"));setReverseId("");setReason("");}
-  catch(e:any){setFailure(e.message);}finally{setBusy(false);}
+  [failure,setFailure]=useState(""),[success,setSuccess]=useState(""),
+  [voidReason,setVoidReason]=useState(""),[reverseId,setReverseId]=useState(""),[reason,setReason]=useState(""),
+  [review,setReview]=useState<"issue"|"void"|"reverse"|null>(null),
+  [reviewed,setReviewed]=useState(false),[reverseKey,setReverseKey]=useState("");
+ useEffect(()=>{
+  setReview(null);setReviewed(false);setReverseId("");setReason("");
+  setFailure("");setSuccess("");setEditing(false);setVoidReason("");setReverseKey("");
+ },[space.clinicId,id]);
+ useEffect(()=>{
+  if(!review)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy){setReview(null);setReviewed(false);}
+  };
+  document.addEventListener("keydown",onEscape);
+  return()=>document.removeEventListener("keydown",onEscape);
+ },[review,busy]);
+ function beginReview(type:"issue"|"void"|"reverse"){
+  if(busy||!data)return;
+  if(type==="void"&&voidReason.trim().length<10)return;
+  if(type==="reverse"&&(!reverseId||reason.trim().length<10))return;
+  setFailure("");setSuccess("");setReviewed(false);setReview(type);
  }
- async function reverse(){
-  if(reason.trim().length<10||!reverseId||!confirm(t("confirmReverse")))return;
+ async function finalize(){
+  if(busy||!review||!reviewed||!data)return;
+  const invoice=(data as Detail).invoice;
+  if(review==="issue"&&invoice.documentStatus!=="draft")return;
+  if(review==="void"&&(invoice.documentStatus!=="issued"||
+    voidReason.trim().length<10||!["owner","manager"].includes(space.role)))return;
+  if(review==="reverse"&&(!reverseId||reason.trim().length<10||
+    !["owner","manager"].includes(space.role)))return;
   setBusy(true);setFailure("");setSuccess("");
-  try{await api(b(space.clinicId)+"/entries/"+reverseId+"/reverse","POST",
-   {reason,actionKey:crypto.randomUUID()});refresh();setSuccess(t("success"));
-   setReverseId("");setReason("");}
-  catch(e:any){setFailure(e.message);}finally{setBusy(false);}
+  try{
+   if(review==="issue")await api(b(space.clinicId)+"/invoices/"+id+"/issue",
+    "POST",{revision:invoice.revision});
+   if(review==="void")await api(b(space.clinicId)+"/invoices/"+id+"/void",
+    "POST",{revision:invoice.revision,reason:voidReason.trim()});
+   if(review==="reverse"){
+    const key=reverseKey||crypto.randomUUID();setReverseKey(key);
+    await api(b(space.clinicId)+"/entries/"+reverseId+"/reverse","POST",
+     {reason:reason.trim(),actionKey:key});
+   }
+   setReview(null);setReviewed(false);setReverseKey("");
+   setReverseId("");setReason("");setVoidReason("");
+   setSuccess(t("success"));refresh();
+  }catch(ex:any){setFailure(ex instanceof Error?ex.message:"NETWORK_ERROR");}
+  finally{setBusy(false);}
  }
  if(error)return <Failure code={error} retry={refresh}/>;
  if(!data)return <Busy/>;
@@ -989,7 +1020,8 @@ function InvoiceDetail({space,id}:{space:Space;id:string}){
      {i.documentStatus==="draft"&&<>
       <button className="btn btn-secondary" onClick={()=>setEditing(x=>!x)}>{t("editDraft")}</button>
       <button className="btn btn-primary" type="button" disabled={busy}
-       onClick={()=>perform("/issue",{revision:i.revision},t("confirmIssue"))}>{t("issue")} →</button>
+       onClick={()=>beginReview("issue")}>
+       <CareIcon name="shield-check" size={17}/>{t("issue")}</button>
      </>}
      {i.documentStatus==="issued"&&<button className="btn btn-secondary" onClick={()=>window.print()}>{t("printInvoice")}</button>}
     </div>
@@ -1044,7 +1076,8 @@ function InvoiceDetail({space,id}:{space:Space;id:string}){
         {e.kind==="payment"&&<a href={receiptHref(space.clinicId,e.id)}>{t("receipt")} ↗</a>}
         {isReversed&&<Badge status="reversed"/>}
         {owner&&!isReversed&&e.kind!=="reversal"&&i.documentStatus==="issued"&&
-         <button type="button" className="phase10-text-btn" onClick={()=>{setReverseId(e.id);setReason("");}}>
+         <button type="button" className="phase10-text-btn"
+          onClick={()=>{setReverseId(e.id);setReason("");setReview(null);setReverseKey("");}}>
           {t("reverse")}</button>}
        </div></div>
      </div>;
@@ -1054,8 +1087,9 @@ function InvoiceDetail({space,id}:{space:Space;id:string}){
      <label className="phase10-field"><span>{t("reverseReason")} *</span>
       <textarea minLength={10} maxLength={500} rows={2} value={reason} onChange={e=>setReason(e.target.value)}/></label>
      <div className="phase10-actions"><button className="btn btn-primary" type="button" disabled={busy||reason.trim().length<10}
-      onClick={reverse}>{t("reverse")}</button><button className="btn btn-secondary"
-      onClick={()=>setReverseId("")}>{t("cancel")}</button></div></div>}
+      onClick={()=>beginReview("reverse")}>{t("financeReviewReverse")}</button>
+      <button className="btn btn-secondary" type="button" disabled={busy}
+       onClick={()=>{setReverseId("");setReverseKey("");}}>{t("cancel")}</button></div></div>}
    </section>
    <section className="card phase10-panel">
     <Title title={t("history")}/>
@@ -1070,11 +1104,58 @@ function InvoiceDetail({space,id}:{space:Space;id:string}){
      <textarea rows={2} minLength={10} maxLength={500} value={voidReason}
       onChange={e=>setVoidReason(e.target.value)}/></label>
     <button className="btn btn-secondary" type="button" disabled={busy||voidReason.trim().length<10}
-     onClick={()=>perform("/void",{revision:i.revision,reason:voidReason},t("confirmVoid"))}>{t("void")}</button>
+     onClick={()=>beginReview("void")}>{t("financeReviewVoid")}</button>
    </section>}
   </>}
   {failure&&<Failure code={failure}/>}
   {success&&<Alert kind="success">{success}</Alert>}
+  {review&&<div className="clinic-phase12-confirm-backdrop"
+   onMouseDown={event=>{if(!busy&&event.currentTarget===event.target){
+    setReview(null);setReviewed(false);
+   }}}>
+   <section className="clinic-phase12-confirm-dialog" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase12-invoice-action-title">
+    <div className="clinic-phase12-confirm-top">
+     <span className="clinic-phase12-confirm-icon"><CareIcon name="shield-check" size={24}/></span>
+     <button type="button" autoFocus className="clinic-phase12-confirm-close" disabled={busy}
+      onClick={()=>{setReview(null);setReviewed(false);}} aria-label={t("cancel")}>
+      <CareIcon name="close" size={20}/></button>
+    </div>
+    <h2 id="clinic-phase12-invoice-action-title">
+     {t(review==="issue"?"financeReviewIssue":review==="void"?"financeReviewVoid":"financeReviewReverse")}</h2>
+    <p className="clinic-phase12-confirm-hint">
+     {t(review==="issue"?"financeReviewIssueInfo":review==="void"?
+      "financeReviewVoidInfo":"financeReviewReverseInfo")}</p>
+    <dl className="clinic-phase12-confirm-facts">
+     <div><dt>{t("invoice")}</dt><dd dir="ltr">{i.label}</dd></div>
+     <div><dt>{t("patient")}</dt><dd>{i.patientName||i.patientNumber||"—"}</dd></div>
+     <div><dt>{t("invoiceState")}</dt><dd><Badge status={i.status}/></dd></div>
+     <div><dt>{t("total")}</dt><dd><Money amount={i.totalAfn}/></dd></div>
+     <div><dt>{t("balance")}</dt><dd><Money amount={i.balanceAfn}/></dd></div>
+     {review==="reverse"&&<div><dt>{t("financeReviewEntry")}</dt>
+      <dd><bdi dir="ltr">{reverseId.slice(0,8)}</bdi> ·
+       <Money amount={payments.find(x=>x.id===reverseId)?.amountAfn||0}/></dd></div>}
+     {review!=="issue"&&<div><dt>{t("reason")}</dt>
+      <dd>{review==="void"?voidReason:reason}</dd></div>}
+    </dl>
+    <p className="clinic-phase12-confirm-warning">
+     <CareIcon name="about" size={17}/>
+     {t(review==="issue"?"issuedNotPaid":"reverseWarning")} {t("patientOnly")}</p>
+    <label className="clinic-phase12-confirm-check">
+     <input type="checkbox" disabled={busy} checked={reviewed}
+      onChange={ev=>setReviewed(ev.target.checked)}/>
+     <span>{t(review==="issue"?"financeReviewIssueConfirm":"financeReviewReverseConfirm")}</span>
+    </label>
+    {failure&&<Failure code={failure}/>}
+    <div className="clinic-phase12-confirm-actions">
+     <button type="button" className="btn btn-secondary" disabled={busy}
+      onClick={()=>{setReview(null);setReviewed(false);}}>{t("financeReviewCancel")}</button>
+     <button type="button" className="btn btn-primary" disabled={busy||!reviewed}
+      onClick={()=>void finalize()}><CareIcon name="check" size={17}/>
+      {busy?t("loading"):t("financeReviewFinal")}</button>
+    </div>
+   </section>
+  </div>}
  </div>;
 }
 function PatientBilling({space,patientId}:{space:Space;patientId:string}){
