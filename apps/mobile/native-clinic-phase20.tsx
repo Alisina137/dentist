@@ -357,7 +357,7 @@ export function NativeClinicPhase20({clinicId,locale,token,api,request,onRefresh
    <View style={s.row}><Text style={s.title}>{t.progress}</Text>
     <Text style={s.progressNumber}>{state!.complete} / {state!.total}</Text></View>
    <View style={s.progressTrack}><View style={[s.progressFill,
-    {width:((state!.complete/state!.total)*100)+"%"}]}/></View>
+    {width:(((state!.complete/state!.total)*100)+"%") as `${number}%`}]}/></View>
    {state!.checks.map(step=><View key={step.id} style={s.progressRow}>
     <View style={[s.progressDot,step.state==="complete"&&s.progressDotDone]}>
      <PatientIcon name={step.state==="complete"?"check":"clock"} size={15}
