@@ -1184,21 +1184,34 @@ function InvoiceDetail({space,id}:{space:Space;id:string}){
  </div>;
 }
 function PatientBilling({space,patientId}:{space:Space;patientId:string}){
- const {t,date}=useWords();const [tab,setTab]=useState("invoices");
+ const {t,date}=useWords();
+ const [tab,setTab]=useState<"invoices"|"payments"|"statement">("invoices");
  const {data,error,refresh}=useLoad(b(space.clinicId)+"/patients/"+patientId+"/statement");
- const [showNew,setShowNew]=useState(false);
+ const [showNew,setShowNew]=useState(false),[page,setPage]=useState(1);
+ useEffect(()=>{
+  setShowNew(false);setTab("invoices");setPage(1);
+ },[space.clinicId,patientId]);
  if(error)return <Failure code={error} retry={refresh}/>;
  if(!data)return <Busy/>;
  const inv=data.invoices as Invoice[],entries=data.entries as Entry[],totals=data.summary;
- return <div className="phase10-stack">
-  <div className="card phase10-patient-banner">
-   <div className="phase10-patient-avatar">◈</div><div>
+ const statementInvoices=inv.filter(i=>i.documentStatus==="issued");
+ const visibleInvoices=inv.slice((page-1)*5,page*5);
+ const visibleStatement=statementInvoices.slice((page-1)*5,page*5);
+ const visibleEntries=entries.slice((page-1)*5,page*5);
+ const activeCount=tab==="invoices"?inv.length:tab==="payments"?entries.length:statementInvoices.length;
+ const activeNext=activeCount>page*5;
+ return <div className="phase10-stack clinic-phase12-patient-billing">
+  <div className="card phase10-patient-banner clinic-phase12-patient-hero">
+   <div className="phase10-patient-avatar"><CareIcon name="account" size={24}/></div><div>
     <span className="phase10-kicker">{t("patient")}</span><h2>{data.patient.name}</h2>
     <span dir="ltr">{data.patient.number}</span></div>
    <button className="btn btn-primary" onClick={()=>setShowNew(x=>!x)}>
     {showNew?t("cancel"):"+ "+t("newPatientInvoice")}</button>
   </div>
-  <div className="phase10-summary-grid">
+  <p className="clinic-phase12-footnote clinic-phase12-patient-note">
+   <CareIcon name="shield-check" size={16}/>{t("financePatientLimit")}
+   {" "}{t("patientOnly")}</p>
+  <div className="phase10-summary-grid clinic-phase12-patient-totals">
    <div><span>{t("patientTotal")}</span><strong><Money amount={totals.totalInvoicedAfn}/></strong></div>
    <div><span>{t("patientPaid")}</span><strong><Money amount={totals.totalPaidAfn}/></strong></div>
    <div className="phase10-due"><span>{t("patientBalance")}</span><strong><Money amount={totals.outstandingAfn}/></strong></div>
@@ -1209,29 +1222,37 @@ function PatientBilling({space,patientId}:{space:Space;patientId:string}){
   </section>}
   <nav className="phase10-tabs" role="tablist" aria-label={t("patientBilling")}>
    {(["invoices","payments","statement"] as const).map(x=><button key={x} type="button"
-    role="tab" aria-selected={tab===x} onClick={()=>setTab(x)}>{t(x)}</button>)}</nav>
-  <section className="card phase10-panel">
+    role="tab" aria-selected={tab===x} onClick={()=>{setTab(x);setPage(1);}}>
+    <CareIcon name={x==="payments"?"credit-card":x==="statement"?"file":"receipt"} size={17}/>{t(x)}</button>)}</nav>
+  <section className="card phase10-panel clinic-phase12-patient-records">
    <Title title={t(tab==="invoices"?"invoiceHistory":tab==="payments"?"patientPayments":"patientStatement")}
-    action={<button type="button" className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button>}/>
-   {tab==="invoices"?!inv.length?<TableEmpty text={t("noTransactions")}/>:<InvoiceRows rows={inv} space={space}/>:
+    action={<button type="button" className="btn btn-secondary" onClick={refresh}>
+     <CareIcon name="activity" size={16}/>{t("refresh")}</button>}/>
+   <p className="clinic-phase12-count-note" role="status">
+    {t("financeResult")} {activeCount?(page-1)*5+1:0}–{Math.min(page*5,activeCount)}
+    {" "}{t("financeOf")} {activeCount}.</p>
+   {tab==="invoices"?!inv.length?<TableEmpty text={t("noTransactions")}/>:
+    <InvoiceRows rows={visibleInvoices} space={space}/>:
     tab==="payments"?!entries.length?<TableEmpty text={t("noTransactions")}/>:
     <div className="phase10-table-scroll"><table className="phase10-table"><thead><tr>
      <th>{t("date")}</th><th>{t("invoice")}</th><th>{t("method")}</th><th>{t("amount")}</th>
-     <th>{t("status")}</th></tr></thead><tbody>{entries.map(e=><tr key={e.id}>
+     <th>{t("status")}</th></tr></thead><tbody>{visibleEntries.map(e=><tr key={e.id}>
       <td>{date(e.occurred_at)}</td><td><a href={invoiceHref(space.clinicId,e.invoice_id||"")}>
        {"INV-"+String(e.invoice_number).padStart(6,"0")}</a></td>
       <td>{t(e.method)}</td><td><Money amount={(e.kind==="reversal"?-1:1)*(e.amount_afn||0)}/></td>
       <td><Badge status={e.kind}/></td></tr>)}</tbody></table></div>:
-    <div className="phase10-statement">
+    <div className="phase10-statement clinic-phase12-statement">
      <div className="phase10-statement-head"><strong>{data.patient.name}</strong>
       <span>{t("statementDate")}: {date(new Date())}</span></div>
-     {inv.filter(i=>i.documentStatus==="issued").map(i=><div key={i.id} className="phase10-statement-row">
+     {!statementInvoices.length&&<TableEmpty text={t("noTransactions")}/>}
+     {visibleStatement.map(i=><div key={i.id} className="phase10-statement-row">
       <a href={invoiceHref(space.clinicId,i.id)}>{i.label}</a><span>{date(i.issuedAt)}</span>
       <Money amount={i.totalAfn}/><Money amount={i.paidAfn}/><strong><Money amount={i.balanceAfn}/></strong>
      </div>)}
      <div className="phase10-quote-total"><span>{t("outstanding")}</span>
       <strong><Money amount={totals.outstandingAfn}/></strong></div>
     </div>}
+   {activeCount>5&&<Pager page={page} next={activeNext} setPage={setPage}/>}
   </section>
   <Alert kind="info">{t("patientOnly")} {t("issuedNotPaid")}</Alert>
  </div>;
