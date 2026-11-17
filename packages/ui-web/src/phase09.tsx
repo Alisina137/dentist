@@ -2,6 +2,8 @@
 import React,{useEffect,useMemo,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {Shell} from "./phase03";
+import {CareIcon} from "./care-icons";
+import {clinicErrorText} from "./clinic-feedback";
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
 type Space={clinicId:string;clinicName:string;role:Role;membershipId:string;clinicianEnabled:boolean;clinicStatus:string;capabilities:string[]};
@@ -23,7 +25,7 @@ const newDraft=():Draft=>({title:"",indication:"",expectedSessions:3,durationMin
 type Language="en"|"fa-AF"|"ps-AF";
 const translations:Record<Language,Record<string,string>>={
  en:{
- treatments:"Treatment Plans",billing:"Billing",tagline:"Clinician-led proposals, consent, performed stages and estimates",
+ treatments:"Treatment Plans",page:"Page",billing:"Billing",tagline:"Clinician-led proposals, consent, performed stages and estimates",
  plans:"Plans",newPlan:"New treatment plan",create:"Create draft",draft:"Draft",proposed:"Proposed",
  active:"Accepted / In progress",accepted:"Accepted",in_progress:"In progress",completed:"Completed",
  discontinued:"Discontinued",all:"All",search:"Search by plan title",empty:"No plans match your selection.",
@@ -69,10 +71,30 @@ const translations:Record<Language,Record<string,string>>={
  statusLabel:"Plan status",warning:"Clinical care must be based on professional judgment, not inferred automatically.",
  consentHistory:"Consent and withdrawal history",reasonPlaceholder:"Provide a clear clinical reason (at least 10 characters).",
  signatureNote:"In-person attestation recorded by authorized clinician; no digital signature is created.",
- stageNotes:"Stages are version-bound. Previous progress remains auditable after revision."
+ stageNotes:"Stages are version-bound. Previous progress remains auditable after revision.",
+ workspaceTitle:"Treatment workspace",workspaceIntro:"Versioned care plans, clinical evidence, consent and costs in one secure workspace.",
+ workspaceSteps:"Clinical workflow",workspaceDraft:"Draft plan",workspaceProposal:"Propose to patient",
+ workspaceConsent:"Witness consent",workspaceCare:"Document performed care",
+ workspaceEnd:"Close completed plan",workspaceSafeguard:"Plans do not automatically diagnose, perform procedures, release records, create invoices or record payment.",
+ workspaceShortcuts:"Patient care shortcuts",workspaceChart:"Dental chart",workspaceVisits:"Clinical visits",
+ workspaceAll:"All plans",workspaceSelected:"Plans in current filter",workspaceNew:"Create draft plan",
+ workspaceNoMatch:"No plans match the current server filter. Try another status or search.",
+ workspaceClear:"Clear search",workspaceReset:"Show all plans",workspaceRequested:"Search title",
+ workspaceStatus:"Plan status",workspaceActivePlan:"Current treatment stage",
+ workspaceCompletedStages:"Completed stages",workspaceConsentState:"Version-specific consent",
+ workspaceNext:"Next action",workspaceReviewConsent:"Review patient consent",
+ workspaceReviewStages:"Review clinical stages",workspaceReviewEstimate:"Review estimate",
+ workspaceReviewHistory:"Audit history",workspacePlanVersion:"Current plan version",
+ workspaceUnsafe:"Never mark a stage complete without a matching performed procedure in a signed clinical encounter.",
+ workspaceLinkVisit:"Open clinical encounters",workspaceProgress:"Treatment progress",
+ workspaceNoConsent:"Consent must be recorded for this specific version before performing and completing stages.",
+ workspaceConsentActive:"Consent recorded for this version. Verify it remains applicable before care.",
+ workspacePatientPrivate:"Private to clinic; not released to patient app.",
+ workspaceRevision:"Changes create an auditable new version and require new consent.",
+ workspaceFilterHint:"Search applies only to the selected patient and your assigned plans.",
  },
  "fa-AF":{
- treatments:"پلان‌های تداوی",billing:"حساب مریض",tagline:"پلان داکتر، رضایت، مراحل انجام‌شده و برآورد هزینه",
+ treatments:"پلان‌های تداوی",page:"صفحه",billing:"حساب مریض",tagline:"پلان داکتر، رضایت، مراحل انجام‌شده و برآورد هزینه",
  plans:"پلان‌ها",newPlan:"پلان تداوی جدید",create:"ایجاد پیش‌نویس",draft:"پیش‌نویس",proposed:"پیشنهادشده",
  active:"پذیرفته / در جریان",accepted:"پذیرفته‌شده",in_progress:"در جریان",completed:"تکمیل‌شده",
  discontinued:"متوقف‌شده",all:"همه",search:"جستجوی نام پلان",empty:"پلان مطابق پیدا نشد.",
@@ -114,10 +136,30 @@ const translations:Record<Language,Record<string,string>>={
  warning:"تداوی براساس قضاوت داکتر انجام می‌شود، نه تشخیص خودکار.",
  consentHistory:"تاریخچه رضایت و لغو",reasonPlaceholder:"دلیل روشن بنویسید (حداقل ۱۰ حرف).",
  signatureNote:"ثبت رضایت حضوری توسط داکتر؛ امضای دیجیتال ایجاد نمی‌شود.",
- stageNotes:"مراحل مربوط به نسخه هستند و تغییرات تاریخچه را پاک نمی‌کنند."
+ stageNotes:"مراحل مربوط به نسخه هستند و تغییرات تاریخچه را پاک نمی‌کنند.",
+ workspaceTitle:"بخش پلان تداوی",workspaceIntro:"پلان نسخه‌دار، شواهد کلینیکی، رضایت و هزینه در یک بخش امن.",
+ workspaceSteps:"مراحل کار کلینیکی",workspaceDraft:"طرح اولیۀ پلان",workspaceProposal:"پیشنهاد به مریض",
+ workspaceConsent:"رضایت با شاهد",workspaceCare:"ثبت خدمات انجام‌شده",workspaceEnd:"بستن پلان تکمیل‌شده",
+ workspaceSafeguard:"پلان به‌طور خودکار تشخیص، عملیه، نشر پرونده، بل یا پرداخت ثبت نمی‌کند.",
+ workspaceShortcuts:"راه‌های مراقبت",workspaceChart:"چارت دندان",workspaceVisits:"معاینات کلینیکی",
+ workspaceAll:"تمام پلان‌ها",workspaceSelected:"پلان‌های فیلترشده",workspaceNew:"ایجاد پلان اولیه",
+ workspaceNoMatch:"پلان مطابق فیلتر سرور پیدا نشد. حالت یا جستجو را تغییر دهید.",
+ workspaceClear:"پاک‌کردن جستجو",workspaceReset:"نمایش تمام پلان‌ها",workspaceRequested:"جستجوی عنوان",
+ workspaceStatus:"وضعیت پلان",workspaceActivePlan:"مرحلۀ فعلی تداوی",
+ workspaceCompletedStages:"مراحل تکمیل‌شده",workspaceConsentState:"رضایت همین نسخه",
+ workspaceNext:"اقدام بعدی",workspaceReviewConsent:"بررسی رضایت مریض",
+ workspaceReviewStages:"بررسی مراحل کلینیکی",workspaceReviewEstimate:"بررسی برآورد",
+ workspaceReviewHistory:"تاریخچۀ فعالیت",workspacePlanVersion:"نسخۀ فعلی",
+ workspaceUnsafe:"بدون عملیه واقعی ثبت‌شده در معاینۀ امضاشده، مرحله را تکمیل نکنید.",
+ workspaceLinkVisit:"بازکردن معاینات",workspaceProgress:"پیشرفت تداوی",
+ workspaceNoConsent:"پیش از انجام و تکمیل مراحل، رضایت همین نسخه لازم است.",
+ workspaceConsentActive:"رضایت این نسخه ثبت شده؛ اعتبار آن را پیش از تداوی بررسی کنید.",
+ workspacePatientPrivate:"پروندۀ خصوصی کلینیک؛ هنوز به اپ مریض نشر نشده است.",
+ workspaceRevision:"هر تغییر یک نسخه قابل بررسی می‌سازد و رضایت تازه لازم دارد.",
+ workspaceFilterHint:"جستجو فقط پلان‌های این مریض و داکتر مربوط را دربر می‌گیرد.",
  },
  "ps-AF":{
- treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",tagline:"د ډاکټر وړاندیزونه، رضایت، پړاوونه او لګښت",
+ treatments:"د درملنې پلانونه",page:"پاڼه",billing:"د ناروغ حساب",tagline:"د ډاکټر وړاندیزونه، رضایت، پړاوونه او لګښت",
  plans:"پلانونه",newPlan:"د درملنې نوی پلان",create:"مسوده جوړول",draft:"مسوده",proposed:"وړاندیز شوی",
  active:"منل شوی / روان",accepted:"منل شوی",in_progress:"روان",completed:"بشپړ",
  discontinued:"درول شوی",all:"ټول",search:"پلان ولټوئ",empty:"داسې پلان نشته.",
@@ -159,7 +201,27 @@ const translations:Record<Language,Record<string,string>>={
  warning:"درملنه د ډاکټر له ارزونې سره کېږي، نه اتومات تشخیص.",
  consentHistory:"د رضایت تاریخ",reasonPlaceholder:"روښانه دلیل ولیکئ (لږ تر لږه ۱۰ توري).",
  signatureNote:"دا حضوري رضایت ثبت دی، برېښنايي لاسلیک نه دی.",
- stageNotes:"پړاوونه د نسخې پورې تړلي دي او تاریخ نه پاکوي."
+ stageNotes:"پړاوونه د نسخې پورې تړلي دي او تاریخ نه پاکوي.",
+ workspaceTitle:"د درملنې برخه",workspaceIntro:"نسخه لرونکي پلانونه، طبي شواهد، رضایت او لګښتونه په خوندي برخه کې.",
+ workspaceSteps:"د کلینیکي کار پړاوونه",workspaceDraft:"د پلان مسوده",workspaceProposal:"ناروغ ته وړاندیز",
+ workspaceConsent:"د شاهد رضایت",workspaceCare:"د ترسره شوې درملنې ثبت",
+ workspaceEnd:"بشپړ پلان تړل",workspaceSafeguard:"پلان په خپله تشخیص، پروسه، د ریکارډ خپرېدل، بیل یا تادیه نه ثبتوي.",
+ workspaceShortcuts:"د درملنې لارې",workspaceChart:"د غاښونو چارټ",workspaceVisits:"کلینیکي معاینې",
+ workspaceAll:"ټول پلانونه",workspaceSelected:"د دې چاڼ پلانونه",workspaceNew:"د پلان مسوده جوړه کړئ",
+ workspaceNoMatch:"له سرور څخه په دې چاڼ کې پلان نشته. حالت یا پلټنه بدله کړئ.",
+ workspaceClear:"پلټنه پاکه کړئ",workspaceReset:"ټول پلانونه وښایئ",workspaceRequested:"د نوم پلټنه",
+ workspaceStatus:"د پلان حالت",workspaceActivePlan:"د درملنې اوسنی پړاو",
+ workspaceCompletedStages:"بشپړ پړاوونه",workspaceConsentState:"د همدې نسخې رضایت",
+ workspaceNext:"راتلونکی کار",workspaceReviewConsent:"د ناروغ رضایت وګورئ",
+ workspaceReviewStages:"کلینیکي پړاوونه وګورئ",workspaceReviewEstimate:"اټکل وګورئ",
+ workspaceReviewHistory:"تاریخچه وګورئ",workspacePlanVersion:"اوسنۍ نسخه",
+ workspaceUnsafe:"بې له لاسلیک شوې کلینیکي معاینې او ثبت شوې پروسې هېڅ پړاو مه بشپړوئ.",
+ workspaceLinkVisit:"کلینیکي معاینې پرانیزئ",workspaceProgress:"د درملنې پرمختګ",
+ workspaceNoConsent:"د پړاو له پیل او بشپړېدو مخکې د همدې نسخې رضایت اړین دی.",
+ workspaceConsentActive:"د دې نسخې رضایت ثبت دی؛ تر درملنې مخکې یې اعتبار وګورئ.",
+ workspacePatientPrivate:"د کلینیک شخصي ریکارډ؛ د ناروغ اپ ته نه دی خپور شوی.",
+ workspaceRevision:"هر بدلون نوې د پلټنې نسخه جوړوي او تازه رضایت غواړي.",
+ workspaceFilterHint:"پلټنه یوازې د همدې ناروغ او اړوند ډاکټر پلانونه پوښي.",
  }
 };
 function useWords(){
@@ -172,8 +234,8 @@ function useWords(){
  const money=(v:number)=>new Intl.NumberFormat(lang,{maximumFractionDigits:0}).format(v);
  return {t,date,money,lang};
 }
-async function req(path:string,method="GET",body?:unknown):Promise<any>{
- const r=await fetch(API+"/v1/treatments"+path,{method,credentials:"include",cache:"no-store",
+async function req(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const r=await fetch(API+"/v1/treatments"+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"Content-Type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -181,13 +243,23 @@ async function req(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useLoad(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState(""),[tick,setTick]=useState(0);
+ // Bind sensitive data to the exact clinic/patient/query identity. Abort
+ // in-flight requests when a different case or tab becomes active.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ }),[tick,setTick]=useState(0);
  const refresh=()=>setTick(x=>x+1);
- useEffect(()=>{let active=true;setData(null);setError("");
-  if(path)req(path).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message);});
-  return()=>{active=false;};
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  const controller=new AbortController();setSnapshot({path,data:null,error:""});
+  req(path,"GET",undefined,controller.signal)
+   .then(x=>{if(!controller.signal.aborted)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(!controller.signal.aborted)setSnapshot({path,data:null,
+    error:e instanceof Error?e.message:"NETWORK_ERROR"});});
+  return()=>controller.abort();
  },[path,tick]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const base=(c:string,p:string)=>"/clinics/"+c+"/patients/"+p;
 const root=(c:string,p:string)=>"/clinic/patients/"+p+"/treatments?clinic="+encodeURIComponent(c);
@@ -197,8 +269,8 @@ function Notice({children,kind="info"}:{children:ReactNode;kind?:"info"|"warning
 }
 function Loading(){const {t}=useWords();return <div className="card phase09-loading"><span className="phase05-spinner"/>{t("loading")}</div>;}
 function ErrorBox({code,retry}:{code:string;retry?:()=>void}){
- const {t}=useWords();return <div className="card phase09-error" role="alert">
-  <strong>{t("error")}</strong><p>{code}</p>
+ const {t,lang}=useWords();return <div className="card phase09-error" role="alert">
+  <strong>{t("error")}</strong><p>{clinicErrorText(code,lang)}</p>
   {retry&&<button className="btn btn-secondary" onClick={retry}>{t("retry")}</button>}</div>;
 }
 function Status({name}:{name:string}){const {t}=useWords();return <span className={"phase09-status status-"+name}>{t(name)}</span>;}
@@ -240,6 +312,24 @@ export function TreatmentPortal({view}:{view:"plans"|"detail"}){
    </div>
   </header>
   <PatientTabs space={space} pid={pid}/>
+  <section className="clinic-phase10-treatment-intro" aria-label={t("workspaceTitle")}>
+   <div className="clinic-phase10-treatment-title">
+    <span className="clinic-phase10-treatment-kicker"><CareIcon name="clipboard" size={18}/>{t("workspaceTitle")}</span>
+    <p>{t("workspaceIntro")}</p>
+   </div>
+   <div className="clinic-phase10-treatment-quicklinks" aria-label={t("workspaceShortcuts")}>
+    <a href={"/clinic/patients/"+encodeURIComponent(pid)+"/chart?clinic="+encodeURIComponent(space.clinicId)}>
+     <CareIcon name="dental" size={17}/>{t("workspaceChart")}</a>
+    <a href={"/clinic/patients/"+encodeURIComponent(pid)+"/visits?clinic="+encodeURIComponent(space.clinicId)}>
+     <CareIcon name="clipboard" size={17}/>{t("workspaceVisits")}</a>
+   </div>
+   <ol className="clinic-phase10-treatment-steps" aria-label={t("workspaceSteps")}>
+    {(["workspaceDraft","workspaceProposal","workspaceConsent","workspaceCare","workspaceEnd"] as const).map((key,i)=>
+     <li key={key}><span>{i+1}</span><strong>{t(key)}</strong></li>)}
+   </ol>
+   <p className="clinic-phase10-treatment-note" role="note">
+    <CareIcon name="shield-check" size={17}/>{t("workspaceSafeguard")}</p>
+  </section>
   {view==="plans"?<Plans space={space} pid={pid}/>:<PlanDetail space={space} pid={pid} id={planId}/>}
   <footer className="phase09-footer">{t("warning")} · {t("completionWarning")}</footer>
  </div></Shell>;
@@ -266,6 +356,17 @@ function PlanEditor({space,pid,catalog,onCancel,original,onSaved}:{space:Space;p
  async function submit(e:FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setError("");
   try{
+   const invalidStage=form.stages.some(stage=>{
+    const codes=stage.toothCodes.map(code=>code.trim()).filter(Boolean);
+    return codes.length!==new Set(codes).size||
+     codes.some(code=>!/^([1-4][1-8]|[5-8][1-5])$/.test(code));
+   });
+   if(invalidStage)throw new Error("INVALID_TOOTH_CODES");
+   if(form.items.some(line=>{
+    const service=catalog.services.find(s=>s.id===line.serviceId);
+    const subtotal=(service?.base_price_afn||0)*line.quantity;
+    return line.discountAfn>subtotal||line.discountAfn*10>subtotal*3;
+   }))throw new Error("DISCOUNT_EXCEEDS_POLICY");
    const body={...form,durationMinutes:form.durationMinutes?Number(form.durationMinutes):null,
     notes:form.notes||null,items:form.items.map(x=>({...x,quantity:Number(x.quantity),
      discountAfn:Number(x.discountAfn)})),stages:form.stages.map(x=>({...x,
@@ -338,13 +439,14 @@ function PlanEditor({space,pid,catalog,onCancel,original,onSaved}:{space:Space;p
      <label className="phase09-field"><span>{t("discount")}</span>
       <input type="number" min={0} max={10000000} disabled={!["owner","manager"].includes(space.role)}
        value={x.discountAfn} onChange={e=>item(i,"discountAfn",Number(e.target.value))}/></label>
-     <div className="phase09-line-amount">{t("lineTotal")}: <strong>{money((svc?.base_price_afn||0)*x.quantity-x.discountAfn)} AFN</strong></div>
+     <div className="phase09-line-amount">{t("lineTotal")}: <strong>{money(Math.max(0,(svc?.base_price_afn||0)*x.quantity-x.discountAfn))} AFN</strong></div>
      {form.items.length>1&&<button type="button" className="phase09-text-button"
       onClick={()=>update("items",form.items.filter((_,j)=>j!==i))}>{t("remove")}</button>}
     </div>;
    })}</div>
    <div className="phase09-estimate-total"><span>{t("total")}</span>
     <strong>{money(Math.max(0,total))} AFN</strong></div>
+   <Notice kind="warning">{t("priceWarning")}</Notice>
   </section>
   {original&&<label className="phase09-field"><span>{t("revisionReason")} *</span>
    <textarea required minLength={10} maxLength={500} rows={2} value={reason}
@@ -357,22 +459,46 @@ function PlanEditor({space,pid,catalog,onCancel,original,onSaved}:{space:Space;p
 }
 function Plans({space,pid}:{space:Space;pid:string}){
  const {t,date,money}=useWords();
- const [tab,setTab]=useState("draft"),[search,setSearch]=useState(""),[query,setQuery]=useState(""),[page,setPage]=useState(1);
- const [editing,setEditing]=useState(false),[error,setError]=useState("");
+ const [tab,setTab]=useState("all"),[search,setSearch]=useState(""),[query,setQuery]=useState(""),[page,setPage]=useState(1);
+ const [editing,setEditing]=useState(false),[error,setError]=useState(""),[ready,setReady]=useState(false);
+ useEffect(()=>{
+  const params=new URLSearchParams(location.search),raw=params.get("status");
+  if(["draft","proposed","active","completed","discontinued","all"].includes(raw||""))
+   setTab(raw!);
+  const term=(params.get("search")||"").trim().slice(0,100);setSearch(term);setQuery(term);
+  const requested=Number(params.get("page"));
+  if(Number.isInteger(requested)&&requested>0&&requested<=10000)setPage(requested);
+  setReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const params=new URLSearchParams(location.search);
+  params.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries({status:tab,search:query,page:String(page)})){
+   if((key==="status"&&value==="all")||(key==="search"&&!value)||
+    (key==="page"&&value==="1"))params.delete(key);
+   else params.set(key,value);
+  }
+  history.replaceState(null,"",location.pathname+"?"+params.toString());
+ },[ready,space.clinicId,tab,query,page]);
  const qs=new URLSearchParams({status:tab,search:query,page:String(page)});
- const {data,error:loadError,refresh}=useLoad(base(space.clinicId,pid)+"/plans?"+qs);
+ const {data,error:loadError,refresh}=useLoad(ready?base(space.clinicId,pid)+"/plans?"+qs:null);
  const catalog=useLoad(editing?base(space.clinicId,pid)+"/catalog":null);
  const tabs=["draft","proposed","active","completed","discontinued","all"];
- return <div className="phase09-stack">
+ return <div className="phase09-stack clinic-phase10-treatment-list">
   <section className="card phase09-toolbar">
    <div className="phase09-filters">{tabs.map(x=><button type="button" key={x} aria-pressed={tab===x}
     onClick={()=>{setTab(x);setPage(1);}}>{t(x)}</button>)}</div>
    <div className="phase09-toolbar-actions">
     <form onSubmit={e=>{e.preventDefault();setQuery(search);setPage(1);}}>
-     <input aria-label={t("search")} value={search} placeholder={t("search")} maxLength={100}
+     <input aria-label={t("search")} value={search} placeholder={t("workspaceRequested")} maxLength={100}
       onChange={e=>setSearch(e.target.value)}/>
-     <button type="submit" className="btn btn-secondary">{t("search")}</button></form>
-    <button type="button" className="btn btn-primary" onClick={()=>setEditing(true)}>+ {t("newPlan")}</button>
+     <button type="submit" className="btn btn-secondary">
+      <CareIcon name="search" size={17}/>{t("search")}</button></form>
+    {query&&<button type="button" className="btn btn-secondary"
+     onClick={()=>{setSearch("");setQuery("");setPage(1);}}>{t("workspaceClear")}</button>}
+    <button type="button" className="btn btn-primary" onClick={()=>setEditing(true)}>
+     <CareIcon name="plus" size={17}/>{t("newPlan")}</button>
    </div>
   </section>
   {editing?<section className="card phase09-panel">
@@ -384,10 +510,15 @@ function Plans({space,pid}:{space:Space;pid:string}){
     <section className="card phase09-panel">
      <div className="phase09-section-heading"><div><span className="phase09-kicker">{t("plans")}</span>
       <h2>{t(tab)}</h2></div><button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button></div>
-     {!data.plans.length?<div className="phase09-empty">{t("empty")}</div>:
+     <p className="clinic-phase10-treatment-filterhint">{t("workspaceFilterHint")}</p>
+     {!data.plans.length?<div className="clinic-phase10-treatment-empty" role="status">
+      <CareIcon name="search" size={24}/><p>{t("workspaceNoMatch")}</p>
+      <button type="button" className="btn btn-secondary"
+       onClick={()=>{setTab("all");setSearch("");setQuery("");setPage(1);}}>
+       {t("workspaceReset")}</button></div>:
       <div className="phase09-plan-list">{data.plans.map((p:any)=><a key={p.id}
        className="phase09-plan-row" href={detail(space.clinicId,pid,p.id)}>
-       <div className="phase09-plan-icon">✚</div><div className="phase09-plan-main"><h3>{p.title}</h3>
+       <div className="phase09-plan-icon"><CareIcon name="clipboard" size={22}/></div><div className="phase09-plan-main"><h3>{p.title}</h3>
         <p>{p.clinician_name} · {t("version")} {p.version} · {t("lastUpdated")} {date(p.updated_at)}</p>
         <div className="phase09-plan-tags"><Status name={p.status}/><span>{p.stage_count} {t("stages")}</span>
          <span>{p.expected_sessions} {t("sessions")}</span></div>
@@ -396,7 +527,7 @@ function Plans({space,pid}:{space:Space;pid:string}){
        </a>)}</div>}
      <div className="phase09-pagination"><button className="btn btn-secondary" type="button"
       disabled={page<=1} onClick={()=>setPage(x=>x-1)}>{t("previous")}</button>
-      <strong>{page}</strong><button className="btn btn-secondary" disabled={!data.hasMore}
+      <strong dir="auto">{t("page")} {page}</strong><button className="btn btn-secondary" disabled={!data.hasMore}
       onClick={()=>setPage(x=>x+1)}>{t("next")}</button></div>
     </section>}
    <Notice kind="warning">{t("patientFacing")} {t("completionWarning")}</Notice>
@@ -415,6 +546,20 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
  const [reason,setReason]=useState("");
  const [stageAction,setStageAction]=useState<{stageId:string;action:"complete"|"skip"}|null>(null);
  const [encounterId,setEncounterId]=useState("");
+ const [tabReady,setTabReady]=useState(false);
+ useEffect(()=>{
+  const requested=new URLSearchParams(location.search).get("tab");
+  if(["summary","stages","estimate","consent","timeline"].includes(requested||""))
+   setTab(requested!);
+  setTabReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!tabReady)return;
+  const query=new URLSearchParams(location.search);
+  query.set("clinic",space.clinicId);
+  if(tab==="summary")query.delete("tab");else query.set("tab",tab);
+  history.replaceState(null,"",location.pathname+"?"+query.toString());
+ },[tabReady,tab,space.clinicId]);
  async function invoke(path:string,body:unknown,method="POST",confirmPrompt?:string){
   if(confirmPrompt&&!confirm(confirmPrompt))return;
   setBusy(true);setError("");setSuccess("");
@@ -441,6 +586,29 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
     <div><span>{t("consent")}</span><strong>{t(p.consentState)}</strong></div>
     <div><span>{t("stages")}</span><strong>{info.stages.filter(x=>x.status==="completed").length}/{info.stages.length}</strong></div>
     <div><span>{t("estimate")}</span><strong>{money(p.estimateTotalAfn)} AFN</strong></div></div>
+   <div className="clinic-phase10-plan-progress" role="group" aria-label={t("workspaceProgress")}>
+    <div>
+     <span>{t("workspaceCompletedStages")}</span>
+     <strong>{info.stages.filter(stage=>stage.status==="completed").length}/{info.stages.length}</strong>
+     <progress max={Math.max(1,info.stages.length)}
+      value={info.stages.filter(stage=>stage.status==="completed").length}/>
+    </div>
+    <div>
+     <span>{t("workspaceConsentState")}</span>
+     <strong>{t(p.consentState)}</strong>
+     <small>{t(p.consentState==="recorded"?"workspaceConsentActive":"workspaceNoConsent")}</small>
+    </div>
+   </div>
+   <nav className="clinic-phase10-plan-actions" aria-label={t("workspaceNext")}>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("stages")}>
+     <CareIcon name="clipboard" size={17}/>{t("workspaceReviewStages")}</button>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("consent")}>
+     <CareIcon name="shield-check" size={17}/>{t("workspaceReviewConsent")}</button>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("estimate")}>
+     <CareIcon name="receipt" size={17}/>{t("workspaceReviewEstimate")}</button>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("timeline")}>
+     <CareIcon name="clock" size={17}/>{t("workspaceReviewHistory")}</button>
+   </nav>
   </section>
   {revising?<section className="card phase09-panel">
     {catalog.error?<ErrorBox code={catalog.error} retry={catalog.refresh}/>:
@@ -467,23 +635,33 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
    {tab==="stages"&&<section className="card phase09-panel">
     <div className="phase09-section-heading"><div><h2>{t("stages")}</h2><p>{t("stageProof")}</p></div>
      <span className="phase09-count">{info.stages.length}</span></div>
-    {!canAdvance&&<Notice kind="warning">{t("consentRequired")}</Notice>}
+    {!canAdvance&&<div className="clinic-phase10-consent-notice">
+     <Notice kind="warning">{t("consentRequired")}</Notice>
+     <button type="button" className="btn btn-secondary" onClick={()=>setTab("consent")}>
+      <CareIcon name="shield-check" size={17}/>{t("workspaceReviewConsent")}</button>
+    </div>}
+    <p className="clinic-phase10-evidence-warning" role="note">
+     <CareIcon name="about" size={17}/>{t("workspaceUnsafe")}</p>
     <div className="phase09-stage-list">{info.stages.map(s=><article className="phase09-stage-card" key={s.id}>
      <div className="phase09-stage-count">{s.position}</div>
      <div className="phase09-stage-info"><div className="phase09-between">
       <h3>{s.description}</h3><Status name={s.status||"pending"}/></div>
       <p>{t("stageVisits")}: {s.expectedVisits} · {t("teeth")}: {s.toothCodes.join(", ")||"—"} ·
        {t("dueDate")}: {date(s.dueDate)}</p>
-      {s.linkedEncounterId&&<p>{t("signedVisit")}: <bdi dir="ltr">{s.linkedEncounterId.slice(0,8)}</bdi></p>}
+      {s.linkedEncounterId&&<p>{t("signedVisit")}: <bdi dir="ltr">{s.linkedEncounterId.slice(0,8)}</bdi>
+       <a className="clinic-phase10-encounter-link" href={
+        "/clinic/patients/"+encodeURIComponent(pid)+"/visits/"+
+         encodeURIComponent(s.linkedEncounterId)+"?clinic="+encodeURIComponent(space.clinicId)}>
+        <CareIcon name="file" size={15}/>{t("workspaceLinkVisit")}</a></p>}
       {s.completionNote&&<p>{s.completionNote}</p>}
       {canAdvance&&s.status==="pending"&&<div className="phase09-stage-actions">
        <button className="btn btn-primary" type="button" disabled={busy}
         onClick={()=>invoke("/stages/"+s.id+"/action",{revision:p.revision,action:"start"})}>{t("start")}</button>
-       <button className="btn btn-secondary" type="button" onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
+       <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
       </div>}
       {canAdvance&&s.status==="in_progress"&&<div className="phase09-stage-actions">
-       <button className="btn btn-primary" type="button" onClick={()=>{setStageAction({stageId:s.id!,action:"complete"});setEncounterId("");}}>{t("complete")}</button>
-       <button className="btn btn-secondary" type="button" onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
+       <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>{setStageAction({stageId:s.id!,action:"complete"});setEncounterId("");}}>{t("complete")}</button>
+       <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
       </div>}
       {stageAction&&stageAction.stageId===s.id&&<div className="phase09-inline-form">
        {stageAction.action==="complete"?<>

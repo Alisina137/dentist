@@ -1,0 +1,304 @@
+/*
+ * DandanLink Clinic Improvement Phase 10 — dental chart and treatment workspace.
+ * Deliberately scoped to authenticated clinic layout. The FDI tooth SVG,
+ * anatomical orientation, charts and medical print geometry remain unchanged.
+ */
+.clinic-persistent-shell .clinic-phase10-chart-overview,
+.clinic-persistent-shell .clinic-phase10-treatment-intro{
+ min-width:0;border:1px solid #d6e7f4;border-radius:19px;
+ background:linear-gradient(125deg,#eef7ff 0%,#f8fbff 69%,#fff 100%);
+ padding:clamp(16px,2.6vw,25px);margin-block-end:17px;
+ box-shadow:0 8px 25px rgba(33,86,125,.04);
+}
+.clinic-persistent-shell .clinic-phase10-chart-intro,
+.clinic-persistent-shell .clinic-phase10-treatment-title{
+ display:grid;gap:7px;
+}
+.clinic-persistent-shell .clinic-phase10-chart-intro p,
+.clinic-persistent-shell .clinic-phase10-treatment-title p{
+ font-size:12px;color:var(--clinic-muted);line-height:1.7;
+ max-width:710px;margin:0;
+}
+.clinic-persistent-shell .clinic-phase10-kicker,
+.clinic-persistent-shell .clinic-phase10-treatment-kicker{
+ display:inline-flex;align-items:center;gap:8px;
+ font-size:13px;font-weight:850;color:#1c669d;
+}
+.clinic-persistent-shell .clinic-phase10-chart-stat-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;
+ margin-block:16px;
+}
+.clinic-persistent-shell .clinic-phase10-chart-stat-grid>div{
+ display:grid;gap:7px;min-width:0;padding:15px 16px;
+ border:1px solid #d7e5f2;border-radius:13px;background:rgba(255,255,255,.93);
+}
+.clinic-persistent-shell .clinic-phase10-chart-stat-grid span{
+ font-size:11px;color:var(--clinic-muted);line-height:1.55;font-weight:780;
+}
+.clinic-persistent-shell .clinic-phase10-chart-stat-grid strong{
+ font-size:clamp(21px,2.2vw,28px);font-variant-numeric:tabular-nums;
+ color:var(--clinic-ink);line-height:1.1;
+}
+.clinic-persistent-shell .clinic-phase10-chart-disclaimer,
+.clinic-persistent-shell .clinic-phase10-treatment-note{
+ display:flex;align-items:start;gap:8px;margin:0;
+ font-size:11px;color:#45718b;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase10-chart-disclaimer svg,
+.clinic-persistent-shell .clinic-phase10-treatment-note svg{flex:0 0 auto;margin-top:2px}
+.clinic-persistent-shell .clinic-phase10-tooth-finder{
+ display:flex;align-items:end;flex-wrap:wrap;gap:10px;
+ background:#f6faff;border:1px solid #d5e6f4;border-radius:13px;
+ padding:14px;margin-block:14px;
+}
+.clinic-persistent-shell .clinic-phase10-tooth-finder label{
+ display:grid;gap:7px;min-width:0;flex:1 1 190px;
+ color:var(--clinic-ink-soft);font-size:12px;font-weight:760;
+}
+.clinic-persistent-shell .clinic-phase10-tooth-finder input{
+ background:#fff;color:var(--clinic-ink);border:1px solid var(--clinic-border-strong);
+ min-height:44px;border-radius:10px;padding:10px 12px;width:100%;
+ font-size:13px;text-align:start;
+}
+.clinic-persistent-shell .clinic-phase10-tooth-finder input[aria-invalid="true"]{
+ border-color:#c84665;box-shadow:0 0 0 2px #ffe8ef;
+}
+.clinic-persistent-shell .clinic-phase10-tooth-finder>.btn{
+ display:inline-flex;align-items:center;gap:8px;justify-content:center;
+ min-height:44px;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase10-tooth-finder>p{
+ flex-basis:100%;margin:0;color:#a42848;font-size:11px;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase10-history-link{
+ display:inline-flex;align-items:center;gap:8px;min-height:40px;
+ font-size:12px;font-weight:770;color:#1f6aa4;text-decoration:none;
+}
+.clinic-persistent-shell .clinic-phase10-history-link:hover{text-decoration:underline}
+.clinic-persistent-shell .clinic-phase10-chart-warning,
+.clinic-persistent-shell .clinic-phase10-evidence-warning{
+ display:flex;align-items:start;gap:8px;line-height:1.65;
+ background:#fff9ec;color:#805f21;border:1px solid #f1dbb4;
+ border-radius:10px;padding:11px 13px;font-size:11px;margin:9px 0 13px;
+}
+.clinic-persistent-shell .clinic-phase10-chart-warning svg,
+.clinic-persistent-shell .clinic-phase10-evidence-warning svg{flex:0 0 auto;margin-top:2px}
+.clinic-persistent-shell #clinic-phase10-tooth-history{scroll-margin-top:95px}
+.clinic-persistent-shell .clinic-phase10-confirm-backdrop{
+ position:fixed;inset:0;z-index:1150;display:grid;place-items:center;
+ background:rgba(13,30,50,.56);padding:15px;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-dialog{
+ display:grid;gap:14px;width:min(100%,540px);
+ max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;
+ background:#fff;border:1px solid #c8dfed;border-radius:19px;
+ padding:clamp(18px,3vw,28px);
+ box-shadow:0 22px 65px rgba(10,29,53,.25);
+}
+.clinic-persistent-shell .clinic-phase10-confirm-top{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-icon{
+ width:44px;height:44px;display:grid;place-items:center;
+ background:#e7f4fe;color:#1a71a9;border-radius:13px;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-close{
+ display:grid;place-items:center;width:42px;height:42px;
+ border:1px solid #d9e6f0;background:#fff;border-radius:11px;
+ color:#567891;cursor:pointer;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-dialog h2{
+ font-size:21px;margin:0;line-height:1.35;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-dialog>p{
+ margin:0;color:var(--clinic-muted);font-size:12px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-snapshot{
+ display:grid;gap:9px;background:#f4f9ff;border:1px solid #dcebf7;
+ border-radius:13px;padding:16px;overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-snapshot strong{font-size:15px}
+.clinic-persistent-shell .clinic-phase10-confirm-snapshot span,
+.clinic-persistent-shell .clinic-phase10-confirm-snapshot p{
+ color:var(--clinic-ink-soft);font-size:12px;line-height:1.55;margin:0;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-dialog>p.clinic-phase10-confirm-safety{
+ display:flex;align-items:start;gap:8px;color:#865e21;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-actions{
+ display:flex;justify-content:flex-end;flex-wrap:wrap;gap:9px;
+}
+.clinic-persistent-shell .clinic-phase10-confirm-actions button{min-height:43px;font-size:12px}
+.clinic-persistent-shell .clinic-phase10-treatment-intro{
+ display:grid;gap:17px;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-quicklinks{
+ display:flex;flex-wrap:wrap;gap:9px;align-items:center;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-quicklinks a{
+ display:inline-flex;align-items:center;gap:8px;
+ padding:10px 13px;min-height:44px;border-radius:11px;
+ text-decoration:none;background:#fff;border:1px solid #cfe2f2;
+ color:#25658f;font-weight:790;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-quicklinks a:hover{background:#eaf5ff}
+.clinic-persistent-shell .clinic-phase10-treatment-steps{
+ display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+ gap:9px;list-style:none;padding:0;margin:0;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-steps li{
+ display:flex;align-items:center;gap:9px;min-width:0;
+ border:1px solid #d9e7f5;background:rgba(255,255,255,.91);
+ border-radius:11px;padding:11px;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-steps li span{
+ display:grid;place-items:center;flex:0 0 28px;height:28px;
+ border-radius:9px;background:#e4f3ff;color:#2070a6;
+ font-size:12px;font-weight:880;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-steps li strong{
+ min-width:0;overflow-wrap:anywhere;font-size:11px;
+ color:var(--clinic-ink);line-height:1.4;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list{
+ min-width:0;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ gap:13px;border-radius:16px;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions{
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions form{
+ display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions input{
+ min-height:42px;min-width:0;flex:1 1 170px;
+ border-radius:10px;border:1px solid var(--clinic-border-strong);
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions .btn{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:43px;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-filterhint{
+ color:var(--clinic-muted);margin:12px 0 14px;
+ font-size:11px;line-height:1.65;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-empty{
+ min-height:175px;padding:27px 17px;
+ display:grid;justify-items:center;gap:11px;
+ border-radius:13px;border:1px dashed #bfd8e9;
+ background:#f7fbff;color:var(--clinic-muted);text-align:center;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-empty p{
+ font-size:12px;margin:0;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-empty button{min-height:42px}
+.clinic-persistent-shell .clinic-phase10-plan-progress{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px;margin-top:16px;
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress>div{
+ border-radius:12px;padding:14px;
+ border:1px solid #d7e6f4;background:#f8fbff;
+ display:grid;gap:8px;min-width:0;
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress span{
+ font-size:11px;font-weight:760;color:var(--clinic-muted);
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress strong{
+ font-size:16px;line-height:1.4;
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress small{
+ color:var(--clinic-muted);font-size:11px;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress progress{
+ appearance:none;width:100%;height:9px;border:0;border-radius:10px;
+ overflow:hidden;accent-color:#247fb5;
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress progress::-webkit-progress-bar{
+ background:#dfebf5;border-radius:10px;
+}
+.clinic-persistent-shell .clinic-phase10-plan-progress progress::-webkit-progress-value{
+ background:#2783bb;border-radius:10px;
+}
+.clinic-persistent-shell .clinic-phase10-plan-actions{
+ display:flex;gap:8px;flex-wrap:wrap;margin-top:15px;
+}
+.clinic-persistent-shell .clinic-phase10-plan-actions .btn{
+ display:inline-flex;align-items:center;gap:7px;justify-content:center;
+ min-height:42px;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase10-consent-notice{
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-block:12px;
+}
+.clinic-persistent-shell .clinic-phase10-consent-notice>.btn{
+ display:inline-flex;align-items:center;gap:7px;min-height:43px;
+}
+.clinic-persistent-shell .clinic-phase10-encounter-link{
+ display:inline-flex;align-items:center;gap:7px;
+ color:#226a9c;text-decoration:underline;margin-inline-start:8px;
+ font-weight:760;font-size:12px;
+}
+.clinic-persistent-shell .clinic-phase10-treatment-list :is(a,button,input,select,textarea):focus-visible,
+.clinic-persistent-shell .clinic-phase10-treatment-intro a:focus-visible,
+.clinic-persistent-shell .clinic-phase10-plan-actions button:focus-visible,
+.clinic-persistent-shell .clinic-phase10-tooth-finder :is(button,input):focus-visible,
+.clinic-persistent-shell .clinic-phase10-confirm-dialog button:focus-visible{
+ outline:3px solid #287dbc;outline-offset:3px;
+}
+@media(max-width:1200px){
+ .clinic-persistent-shell .clinic-phase10-treatment-steps{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+ }
+}
+@media(max-width:800px){
+ .clinic-persistent-shell .clinic-phase10-treatment-steps{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions{
+  width:100%;
+ }
+ .clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions form{
+  flex:1 1 190px;
+ }
+ .clinic-persistent-shell .clinic-phase10-plan-actions .btn{
+  flex:1 1 165px;
+ }
+}
+@media(max-width:640px){
+ .clinic-persistent-shell .clinic-phase10-chart-stat-grid{gap:8px}
+ .clinic-persistent-shell .clinic-phase10-chart-stat-grid>div{padding:11px 10px}
+ .clinic-persistent-shell .clinic-phase10-chart-stat-grid span{font-size:10px}
+ .clinic-persistent-shell .clinic-phase10-tooth-finder .btn{flex:1 1 110px}
+ .clinic-persistent-shell .clinic-phase10-confirm-actions button{flex:1 1 135px}
+ .clinic-persistent-shell .clinic-phase10-treatment-steps{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .clinic-phase10-plan-progress{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .clinic-phase10-treatment-quicklinks a{flex:1 1 125px;justify-content:center}
+ .clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions>.btn{
+  flex:1 1 auto;
+ }
+}
+@media(max-width:375px){
+ .clinic-persistent-shell .clinic-phase10-chart-stat-grid{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .clinic-phase10-confirm-actions button{flex:1 1 100%}
+ .clinic-persistent-shell .clinic-phase10-plan-actions .btn{flex:1 1 100%}
+ .clinic-persistent-shell .clinic-phase10-treatment-list .phase09-toolbar-actions form{
+  flex-basis:100%;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-phase10-chart-overview *,
+ .clinic-persistent-shell .clinic-phase10-treatment-intro *,
+ .clinic-persistent-shell .clinic-phase10-confirm-dialog *,
+ .clinic-persistent-shell .clinic-phase10-treatment-list *{
+  transition:none!important;animation:none!important;scroll-behavior:auto!important;
+ }
+}
