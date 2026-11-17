@@ -1,0 +1,30 @@
+/* Clinic Phase 18 — responsive keyboard and touch usability (clinic only). */
+.clinic-persistent-shell .clinic-phase18-scroll-region{
+ min-width:0;max-width:100%;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;scrollbar-gutter:stable;
+}
+.clinic-persistent-shell .clinic-phase18-scroll-region:focus-visible{
+ outline:3px solid #2176b8;outline-offset:3px;border-radius:10px;
+}
+@media(max-width:680px){
+ .clinic-persistent-shell .phase06-calendar-body.clinic-phase18-scroll-region{
+  overflow-x:auto;
+ }
+ .clinic-persistent-shell .clinic-phase12-workspace .phase10-table-scroll.clinic-phase18-scroll-region{
+  overflow-x:auto;
+ }
+ .clinic-persistent-shell .clinic-phase12-workspace .phase10-table-scroll.clinic-phase18-scroll-region table{
+  min-width:760px;
+ }
+}
+@media(max-width:375px){
+ .clinic-persistent-shell .phase06-calendar-page .phase06-filterbar{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .phase06-calendar-page .phase06-filterbar>.phase06-field{
+  grid-column:1/-1;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-phase18-scroll-region{scroll-behavior:auto}
+}

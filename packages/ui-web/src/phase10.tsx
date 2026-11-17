@@ -2,6 +2,8 @@
 import React,{useEffect,useMemo,useState,type ReactNode,type FormEvent} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
+import {clinicReadJson} from "./clinic-readonly";
+import {useClinicWorkspaceSession} from "./clinic-shell-context";
 import {Shell} from "./phase03";
 import {ExpensePanel,CashFlowInsights} from "./phase11";
 import {CareIcon} from "./care-icons";
@@ -337,6 +339,8 @@ function useWords(){
  return {t,date,money,lang};
 }
 async function api(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ if(method==="GET"&&body===undefined)
+  return clinicReadJson(API+"/v1/billing"+path,signal);
  const res=await fetch(API+"/v1/billing"+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
@@ -400,7 +404,8 @@ function Pager({page,next,setPage}:{page:number;next:boolean;setPage:(x:number)=
 }
 function InvoiceRows({rows,space}:{rows:Invoice[];space:Space}){
  const {t,date}=useWords();
- return <div className="phase10-table-scroll"><table className="phase10-table"><thead><tr>
+ return <div className="phase10-table-scroll clinic-phase18-scroll-region" role="region"
+  tabIndex={0} aria-label={t("invoices")}><table className="phase10-table"><thead><tr>
   <th>{t("invoice")}</th><th>{t("patient")}</th><th>{t("date")}</th><th>{t("total")}</th>
   <th>{t("paidAmount")}</th><th>{t("balance")}</th><th>{t("status")}</th><th>{t("action")}</th>
  </tr></thead><tbody>{rows.map(i=><tr key={i.id}>
@@ -413,14 +418,19 @@ function InvoiceRows({rows,space}:{rows:Invoice[];space:Space}){
  </tr>)}</tbody></table></div>;
 }
 export function FinancePortal({view}:{view:"home"|"invoice"|"receipt"|"patient"}){
- const {t}=useWords();const [ctx,setCtx]=useState<Context|null>(null),[error,setError]=useState("");
+ const {t}=useWords();const shell=useClinicWorkspaceSession();
+ const [ctx,setCtx]=useState<Context|null>(null),[error,setError]=useState("");
  const [selected,setSelected]=useState<string|null|undefined>(undefined);
  useEffect(()=>{
+  if(shell){setCtx(shell.ctx);setSelected(shell.requested);setError("");return;}
   setSelected(new URLSearchParams(location.search).get("clinic"));
-  fetch(API+"/v1/team/context",{credentials:"include",cache:"no-store"})
-   .then(async r=>{const x=await r.json().catch(()=>({}));if(!r.ok)throw Error(x.code||"AUTH_REQUIRED");
-    setCtx(x);}).catch(e=>setError(e.message));
- },[]);
+  const controller=new AbortController();
+  clinicReadJson(API+"/v1/team/context",controller.signal)
+   .then(x=>{if(!controller.signal.aborted){setCtx(x as Context);setError("");}})
+   .catch(e=>{if(!controller.signal.aborted)
+    setError(e instanceof Error?e.message:"NETWORK_ERROR");});
+  return()=>controller.abort();
+ },[shell?.ctx,shell?.requested]);
  if(error)return <Failure code={error} retry={()=>location.reload()}/>;
  if(!ctx||selected===undefined)return <Busy/>;
  const space=selected?ctx.clinics.find(x=>x.clinicId===selected):ctx.clinics[0];
