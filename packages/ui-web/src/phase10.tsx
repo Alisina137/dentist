@@ -767,17 +767,31 @@ function Payments({space}:{space:Space}){
   const head=["date","invoice","kind","method","amount_afn","reference","entered_by"];
   const rows=data.entries.map((e:any)=>[e.occurred_at,e.invoice_number,e.kind,e.method,e.amount_afn,
    e.reference||"",e.actor_name||""]);
-  const csv=[head,...rows].map((v:(string|number)[])=>v.map((x:string|number)=>'"'+String(x??"").replaceAll('"','""')+'"').join(",")).join("\r\n");
-  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const csv=clinicCsvRows([head,...rows]);
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="clinic-ledger-page-"+page+".csv";a.click();URL.revokeObjectURL(url);
+  a.href=url;a.download="clinic-ledger-page-"+page+".csv";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
  }
  return <section className="card phase10-panel">
-  <Title title={t("payments")} desc={t("reverseWarning")} action={<button type="button"
-   className="btn btn-secondary" disabled={!data?.entries?.length} onClick={exportPage}>{t("downloadCsv")}</button>}/>
-  <div className="phase10-filter-chips">{["all","payment","reversal","credit"].map(x=>
+  <Title title={t("payments")} desc={t("financeSummaryHint")} action={
+   <div className="clinic-phase12-panel-actions">
+    <button type="button" className="btn btn-secondary" onClick={refresh}>
+     <CareIcon name="activity" size={16}/>{t("refresh")}</button>
+    <button type="button" className="btn btn-secondary"
+     disabled={!data?.entries?.length} onClick={exportPage}>
+     <CareIcon name="download" size={16}/>{t("downloadCsv")}</button>
+   </div>}/>
+  <p className="clinic-phase12-footnote"><CareIcon name="shield-check" size={16}/>
+   {t("financeExportWarning")}</p>
+  <div className="phase10-filter-chips clinic-phase12-ledger-filters"
+   role="group" aria-label={t("filter")}>{["all","payment","reversal","credit"].map(x=>
    <button type="button" aria-pressed={kind===x} key={x} onClick={()=>{setKind(x);setPage(1);}}>{t(x)}</button>)}</div>
   {error?<Failure code={error} retry={refresh}/>:!data?<Busy/>:!data.entries.length?<TableEmpty/>:<>
+   <p className="clinic-phase12-count-note" role="status">
+    {t("financeResult")} {(page-1)*15+1}–{(page-1)*15+data.entries.length}.
+    {" "}{t("financePost")}</p>
    <div className="phase10-table-scroll"><table className="phase10-table"><thead><tr>
     <th>{t("date")}</th><th>{t("invoice")}</th><th>{t("patient")}</th><th>{t("method")}</th>
     <th>{t("amount")}</th><th>{t("status")}</th><th>{t("recordedBy")}</th><th>{t("action")}</th>
@@ -785,7 +799,7 @@ function Payments({space}:{space:Space}){
     <td>{date(e.occurred_at)}</td><td><a href={invoiceHref(space.clinicId,e.invoice_id)}>
      {"INV-"+String(e.invoice_number).padStart(6,"0")}</a></td>
     <td>{e.patient_name}</td><td>{t(e.method)}</td>
-    <td><Money amount={(e.kind==="reversal"?-1:1)*e.amount_afn}/></td>
+    <td><Money amount={clinicFinancialNet(e.kind,e.amount_afn)}/></td>
     <td><Badge status={e.kind}/></td><td>{e.actor_name}</td>
     <td>{e.kind==="payment"?<a className="phase10-inline-link"
       href={receiptHref(space.clinicId,e.id)}>{t("receipt")}</a>:"—"}</td>
@@ -799,10 +813,19 @@ function Balances({space}:{space:Space}){
  const {data,error,refresh}=useLoad(b(space.clinicId)+"/balances?"+new URLSearchParams({aging,page:String(page)}));
  const ages=["all","current","1-30","31-60","61+"],labels=["all","current","age1","age2","age3"];
  return <section className="card phase10-panel">
-  <Title title={t("aging")} desc={t("outstanding")}/>
-  <div className="phase10-filter-chips">{ages.map((x,i)=><button type="button" key={x}
+  <Title title={t("aging")} desc={t("outstanding")}
+   action={<button type="button" className="btn btn-secondary" onClick={refresh}>
+    <CareIcon name="activity" size={16}/>{t("refresh")}</button>}/>
+  <p className="clinic-phase12-footnote">{t("financeResultLimit")}
+   {" "}{t("financeLimited")}</p>
+  <div className="phase10-filter-chips clinic-phase12-ledger-filters"
+   role="group" aria-label={t("aging")}>{ages.map((x,i)=><button type="button" key={x}
    aria-pressed={aging===x} onClick={()=>{setAging(x);setPage(1);}}>{t(labels[i])}</button>)}</div>
   {error?<Failure code={error} retry={refresh}/>:!data?<Busy/>:!data.balances.length?<TableEmpty/>:<>
+   <p className="clinic-phase12-count-note" role="status">
+    {t("financeResult")} {(page-1)*15+1}–{(page-1)*15+data.balances.length}
+    {" "}{t("financeOf")} {data.total}.
+    {" "}{t("financeLimited")}</p>
    <div className="phase10-table-scroll"><table className="phase10-table"><thead><tr>
     <th>{t("invoice")}</th><th>{t("patient")}</th><th>{t("dueDate")}</th>
     <th>{t("total")}</th><th>{t("paidAmount")}</th><th>{t("balance")}</th><th>{t("aging")}</th>
@@ -811,7 +834,9 @@ function Balances({space}:{space:Space}){
     <td><a href={billHref(space.clinicId,x.patientId)}>{x.patientName}</a></td>
     <td>{date(x.dueDate)}</td><td><Money amount={x.totalAfn}/></td>
     <td><Money amount={x.paidAfn}/></td><td><Money amount={x.balanceAfn}/></td>
-    <td><Badge status={x.aging==="current"?"current":"overdue"}/></td>
+    <td><span className="clinic-phase12-aging-pill">
+     {t(x.aging==="current"?"current":x.aging==="1-30"?"age1":x.aging==="31-60"?"age2":"age3")}
+     {x.overdueDays>0&&<bdi dir="ltr"> · {x.overdueDays}</bdi>}</span></td>
    </tr>)}</tbody></table></div>
    <Pager page={page} next={data.hasMore} setPage={setPage}/>
   </>}
