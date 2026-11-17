@@ -361,7 +361,7 @@ function useLoad(path:string|null){
    .catch(e=>{if(!controller.signal.aborted)setSnapshot({
     path,data:null,error:e instanceof Error?e.message:"NETWORK_ERROR"
    });});
-  return()=>controller.abort();
+  return()=>{controller.abort();};
  },[path,seq]);
  return {data:snapshot.path===path?snapshot.data:null,
   error:snapshot.path===path?snapshot.error:"",refresh};
