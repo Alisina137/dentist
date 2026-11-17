@@ -808,31 +808,55 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
  const {data,error,refresh}=useLoad(base+"/encounters/"+encounterId);
  const [note,setNote]=useState<Note>(empty),[reason,setReason]=useState("");
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[failure,setFailure]=useState("");
+ const [review,setReview]=useState<"sign"|"amend"|null>(null),[reviewed,setReviewed]=useState(false);
+ const [versionPage,setVersionPage]=useState(1);
  useEffect(()=>{if(data?.encounter) setNote({...empty,...data.encounter.note,
   historyDate:data.encounter.note.historyDate||"",historySource:data.encounter.note.historySource||"",
   followUp:data.encounter.note.followUp||"",performedProcedures:data.encounter.note.performedProcedures||[]});},[data]);
  async function action(type:"save"|"sign"|"amend"){
-  if(!data)return;
-  if(type==="sign"&&!confirm(t("signConfirm")))return;
-  if(type==="amend"&&!confirm(t("amendConfirm")))return;
+  if(!data||busy||((type==="sign"||type==="amend")&&
+   (review!==type||!reviewed)))return;
+  if(type==="sign"&&(!data.canSign||!note.reason.trim()||
+   !note.findings.trim()||!note.assessment.trim()))return;
+  if(type==="amend"&&(!data.canAmend||reason.trim().length<10))return;
   setBusy(true);setFailure("");setNotice("");
+  let draftSaved=false;
   try{
    const rev=data.encounter.revision;
    if(type==="save")await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
    if(type==="sign"){
-    // Persist the visible form first so the signed snapshot exactly matches what was confirmed.
-    await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
-    await call(base+"/encounters/"+encounterId+"/sign","POST",{revision:rev+1,confirmation:"SIGN"});
+    // Persist the visible note first. Sign only the server-returned revision.
+    // A failure in signing never claims the encounter was signed.
+    const result=await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
+    draftSaved=true;
+    await call(base+"/encounters/"+encounterId+"/sign","POST",
+     {revision:result.revision,confirmation:"SIGN"});
    }
    if(type==="amend")await call(base+"/encounters/"+encounterId+"/amend","POST",
     {...note,revision:rev,correctionReason:reason});
-   setNotice(t(type==="sign"?"signedSuccess":"saved"));setReason("");refresh();
-  }catch(e:any){setFailure(e.message);}finally{setBusy(false);}
+   setReview(null);setReviewed(false);setNotice(t(type==="sign"?"signedSuccess":"saved"));
+   setReason("");refresh();
+  }catch(e:any){
+   setFailure(e instanceof Error?e.message:"NETWORK_ERROR");
+   if(draftSaved){setReview(null);setReviewed(false);refresh();}
+  }finally{setBusy(false);}
  }
+ useEffect(()=>{
+  if(!review)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy){setReview(null);setReviewed(false);}
+  };
+  document.addEventListener("keydown",onEscape);
+  return()=>document.removeEventListener("keydown",onEscape);
+ },[review,busy]);
  if(error)return <ErrorBox error={error} retry={refresh}/>;
  if(!data)return <Loading/>;
  const e:Encounter=data.encounter,showEdit=data.canEdit||data.canAmend;
- return <div className="phase07-grid">
+ const versions:Array<{id:string;revision:number;action:string;created_at:string;
+  author_name:string;correction_reason:string|null;note:Note}>=data.versions||[];
+ const pages=Math.max(1,Math.ceil(versions.length/5)),safeVersionPage=Math.min(versionPage,pages);
+ const visibleVersions=versions.slice((safeVersionPage-1)*5,safeVersionPage*5);
+ return <div className="phase07-grid clinic-phase11-note-workspace">
   <main className="phase07-stack">
    <section className="card phase07-panel">
     <div className="phase07-between"><div><span className="phase07-eyebrow">{t("record")} · <bdi dir="ltr">
@@ -853,6 +877,7 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
    <section className="card phase07-panel">
     <div className="phase07-section"><h2>{t("clinicianNote")}</h2>
      <span className="phase07-badge">{t("latest")}</span></div>
+    <p className="clinic-phase11-subtitle">{t("recordsIntro")}</p>
     <NoteFields note={note} setNote={setNote} disabled={!showEdit||busy}/>
     {data.canAmend&&<label className="field phase07-correction"><span>{t("correction")} *</span>
      <textarea value={reason} maxLength={500} rows={3} onChange={ev=>setReason(ev.target.value)}
@@ -862,18 +887,22 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       onClick={()=>action("save")}>{busy?t("busy"):t("saveDraft")}</button>}
      {data.canSign&&<button type="button" className="btn btn-primary" disabled={busy||
       !note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
-      onClick={()=>action("sign")}>{busy?t("busy"):t("sign")}</button>}
+      onClick={()=>{setReview("sign");setReviewed(false);setFailure("");}}>
+       <CareIcon name="shield-check" size={17}/>{busy?t("busy"):t("sign")}</button>}
      {data.canAmend&&<button type="button" className="btn btn-primary" disabled={busy||
       reason.trim().length<10||!note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
-      onClick={()=>action("amend")}>{busy?t("busy"):t("amend")}</button>}
+      onClick={()=>{setReview("amend");setReviewed(false);setFailure("");}}>
+       <CareIcon name="edit" size={17}/>{busy?t("busy"):t("amend")}</button>}
     </div>}
     {data.canSign&&<p className="muted">{t("signConfirm")}</p>}
     {notice&&<Banner kind="success">{notice}</Banner>}
     {failure&&<ErrorBox error={failure} retry={failure==="STALE_ENCOUNTER_REVISION"?refresh:undefined}/>}
    </section>
-   <section className="card phase07-panel">
-    <div className="phase07-section"><h2>{t("timeline")}</h2></div>
-    <ol className="phase07-version-list">{data.versions.map((v:any)=><li key={v.id}>
+   <section className="card phase07-panel" id="clinic-phase11-versions">
+    <div className="phase07-section"><div><h2>{t("timeline")}</h2>
+     <p className="clinic-phase11-subtitle">{t("recordVersionNote")}</p></div>
+     <span className="phase07-count" aria-label={t("recordVersionCount")}>{versions.length}</span></div>
+    <ol className="phase07-version-list clinic-phase11-version-list">{visibleVersions.map((v:any)=><li key={v.id}>
      <div className="phase07-between"><strong>{t("revision")} {v.revision} ·
       {v.action==="signed"?t("signed"):v.action==="amended"?t("amend"):t("draft")}</strong>
       <time>{fmt(v.created_at)}</time></div>
@@ -885,6 +914,13 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       <p>{t("assessment")}: {v.note.assessment||"—"}</p>
       <p>{t("followUp")}: {v.note.followUp||"—"}</p></details>
     </li>)}</ol>
+    {versions.length>5&&<nav className="clinic-phase11-pagination" aria-label={t("timeline")}>
+     <button type="button" className="btn btn-secondary" disabled={safeVersionPage<=1}
+      onClick={()=>setVersionPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+     <span>{t("page")} {safeVersionPage}/{pages}</span>
+     <button type="button" className="btn btn-secondary" disabled={safeVersionPage>=pages}
+      onClick={()=>setVersionPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+    </nav>}
    </section>
   </main>
   <aside className="phase07-stack">
@@ -913,7 +949,54 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       <CareIcon name="clipboard" size={16}/>{t("treatments")} →</a>
     </div>}
    </section>
+   <ClinicalCommunication space={space} appointmentId={e.appointmentId}/>
   </aside>
+  {review&&<div className="clinic-phase11-confirm-backdrop"
+   onMouseDown={event=>{if(event.currentTarget===event.target&&!busy){
+    setReview(null);setReviewed(false);
+   }}}>
+   <section className="clinic-phase11-confirm-dialog" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase11-confirm-title">
+    <div className="clinic-phase11-confirm-heading">
+     <span className="clinic-phase11-confirm-icon"><CareIcon name="shield-check" size={22}/></span>
+     <button type="button" className="clinic-phase11-close" disabled={busy}
+      aria-label={t("close")} onClick={()=>{setReview(null);setReviewed(false);}}>
+      <CareIcon name="close" size={19}/></button>
+    </div>
+    <h2 id="clinic-phase11-confirm-title">{t(review==="sign"?"recordReviewSign":"recordReviewAmend")}</h2>
+    <p>{t("recordReviewTitle")}</p>
+    <div className="clinic-phase11-confirm-patient">
+     <strong>{patientName(data.patient)}</strong>
+     <bdi dir="ltr">{data.patient.patientNumber}</bdi>
+     <span>{t("revision")} {e.revision}</span>
+    </div>
+    <dl className="clinic-phase11-confirm-details">
+     {([["complaint",note.reason],["findings",note.findings],["assessment",note.assessment],
+      ["followUp",note.followUp||t("none")]] as [string,string][]).map(([key,value])=>
+      <div key={key}><dt>{t(key)}</dt><dd>{value}</dd></div>)}
+     <div><dt>{t("procedure")}</dt>
+      <dd>{note.performedProcedures.length?
+       note.performedProcedures.map(p=>p.description).join("; "):t("recordNoProcedure")}</dd></div>
+     {review==="amend"&&<div><dt>{t("correction")}</dt><dd>{reason}</dd></div>}
+    </dl>
+    <p className="clinic-phase11-confirm-warning">
+     <CareIcon name="about" size={17}/>
+     {t(review==="sign"?"recordReviewWarning":"recordReviewAmendWarning")}</p>
+    <label className="clinic-phase11-confirm-check">
+     <input type="checkbox" checked={reviewed} disabled={busy}
+      onChange={event=>setReviewed(event.target.checked)}/>
+     <span>{t("recordReviewed")}</span>
+    </label>
+    {failure&&<ErrorBox error={failure}/>}
+    <div className="clinic-phase11-confirm-actions">
+     <button type="button" className="btn btn-secondary" disabled={busy}
+      onClick={()=>{setReview(null);setReviewed(false);}}>{t("recordCancel")}</button>
+     <button type="button" className="btn btn-primary" disabled={busy||!reviewed}
+      onClick={()=>void action(review)}>
+      <CareIcon name="check" size={17}/>{busy?t("busy"):t("recordConfirm")}</button>
+    </div>
+   </section>
+  </div>}
  </div>;
 }
 async function fileBase64(file:File){
