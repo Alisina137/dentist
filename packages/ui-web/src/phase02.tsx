@@ -368,7 +368,7 @@ function ClinicDashboardCard({clinic:c}:{clinic:any}){
 }
 const emptyClinic={
   legalName:"",displayName:"",clinicType:"office",province:"Kabul",city:"Kabul",
-  district:"",address:"",phone:"",email:"",licenseNumber:""
+  district:"",address:"",phone:"",email:"",licenseNumber:"",plannedDentistCount:1
 };
 function OrganizationFields({form,setForm,readonly=false}:{form:any,setForm:(x:any)=>void,readonly?:boolean}){
  const l=useText();const {locale}=usePreferences();
@@ -376,20 +376,24 @@ function OrganizationFields({form,setForm,readonly=false}:{form:any,setForm:(x:a
   en:{identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
    location:"Location and contacts",sub:"Enter accurate clinic information; published data requires separate approval.",
    license:"Registration number is optional here. The actual clinic license document is reviewed in the verification step.",
-   clinical:"Professional qualifications and ID cards belong in the dentist credential workflow, not clinic registration."},
+   clinical:"Professional qualifications and ID cards belong in the dentist credential workflow, not clinic registration.",
+   doctorTarget:"Expected dentists (planning only)",doctorTargetHint:"Not a verified dentist count. Invite clinicians and independently verify their credentials."},
   "fa-AF":{identity:"هویت کلینیک",public:"عمومی پس از تأیید",private:"خصوصی برای بررسی‌کنندگان",
    location:"موقعیت و تماس‌ها",sub:"معلومات دقیق کلینیک را درج کنید؛ نشر عمومی نیازمند تأیید جداگانه است.",
    license:"شماره ثبت اینجا اختیاری است؛ سند اصلی جواز در مرحله تأیید بررسی می‌شود.",
-   clinical:"اسناد حرفه‌ای و کارت هویت داکتر مربوط روند تأیید داکتر است، نه ثبت کلینیک."},
+   clinical:"اسناد حرفه‌ای و کارت هویت داکتر مربوط روند تأیید داکتر است، نه ثبت کلینیک.",
+   doctorTarget:"تعداد تخمینی داکتران",doctorTargetHint:"داکتران واقعی باید جداگانه دعوت و بررسی شوند."},
   "ps-AF":{identity:"د کلینیک پېژندنه",public:"له تایید وروسته عام",private:"د کتونکو لپاره محرم",
    location:"ځای او اړیکې",sub:"د کلینیک دقیق معلومات ولیکئ؛ عامه خپرول بېل تایید غواړي.",
    license:"د ثبت شمېره دلته اختیاري ده؛ اصلي جواز په تایید پړاو کې کتل کېږي.",
-   clinical:"د ډاکټر مسلکي اسناد او پېژندپاڼې د ډاکټر تایید پورې تړلې دي، نه د کلینیک ثبت پورې."}
+   clinical:"د ډاکټر مسلکي اسناد او پېژندپاڼې د ډاکټر تایید پورې تړلې دي، نه د کلینیک ثبت پورې.",
+   doctorTarget:"د پلان شويو ډاکټرانو شمېر",doctorTargetHint:"رښتیني ډاکټران باید وروسته وبلل او تایید شي."}
  }[locale]||{
   identity:"Clinic identity",public:"Public after approval",private:"Private to reviewers",
   location:"Location and contacts",sub:"Enter accurate clinic information.",
   license:"Clinic license proof is reviewed separately.",
-  clinical:"Doctor ID and professional documents use the separate credential workflow."};
+  clinical:"Doctor ID and professional documents use the separate credential workflow.",
+  doctorTarget:"Expected dentists",doctorTargetHint:"A planning estimate, not a verified count."};
  const change=(key:string)=>(v:string)=>setForm((x:any)=>({...x,[key]:v}));
  return <fieldset className="clinic-setup-form-sections clinic-setup-fields-readonly" disabled={readonly}>
   <section className="clinic-setup-field-section">
@@ -403,6 +407,12 @@ function OrganizationFields({form,setForm,readonly=false}:{form:any,setForm:(x:a
     <Select title={l("clinicType")} value={form.clinicType} change={change("clinicType")}
      options={["solo","office","specialty"].map(id=>({id,label:l(id)}))}/>
     <Input title={l("license")} value={form.licenseNumber} change={change("licenseNumber")}/>
+     <label className="field"><span>{words.doctorTarget} *</span>
+      <input type="number" min={1} max={500} step={1} required
+       value={form.plannedDentistCount??1}
+       onChange={e=>change("plannedDentistCount")(e.target.value)}/>
+      <small>{words.doctorTargetHint}</small>
+     </label>
    </div>
    <div className="clinic-setup-data-note">
     <span className="clinic-setup-privacy-badge">⛨ {words.private}</span>
@@ -613,6 +623,8 @@ function Onboarding(){
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  const go=(to:number)=>{
+  if(to===1&&(!Number.isSafeInteger(Number(form.plannedDentistCount))||
+    Number(form.plannedDentistCount)<1||Number(form.plannedDentistCount)>500))return;
   if(to===1&&(!form.displayName?.trim()||!form.legalName?.trim()||
      !form.phone?.trim()||!form.address?.trim()||!form.city?.trim()||
      !form.province?.trim()||!form.email?.trim()))return;
@@ -691,7 +703,10 @@ function Onboarding(){
       <div className="clinic-setup-summary">
        <div><span>{l("displayName")}</span><strong>{form.displayName||"—"}</strong></div>
        <div><span>{l("city")}</span><strong>{form.city||"—"} · {form.province||"—"}</strong></div>
-       <div><span>{l("plan")}</span><strong>{chosen?.label||detail?.plan?.label||"—"}
+       <div><span>{locale==="fa-AF"?"داکتران (تخمینی)":locale==="ps-AF"?
+         "ډاکټران (پلان)": "Dentists (planned)"}</span>
+         <strong>{form.plannedDentistCount??1}</strong></div>
+        <div><span>{l("plan")}</span><strong>{chosen?.label||detail?.plan?.label||"—"}
         {chosen?(" · "+currency(chosen.priceAfn)):""}</strong></div>
        <div><span>{l("phone")}</span><strong dir="ltr">{form.phone||"—"}</strong></div>
       </div>

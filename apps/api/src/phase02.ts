@@ -32,7 +32,17 @@ function clinicBody(b:any) {
     displayName:field(b.displayName,2,100,"DISPLAY_NAME"),clinicType,
     province:field(b.province,2,80,"PROVINCE"),city:field(b.city,2,80,"CITY"),
     district:optional(b.district,80),address:field(b.address,5,250,"ADDRESS"),
-    phone,email,licenseNumber:optional(b.licenseNumber,80),timezone:"Asia/Kabul"
+    phone,email,licenseNumber:optional(b.licenseNumber,80),
+    // A staffing target is unverified; actual dentists require authenticated
+    // invitations, credentials and provider-hour configuration.
+    ...(b.plannedDentistCount===undefined?{}:{
+      plannedDentistCount:(()=>{
+       const n=Number(b.plannedDentistCount);
+       if(!Number.isSafeInteger(n)||n<1||n>500)fail(422,"INVALID_PLANNED_DENTISTS");
+       return n;
+      })()
+    }),
+    timezone:"Asia/Kabul"
   };
 }
 function effectiveStatus(sub:any,plan:any) {

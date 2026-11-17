@@ -1,6 +1,8 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth,type NativeAccount} from "./native-auth";
+import {WorkspaceRouter} from "./native-workspace-choice";
+import {NativeClinicApp} from "./native-clinic";
 import {nativeApiHeaders,nativeJsonResponse,nativeIsDandanlinkStatus} from "./api-transport";
 import {NativeAppointmentDetails,NativeNextAppointment} from "./native-journeys";
 import {patientError} from "./patient-errors";
@@ -1237,7 +1239,7 @@ function AccountWebSection({ui,section,onBack,onProfile,registered}:{
  </CardShell></View>;
 }
 
-function PatientApp(){
+function PatientApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}){
  const native=useNativeAuth();
  const identityKey=native.account?.user.id||null;
  const patientId=native.account?.registered?identityKey:null;
@@ -1400,6 +1402,13 @@ function PatientApp(){
       <Text style={s.brandSmall}>{ui.t("intro")}</Text></View>
     </View>
     <View style={[s.row,{flexDirection:ui.flow,gap:8}]}>
+     <Pressable accessibilityRole="button"
+      accessibilityLabel={locale==="en"?"Switch patient or clinic workspace":
+       locale==="ps-AF"?"د ناروغ او کلینیک بدلول":"تغییر محیط مریض و کلینیک"}
+      onPress={()=>{void native.signOut().catch(()=>{}).finally(onChangeWorkspace)}}
+      style={s.headerAccount}>
+      <PatientIcon name="clinic" size={23} color={colors.white}/>
+     </Pressable>
      {native.account?.registered&&<Pressable onPress={()=>accountPage("notifications")}
       accessibilityRole="button" accessibilityLabel={accountWords[locale].notifications}
       style={s.headerAccount}>
@@ -1502,7 +1511,14 @@ function PatientApp(){
   </View>}
  </SafeAreaView>;
 }
-export default function App(){return <SafeAreaProvider><NativeAuthProvider><PatientApp/></NativeAuthProvider></SafeAreaProvider>}
+export default function App(){
+ return <SafeAreaProvider>
+  <WorkspaceRouter
+   patient={reset=><NativeAuthProvider><PatientApp onChangeWorkspace={reset}/></NativeAuthProvider>}
+   clinic={reset=><NativeClinicApp onChangeWorkspace={reset}/>}
+  />
+ </SafeAreaProvider>;
+}
 
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:colors.soft},
