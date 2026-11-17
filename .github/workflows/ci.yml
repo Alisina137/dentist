@@ -87,5 +87,6 @@ jobs:
           node tests/stage-l-security-integration.mjs
           node tests/clinic-phase-15-integration.mjs
           node tests/clinic-phase-16-integration.mjs
+          node tests/clinic-phase-17-integration.mjs
           NODE_ENV=test node scripts/verify-test-backup-restore.mjs
           node tests/dev-no-email-integration.mjs

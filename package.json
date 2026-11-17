@@ -25,7 +25,8 @@
     "dev:ports:sync": "node scripts/sync-dev-ports.mjs",
     "dev:auth:no-email": "node scripts/enable-dev-email-bypass.mjs",
     "qa:clinic": "node scripts/clinic-quality-preflight.mjs",
-    "qa:pilot": "node scripts/clinic-pilot-preflight.mjs"
+    "qa:pilot": "node scripts/clinic-pilot-preflight.mjs",
+    "qa:pilot:latency": "node scripts/clinic-pilot-latency.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
