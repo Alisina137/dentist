@@ -25,7 +25,7 @@ const NAV_SECTIONS:readonly Section[]=[
  {key:"billing",icon:"receipt",items:["finance","reports"]},
  {key:"operations",icon:"hospital",items:["staff","resources","services","hours"]},
  {key:"growth",icon:"chart-columns",items:["listing","notifications"]},
- {key:"settings",icon:"settings",items:["settings","security","subscription","exportData","myProfile"]}
+ {key:"settings",icon:"settings",items:["settings","quality","security","subscription","exportData","myProfile"]}
 ] as const;
 const NAV_EXPANSION_KEY="dandan.clinic.navSections";
 const sectionOf=(key:string):SectionKey|null=>
@@ -40,7 +40,7 @@ const translations:Record<string,Record<string,string>>={
   bookingRequests:"Online requests",patients:"Patients",clinical:"Clinical",finance:"Finance",
   reports:"Reports",listing:"Public listing",staff:"Staff",resources:"Chairs & rooms",
   services:"Services & pricing",hours:"Hours & holidays",notifications:"Notifications",
-  security:"Security & access",settings:"Clinic settings",subscription:"Subscription",
+  security:"Security & access",settings:"Clinic settings",quality:"Quality checks",subscription:"Subscription",
   exportData:"Export & retention",myVerification:"My credentials",myProfile:"My membership",
   workspace:"Workspace",operations:"Operations",account:"Account",
   frontDesk:"Front desk",clinicalCare:"Clinical care",billing:"Billing & reports",
@@ -67,7 +67,7 @@ const translations:Record<string,Record<string,string>>={
   bookingRequests:"درخواست‌های آنلاین",patients:"مریضان",clinical:"کلینیکی",finance:"مالی",
   reports:"گزارش‌ها",listing:"نمایش عمومی کلینیک",staff:"کارمندان",resources:"چوکی‌ها و اتاق‌ها",
   services:"خدمات و قیمت‌ها",hours:"ساعات و رخصتی‌ها",notifications:"اعلان‌ها",
-  security:"امنیت و دسترسی",settings:"تنظیمات کلینیک",subscription:"اشتراک",
+  security:"امنیت و دسترسی",settings:"تنظیمات کلینیک",quality:"بررسی کیفیت",subscription:"اشتراک",
   exportData:"صادرات و نگهداری",myVerification:"اسناد مسلکی من",myProfile:"عضویت من",
   workspace:"فضای کاری",operations:"عملیات",account:"حساب",
   frontDesk:"پذیرش",clinicalCare:"بخش کلینیکی",billing:"مالی و گزارش‌ها",
@@ -93,7 +93,7 @@ const translations:Record<string,Record<string,string>>={
   bookingRequests:"آنلاین غوښتنې",patients:"ناروغان",clinical:"کلینیکي",finance:"مالي",
   reports:"راپورونه",listing:"د کلینیک عامه پاڼه",staff:"کارکوونکي",resources:"څوکۍ او خونې",
   services:"خدمتونه او بیې",hours:"وختونه او رخصتۍ",notifications:"خبرتیاوې",
-  security:"امنیت او لاسرسی",settings:"د کلینیک تنظیمات",subscription:"ګډون",
+  security:"امنیت او لاسرسی",settings:"د کلینیک تنظیمات",quality:"د کیفیت کتنه",subscription:"ګډون",
   exportData:"صادرات او ساتنه",myVerification:"زما مسلکي اسناد",myProfile:"زما غړیتوب",
   workspace:"کاري برخه",operations:"چارې",account:"حساب",
   frontDesk:"پذیرش",clinicalCare:"کلینیکي پاملرنه",billing:"مالي چارې او راپورونه",
@@ -132,6 +132,7 @@ function navigation(space:Space):Item[]{
   {key:"hours",path:"/clinic/settings/hours",group:"operations",icon:"clock"},
   {key:"notifications",path:"/clinic/settings/notifications",group:"settings",icon:"mail"},
   {key:"security",path:"/clinic/settings/security",group:"settings",icon:"shield-check"},
+  {key:"quality",path:"/clinic/settings/quality",group:"settings",icon:"badge-check"},
   {key:"settings",path:"/clinic/settings",group:"settings",icon:"settings"},
   {key:"subscription",path:"/clinic/settings/subscription",group:"settings",icon:"credit-card"},
   {key:"exportData",path:"/clinic/settings/export",group:"settings",icon:"download"},
@@ -142,7 +143,7 @@ function navigation(space:Space):Item[]{
  const manager=space.role==="owner"||space.role==="manager";
  const wanted=manager?[
   "overview","appointments","queue","bookingRequests","patients","finance","reports",
-  "listing","staff","resources","services","hours","notifications","security",
+  "listing","staff","resources","services","hours","notifications","quality","security",
   ...(space.clinicianEnabled?["clinical"]:[]),
   ...(space.role==="owner"?["settings","exportData","subscription"]:[])
  ]:space.role==="dentist"?[
