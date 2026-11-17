@@ -1,6 +1,7 @@
 "use client";
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
-import { InlineAlert,usePreferences } from "./index";
+import { InlineAlert,usePreferences,CareIcon } from "./index";
+import {ClinicOpsBridge} from "./clinic-ops-bridge";
 import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
 import {clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
  type ClinicDateWindow} from "./clinic-scheduling-dates";
@@ -105,8 +106,8 @@ const words:Record<Lang,Record<string,string>>={
   timeBooked:"Scheduled",arrivalTime:"Checked in at",elapsed:"Elapsed",
   noShowToday:"No-shows",phoneUnverified:"Unverified number",
   noPersonalAccount:"A DandanLink patient account is not required for walk-in or phone bookings.",
-  candidateOnly:"Available times are rechecked when confirming. This is not a public booking.",noPublic:"Private clinic appointment only. Patient-facing booking is not enabled yet.",
-  deliveryNotice:"External reminders and booking requests are not enabled at this stage.",
+  candidateOnly:"Available times are rechecked when confirming. This is not a public booking.",noPublic:"Private staff calendar. Online booking requests are reviewed separately.",
+  deliveryNotice:"Notification delivery is monitored separately; queued or failed messages are not confirmed delivered.",
   clinicalNext:"Clinical encounters and dental charts are delivered in later phases.",openVisit:"Open patient visit",dentalChart:"Dental chart",
   financialNext:"The price shown is an estimate; no patient invoice has been created.",
   clinicScope:"Current clinic",loadingAccount:"Checking clinic membership…",
@@ -218,8 +219,8 @@ const words:Record<Lang,Record<string,string>>={
   timeBooked:"وقت تعیین‌شده",arrivalTime:"زمان حضور",elapsed:"زمان سپری‌شده",
   noShowToday:"غیرحاضری‌ها",phoneUnverified:"شماره تأییدنشده",
   noPersonalAccount:"مریض حضوری یا تلفنی به حساب عمومی DandanLink نیاز ندارد.",
-  candidateOnly:"وقت‌های موجود هنگام تأیید دوباره بررسی می‌شوند؛ این رزرو عمومی نیست.",noPublic:"فقط وقت خصوصی کلینیک؛ رزرو عمومی هنوز فعال نیست.",
-  deliveryNotice:"یادآوری خودکار و درخواست رزرو عمومی هنوز فعال نیست.",
+  candidateOnly:"وقت‌های موجود هنگام تأیید دوباره بررسی می‌شوند؛ این رزرو عمومی نیست.",noPublic:"تقویم کارمندان خصوصی است؛ درخواست‌های آنلاین مریضان جداگانه بررسی می‌شوند.",
+  deliveryNotice:"وضعیت ارسال اطلاعیه‌ها جداگانه ثبت می‌شود؛ پیام در صف یا ناکام به معنی تحویل نیست.",
   clinicalNext:"معاینات طبی و چارت دندان در مراحل بعدی فعال می‌شود.",openVisit:"باز کردن معاینه مریض",dentalChart:"چارت دندان",
   financialNext:"این قیمت تخمینی است؛ بل مریض ساخته نشده است.",
   clinicScope:"کلینیک فعلی",loadingAccount:"بررسی عضویت کلینیک…",
@@ -329,8 +330,8 @@ const words:Record<Lang,Record<string,string>>={
   timeBooked:"ټاکل شوی وخت",arrivalTime:"د راتګ وخت",elapsed:"تېر وخت",
   noShowToday:"نه راغلي",phoneUnverified:"ناتایید شمېره",
   noPersonalAccount:"د حضوري او ټیلیفوني لیدنو لپاره عام حساب اړین نه دی.",
-  candidateOnly:"شته وختونه د تایید پر وخت بیا کتل کېږي؛ دا عامه بکینګ نه دی.",noPublic:"دا یوازې د کلینیک لیدنه ده؛ عامه بکینګ لا نه دی فعال.",
-  deliveryNotice:"اتومات یادونې او عامه غوښتنې لا نشته.",
+  candidateOnly:"شته وختونه د تایید پر وخت بیا کتل کېږي؛ دا عامه بکینګ نه دی.",noPublic:"د کارکوونکو مهالوېش شخصي دی؛ آنلاین غوښتنې جلا کتل کېږي.",
+  deliveryNotice:"د خبرتیا د استولو حالت جلا څارل کېږي؛ په کتار کې یا ناکام پیغام نه دی رسېدلی.",
   clinicalNext:"طبي لیدنې او د غاښونو چارتونه په راتلونکو پړاوونو کې فعالیږي.",openVisit:"د ناروغ معاینه پرانیزئ",dentalChart:"د غاښونو چارټ",
   financialNext:"دا اټکلي بیه ده؛ بیل نه دی جوړ شوی.",
   clinicScope:"اوسنی کلینیک",loadingAccount:"د کلینیک غړیتوب کتل کېږي…",
@@ -668,7 +669,7 @@ function CalendarPanel({space}:{space:Space}){
     {(["todayTotal","waiting","in_treatment","completedToday"] as const).map((key,i)=>{
      const values=[overview?.todayTotal,counts.arrived||0,counts.in_treatment||0,counts.completed||0];
      return <article className="phase06-stat card" key={key}>
-      <span className="phase06-stat-symbol">{["▦","◷","✚","✓"][i]}</span>
+      <span className="phase06-stat-symbol"><CareIcon name={(["calendar","clock","dental","check"] as const)[i]} size={22}/></span>
       <div><span>{t(key)}</span><strong>{overview?values[i]:"—"}</strong></div>
      </article>;
     })}
@@ -715,6 +716,7 @@ function CalendarPanel({space}:{space:Space}){
     </div>}
    <p className="phase06-availability-disclaimer">{t("candidateNotice")}</p>
   </section>
+  <ClinicOpsBridge clinicId={space.clinicId} role={space.role} active="appointments" date={date}/>
   <section className="phase06-bottom-strip card">
    <div><h3>{t("nextBookings")}</h3><p>{t("noPublic")}</p></div>
    <a className="btn btn-secondary" href={appHref(space.clinicId,"queue")}>{t("queue")} ↗</a>
@@ -1069,6 +1071,7 @@ function QueuePanel({space}:{space:Space}){
      <a href={appHref(space.clinicId,a.id)} key={a.id}>
       {localClock(a.startAt)} · {patientDisplay(a,true)} · {a.serviceName} ↗</a>)}</div>
    </section>}
+  <ClinicOpsBridge clinicId={space.clinicId} role={space.role} active="queue" date={day}/>
   <div className="phase06-queue-foot">
    <Notice>{t("clinicalNext")} {t("deliveryNotice")}</Notice>
    <a href={appHref(space.clinicId)+"&view=day&date="+day}
