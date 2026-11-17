@@ -4,6 +4,7 @@ import {usePreferences,InlineAlert} from "./index";
 import {Shell} from "./phase03";
 import {CareIcon} from "./care-icons";
 import {clinicErrorText} from "./clinic-feedback";
+import {clinicValidDeliveryPayload,clinicSafeApiCode} from "./clinic-ops-integrity";
 import {ClinicOpsBridge} from "./clinic-ops-bridge";
 import {clinicDeliveryFiltered,clinicDeliveryStats,clinicDeliveryPage,
  type ClinicDelivery,type ClinicOpsRole} from "./clinic-ops-bridge-model";
@@ -1072,11 +1073,12 @@ function Notifications({cid}:{cid:string}){
    syncedAt:previous?.cid===cid?previous.syncedAt:null}));
   api<DeliveryRead>("/v1/booking/clinics/"+encodeURIComponent(cid)+"/notifications",
    "GET",undefined,controller.signal).then(result=>{
+   if(!clinicValidDeliveryPayload(result))throw Error("DELIVERY_RESPONSE_INVALID");
    if(!controller.signal.aborted)setSnapshot({cid,data:result,error:"",loading:false,
     syncedAt:new Date().toISOString()});
   }).catch(e=>{
    if(!controller.signal.aborted)setSnapshot({cid,data:null,
-    error:e instanceof Error?e.message:"NETWORK_UNAVAILABLE",loading:false,syncedAt:null});
+    error:clinicSafeApiCode(e instanceof Error?e.message:"NETWORK_UNAVAILABLE"),loading:false,syncedAt:null});
   });
   return()=>controller.abort();
  },[cid,revision]);
@@ -1120,7 +1122,7 @@ function Notifications({cid}:{cid:string}){
    {loading?copy.refreshing:copy.pending}
    {current?.syncedAt?" · "+copy.synced+": "+fmt(current.syncedAt,true):""}
   </p>
-  <ErrorNote message={error}/>
+  <ErrorNote message={error?clinicErrorText(error,locale as Lang):""}/>
   {loading&&!data?<Spinner/>:error?
    <button type="button" className="p15-button p15-button-secondary" onClick={reload}>{t("tryAgain")}</button>:
    data&&<>
