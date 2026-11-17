@@ -645,33 +645,92 @@ function Worklist({space}:{space:Space}){
  </div>;
 }
 function Visits({space,patientId}:{space:Space;patientId:string}){
- const {t,fmt}=useW(),base="/clinics/"+space.clinicId+"/patients/"+patientId;
+ const {t,fmt}=useW(),base="/clinics/"+encodeURIComponent(space.clinicId)+"/patients/"+encodeURIComponent(patientId);
  const {data,error,refresh}=useLoad(base+"/encounters");
  const appointmentId=typeof location!=="undefined"?new URLSearchParams(location.search).get("appointmentId"):null;
  const [reason,setReason]=useState(""),[busy,setBusy]=useState(false),[failure,setFailure]=useState("");
+ const [search,setSearch]=useState(""),[status,setStatus]=useState<"all"|"draft"|"signed">("all");
+ const [page,setPage]=useState(1);
  async function create(event:FormEvent){
-  event.preventDefault();setBusy(true);setFailure("");
-  try{const created=await call(base+"/encounters","POST",{reason,appointmentId});
+  event.preventDefault();if(busy||reason.trim().length<2)return;
+  setBusy(true);setFailure("");
+  try{const created=await call(base+"/encounters","POST",{reason:reason.trim(),appointmentId});
    location.assign(link(space.clinicId,patientId,"visits",created.id));
   }catch(e:any){setFailure(e.message);}finally{setBusy(false);}
  }
  if(error)return <ErrorBox error={error} retry={refresh}/>;
  if(!data)return <Loading/>;
+ const encounters:Array<{id:string;reason:string;status:"draft"|"signed";
+  author_name:string;created_at:string;revision:number}>=data.encounters||[];
+ const term=search.trim().toLocaleLowerCase();
+ const filtered=encounters.filter(e=>(status==="all"||e.status===status)&&
+  (!term||(e.reason+" "+e.author_name).toLocaleLowerCase().includes(term)));
+ const pages=Math.max(1,Math.ceil(filtered.length/5));
+ const safePage=Math.min(page,pages),visible=filtered.slice((safePage-1)*5,safePage*5);
  const canStart=space.role!=="assistant"||Boolean(appointmentId);
- return <div className="phase07-grid">
+ return <div className="phase07-grid clinic-phase11-records">
   <section className="card phase07-panel">
-   <div className="phase07-section"><div><span className="phase07-eyebrow">{t("record")} · <bdi dir="ltr">{data.patient.patientNumber}</bdi></span>
-    <h2>{patientName(data.patient)}</h2></div><span className="phase07-count">{data.encounters.length}</span></div>
-   {!data.encounters.length?<p className="phase07-empty">{t("noPatients")}</p>:
-    <ol className="phase07-timeline">{data.encounters.map((e:any)=><li key={e.id}>
-     <div className="phase07-datebadge">{fmt(e.created_at,{month:"short",day:"numeric"})}</div>
-     <div className="phase07-case"><div className="phase07-between"><h3>{e.reason}</h3>
-      <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
-      <div className="phase07-meta">{e.author_name} · {fmt(e.created_at)} · {t("revision")} {e.revision}</div>
-      <a className="phase07-textlink" href={link(space.clinicId,patientId,"visits",e.id)}>
-       {t("visitDetail")} →</a></div></li>)}</ol>}
+   <div className="phase07-section clinic-phase11-records-heading">
+    <div><span className="phase07-eyebrow">{t("record")} · <bdi dir="ltr">{data.patient.patientNumber}</bdi></span>
+     <h2>{patientName(data.patient)}</h2>
+     <p className="clinic-phase11-subtitle">{t("recordsIntro")}</p></div>
+    <span className="phase07-count" aria-label={t("recordsTitle")}>{encounters.length}</span>
+   </div>
+   <div className="clinic-phase11-records-toolbar">
+    <label className="clinic-phase11-search"><span>{t("recordsSearch")}</span>
+     <span className="clinic-phase11-search-input"><CareIcon name="search" size={17}/>
+      <input type="search" autoComplete="off" maxLength={120} value={search}
+       placeholder={t("recordsSearchHint")} onChange={event=>{setSearch(event.target.value);setPage(1);}}/>
+     </span>
+    </label>
+    <label className="clinic-phase11-select"><span>{t("recordsStatus")}</span>
+     <select value={status} onChange={event=>{
+      setStatus(event.target.value as "all"|"draft"|"signed");setPage(1);
+     }}><option value="all">{t("recordsAll")}</option>
+      <option value="draft">{t("recordsDrafts")}</option>
+      <option value="signed">{t("recordsSigned")}</option></select>
+    </label>
+    <button className="btn btn-secondary" type="button" onClick={refresh}>
+     <CareIcon name="activity" size={16}/>{t("recordsRefresh")}</button>
+   </div>
+   <div className="clinic-phase11-records-stats" role="group" aria-label={t("recordsTitle")}>
+    {(["all","draft","signed"] as const).map(key=><button type="button" key={key}
+     className={"clinic-phase11-records-stat"+(status===key?" is-active":"")}
+     aria-pressed={status===key} onClick={()=>{setStatus(key);setPage(1);}}>
+     <span>{t(key==="all"?"recordsAll":key==="draft"?"recordsDrafts":"recordsSigned")}</span>
+     <strong>{key==="all"?encounters.length:encounters.filter(e=>e.status===key).length}</strong>
+    </button>)}
+   </div>
+   {!visible.length?<div className="clinic-phase11-empty" role="status">
+    <CareIcon name="file" size={27}/>
+    <p>{!encounters.length?t("noPatients"):t("recordsEmpty")}</p>
+    {(search||status!=="all")&&<button type="button" className="btn btn-secondary"
+     onClick={()=>{setSearch("");setStatus("all");setPage(1);}}>
+     {t("recordsClear")}</button>}</div>:
+    <ol className="phase07-timeline clinic-phase11-record-list">
+     {visible.map(e=><li key={e.id}>
+      <div className="phase07-datebadge">{fmt(e.created_at,{month:"short",day:"numeric"})}</div>
+      <div className="phase07-case"><div className="phase07-between"><h3>{e.reason}</h3>
+       <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
+       <div className="phase07-meta">{e.author_name} · {fmt(e.created_at)} · {t("revision")} {e.revision}</div>
+       <a className="phase07-textlink" href={link(space.clinicId,patientId,"visits",e.id)}>
+        {t("recordsDetail")} <CareIcon name="arrow" size={16}/></a>
+      </div></li>)}
+    </ol>}
+   <p className="clinic-phase11-count-note" role="status" aria-live="polite">
+    {t("recordsCount")} {filtered.length?((safePage-1)*5+1):0}–{Math.min(safePage*5,filtered.length)}
+    {" "}{t("recordsOf")} {filtered.length}. {t("recordsLimit")}
+   </p>
+   {filtered.length>5&&<nav className="clinic-phase11-pagination" aria-label={t("recordsPage")}>
+    <button type="button" className="btn btn-secondary" disabled={safePage<=1}
+     onClick={()=>setPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+    <span>{t("page")} {safePage}/{pages}</span>
+    <button type="button" className="btn btn-secondary" disabled={safePage>=pages}
+     onClick={()=>setPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+   </nav>}
   </section>
-  <aside className="card phase07-panel phase07-sidebar">
+  <aside className="card phase07-panel phase07-sidebar clinic-phase11-new-record">
+   <span className="clinic-phase11-kicker"><CareIcon name="clipboard" size={17}/>{t("recordsNew")}</span>
    <h2>{t("newVisit")}</h2><p className="muted">{t("newVisitHint")}</p>
    {canStart?<form className="phase07-form" onSubmit={create}>
     {appointmentId&&<div className="clinic-phase09-visit-origin">
@@ -682,12 +741,17 @@ function Visits({space,patientId}:{space:Space;patientId:string}){
       <CareIcon name="calendar" size={16}/>{t("handoffOpenAppointment")}</a>
      <p>{t("handoffNeedsVerification")}</p>
     </div>}
-    <label className="field"><span>{t("complaint")} *</span><textarea value={reason} required maxLength={2000}
-     rows={4} onChange={e=>setReason(e.target.value)}/></label>
-    <button className="btn btn-primary" disabled={busy||reason.trim().length<2}>
+    <label className="field"><span>{t("complaint")} *</span>
+     <textarea value={reason} required minLength={2} maxLength={2000} rows={4}
+      onChange={e=>setReason(e.target.value)}/></label>
+    <button type="submit" className="btn btn-primary" disabled={busy||reason.trim().length<2}>
      {busy?t("busy"):t("newVisit")}</button>
     {failure&&<ErrorBox error={failure}/>}
    </form>:<Banner kind="warning">{t("assistantHint")}</Banner>}
+   <div className="clinic-phase11-communication-hint">
+    <CareIcon name="shield-check" size={17}/>
+    <p>{t("communicationNoSend")}</p>
+   </div>
   </aside>
  </div>;
 }
