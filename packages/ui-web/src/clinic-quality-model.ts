@@ -30,7 +30,8 @@ export function clinicQualityChecks(summary:QualitySnapshot,cid:string):QualityC
  return [
   {id:"services",state:operations?op(operations.services)!==null&&operations.services>0?"pass":"action":"unknown",
    current:op(operations?.services),target:1,href:path("/clinic/services",cid)},
-  {id:"resources",state:operations?op(operations.chairs)!==null&&operations.chairs>0?"pass":"action":"unknown",
+  {id:"resources",state:operations?
+    summary.operations?.checklist.find(item=>item.key==="chair")?.done===true?"pass":"action":"unknown",
    current:op(operations?.chairs),target:1,href:path("/clinic/resources",cid)},
   {id:"clinicHours",state:operations?op(operations.openDays)!==null&&operations.openDays>0?"pass":"action":"unknown",
    current:op(operations?.openDays),target:1,href:path("/clinic/settings/hours",cid)},
