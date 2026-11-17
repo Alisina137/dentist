@@ -146,7 +146,7 @@ test("Clinic Phase 15: network reconnection is read-only, explicit, accessible a
   '@media(max-width:560px)','@media(prefers-reduced-motion:reduce)',
   ':focus-visible','overflow-wrap:anywhere'
  ])assert.ok(css.includes(s),s);
- assert.ok(layout.includes('import "./clinic-cross-workspaces.css";\nimport "./clinic-release-hardening.css";'));
+ assert.ok(layout.includes('import "./clinic-quality.css";\nimport "./clinic-release-hardening.css";'));
  for(const area of ["admin-web","patient-web"])
   assert.ok(!read("apps/"+area+"/app/layout.tsx").includes("clinic-release-hardening.css"));
 });
