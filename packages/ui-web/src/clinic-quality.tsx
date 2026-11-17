@@ -26,7 +26,7 @@ const words={
   setup:"Clinic configuration",setupHelp:"Actual data returned by the clinic's private API.",
   services:"Active services",resources:"Active dental chairs",
   clinicHours:"Clinic open days",dentistHours:"Dentists with configured hours",
-  staffMfa:"Active staff using MFA",email:"Email delivery channel",
+  staffMfa:"Active staff without MFA",email:"Email delivery channel",
   resourcesHelp:"Chairs are needed for procedures requiring a chair.",
   clinicHoursHelp:"Configure operating hours before accepting scheduled visits.",
   staffMfaHelp:"Review MFA for active staff. This is guidance; the server enforces protected operations.",
@@ -69,7 +69,7 @@ const words={
   setup:"تنظیمات کلینیک",setupHelp:"اطلاعات واقعی از سرور خصوصی کلینیک دریافت می‌شود.",
   services:"خدمات فعال",resources:"چوکی‌های فعال",
   clinicHours:"روزهای کاری کلینیک",dentistHours:"داکتران دارای ساعات کاری",
-  staffMfa:"کارمندان فعال دارای تأیید دو مرحله‌ای",email:"کانال ارسال ایمیل",
+  staffMfa:"کارمندان فعال بدون تأیید دو مرحله‌ای",email:"کانال ارسال ایمیل",
   resourcesHelp:"برای خدمات نیازمند چوکی باید چوکی موجود باشد.",
   clinicHoursHelp:"پیش از پذیرش نوبت، ساعات کاری را تنظیم کنید.",
   staffMfaHelp:"وضعیت تأیید دو مرحله‌ای کارمندان را ببینید. صلاحیت عمل توسط سرور کنترول می‌شود.",
@@ -112,7 +112,7 @@ const words={
   setup:"د کلینیک تنظیمات",setupHelp:"رښتینې شمېرې د کلینیک له شخصي سرور څخه دي.",
   services:"فعال خدمتونه",resources:"فعالې څوکۍ",
   clinicHours:"د کلینیک کاري ورځې",dentistHours:"د ډاکټرانو کاري وختونه",
-  staffMfa:"فعال کارکوونکي د دوه پړاوه تایید سره",email:"د ایمیل کانال",
+  staffMfa:"فعال کارکوونکي بې له دوه پړاوه تاییده",email:"د ایمیل کانال",
   resourcesHelp:"هغه خدمتونه چې څوکۍ غواړي، څوکۍ ته اړتیا لري.",
   clinicHoursHelp:"تر لیدنو مخکې د کلینیک کاري وختونه تنظیم کړئ.",
   staffMfaHelp:"د فعالو کارکوونکو دوه پړاوه تایید وګورئ؛ سرور د لاسرسي اجازه ټاکي.",
@@ -280,7 +280,7 @@ export function ClinicQualityPortal(){
         check.state==="action"?"about":"clock"} size={20}/></span>
       <div><h3>{label(check)}</h3><p>{help(check)}</p>
        {check.current!==null&&<small>{copy.count}: {check.current}
-        {check.id==="staffMfa"? " "+copy.action:""}</small>}</div>
+        </small>}</div>
       <div className="clinic-quality-check-actions">
        <QualityBadge state={check.state} text={copy[check.state==="pass"?
         "complete":check.state==="action"?"notConfigured":"unknown"]}/>
