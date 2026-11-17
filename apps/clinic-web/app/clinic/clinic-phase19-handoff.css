@@ -1,0 +1,83 @@
+/* Clinic improvement Phase 19: signed evidence remains external; this is a technical observation. */
+.clinic-persistent-shell .clinic-phase19-handoff{
+ display:grid;gap:15px;min-width:0;
+ background:linear-gradient(116deg,#f3f9ff 0%,#fff 54%,#f7fbff 100%);
+ border:1px solid #cde1f0;border-radius:18px;
+ box-shadow:0 7px 22px rgba(20,72,108,.06);
+ padding:clamp(17px,2.6vw,26px);
+}
+.clinic-persistent-shell .clinic-phase19-handoff-heading{
+ display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap;
+}
+.clinic-persistent-shell .clinic-phase19-handoff-heading>div{flex:1 1 320px;min-width:0}
+.clinic-persistent-shell .clinic-phase19-eyebrow{
+ display:inline-flex;align-items:center;gap:7px;
+ color:#236c98;font-size:11px;font-weight:850;letter-spacing:.035em;
+}
+.clinic-persistent-shell .clinic-phase19-handoff h2{
+ margin:7px 0;font-size:clamp(18px,2vw,25px);letter-spacing:-.02em;color:#193e5c;
+}
+.clinic-persistent-shell .clinic-phase19-handoff-heading p,
+.clinic-persistent-shell .clinic-phase19-privacy,
+.clinic-persistent-shell .clinic-phase19-hint{
+ margin:0;color:#55768e;font-size:12px;line-height:1.8;max-width:850px;
+}
+.clinic-persistent-shell .clinic-phase19-no-go{
+ display:inline-flex;gap:6px;align-items:center;justify-content:center;
+ border:1px solid #f0c3b7;border-radius:10px;
+ background:#fff3ef;color:#ac3e2d;font-weight:900;font-size:12px;
+ padding:9px 12px;min-height:40px;
+}
+.clinic-persistent-shell .clinic-phase19-warning{
+ padding:12px 14px;border-radius:12px;border:1px solid #ebc4b5;
+ color:#8b352b;background:#fff6f2;font-size:12px;line-height:1.7;margin:0;
+}
+.clinic-persistent-shell .clinic-phase19-status{
+ display:flex;align-items:center;gap:9px;
+ border-radius:11px;padding:12px 14px;font-size:12px;font-weight:760;line-height:1.7;
+ background:#fff6eb;color:#8b582d;border:1px solid #e9d3b4;
+}
+.clinic-persistent-shell .clinic-phase19-status.is-ready{
+ color:#225e69;border-color:#b8dfd9;background:#edf9f6;
+}
+.clinic-persistent-shell .clinic-phase19-facts{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+}
+.clinic-persistent-shell .clinic-phase19-facts>div{
+ display:flex;flex-direction:column;gap:9px;padding:15px;
+ border:1px solid #d5e6f1;background:#fff;border-radius:12px;min-width:0;
+}
+.clinic-persistent-shell .clinic-phase19-facts span{
+ color:#54758b;font-size:11px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase19-facts strong{
+ color:#1b5575;font-size:25px;line-height:1.1;
+}
+.clinic-persistent-shell .clinic-phase19-notice{
+ margin:0;color:#85521c;background:#fff9ec;border:1px solid #f2dcaf;
+ border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase19-actions{
+ display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.clinic-persistent-shell .clinic-phase19-actions .btn{
+ min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+ gap:8px;font-size:12px;max-width:100%;
+}
+.clinic-persistent-shell .clinic-phase19-actions .btn:focus-visible{
+ outline:3px solid #2676aa;outline-offset:3px;
+}
+.clinic-persistent-shell .clinic-phase19-actions .btn:disabled{
+ cursor:not-allowed;opacity:.58;
+}
+@media(max-width:600px){
+ .clinic-persistent-shell .clinic-phase19-facts{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .clinic-phase19-actions .btn{
+  flex:1 1 200px;white-space:normal;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-phase19-handoff *{transition:none!important;animation:none!important}
+}
