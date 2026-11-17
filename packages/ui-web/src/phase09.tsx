@@ -2,6 +2,8 @@
 import React,{useEffect,useMemo,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {Shell} from "./phase03";
+import {CareIcon} from "./care-icons";
+import {clinicErrorText} from "./clinic-feedback";
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
 type Space={clinicId:string;clinicName:string;role:Role;membershipId:string;clinicianEnabled:boolean;clinicStatus:string;capabilities:string[]};
@@ -69,7 +71,27 @@ const translations:Record<Language,Record<string,string>>={
  statusLabel:"Plan status",warning:"Clinical care must be based on professional judgment, not inferred automatically.",
  consentHistory:"Consent and withdrawal history",reasonPlaceholder:"Provide a clear clinical reason (at least 10 characters).",
  signatureNote:"In-person attestation recorded by authorized clinician; no digital signature is created.",
- stageNotes:"Stages are version-bound. Previous progress remains auditable after revision."
+ stageNotes:"Stages are version-bound. Previous progress remains auditable after revision.",
+ workspaceTitle:"Treatment workspace",workspaceIntro:"Versioned care plans, clinical evidence, consent and costs in one secure workspace.",
+ workspaceSteps:"Clinical workflow",workspaceDraft:"Draft plan",workspaceProposal:"Propose to patient",
+ workspaceConsent:"Witness consent",workspaceCare:"Document performed care",
+ workspaceEnd:"Close completed plan",workspaceSafeguard:"Plans do not automatically diagnose, perform procedures, release records, create invoices or record payment.",
+ workspaceShortcuts:"Patient care shortcuts",workspaceChart:"Dental chart",workspaceVisits:"Clinical visits",
+ workspaceAll:"All plans",workspaceSelected:"Plans in current filter",workspaceNew:"Create draft plan",
+ workspaceNoMatch:"No plans match the current server filter. Try another status or search.",
+ workspaceClear:"Clear search",workspaceReset:"Show all plans",workspaceRequested:"Search title",
+ workspaceStatus:"Plan status",workspaceActivePlan:"Current treatment stage",
+ workspaceCompletedStages:"Completed stages",workspaceConsentState:"Version-specific consent",
+ workspaceNext:"Next action",workspaceReviewConsent:"Review patient consent",
+ workspaceReviewStages:"Review clinical stages",workspaceReviewEstimate:"Review estimate",
+ workspaceReviewHistory:"Audit history",workspacePlanVersion:"Current plan version",
+ workspaceUnsafe:"Never mark a stage complete without a matching performed procedure in a signed clinical encounter.",
+ workspaceLinkVisit:"Open clinical encounters",workspaceProgress:"Treatment progress",
+ workspaceNoConsent:"Consent must be recorded for this specific version before performing and completing stages.",
+ workspaceConsentActive:"Consent recorded for this version. Verify it remains applicable before care.",
+ workspacePatientPrivate:"Private to clinic; not released to patient app.",
+ workspaceRevision:"Changes create an auditable new version and require new consent.",
+ workspaceFilterHint:"Search applies only to the selected patient and your assigned plans.",
  },
  "fa-AF":{
  treatments:"پلان‌های تداوی",billing:"حساب مریض",tagline:"پلان داکتر، رضایت، مراحل انجام‌شده و برآورد هزینه",
@@ -114,7 +136,27 @@ const translations:Record<Language,Record<string,string>>={
  warning:"تداوی براساس قضاوت داکتر انجام می‌شود، نه تشخیص خودکار.",
  consentHistory:"تاریخچه رضایت و لغو",reasonPlaceholder:"دلیل روشن بنویسید (حداقل ۱۰ حرف).",
  signatureNote:"ثبت رضایت حضوری توسط داکتر؛ امضای دیجیتال ایجاد نمی‌شود.",
- stageNotes:"مراحل مربوط به نسخه هستند و تغییرات تاریخچه را پاک نمی‌کنند."
+ stageNotes:"مراحل مربوط به نسخه هستند و تغییرات تاریخچه را پاک نمی‌کنند.",
+ workspaceTitle:"بخش پلان تداوی",workspaceIntro:"پلان نسخه‌دار، شواهد کلینیکی، رضایت و هزینه در یک بخش امن.",
+ workspaceSteps:"مراحل کار کلینیکی",workspaceDraft:"طرح اولیۀ پلان",workspaceProposal:"پیشنهاد به مریض",
+ workspaceConsent:"رضایت با شاهد",workspaceCare:"ثبت خدمات انجام‌شده",workspaceEnd:"بستن پلان تکمیل‌شده",
+ workspaceSafeguard:"پلان به‌طور خودکار تشخیص، عملیه، نشر پرونده، بل یا پرداخت ثبت نمی‌کند.",
+ workspaceShortcuts:"راه‌های مراقبت",workspaceChart:"چارت دندان",workspaceVisits:"معاینات کلینیکی",
+ workspaceAll:"تمام پلان‌ها",workspaceSelected:"پلان‌های فیلترشده",workspaceNew:"ایجاد پلان اولیه",
+ workspaceNoMatch:"پلان مطابق فیلتر سرور پیدا نشد. حالت یا جستجو را تغییر دهید.",
+ workspaceClear:"پاک‌کردن جستجو",workspaceReset:"نمایش تمام پلان‌ها",workspaceRequested:"جستجوی عنوان",
+ workspaceStatus:"وضعیت پلان",workspaceActivePlan:"مرحلۀ فعلی تداوی",
+ workspaceCompletedStages:"مراحل تکمیل‌شده",workspaceConsentState:"رضایت همین نسخه",
+ workspaceNext:"اقدام بعدی",workspaceReviewConsent:"بررسی رضایت مریض",
+ workspaceReviewStages:"بررسی مراحل کلینیکی",workspaceReviewEstimate:"بررسی برآورد",
+ workspaceReviewHistory:"تاریخچۀ فعالیت",workspacePlanVersion:"نسخۀ فعلی",
+ workspaceUnsafe:"بدون عملیه واقعی ثبت‌شده در معاینۀ امضاشده، مرحله را تکمیل نکنید.",
+ workspaceLinkVisit:"بازکردن معاینات",workspaceProgress:"پیشرفت تداوی",
+ workspaceNoConsent:"پیش از انجام و تکمیل مراحل، رضایت همین نسخه لازم است.",
+ workspaceConsentActive:"رضایت این نسخه ثبت شده؛ اعتبار آن را پیش از تداوی بررسی کنید.",
+ workspacePatientPrivate:"پروندۀ خصوصی کلینیک؛ هنوز به اپ مریض نشر نشده است.",
+ workspaceRevision:"هر تغییر یک نسخه قابل بررسی می‌سازد و رضایت تازه لازم دارد.",
+ workspaceFilterHint:"جستجو فقط پلان‌های این مریض و داکتر مربوط را دربر می‌گیرد.",
  },
  "ps-AF":{
  treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",tagline:"د ډاکټر وړاندیزونه، رضایت، پړاوونه او لګښت",
@@ -159,7 +201,27 @@ const translations:Record<Language,Record<string,string>>={
  warning:"درملنه د ډاکټر له ارزونې سره کېږي، نه اتومات تشخیص.",
  consentHistory:"د رضایت تاریخ",reasonPlaceholder:"روښانه دلیل ولیکئ (لږ تر لږه ۱۰ توري).",
  signatureNote:"دا حضوري رضایت ثبت دی، برېښنايي لاسلیک نه دی.",
- stageNotes:"پړاوونه د نسخې پورې تړلي دي او تاریخ نه پاکوي."
+ stageNotes:"پړاوونه د نسخې پورې تړلي دي او تاریخ نه پاکوي.",
+ workspaceTitle:"د درملنې برخه",workspaceIntro:"نسخه لرونکي پلانونه، طبي شواهد، رضایت او لګښتونه په خوندي برخه کې.",
+ workspaceSteps:"د کلینیکي کار پړاوونه",workspaceDraft:"د پلان مسوده",workspaceProposal:"ناروغ ته وړاندیز",
+ workspaceConsent:"د شاهد رضایت",workspaceCare:"د ترسره شوې درملنې ثبت",
+ workspaceEnd:"بشپړ پلان تړل",workspaceSafeguard:"پلان په خپله تشخیص، پروسه، د ریکارډ خپرېدل، بیل یا تادیه نه ثبتوي.",
+ workspaceShortcuts:"د درملنې لارې",workspaceChart:"د غاښونو چارټ",workspaceVisits:"کلینیکي معاینې",
+ workspaceAll:"ټول پلانونه",workspaceSelected:"د دې چاڼ پلانونه",workspaceNew:"د پلان مسوده جوړه کړئ",
+ workspaceNoMatch:"له سرور څخه په دې چاڼ کې پلان نشته. حالت یا پلټنه بدله کړئ.",
+ workspaceClear:"پلټنه پاکه کړئ",workspaceReset:"ټول پلانونه وښایئ",workspaceRequested:"د نوم پلټنه",
+ workspaceStatus:"د پلان حالت",workspaceActivePlan:"د درملنې اوسنی پړاو",
+ workspaceCompletedStages:"بشپړ پړاوونه",workspaceConsentState:"د همدې نسخې رضایت",
+ workspaceNext:"راتلونکی کار",workspaceReviewConsent:"د ناروغ رضایت وګورئ",
+ workspaceReviewStages:"کلینیکي پړاوونه وګورئ",workspaceReviewEstimate:"اټکل وګورئ",
+ workspaceReviewHistory:"تاریخچه وګورئ",workspacePlanVersion:"اوسنۍ نسخه",
+ workspaceUnsafe:"بې له لاسلیک شوې کلینیکي معاینې او ثبت شوې پروسې هېڅ پړاو مه بشپړوئ.",
+ workspaceLinkVisit:"کلینیکي معاینې پرانیزئ",workspaceProgress:"د درملنې پرمختګ",
+ workspaceNoConsent:"د پړاو له پیل او بشپړېدو مخکې د همدې نسخې رضایت اړین دی.",
+ workspaceConsentActive:"د دې نسخې رضایت ثبت دی؛ تر درملنې مخکې یې اعتبار وګورئ.",
+ workspacePatientPrivate:"د کلینیک شخصي ریکارډ؛ د ناروغ اپ ته نه دی خپور شوی.",
+ workspaceRevision:"هر بدلون نوې د پلټنې نسخه جوړوي او تازه رضایت غواړي.",
+ workspaceFilterHint:"پلټنه یوازې د همدې ناروغ او اړوند ډاکټر پلانونه پوښي.",
  }
 };
 function useWords(){
@@ -172,8 +234,8 @@ function useWords(){
  const money=(v:number)=>new Intl.NumberFormat(lang,{maximumFractionDigits:0}).format(v);
  return {t,date,money,lang};
 }
-async function req(path:string,method="GET",body?:unknown):Promise<any>{
- const r=await fetch(API+"/v1/treatments"+path,{method,credentials:"include",cache:"no-store",
+async function req(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const r=await fetch(API+"/v1/treatments"+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"Content-Type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -181,13 +243,23 @@ async function req(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useLoad(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState(""),[tick,setTick]=useState(0);
+ // Bind sensitive data to the exact clinic/patient/query identity. Abort
+ // in-flight requests when a different case or tab becomes active.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ }),[tick,setTick]=useState(0);
  const refresh=()=>setTick(x=>x+1);
- useEffect(()=>{let active=true;setData(null);setError("");
-  if(path)req(path).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message);});
-  return()=>{active=false;};
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  const controller=new AbortController();setSnapshot({path,data:null,error:""});
+  req(path,"GET",undefined,controller.signal)
+   .then(x=>{if(!controller.signal.aborted)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(!controller.signal.aborted)setSnapshot({path,data:null,
+    error:e instanceof Error?e.message:"NETWORK_ERROR"});});
+  return()=>controller.abort();
  },[path,tick]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const base=(c:string,p:string)=>"/clinics/"+c+"/patients/"+p;
 const root=(c:string,p:string)=>"/clinic/patients/"+p+"/treatments?clinic="+encodeURIComponent(c);
@@ -197,8 +269,8 @@ function Notice({children,kind="info"}:{children:ReactNode;kind?:"info"|"warning
 }
 function Loading(){const {t}=useWords();return <div className="card phase09-loading"><span className="phase05-spinner"/>{t("loading")}</div>;}
 function ErrorBox({code,retry}:{code:string;retry?:()=>void}){
- const {t}=useWords();return <div className="card phase09-error" role="alert">
-  <strong>{t("error")}</strong><p>{code}</p>
+ const {t,lang}=useWords();return <div className="card phase09-error" role="alert">
+  <strong>{t("error")}</strong><p>{clinicErrorText(code,lang)}</p>
   {retry&&<button className="btn btn-secondary" onClick={retry}>{t("retry")}</button>}</div>;
 }
 function Status({name}:{name:string}){const {t}=useWords();return <span className={"phase09-status status-"+name}>{t(name)}</span>;}
