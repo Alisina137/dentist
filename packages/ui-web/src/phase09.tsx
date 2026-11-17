@@ -312,6 +312,24 @@ export function TreatmentPortal({view}:{view:"plans"|"detail"}){
    </div>
   </header>
   <PatientTabs space={space} pid={pid}/>
+  <section className="clinic-phase10-treatment-intro" aria-label={t("workspaceTitle")}>
+   <div className="clinic-phase10-treatment-title">
+    <span className="clinic-phase10-treatment-kicker"><CareIcon name="clipboard" size={18}/>{t("workspaceTitle")}</span>
+    <p>{t("workspaceIntro")}</p>
+   </div>
+   <div className="clinic-phase10-treatment-quicklinks" aria-label={t("workspaceShortcuts")}>
+    <a href={"/clinic/patients/"+encodeURIComponent(pid)+"/chart?clinic="+encodeURIComponent(space.clinicId)}>
+     <CareIcon name="dental" size={17}/>{t("workspaceChart")}</a>
+    <a href={"/clinic/patients/"+encodeURIComponent(pid)+"/visits?clinic="+encodeURIComponent(space.clinicId)}>
+     <CareIcon name="clipboard" size={17}/>{t("workspaceVisits")}</a>
+   </div>
+   <ol className="clinic-phase10-treatment-steps" aria-label={t("workspaceSteps")}>
+    {(["workspaceDraft","workspaceProposal","workspaceConsent","workspaceCare","workspaceEnd"] as const).map((key,i)=>
+     <li key={key}><span>{i+1}</span><strong>{t(key)}</strong></li>)}
+   </ol>
+   <p className="clinic-phase10-treatment-note" role="note">
+    <CareIcon name="shield-check" size={17}/>{t("workspaceSafeguard")}</p>
+  </section>
   {view==="plans"?<Plans space={space} pid={pid}/>:<PlanDetail space={space} pid={pid} id={planId}/>}
   <footer className="phase09-footer">{t("warning")} · {t("completionWarning")}</footer>
  </div></Shell>;
@@ -429,22 +447,46 @@ function PlanEditor({space,pid,catalog,onCancel,original,onSaved}:{space:Space;p
 }
 function Plans({space,pid}:{space:Space;pid:string}){
  const {t,date,money}=useWords();
- const [tab,setTab]=useState("draft"),[search,setSearch]=useState(""),[query,setQuery]=useState(""),[page,setPage]=useState(1);
- const [editing,setEditing]=useState(false),[error,setError]=useState("");
+ const [tab,setTab]=useState("all"),[search,setSearch]=useState(""),[query,setQuery]=useState(""),[page,setPage]=useState(1);
+ const [editing,setEditing]=useState(false),[error,setError]=useState(""),[ready,setReady]=useState(false);
+ useEffect(()=>{
+  const params=new URLSearchParams(location.search),raw=params.get("status");
+  if(["draft","proposed","active","completed","discontinued","all"].includes(raw||""))
+   setTab(raw!);
+  const term=(params.get("search")||"").trim().slice(0,100);setSearch(term);setQuery(term);
+  const requested=Number(params.get("page"));
+  if(Number.isInteger(requested)&&requested>0&&requested<=10000)setPage(requested);
+  setReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const params=new URLSearchParams(location.search);
+  params.set("clinic",space.clinicId);
+  for(const [key,value] of Object.entries({status:tab,search:query,page:String(page)})){
+   if((key==="status"&&value==="all")||(key==="search"&&!value)||
+    (key==="page"&&value==="1"))params.delete(key);
+   else params.set(key,value);
+  }
+  history.replaceState(null,"",location.pathname+"?"+params.toString());
+ },[ready,space.clinicId,tab,query,page]);
  const qs=new URLSearchParams({status:tab,search:query,page:String(page)});
- const {data,error:loadError,refresh}=useLoad(base(space.clinicId,pid)+"/plans?"+qs);
+ const {data,error:loadError,refresh}=useLoad(ready?base(space.clinicId,pid)+"/plans?"+qs:null);
  const catalog=useLoad(editing?base(space.clinicId,pid)+"/catalog":null);
  const tabs=["draft","proposed","active","completed","discontinued","all"];
- return <div className="phase09-stack">
+ return <div className="phase09-stack clinic-phase10-treatment-list">
   <section className="card phase09-toolbar">
    <div className="phase09-filters">{tabs.map(x=><button type="button" key={x} aria-pressed={tab===x}
     onClick={()=>{setTab(x);setPage(1);}}>{t(x)}</button>)}</div>
    <div className="phase09-toolbar-actions">
     <form onSubmit={e=>{e.preventDefault();setQuery(search);setPage(1);}}>
-     <input aria-label={t("search")} value={search} placeholder={t("search")} maxLength={100}
+     <input aria-label={t("search")} value={search} placeholder={t("workspaceRequested")} maxLength={100}
       onChange={e=>setSearch(e.target.value)}/>
-     <button type="submit" className="btn btn-secondary">{t("search")}</button></form>
-    <button type="button" className="btn btn-primary" onClick={()=>setEditing(true)}>+ {t("newPlan")}</button>
+     <button type="submit" className="btn btn-secondary">
+      <CareIcon name="search" size={17}/>{t("search")}</button></form>
+    {query&&<button type="button" className="btn btn-secondary"
+     onClick={()=>{setSearch("");setQuery("");setPage(1);}}>{t("workspaceClear")}</button>}
+    <button type="button" className="btn btn-primary" onClick={()=>setEditing(true)}>
+     <CareIcon name="plus" size={17}/>{t("newPlan")}</button>
    </div>
   </section>
   {editing?<section className="card phase09-panel">
@@ -456,10 +498,15 @@ function Plans({space,pid}:{space:Space;pid:string}){
     <section className="card phase09-panel">
      <div className="phase09-section-heading"><div><span className="phase09-kicker">{t("plans")}</span>
       <h2>{t(tab)}</h2></div><button className="btn btn-secondary" onClick={refresh}>{t("refresh")} ↻</button></div>
-     {!data.plans.length?<div className="phase09-empty">{t("empty")}</div>:
+     <p className="clinic-phase10-treatment-filterhint">{t("workspaceFilterHint")}</p>
+     {!data.plans.length?<div className="clinic-phase10-treatment-empty" role="status">
+      <CareIcon name="search" size={24}/><p>{t("workspaceNoMatch")}</p>
+      <button type="button" className="btn btn-secondary"
+       onClick={()=>{setTab("all");setSearch("");setQuery("");setPage(1);}}>
+       {t("workspaceReset")}</button></div>:
       <div className="phase09-plan-list">{data.plans.map((p:any)=><a key={p.id}
        className="phase09-plan-row" href={detail(space.clinicId,pid,p.id)}>
-       <div className="phase09-plan-icon">✚</div><div className="phase09-plan-main"><h3>{p.title}</h3>
+       <div className="phase09-plan-icon"><CareIcon name="clipboard" size={22}/></div><div className="phase09-plan-main"><h3>{p.title}</h3>
         <p>{p.clinician_name} · {t("version")} {p.version} · {t("lastUpdated")} {date(p.updated_at)}</p>
         <div className="phase09-plan-tags"><Status name={p.status}/><span>{p.stage_count} {t("stages")}</span>
          <span>{p.expected_sessions} {t("sessions")}</span></div>
@@ -468,7 +515,7 @@ function Plans({space,pid}:{space:Space;pid:string}){
        </a>)}</div>}
      <div className="phase09-pagination"><button className="btn btn-secondary" type="button"
       disabled={page<=1} onClick={()=>setPage(x=>x-1)}>{t("previous")}</button>
-      <strong>{page}</strong><button className="btn btn-secondary" disabled={!data.hasMore}
+      <strong dir="auto">{t("page")} {page}</strong><button className="btn btn-secondary" disabled={!data.hasMore}
       onClick={()=>setPage(x=>x+1)}>{t("next")}</button></div>
     </section>}
    <Notice kind="warning">{t("patientFacing")} {t("completionWarning")}</Notice>
