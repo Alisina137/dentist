@@ -98,7 +98,9 @@ test("Clinic PH04: page and patient/financial/clinical records are isolated acro
   assert.ok(module.includes('snapshot.path===path?snapshot.data:null'),name+" data binding");
   assert.ok(module.includes('snapshot.path===path?snapshot.error:""'),name+" error binding");
   assert.ok(module.includes('setSnapshot({path,data:null,error:""})'),name+" clear old request");
-  assert.ok(module.includes('return()=>{'),name+" async cancellation");
+  assert.ok(module.includes('return()=>{')||
+   module.includes('return()=>controller.abort();'),
+   name+" async cancellation");
  }
  assert.ok(operations.includes('if(!path){setSnapshot({path:null,data:null,error:""});return;}'));
  assert.ok(clinical.includes('if(!path){setSnapshot({path:null,data:null,error:""});return;}'));
