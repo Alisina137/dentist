@@ -4,6 +4,7 @@ import {CareIcon,usePreferences,InlineAlert} from "./index";
 import {useClinicWorkspaceSession} from "./clinic-shell-context";
 import {ClinicLoadingState} from "./clinic-feedback";
 import {ClinicPilotFeedback} from "./clinic-pilot-feedback";
+import {ClinicPilotHandoff} from "./clinic-pilot-handoff";
 import {pilotSignal,pilotReviewControls,pilotControlLabel,pilotAuditSignal,
  type PilotSignal} from "./clinic-pilot-readiness-model";
 import {clinicQualityChecks,clinicQualitySummary,clinicQualityOverview,clinicQualityStatus,
@@ -347,6 +348,12 @@ export function ClinicQualityPortal(){
    <p className="clinic-phase16-gate-disclaimer">
     <CareIcon name="about" size={16}/>{copy.pilotNoAction}</p>
   </section>
+  <ClinicPilotHandoff input={{
+   clinicId:cid,qualityClinicId:current?.key||null,pilotClinicId:currentPilot?.key||null,
+   qualityCheckedAt:current?.syncedAt||null,pilotCheckedAt:currentPilot?.checkedAt||null,
+   pilotSignal:currentPilot?.signal||"unverified",
+   states:current?.state||null,checks,audit
+  }} onRefresh={()=>setRevision(v=>v+1)}/>
   <ClinicPilotFeedback clinicId={cid} role={space.role as "owner"|"manager"}
    mfaEnabled={session.ctx.mfaEnabled}/>
   <section className="clinic-quality-metrics" aria-label={copy.overview}>

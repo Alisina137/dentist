@@ -89,5 +89,6 @@ jobs:
           node tests/clinic-phase-16-integration.mjs
           node tests/clinic-phase-17-integration.mjs
           node tests/clinic-phase-18-integration.mjs
+          node scripts/clinic-pilot-handoff.mjs
           NODE_ENV=test node scripts/verify-test-backup-restore.mjs
           node tests/dev-no-email-integration.mjs
