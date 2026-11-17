@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import React, { useEffect, useState, useRef, type FormEvent, type ReactNode } from "react";
 import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls, CareIcon, type CareIconName } from "./index";
 import { ClinicOperationsOverview } from "./clinic-operations-dashboard";
 import { Phase02Portal } from "./phase02";
@@ -500,9 +500,37 @@ function StaffReviewDialog({title,description,checked,onChecked,onCancel,onConfi
  onChecked:(value:boolean)=>void;onCancel:()=>void;onConfirm:()=>void;
  busy:boolean;confirmText:string;children:ReactNode}){
  const {t}=useLang();
+ const dialogRef=useRef<HTMLElement>(null);
+ useEffect(()=>{
+  const opener=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  const first=dialogRef.current?.querySelector<HTMLButtonElement>(".clinic-phase13-dialog-close");
+  first?.focus();
+  return()=>{
+   document.body.style.overflow=previousOverflow;
+   if(opener?.isConnected)opener.focus();
+  };
+ },[]);
  useEffect(()=>{
   const handler=(event:KeyboardEvent)=>{
    if(event.key==="Escape"&&!busy)onCancel();
+   if(event.key!=="Tab")return;
+   const root=dialogRef.current;
+   if(!root)return;
+   const focusable=Array.from(root.querySelectorAll<HTMLElement>(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+   )).filter(el=>el.getClientRects().length>0);
+   if(!focusable.length){event.preventDefault();root.focus();return;}
+   if(!root.contains(document.activeElement)){
+    event.preventDefault();focusable[0].focus();return;
+   }
+   const first=focusable[0],last=focusable[focusable.length-1];
+   if(event.shiftKey&&document.activeElement===first){
+    event.preventDefault();last.focus();
+   }else if(!event.shiftKey&&document.activeElement===last){
+    event.preventDefault();first.focus();
+   }
   };
   document.addEventListener("keydown",handler);
   return()=>document.removeEventListener("keydown",handler);
@@ -510,16 +538,16 @@ function StaffReviewDialog({title,description,checked,onChecked,onCancel,onConfi
  return <div className="clinic-phase13-dialog-backdrop" onMouseDown={event=>{
   if(!busy&&event.currentTarget===event.target)onCancel();
  }}>
-  <section className="clinic-phase13-dialog" role="alertdialog" aria-modal="true"
-   aria-labelledby="clinic-phase13-dialog-title">
+  <section ref={dialogRef} tabIndex={-1} className="clinic-phase13-dialog" role="alertdialog" aria-modal="true"
+   aria-labelledby="clinic-phase13-dialog-title" aria-describedby="clinic-phase13-dialog-description">
    <header className="clinic-phase13-dialog-heading">
     <span className="clinic-phase13-dialog-mark"><CareIcon name="shield-check" size={22}/></span>
-    <button type="button" autoFocus className="clinic-phase13-dialog-close"
+    <button type="button" className="clinic-phase13-dialog-close"
      disabled={busy} aria-label={t("modalClose")} onClick={onCancel}>
      <CareIcon name="close" size={19}/></button>
    </header>
    <h2 id="clinic-phase13-dialog-title">{title}</h2>
-   <p>{description}</p>
+   <p id="clinic-phase13-dialog-description">{description}</p>
    <dl className="clinic-phase13-dialog-facts">{children}</dl>
    <label className="clinic-phase13-dialog-check">
     <input type="checkbox" disabled={busy} checked={checked}

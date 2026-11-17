@@ -109,7 +109,7 @@ test("Clinic Phase 13: invitation review validates recipient and respects role c
   'invitationLimit:"د ټاکل شوي کلینیک وروستۍ ۱۰۰',
   'role="alertdialog" aria-modal="true"',
   'if(event.key==="Escape"&&!busy)onCancel()',
-  'autoFocus className="clinic-phase13-dialog-close"',
+  'ref={dialogRef} tabIndex={-1}',
   'disabled={!checked||busy}',
   '<div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>'
  ])assert.ok(team.includes(marker),marker);
