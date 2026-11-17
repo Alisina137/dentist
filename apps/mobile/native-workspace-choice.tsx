@@ -121,7 +121,8 @@ export function WorkspaceChoice({onSelect}:{onSelect:(value:MobileWorkspace)=>vo
   </ScrollView>
  </SafeAreaView>;
 }
-export function WorkspaceRouter({patient,clinic}:{patient:React.ReactNode;clinic:(reset:()=>void)=>React.ReactNode}){
+export function WorkspaceRouter({patient,clinic}:{patient:(reset:()=>void)=>React.ReactNode;
+ clinic:(reset:()=>void)=>React.ReactNode}){
  const [choice,setChoice]=useState<MobileWorkspace|null>(null);
  const [loading,setLoading]=useState(true);
  useEffect(()=>{
@@ -141,7 +142,7 @@ export function WorkspaceRouter({patient,clinic}:{patient:React.ReactNode;clinic
  if(loading)return <SafeAreaView style={s.loading}>
   <ActivityIndicator size="large" color="#1e6eaa"/></SafeAreaView>;
  if(!choice)return <WorkspaceChoice onSelect={value=>{void select(value)}}/>;
- return <>{choice==="patient"?patient:clinic(reset)}</>;
+ return <>{choice==="patient"?patient(reset):clinic(reset)}</>;
 }
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:"#102940"},scroll:{flex:1},
