@@ -4,6 +4,8 @@ import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls,
 import { ClinicOperationsOverview } from "./clinic-operations-dashboard";
 import { Phase02Portal } from "./phase02";
 import {usePersistentClinicShell,useClinicWorkspaceSession} from "./clinic-shell-context";
+import {staffTab,staffMayInvite,staffAssignableRoles,staffEmail,staffFiltered,
+ staffPage,staffStats,staffMayManage,type StaffEntry,type StaffRole,type StaffState} from "./clinic-staff-model";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
   membershipId:string;role:Role;clinicianEnabled:boolean;capabilities:string[]};
@@ -158,9 +160,110 @@ const labels:Record<string,Record<string,string>>={
   unpaid:"د پلان ظرفیت د بلنې تر مخه کتل کېږي."
  }
 };
+const phase13Words:Record<string,Record<string,string>>={
+ en:{
+  teamWorkspace:"People & access",teamIntro:"Manage your clinic's real staff memberships, clinician drafts and invitation lifecycle.",
+  activeMembers:"Active staff",suspendedMembers:"Suspended",clinicalTeam:"Active clinicians",
+  teamSearch:"Search members",teamSearchHint:"Name, email or role",teamRoleFilter:"Role filter",
+  teamCount:"Showing",teamOf:"of",teamMembers:"members",teamReset:"Clear filters",
+  teamEmpty:"No staff matches these filters.",teamRefresh:"Refresh staff",
+  teamPermissions:"Role permissions are checked by the server for every action.",
+  teamLimit:"Only members of the selected clinic appear here. Nothing is sent to patients.",
+  teamOpen:"Review membership",teamAllRoles:"All roles",teamPage:"Staff directory pages",
+  invitationSafety:"Invitation grants no access until accepted by a verified account.",
+  invitationReview:"Review staff invitation",invitationReviewNote:"Confirm the recipient, clinic and role before sending. The recipient must accept the invitation.",
+  invitationReviewCheck:"I checked the email address, clinic and intended role.",
+  invitationConfirm:"Send verified invitation",invitationLimit:"Latest 100 invitations from the selected clinic",
+  invitationEmail:"Invitee email",invitationRole:"Intended role",invitationExpires:"Expires in 7 days",
+  invitationRevokeReview:"Review invitation revocation",invitationRevokeNote:"The invitation will be invalidated. This does not delete an accepted membership.",
+  invitationRevokeCheck:"I verified the invitation recipient and revocation reason.",
+  invitationsSummary:"Invitation history",invitationNoAuto:"Staff seats and email delivery are checked by the server.",
+  invitesSearch:"Search invitations",invitesSearchHint:"Email or role",
+  editStaff:"Membership actions",staffReviewTitle:"Review staff access change",
+  staffReviewNote:"Confirm the member, clinic, reason and requested action. Staff sessions may be revoked on all devices.",
+  staffReviewCheck:"I verified the staff identity and the consequences of this action.",
+  staffReviewConfirm:"Confirm staff action",staffChanged:"Change requires a reason and permission. The owner and your own membership are protected.",
+  staffPersonal:"Member profile",staffClinicianNote:"Professional details are private drafts, not public verification.",
+  securitySummary:"Clinic access oversight",securityReadOnly:"Security activity is audit history, not an editable access grant.",
+  securityEvents:"Recent audit events (latest 60)",securityMemberCount:"Visible memberships",securityNoAuto:"Actions here never expose patient files.",
+  securitySessionHint:"These are sessions for your own account, not every staff member's devices.",
+  securityReasonHint:"At least 5 characters. All sessions for your account will be ended.",
+  securityActionReview:"Review sign-out of your devices",
+  securityActionCheck:"I understand all my own sessions will be revoked.",
+  modalCancel:"Keep editing",modalReason:"Documented reason",modalExpiry:"Invitation expiry",
+  modalScope:"Selected clinic",modalMember:"Staff member",modalImpact:"Access impact",
+  modalClose:"Close review",modified:"Modified",pendingStatus:"Pending invitations"
+ },
+ "fa-AF":{
+  teamWorkspace:"کارمندان و دسترسی",teamIntro:"عضویت‌های واقعی کارمندان، پیش‌نویس داکتران و دعوت‌ها را مدیریت کنید.",
+  activeMembers:"کارمندان فعال",suspendedMembers:"تعلیق‌شده",clinicalTeam:"داکتران فعال",
+  teamSearch:"جستجوی کارمندان",teamSearchHint:"نام، ایمیل یا نقش",teamRoleFilter:"فیلتر نقش",
+  teamCount:"نمایش",teamOf:"از",teamMembers:"کارمند",teamReset:"پاک‌کردن فیلتر",
+  teamEmpty:"کارمندی در این فیلتر یافت نشد.",teamRefresh:"تازه‌سازی کارمندان",
+  teamPermissions:"صلاحیت هر عمل توسط سرور بررسی می‌شود.",
+  teamLimit:"فقط کارمندان کلینیک انتخاب‌شده نمایش داده می‌شوند؛ به مریضان ارسال نمی‌شود.",
+  teamOpen:"بررسی عضویت",teamAllRoles:"تمام نقش‌ها",teamPage:"صفحات کارمندان",
+  invitationSafety:"دعوت تا پذیرش حساب تأییدشده دسترسی نمی‌دهد.",
+  invitationReview:"بررسی دعوت کارمند",invitationReviewNote:"پیش از ارسال، گیرنده، کلینیک و نقش را بررسی کنید؛ گیرنده باید دعوت را بپذیرد.",
+  invitationReviewCheck:"ایمیل، کلینیک و نقش را بررسی کرده‌ام.",
+  invitationConfirm:"ارسال دعوت تأییدشده",invitationLimit:"آخرین ۱۰۰ دعوت از کلینیک انتخاب‌شده",
+  invitationEmail:"ایمیل گیرنده",invitationRole:"نقش مورد نظر",invitationExpires:"انقضا پس از ۷ روز",
+  invitationRevokeReview:"بررسی لغو دعوت",invitationRevokeNote:"دعوت باطل می‌شود؛ عضویت پذیرفته‌شده حذف نمی‌گردد.",
+  invitationRevokeCheck:"گیرنده و دلیل لغو را بررسی کردم.",
+  invitationsSummary:"تاریخچۀ دعوت‌ها",invitationNoAuto:"ظرفیت کارمندان و ارسال ایمیل توسط سرور بررسی می‌شود.",
+  invitesSearch:"جستجوی دعوت‌ها",invitesSearchHint:"ایمیل یا نقش",
+  editStaff:"اقدامات عضویت",staffReviewTitle:"بررسی تغییر دسترسی کارمند",
+  staffReviewNote:"کارمند، کلینیک، دلیل و عمل را بررسی کنید؛ نشست‌ها ممکن است در تمام دستگاه‌ها پایان یابند.",
+  staffReviewCheck:"هویت کارمند و پیامدهای این عمل را بررسی کرده‌ام.",
+  staffReviewConfirm:"تأیید تغییر دسترسی",staffChanged:"تغییر نیاز به دلیل و اجازه دارد؛ مالک و عضویت خودتان محافظت می‌شوند.",
+  staffPersonal:"پروفایل عضویت",staffClinicianNote:"معلومات مسلکی فقط پیش‌نویس خصوصی است، نه تأیید عمومی.",
+  securitySummary:"نظارت دسترسی کلینیک",securityReadOnly:"فعالیت‌های امنیتی تاریخچۀ حسابرسی هستند، نه مجوز قابل ویرایش.",
+  securityEvents:"آخرین ۶۰ رویداد",securityMemberCount:"عضویت‌های قابل مشاهده",securityNoAuto:"در این قسمت فایل مریضان نشر نمی‌شود.",
+  securitySessionHint:"این‌ها نشست‌های حساب خود شما اند، نه دستگاه‌های تمام کارمندان.",
+  securityReasonHint:"حداقل ۵ حرف؛ تمام نشست‌های حساب شما پایان می‌یابند.",
+  securityActionReview:"بررسی خروج از تمام دستگاه‌های خود",
+  securityActionCheck:"می‌دانم تمام نشست‌های خودم پایان می‌یابد.",
+  modalCancel:"ادامه ویرایش",modalReason:"دلیل ثبت‌شده",modalExpiry:"انقضای دعوت",
+  modalScope:"کلینیک انتخاب‌شده",modalMember:"کارمند",modalImpact:"تأثیر بر دسترسی",
+  modalClose:"بستن بررسی",modified:"تغییر یافته",pendingStatus:"دعوت‌های در انتظار"
+ },
+ "ps-AF":{
+  teamWorkspace:"کارکوونکي او لاسرسی",teamIntro:"د کلینیک رښتیني کارکوونکي، د ډاکټرانو مسودې او بلنې سمبال کړئ.",
+  activeMembers:"فعال کارکوونکي",suspendedMembers:"ځنډول شوي",clinicalTeam:"فعال ډاکټران",
+  teamSearch:"کارکوونکي ولټوئ",teamSearchHint:"نوم، ایمیل یا دنده",teamRoleFilter:"د دندې چاڼ",
+  teamCount:"ښودل",teamOf:"له",teamMembers:"کارکوونکي",teamReset:"چاڼ پاک کړئ",
+  teamEmpty:"په دې چاڼ کې کارکوونکی نشته.",teamRefresh:"کارکوونکي تازه کړئ",
+  teamPermissions:"هره کړنه د سرور په اجازه اجرا کېږي.",
+  teamLimit:"یوازې د ټاکل شوي کلینیک کارکوونکي ښکاري؛ ناروغانو ته نه استول کېږي.",
+  teamOpen:"غړیتوب وګورئ",teamAllRoles:"ټولې دندې",teamPage:"د کارکوونکو پاڼې",
+  invitationSafety:"تر منل شوې تایید شوې بلنې مخکې لاسرسی نه ورکول کېږي.",
+  invitationReview:"د کارکوونکي بلنه وګورئ",invitationReviewNote:"تر استولو مخکې برېښنالیک، کلینیک او دنده وګورئ؛ بلنه باید ومنل شي.",
+  invitationReviewCheck:"برېښنالیک، کلینیک او دنده مې تایید کړه.",
+  invitationConfirm:"تایید شوې بلنه واستوئ",invitationLimit:"د ټاکل شوي کلینیک وروستۍ ۱۰۰ بلنې",
+  invitationEmail:"د بلل شوي برېښنالیک",invitationRole:"غوره شوې دنده",invitationExpires:"په ۷ ورځو کې پای",
+  invitationRevokeReview:"د بلنې لغوه کول وګورئ",invitationRevokeNote:"بلنه باطله کېږي؛ منل شوی غړیتوب نه پاکېږي.",
+  invitationRevokeCheck:"د بلنې اخیستونکی او دلیل مې تایید کړل.",
+  invitationsSummary:"د بلنو تاریخچه",invitationNoAuto:"د کارکوونکو ظرفیت او ایمیل استول سرور تاییدوي.",
+  invitesSearch:"بلنې ولټوئ",invitesSearchHint:"برېښنالیک یا دنده",
+  editStaff:"د غړیتوب چارې",staffReviewTitle:"د کارکوونکي د لاسرسي بدلون وګورئ",
+  staffReviewNote:"کارکوونکی، کلینیک، دلیل او عمل وګورئ؛ ناستې د ټولو وسایلو څخه بندېدای شي.",
+  staffReviewCheck:"د کارکوونکي پېژندنه او د دې عمل پایلې مې تایید کړې.",
+  staffReviewConfirm:"د لاسرسي بدلون تایید",staffChanged:"بدلون دلیل او اجازه غواړي؛ خاوند او ستاسو غړیتوب خوندي دي.",
+  staffPersonal:"د کارکوونکي پروفایل",staffClinicianNote:"مسلکي معلومات شخصي مسودې دي، عام تایید نه دی.",
+  securitySummary:"د کلینیک لاسرسي څارنه",securityReadOnly:"امنیتي پېښې د پلټنې تاریخ دي، د سمون اجازه نه ده.",
+  securityEvents:"وروستۍ ۶۰ پېښې",securityMemberCount:"ښکاره غړیتوبونه",securityNoAuto:"د ناروغانو فایلونه نه خپرېږي.",
+  securitySessionHint:"دا ستاسو خپل حساب ناستې دي، نه د ټولو کارکوونکو وسایل.",
+  securityReasonHint:"لږ تر لږه ۵ توري؛ ستاسو ټولې ناستې پای ته رسېږي.",
+  securityActionReview:"له خپلو ټولو وسیلو د وتلو کتنه",
+  securityActionCheck:"پوهېږم ټولې خپلې ناستې بندېږي.",
+  modalCancel:"سمون ته ستنېدل",modalReason:"ثبت شوی دلیل",modalExpiry:"د بلنې پای",
+  modalScope:"ټاکل شوی کلینیک",modalMember:"کارکوونکی",modalImpact:"پر لاسرسي اغېز",
+  modalClose:"کتنه بنده کړئ",modified:"بدل شوی",pendingStatus:"نا منل شوې بلنې"
+ }
+};
 function useLang(){
  const {locale,calendar}=usePreferences();
- const t=(key:string)=>labels[locale]?.[key]||labels.en[key]||key;
+ const t=(key:string)=>phase13Words[locale]?.[key]||labels[locale]?.[key]||phase13Words.en[key]||labels.en[key]||key;
  const date=(v:unknown)=>v?new Intl.DateTimeFormat(locale,{calendar:calendar==="solar_hijri"?"persian":"gregory",
    timeZone:"Asia/Kabul",year:"numeric",month:"short",day:"numeric"}).format(new Date(String(v))):"—";
  return {t,date,locale};
@@ -380,128 +483,375 @@ function StaffRoute({ctx,space,view}:{ctx:Context,space:Space,view:"staff"|"secu
      <StaffDetail ctx={ctx} space={space}/>}
  </Shell>;
 }
-function TeamHub({ctx,space}:{ctx:Context,space:Space}){
+function StaffPager({page,pages,onPage,label}:{page:number;pages:number;
+ onPage:(n:number)=>void;label:string}){
  const {t}=useLang();
- const [tab,setTab]=useState("team");
- useEffect(()=>{const requested=new URLSearchParams(location.search).get("tab");
-  if(["team","dentists","invitations"].includes(requested||""))setTab(requested!);},[]);
- const url=(kind:string)=>"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab="+kind;
- return <div><h2>{t("staff")}</h2>
-  <div className="phase-tabs" role="tablist" aria-label={t("staff")}>
-    {["team","dentists","invitations"].map(key=><a href={url(key)} className={"team-tab "+(tab===key?"current":"")}
-       key={key} role="tab" aria-selected={tab===key}>{t(key)}</a>)}
-  </div>
-  {tab==="team"?<TeamList space={space}/>:tab==="dentists"?<DentistList space={space}/>:
-    <Invitations space={space} ctx={ctx}/>}
+ if(pages<=1)return null;
+ return <nav className="clinic-phase13-pager" aria-label={label}>
+  <button type="button" className="btn btn-secondary" disabled={page<=1}
+   onClick={()=>onPage(Math.max(1,page-1))}>{t("previous")}</button>
+  <span>{page} / {pages}</span>
+  <button type="button" className="btn btn-secondary" disabled={page>=pages}
+   onClick={()=>onPage(Math.min(pages,page+1))}>{t("next")}</button>
+ </nav>;
+}
+function StaffReviewDialog({title,description,checked,onChecked,onCancel,onConfirm,
+ busy,confirmText,children}:{title:string;description:string;checked:boolean;
+ onChecked:(value:boolean)=>void;onCancel:()=>void;onConfirm:()=>void;
+ busy:boolean;confirmText:string;children:ReactNode}){
+ const {t}=useLang();
+ useEffect(()=>{
+  const handler=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy)onCancel();
+  };
+  document.addEventListener("keydown",handler);
+  return()=>document.removeEventListener("keydown",handler);
+ },[busy,onCancel]);
+ return <div className="clinic-phase13-dialog-backdrop" onMouseDown={event=>{
+  if(!busy&&event.currentTarget===event.target)onCancel();
+ }}>
+  <section className="clinic-phase13-dialog" role="alertdialog" aria-modal="true"
+   aria-labelledby="clinic-phase13-dialog-title">
+   <header className="clinic-phase13-dialog-heading">
+    <span className="clinic-phase13-dialog-mark"><CareIcon name="shield-check" size={22}/></span>
+    <button type="button" autoFocus className="clinic-phase13-dialog-close"
+     disabled={busy} aria-label={t("modalClose")} onClick={onCancel}>
+     <CareIcon name="close" size={19}/></button>
+   </header>
+   <h2 id="clinic-phase13-dialog-title">{title}</h2>
+   <p>{description}</p>
+   <dl className="clinic-phase13-dialog-facts">{children}</dl>
+   <label className="clinic-phase13-dialog-check">
+    <input type="checkbox" disabled={busy} checked={checked}
+     onChange={event=>onChecked(event.target.checked)}/>
+    <span>{t("staffReviewCheck")}</span>
+   </label>
+   <footer className="clinic-phase13-dialog-actions">
+    <button type="button" className="btn btn-secondary" disabled={busy}
+     onClick={onCancel}>{t("modalCancel")}</button>
+    <button type="button" className="btn btn-primary" disabled={!checked||busy}
+     onClick={onConfirm}><CareIcon name="check" size={17}/>
+     {busy?t("loading"):confirmText}</button>
+   </footer>
+  </section>
  </div>;
 }
-function TeamList({space}:{space:Space}){
- const {t,date}=useLang();const {data,error,reload}=useData("/clinics/"+space.clinicId+"/team");
- const [filter,setFilter]=useState("all");
+function TeamHub({ctx,space}:{ctx:Context,space:Space}){
+ const {t}=useLang();
+ const [tab,setTab]=useState<"team"|"dentists"|"invitations">(()=>{
+  return typeof window==="undefined"?"team":staffTab(new URLSearchParams(window.location.search).get("tab"));
+ });
+ useEffect(()=>{
+  setTab(staffTab(new URLSearchParams(location.search).get("tab")));
+ },[space.clinicId]);
+ function choose(next:"team"|"dentists"|"invitations"){
+  setTab(next);
+  const query=new URLSearchParams(location.search);
+  query.set("clinic",space.clinicId);query.set("tab",next);
+  history.replaceState(null,"",location.pathname+"?"+query.toString());
+ }
+ const url=(kind:string)=>"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab="+kind;
+ return <div className="clinic-phase13-staff-home">
+  <section className="card clinic-phase13-hero">
+   <div><span className="clinic-phase13-eyebrow"><CareIcon name="shield-check" size={17}/>
+    {t("teamPermissions")}</span>
+    <h1>{t("teamWorkspace")}</h1><p>{t("teamIntro")}</p>
+    <div className="clinic-phase13-hero-clinic"><CareIcon name="clinic" size={16}/>
+     {space.clinicName}</div></div>
+   <div className="clinic-phase13-hero-badge">
+    <CareIcon name="users" size={27}/><strong>{t(space.role)}</strong></div>
+  </section>
+  <nav className="phase-tabs clinic-phase13-staff-tabs" role="tablist" aria-label={t("staff")}>
+   {(["team","dentists","invitations"] as const).map(key=><button type="button"
+    className={"team-tab"+(tab===key?" current":"")} key={key}
+    role="tab" aria-selected={tab===key}
+    aria-controls="clinic-phase13-staff-content"
+    onClick={()=>choose(key)}>
+    <CareIcon name={key==="dentists"?"dental":key==="invitations"?"mail":"users"} size={18}/>
+    {t(key)}</button>)}
+  </nav>
+  <div id="clinic-phase13-staff-content" role="tabpanel" aria-label={t(tab)}>
+   {tab==="team"?<TeamList space={space} onInvite={()=>choose("invitations")}/>:
+    tab==="dentists"?<DentistList space={space} onInvite={()=>choose("invitations")}/>:
+    <Invitations space={space} ctx={ctx}/>}
+  </div>
+ </div>;
+}
+function TeamList({space,onInvite}:{space:Space;onInvite:()=>void}){
+ const {t,date}=useLang();
+ const {data,error,reload}=useData("/clinics/"+space.clinicId+"/team");
+ const [filter,setFilter]=useState("all"),[role,setRole]=useState("all"),
+  [query,setQuery]=useState(""),[page,setPage]=useState(1);
+ useEffect(()=>{setFilter("all");setRole("all");setQuery("");setPage(1);},
+  [space.clinicId]);
  if(error)return <ErrorBox error={error} retry={reload}/>;
  if(!data)return <Busy/>;
- const people=data.members.filter((m:any)=>filter==="all"||m.status===filter);
- return <section className="card panel"><div className="staff-panel-heading">
-  <h2>{t("team")}</h2><Select label={t("filter")} value={filter} onChange={setFilter}
-  options={["all","active","suspended","revoked"].map(value=>({value,label:t(value)}))}/></div>
-  {!people.length?<Empty text={t("noStaff")}/>:<div className="staff-scroll">
-   <table className="staff-table"><thead><tr><th>{t("name")}</th><th>{t("role")}</th>
-    <th>{t("status")}</th><th>{t("joinedOn")}</th><th>{t("verification")}</th></tr></thead>
-    <tbody>{people.map((m:any)=><tr key={m.id}><td>
-      <a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{m.name}</a>
-      <div className="muted staff-small" dir="ltr">{m.email}</div></td>
-      <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
-      <td>{date(m.joinedAt)}</td><td>{m.mfaEnabled?t("on"):t("off")}</td></tr>)}</tbody>
-   </table></div>}
-  <div className="phase-actions"><a className="btn btn-primary" href={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}>
-    {t("invite")}</a></div>
+ const records:StaffEntry[]=data.members||[];
+ const summary=staffStats(records);
+ const people=staffFiltered(records,query,filter,role);
+ const slice=staffPage(people,page);
+ const reset=()=>{setFilter("all");setRole("all");setQuery("");setPage(1);};
+ return <section className="card panel clinic-phase13-staff-panel">
+  <div className="clinic-phase13-panel-heading">
+   <div><span className="clinic-phase13-kicker">{t("overview")}</span>
+    <h2>{t("team")}</h2><p>{t("teamLimit")}</p></div>
+   <button className="btn btn-secondary" type="button" onClick={reload}>
+    <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button>
+  </div>
+  <div className="clinic-phase13-metrics" role="group" aria-label={t("teamWorkspace")}>
+   {([
+    ["teamMembers",summary.total,"users"],["activeMembers",summary.active,"check"],
+    ["suspendedMembers",summary.suspended,"clock"],["clinicalTeam",summary.clinicians,"dental"]
+   ] as const).map(([label,count,icon])=><div className="clinic-phase13-metric" key={label}>
+    <span className="clinic-phase13-metric-icon"><CareIcon name={icon} size={20}/></span>
+    <strong>{count}</strong><span>{t(label)}</span>
+   </div>)}
+  </div>
+  <div className="clinic-phase13-filters">
+   <label className="clinic-phase13-search"><span>{t("teamSearch")}</span>
+    <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+     <input type="search" autoComplete="off" value={query} maxLength={120}
+      placeholder={t("teamSearchHint")}
+      onChange={event=>{setQuery(event.target.value);setPage(1);}}/></span></label>
+   <label><span>{t("filter")}</span><select value={filter} onChange={event=>{
+    setFilter(event.target.value);setPage(1);
+   }}>{["all","active","suspended","revoked"].map(value=>
+    <option value={value} key={value}>{t(value)}</option>)}</select></label>
+   <label><span>{t("teamRoleFilter")}</span><select value={role} onChange={event=>{
+    setRole(event.target.value);setPage(1);
+   }}><option value="all">{t("teamAllRoles")}</option>
+    {(["owner","manager","dentist","receptionist","assistant","cashier"] as const).map(value=>
+     <option key={value} value={value}>{t(value)}</option>)}</select></label>
+   {(filter!=="all"||role!=="all"||query)&&<button type="button" className="btn btn-secondary"
+    onClick={reset}><CareIcon name="close" size={15}/>{t("teamReset")}</button>}
+  </div>
+  {!slice.rows.length?<div className="clinic-phase13-empty" role="status">
+   <CareIcon name="users" size={27}/>
+   <p>{records.length?t("teamEmpty"):t("noStaff")}</p>
+   {records.length>0&&<button type="button" className="btn btn-secondary"
+    onClick={reset}>{t("teamReset")}</button>}
+  </div>:<div className="staff-scroll clinic-phase13-staff-table-scroll">
+   <table className="staff-table"><thead><tr>
+    <th>{t("name")}</th><th>{t("role")}</th><th>{t("status")}</th>
+    <th>{t("joinedOn")}</th><th>{t("mfa")}</th><th>{t("teamOpen")}</th>
+   </tr></thead><tbody>{slice.rows.map(m=><tr key={m.id}>
+    <td><strong>{m.name}</strong><div className="muted staff-small" dir="ltr">{m.email}</div></td>
+    <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
+    <td>{date(m.joinedAt)}</td><td>
+     <span className={"clinic-phase13-mfa"+(m.mfaEnabled?" is-on":"")}>
+      <CareIcon name={m.mfaEnabled?"shield-check":"clock"} size={15}/>
+      {t(m.mfaEnabled?"on":"off")}</span></td>
+    <td><a className="btn btn-secondary clinic-phase13-open" href={
+     "/clinic/staff/"+encodeURIComponent(m.id)+"?clinic="+encodeURIComponent(space.clinicId)}>
+     {t("teamOpen")} <CareIcon name="arrow" size={15}/></a></td>
+   </tr>)}</tbody></table>
+  </div>}
+  <div className="clinic-phase13-table-bottom">
+   <p role="status" aria-live="polite">
+    {t("teamCount")} {slice.start}–{slice.end} {t("teamOf")} {slice.total} {t("teamMembers")}
+   </p>
+   <StaffPager page={slice.page} pages={slice.pages} onPage={setPage} label={t("teamPage")}/>
+  </div>
+  {["owner","manager"].includes(space.role)&&<div className="phase-actions">
+   <button className="btn btn-primary" type="button" onClick={onInvite}>
+    <CareIcon name="plus" size={17}/>{t("invite")}</button>
+  </div>}
  </section>;
 }
-function DentistList({space}:{space:Space}){
- const {t}=useLang();const {data,error,reload}=useData("/clinics/"+space.clinicId+"/dentists");
+function DentistList({space,onInvite}:{space:Space;onInvite:()=>void}){
+ const {t}=useLang();
+ const {data,error,reload}=useData("/clinics/"+space.clinicId+"/dentists");
+ const [page,setPage]=useState(1),[query,setQuery]=useState("");
+ useEffect(()=>{setQuery("");setPage(1);},[space.clinicId]);
  if(error)return <ErrorBox error={error} retry={reload}/>;
  if(!data)return <Busy/>;
- return <section className="card panel"><h2>{t("dentists")}</h2>
-  {!data.dentists.length?<Empty text={t("noDentists")}/>:<div className="staff-dentist-grid">
-    {data.dentists.map((m:any)=><article key={m.id} className="staff-dentist-card">
-      <div className="staff-dentist-avatar">{m.name?.slice(0,1)}</div>
-      <div className="staff-dentist-info"><h3>{m.draft?.displayName||m.name}</h3>
+ const clinicians=(data.dentists||[]).filter((m:any)=>
+  !query.trim()||(String(m.name||"")+" "+String(m.draft?.displayName||"")+" "+
+   String(m.draft?.specialty||"")).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+ const slice=staffPage(clinicians,page);
+ return <section className="card panel clinic-phase13-staff-panel">
+  <div className="clinic-phase13-panel-heading"><div><h2>{t("dentists")}</h2>
+   <p>{t("staffClinicianNote")}</p></div>
+   <button type="button" className="btn btn-secondary" onClick={reload}>
+    <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button></div>
+  <label className="clinic-phase13-search clinic-phase13-dentist-search"><span>{t("teamSearch")}</span>
+   <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+    <input type="search" value={query} maxLength={120}
+     onChange={event=>{setQuery(event.target.value);setPage(1);}}
+     placeholder={t("teamSearchHint")}/></span>
+  </label>
+  {!slice.rows.length?<div className="clinic-phase13-empty">
+   <CareIcon name="dental" size={27}/><p>{t("noDentists")}</p></div>:
+   <div className="staff-dentist-grid clinic-phase13-dentist-grid">
+    {slice.rows.map((m:any)=><article key={m.id} className="staff-dentist-card">
+     <div className="staff-dentist-avatar"><CareIcon name="dental" size={24}/></div>
+     <div className="staff-dentist-info"><h3>{m.draft?.displayName||m.name}</h3>
       <p>{m.draft?.specialty||t("pendingReview")}</p>
       <Badge value={m.status}/><p className="muted staff-small">{t("notPublic")}</p>
-      <a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{t("myProfile")} ›</a></div>
-    </article>)}</div>}
-  <div className="phase-actions"><a className="btn btn-secondary" href={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}>
-    {t("invite")}</a></div>
+      <a className="text-link" href={"/clinic/staff/"+encodeURIComponent(m.id)+
+       "?clinic="+encodeURIComponent(space.clinicId)}>{t("teamOpen")} ›</a>
+     </div>
+    </article>)}
+   </div>}
+  <div className="clinic-phase13-table-bottom"><p role="status">
+   {t("teamCount")} {slice.start}–{slice.end} {t("teamOf")} {slice.total}</p>
+   <StaffPager page={slice.page} pages={slice.pages} onPage={setPage} label={t("dentists")}/>
+  </div>
+  {["owner","manager"].includes(space.role)&&<div className="phase-actions">
+   <button type="button" className="btn btn-secondary" onClick={onInvite}>
+    <CareIcon name="plus" size={16}/>{t("invite")}</button></div>}
  </section>;
 }
-
 
 function Invitations({space,ctx}:{space:Space,ctx:Context}){
  const {t,date}=useLang();
  const {data,error,reload}=useData("/clinics/"+space.clinicId+"/invitations");
  const [email,setEmail]=useState(""),[role,setRole]=useState("receptionist");
  const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[success,setSuccess]=useState("");
- const [reason,setReason]=useState(""),[page,setPage]=useState(1),[filter,setFilter]=useState("pending");
- const roles=["dentist","receptionist","assistant","cashier",...(space.role==="owner"?["manager"]:[])];
- async function submit(e:FormEvent){
-  e.preventDefault();setBusy(true);setFailure("");setSuccess("");
-  try{
-   await api("/clinics/"+space.clinicId+"/invitations","POST",{email,role});
-   setEmail("");setSuccess(t("sentSuccess"));reload();
-  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ const [reason,setReason]=useState(""),[page,setPage]=useState(1),
+  [filter,setFilter]=useState("pending"),[query,setQuery]=useState("");
+ const [review,setReview]=useState<{kind:"send"|"resend"|"revoke";id?:string;email:string;role:string}|null>(null),
+  [reviewed,setReviewed]=useState(false);
+ const roles=staffAssignableRoles(space.role);
+ const eligible=staffMayInvite(space.role,ctx.mfaEnabled);
+ const close=()=>{if(!busy){setReview(null);setReviewed(false);}};
+ useEffect(()=>{
+  setEmail("");setRole("receptionist");setFilter("pending");setPage(1);
+  setQuery("");setReview(null);setReviewed(false);setReason("");
+  setFailure("");setSuccess("");
+ },[space.clinicId]);
+ function submit(e:FormEvent){
+  e.preventDefault();if(busy||!eligible)return;
+  const normalized=staffEmail(email);
+  if(!normalized||normalized===ctx.email.toLocaleLowerCase()||!roles.includes(role as StaffRole)){
+   setFailure("INVALID_INVITATION");return;
+  }
+  setFailure("");setSuccess("");setReviewed(false);
+  setReview({kind:"send",email:normalized,role});
  }
- async function action(id:string,operation:"resend"|"revoke"){
-  if(operation==="revoke" && (!reason.trim()||!window.confirm(t("confirm"))))return;
+ function begin(row:any,kind:"resend"|"revoke"){
+  if(busy||!eligible)return;
+  if(kind==="revoke"&&reason.trim().length<5)return;
+  if(!roles.includes(row.role as StaffRole))return;
+  setFailure("");setSuccess("");setReviewed(false);
+  setReview({kind,id:row.id,email:row.email,role:row.role});
+ }
+ async function confirm(){
+  if(!review||!reviewed||busy||!eligible)return;
+  const current=review;
+  if(current.kind==="send"&&(!staffEmail(current.email)||!roles.includes(current.role as StaffRole)))return;
+  if(current.kind==="revoke"&&reason.trim().length<5)return;
   setBusy(true);setFailure("");setSuccess("");
   try{
-   await api("/clinics/"+space.clinicId+"/invitations/"+id+"/"+operation,"POST",
-     operation==="revoke"?{reason}:undefined);
-   reload();setReason("");setSuccess(t("updateSuccess"));
+   const root="/clinics/"+space.clinicId+"/invitations";
+   if(current.kind==="send")await api(root,"POST",{email:current.email,role:current.role});
+   else await api(root+"/"+current.id+"/"+current.kind,"POST",
+    current.kind==="revoke"?{reason:reason.trim()}:undefined);
+   if(current.kind==="send")setEmail("");
+   setReason("");setReview(null);setReviewed(false);setPage(1);
+   setSuccess(t(current.kind==="send"?"sentSuccess":"updateSuccess"));reload();
   }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
  }
- const entries=(data?.invitations||[]).filter((i:any)=>filter==="all"||i.status===filter);
- const pages=Math.max(1,Math.ceil(entries.length/5));
- if(!ctx.mfaEnabled)return <section className="card panel">
+ const entries=(data?.invitations||[]).filter((i:any)=>
+  (filter==="all"||i.status===filter)&&
+  (!query.trim()||(i.email+" "+i.role).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())));
+ const slice=staffPage(entries,page);
+ if(!eligible)return <section className="card panel clinic-phase13-staff-panel">
   <Banner kind="warning">{t("activateMfa")}</Banner>
-  <AdminMfaSetup home={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}/>
+  {["owner","manager"].includes(space.role)&&
+   <AdminMfaSetup home={"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab=invitations"}/>}
  </section>;
- return <div className="staff-gap">
-  <section className="card panel"><h2>{t("invite")}</h2><p className="muted">{t("inviteHint")}</p>
-   <form className="staff-invite-form" onSubmit={submit}>
-    <Field label={t("email")} value={email} type="email" required maxLength={160} onChange={setEmail}/>
-    <Select label={t("role")} value={role} onChange={setRole}
-      options={roles.map(value=>({value,label:t(value)}))}/>
-    <button className="btn btn-primary" disabled={busy||!email.trim()}>{busy?t("loading"):t("send")}</button>
+ return <div className="staff-gap clinic-phase13-invitations">
+  <section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <span className="clinic-phase13-kicker"><CareIcon name="mail" size={16}/>{t("invitationSafety")}</span>
+    <h2>{t("invite")}</h2><p>{t("inviteHint")}</p></div>
+    <span className="clinic-phase13-capability"><CareIcon name="shield-check" size={16}/>
+     {t("mfa")}</span>
+   </div>
+   <form className="staff-invite-form clinic-phase13-invite-form" onSubmit={submit}>
+    <label className="clinic-phase13-email"><span>{t("email")} *</span>
+     <input type="email" autoComplete="off" maxLength={160} required
+      value={email} disabled={busy} onChange={e=>setEmail(e.target.value)}
+      placeholder="name@example.com" dir="ltr"/></label>
+    <Select label={t("role")} value={role} onChange={value=>{setRole(value);setFailure("");}}
+     options={roles.map(value=>({value,label:t(value)}))}/>
+    <button type="submit" className="btn btn-primary"
+     disabled={busy||!staffEmail(email)||staffEmail(email)===ctx.email.toLocaleLowerCase()}>
+     <CareIcon name="plus" size={17}/>
+     {busy?t("loading"):t("invitationReview")}</button>
    </form>
-   <p className="muted staff-small">{t("receipt")} {t("unpaid")}</p>
+   <div className="clinic-phase13-invite-safety">
+    <CareIcon name="shield-check" size={18}/><p>{t("receipt")} {t("unpaid")}
+     {" "}{t("invitationNoAuto")}</p></div>
    {failure&&<Banner kind="error">{t("inviteFailed")}: {failure}</Banner>}
    {success&&<Banner kind="success">{success}</Banner>}
   </section>
-  <section className="card panel"><div className="staff-panel-heading"><h2>{t("invitations")}</h2>
-   <Select label={t("filter")} value={filter} onChange={v=>{setFilter(v);setPage(1);}}
-    options={["pending","all","expired","accepted","revoked"].map(value=>({value,label:t(value)}))}/></div>
-   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
-    entries.length? <div className="phase-list">{entries.slice((page-1)*5,page*5).map((i:any)=>
-     <article className="staff-invitation-row" key={i.id}>
-      <div><strong dir="ltr">{i.email}</strong><div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)} {i.resolutionReason?" · "+i.resolutionReason:""}</div></div>
-      <div className="staff-invite-actions"><Badge value={i.status}/>
-       {(i.status==="pending"||i.status==="expired")&&
-         <button className="btn btn-secondary" disabled={busy||
-           (i.sentAt && Date.now()-new Date(i.sentAt).getTime()<60000)}
-           title={i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000?t("retryLater"):undefined}
-           onClick={()=>action(i.id,"resend")}>{t("resend")}</button>}
-       {i.status==="pending"&&
-         <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
-          onClick={()=>action(i.id,"revoke")}>{t("removeInvite")}</button>}
-      </div>
-     </article>)}</div>:<Empty text={t("noInvites")}/>}
-   <div className="phase-pagination">
-    <button className="btn btn-secondary" disabled={page===1} onClick={()=>setPage(v=>v-1)}>{t("previous")}</button>
-    <span>{page} / {pages}</span>
-    <button className="btn btn-secondary" disabled={page>=pages} onClick={()=>setPage(v=>v+1)}>{t("next")}</button>
+  <section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("invitationsSummary")}</h2><p>{t("invitationLimit")}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={reload}>
+     <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button></div>
+   <div className="clinic-phase13-filters clinic-phase13-invite-filters">
+    <label className="clinic-phase13-search"><span>{t("invitesSearch")}</span>
+     <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+      <input type="search" autoComplete="off" maxLength={120} value={query}
+       placeholder={t("invitesSearchHint")}
+       onChange={e=>{setQuery(e.target.value);setPage(1);}}/></span></label>
+    <label><span>{t("filter")}</span><select value={filter} onChange={e=>{
+     setFilter(e.target.value);setPage(1);}}>
+     {["pending","all","expired","accepted","revoked"].map(value=>
+      <option key={value} value={value}>{t(value)}</option>)}</select></label>
+    {(query||filter!=="pending")&&<button type="button" className="btn btn-secondary"
+     onClick={()=>{setQuery("");setFilter("pending");setPage(1);}}>{t("teamReset")}</button>}
    </div>
-   <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:!slice.rows.length?
+    <div className="clinic-phase13-empty"><CareIcon name="mail" size={26}/>
+     <p>{t("noInvites")}</p></div>:
+    <div className="phase-list clinic-phase13-invite-list">
+     {slice.rows.map((i:any)=><article className="staff-invitation-row clinic-phase13-invite-row" key={i.id}>
+      <div className="clinic-phase13-invite-info"><strong dir="ltr">{i.email}</strong>
+       <div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)}
+        {i.resolutionReason?" · "+i.resolutionReason:""}</div>
+       <p className="clinic-phase13-invite-state"><Badge value={i.status}/>
+        {i.sentAt&&<span>{t("sent")}: {date(i.sentAt)}</span>}</p></div>
+      <div className="staff-invite-actions">
+       {(i.status==="pending"||i.status==="expired")&&roles.includes(i.role)&&
+        <button className="btn btn-secondary" type="button" disabled={busy||
+         (i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000)}
+         title={i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000?t("retryLater"):undefined}
+         onClick={()=>begin(i,"resend")}><CareIcon name="mail" size={15}/>
+         {t("resend")}</button>}
+       {i.status==="pending"&&roles.includes(i.role)&&
+        <button className="btn btn-secondary" type="button" disabled={busy||reason.trim().length<5}
+         onClick={()=>begin(i,"revoke")}><CareIcon name="close" size={15}/>
+         {t("removeInvite")}</button>}
+      </div>
+     </article>)}
+    </div>}
+   <div className="clinic-phase13-table-bottom">
+    <p role="status" aria-live="polite">{t("teamCount")} {slice.start}–{slice.end}
+     {" "}{t("teamOf")} {slice.total}</p>
+    <StaffPager page={slice.page} pages={slice.pages} onPage={setPage}
+     label={t("invitationsSummary")}/>
+   </div>
+   <label className="clinic-phase13-reason"><span>{t("reason")}</span>
+    <textarea rows={2} maxLength={300} value={reason} disabled={busy}
+     onChange={e=>setReason(e.target.value)}/></label>
+   <p className="clinic-phase13-form-note">{t("invitationRevokeNote")}</p>
   </section>
+  {review&&<StaffReviewDialog title={t(review.kind==="revoke"?
+   "invitationRevokeReview":"invitationReview")}
+   description={t(review.kind==="revoke"?"invitationRevokeNote":"invitationReviewNote")}
+   checked={reviewed} onChecked={setReviewed}
+   onCancel={close} onConfirm={()=>void confirm()} busy={busy}
+   confirmText={t(review.kind==="revoke"?"removeInvite":review.kind==="resend"?"resend":"invitationConfirm")}>
+   <div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>
+   <div><dt>{t("invitationEmail")}</dt><dd dir="ltr">{review.email}</dd></div>
+   <div><dt>{t("invitationRole")}</dt><dd>{t(review.role)}</dd></div>
+   <div><dt>{t("modalExpiry")}</dt><dd>{t("invitationExpires")}</dd></div>
+   {review.kind==="revoke"&&<div><dt>{t("modalReason")}</dt><dd>{reason}</dd></div>}
+  </StaffReviewDialog>}
  </div>;
 }
 function SecurityPanel({space,ctx}:{space:Space,ctx:Context}){
@@ -509,53 +859,128 @@ function SecurityPanel({space,ctx}:{space:Space,ctx:Context}){
  const canManage=space.capabilities.includes("security.read");
  const {data,error,reload}=useData(canManage?"/clinics/"+space.clinicId+"/security":null);
  const {data:sessions,error:sessionError,reload:reloadSessions}=useData("/sessions");
- const [reason,setReason]=useState("Close unused sessions");
- const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+ const [reason,setReason]=useState("Close unused sessions"),[busy,setBusy]=useState(false),
+  [notice,setNotice]=useState(""),[review,setReview]=useState(false),
+  [reviewed,setReviewed]=useState(false),[eventPage,setEventPage]=useState(1),
+  [sessionPage,setSessionPage]=useState(1),[accessPage,setAccessPage]=useState(1),
+  [query,setQuery]=useState("");
+ useEffect(()=>{
+  setReview(false);setReviewed(false);setNotice("");
+  setEventPage(1);setSessionPage(1);setAccessPage(1);setQuery("");
+ },[space.clinicId]);
  async function allLogout(){
-  if(!window.confirm(t("confirm")))return;
+  if(!review||!reviewed||busy||reason.trim().length<5)return;
   setBusy(true);setNotice("");
   try{
-   await api("/sessions/revoke","POST",{reason});
+   await api("/sessions/revoke","POST",{reason:reason.trim()});
    location.assign("/clinic/login");
   }catch(e){setNotice((e as Error).message);setBusy(false);}
  }
- return <div className="staff-gap">
-  <section className="card panel"><h2>{t("security")}</h2>
-   <Banner>{t("securityNote")}</Banner>
-   <div className="phase-actions"><a className="btn btn-secondary" href="/clinic/reset-password">{t("password")}</a></div>
+ const access=(data?.access||[]).filter((m:any)=>
+  !query.trim()||(m.name+" "+m.email+" "+m.role).toLocaleLowerCase()
+   .includes(query.trim().toLocaleLowerCase()));
+ const accessRows=staffPage(access,accessPage);
+ const eventRows=staffPage(data?.events||[],eventPage);
+ const sessionRows=staffPage(sessions?.sessions||[],sessionPage);
+ return <div className="staff-gap clinic-phase13-security">
+  <section className="card panel clinic-phase13-security-intro">
+   <span className="clinic-phase13-kicker"><CareIcon name="shield-check" size={17}/>
+    {t("securitySummary")}</span>
+   <h2>{t("security")}</h2><p>{t("securityNote")} {t("securityNoAuto")}</p>
+   <div className="phase-actions"><a className="btn btn-secondary" href="/clinic/reset-password">
+    <CareIcon name="security" size={16}/>{t("password")}</a></div>
   </section>
-  {canManage&&<section className="card panel"><h2>{t("people")} · {t("security")}</h2>
-   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
-    <div className="staff-scroll"><table className="staff-table"><thead><tr>
-      <th>{t("name")}</th><th>{t("role")}</th><th>{t("status")}</th>
-      <th>{t("mfa")}</th><th>{t("lastChanged")}</th>
-     </tr></thead><tbody>{data.access.map((m:any)=><tr key={m.id}>
-      <td><a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{m.name}</a>
-       <div className="muted staff-small" dir="ltr">{m.email}</div></td>
-      <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
-      <td>{t(m.mfaEnabled?"on":"off")}</td><td>{date(m.changedAt)}</td>
-     </tr>)}</tbody></table></div>}
+  {canManage&&<section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("people")} · {t("security")}</h2>
+    <p>{t("teamPermissions")}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={reload}>
+     <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button></div>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:<>
+    <div className="clinic-phase13-metrics clinic-phase13-security-metrics">
+     <div className="clinic-phase13-metric"><CareIcon name="users" size={20}/>
+      <strong>{data.access.length}</strong><span>{t("securityMemberCount")}</span></div>
+     <div className="clinic-phase13-metric"><CareIcon name="shield-check" size={20}/>
+      <strong>{data.access.filter((m:any)=>m.mfaEnabled&&m.status==="active").length}</strong>
+      <span>{t("mfa")}</span></div>
+     <div className="clinic-phase13-metric"><CareIcon name="activity" size={20}/>
+      <strong>{data.events.length}</strong><span>{t("securityEvents")}</span></div>
+    </div>
+    <label className="clinic-phase13-search clinic-phase13-security-search">
+     <span>{t("teamSearch")}</span>
+     <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+      <input type="search" value={query} maxLength={120}
+       onChange={e=>{setQuery(e.target.value);setAccessPage(1);}}
+       placeholder={t("teamSearchHint")}/></span></label>
+    {!accessRows.rows.length?<div className="clinic-phase13-empty"><p>{t("teamEmpty")}</p></div>:
+     <div className="staff-scroll clinic-phase13-staff-table-scroll">
+      <table className="staff-table"><thead><tr><th>{t("name")}</th><th>{t("role")}</th>
+       <th>{t("status")}</th><th>{t("mfa")}</th><th>{t("lastChanged")}</th>
+      </tr></thead><tbody>{accessRows.rows.map((m:any)=><tr key={m.id}>
+       <td><a className="text-link" href={"/clinic/staff/"+encodeURIComponent(m.id)+
+        "?clinic="+encodeURIComponent(space.clinicId)}>{m.name}</a>
+        <div className="muted staff-small" dir="ltr">{m.email}</div></td>
+       <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
+       <td><span className={"clinic-phase13-mfa"+(m.mfaEnabled?" is-on":"")}>
+        <CareIcon name={m.mfaEnabled?"shield-check":"clock"} size={15}/>
+        {t(m.mfaEnabled?"on":"off")}</span></td>
+       <td>{date(m.changedAt)}</td>
+      </tr>)}</tbody></table></div>}
+    <StaffPager page={accessRows.page} pages={accessRows.pages}
+     onPage={setAccessPage} label={t("securityMemberCount")}/>
+   </>}
   </section>}
-  <section className="card panel"><h2>{t("sessions")}</h2>
+  <section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("sessions")}</h2><p>{t("securitySessionHint")}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={reloadSessions}>
+     <CareIcon name="activity" size={16}/>{t("retry")}</button></div>
    {sessionError?<ErrorBox error={sessionError} retry={reloadSessions}/>:!sessions?<Busy/>:
-    !sessions.sessions.length?<Empty text={t("noHistory")}/>:
-    <div className="phase-list">{sessions.sessions.map((s:any)=><div className="phase-row phase-list-item" key={s.id}>
-      <div><strong>{s.userAgent||t("account")}</strong><p className="muted">{date(s.createdAt)} · {date(s.expiresAt)}</p></div>
+    !sessionRows.rows.length?<div className="clinic-phase13-empty"><p>{t("noHistory")}</p></div>:
+    <div className="phase-list clinic-phase13-session-list">
+     {sessionRows.rows.map((s:any)=><div className="phase-row phase-list-item" key={s.id}>
+      <span className="clinic-phase13-session-icon"><CareIcon name="security" size={20}/></span>
+      <div><strong>{s.userAgent||t("account")}</strong>
+       <p className="muted">{date(s.createdAt)} · {date(s.expiresAt)}</p></div>
       <Badge value="active"/>
-    </div>)}</div>}
-   <div className="phase-form">
-    <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
-    <button className="btn btn-secondary" disabled={busy||reason.trim().length<5} onClick={allLogout}>{t("signoutAll")}</button>
+     </div>)}</div>}
+   <StaffPager page={sessionRows.page} pages={sessionRows.pages} onPage={setSessionPage}
+    label={t("sessions")}/>
+   <div className="clinic-phase13-session-actions">
+    <label className="clinic-phase13-reason"><span>{t("reason")}</span>
+     <textarea rows={2} maxLength={300} value={reason} disabled={busy}
+      onChange={e=>setReason(e.target.value)}/></label>
+    <p>{t("securityReasonHint")}</p>
+    <button type="button" className="btn btn-secondary"
+     disabled={busy||reason.trim().length<5}
+     onClick={()=>{setReview(true);setReviewed(false);setNotice("");}}>
+     <CareIcon name="logout" size={17}/>{t("signoutAll")}</button>
    </div>
    {notice&&<Banner kind="error">{notice}</Banner>}
   </section>
-  {canManage&&<section className="card panel"><h2>{t("lastActivity")}</h2>
-   {!data?<Busy/>:!data.events?.length?<Empty text={t("noHistory")}/>:
-    <div className="phase-list">{data.events.map((e:any)=><div key={e.id} className="phase-row phase-list-item">
+  {canManage&&<section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("lastActivity")}</h2><p>{t("securityEvents")} · {t("securityReadOnly")}</p></div></div>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
+    !eventRows.rows.length?<div className="clinic-phase13-empty"><p>{t("noHistory")}</p></div>:
+    <div className="phase-list clinic-phase13-event-list">
+     {eventRows.rows.map((e:any)=><div className="phase-row phase-list-item" key={e.id}>
+      <span className="clinic-phase13-session-icon"><CareIcon name="activity" size={19}/></span>
       <div><strong>{e.action}</strong><p className="muted">{date(e.createdAt)} · {e.outcome}</p></div>
-      <span className="muted staff-small">{e.subjectId||"—"}</span>
-    </div>)}</div>}
+      <span className="muted staff-small" dir="ltr">{e.subjectId?.slice(0,8)||"—"}</span>
+     </div>)}</div>}
+   <StaffPager page={eventRows.page} pages={eventRows.pages} onPage={setEventPage}
+    label={t("securityEvents")}/>
   </section>}
+  {review&&<StaffReviewDialog title={t("securityActionReview")}
+   description={t("securityReasonHint")} busy={busy} checked={reviewed}
+   onChecked={setReviewed} onCancel={()=>{if(!busy){setReview(false);setReviewed(false);}}}
+   onConfirm={()=>void allLogout()} confirmText={t("signoutAll")}>
+   <div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>
+   <div><dt>{t("account")}</dt><dd>{ctx.name} · <bdi dir="ltr">{ctx.email}</bdi></dd></div>
+   <div><dt>{t("modalReason")}</dt><dd>{reason}</dd></div>
+   <div><dt>{t("modalImpact")}</dt><dd>{t("securityActionCheck")}</dd></div>
+  </StaffReviewDialog>}
  </div>;
 }
 function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
@@ -565,7 +990,13 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
  const {data,error,reload}=useData(memberId?"/clinics/"+space.clinicId+"/staff/"+memberId:null);
  const [role,setRole]=useState(""),[reason,setReason]=useState("");
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[notice,setNotice]=useState("");
+ const [review,setReview]=useState<{path:string;body:any;actionName:string}|null>(null),
+  [reviewed,setReviewed]=useState(false);
  const [draft,setDraft]=useState<any>(null);
+ useEffect(()=>{
+  setRole("");setReason("");setProblem("");setNotice("");
+  setReview(null);setReviewed(false);setDraft(null);
+ },[space.clinicId,memberId]);
  useEffect(()=>{
   if(data?.member)setRole(data.member.role);
   if(data?.draft)setDraft(data.draft);
@@ -575,22 +1006,48 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
   });
  },[data]);
  async function action(path:string,body:any,destructive=false){
-  if(destructive&&!window.confirm(t("confirm")))return;
+  if(busy)return;
+  if(destructive){
+   if(!data?.canManage||!ctx.mfaEnabled||memberId===space.membershipId||
+    data.member.role==="owner"||reason.trim().length<5)return;
+   const normalized={...body,reason:reason.trim()};
+   setReview({path,body:normalized,actionName:path==="/role"?t("roleChange"):
+    path==="/clinician"?t("clinicalAffiliation"):
+    path==="/force-logout"?t("forceLogout"):t(normalized.action)});
+   setReviewed(false);setProblem("");setNotice("");return;
+  }
   setProblem("");setNotice("");setBusy(true);
   try{
    await api("/clinics/"+space.clinicId+"/staff/"+memberId+path,"POST",body);
    reload();setNotice(t("updateSuccess"));setReason("");
   }catch(e){setProblem((e as Error).message);}finally{setBusy(false);}
  }
+ async function confirmReview(){
+  if(!review||!reviewed||busy||!data?.canManage||!ctx.mfaEnabled||memberId===space.membershipId||
+   data.member.role==="owner")return;
+  const active=review;setBusy(true);setProblem("");setNotice("");
+  try{
+   await api("/clinics/"+space.clinicId+"/staff/"+memberId+active.path,"POST",active.body);
+   setReview(null);setReviewed(false);setReason("");
+   reload();setNotice(t("updateSuccess"));
+  }catch(e){setProblem((e as Error).message);}
+  finally{setBusy(false);}
+ }
+ const closeReview=()=>{if(!busy){setReview(null);setReviewed(false);}};
  if(error)return <ErrorBox error={error} retry={reload}/>;
  if(!data)return <Busy/>;
  const member=data.member;
  const manager=space.role==="manager";
- const options=["dentist","receptionist","assistant","cashier",...(manager?[]:["manager"])];
+ const options=staffAssignableRoles(space.role);
+ const canChange=data.canManage&&staffMayManage(space.role,member.role as StaffRole,
+  memberId===space.membershipId,member.status as StaffState)&&ctx.mfaEnabled;
+ const canChangeRole=canChange&&member.status==="active";
+ const editableOptions=options.filter(value=>value!==member.role);
  return <div className="staff-gap">
   <a className="text-link" href={space.capabilities.includes("staff.read")?
     "/clinic/staff?clinic="+space.clinicId:"/clinic?clinic="+space.clinicId}>{t("back")} ←</a>
-  <section className="card panel"><div className="phase-row"><div>
+  <section className="card panel clinic-phase13-staff-detail-hero"><div className="phase-row"><div>
+    <span className="clinic-phase13-kicker">{t("staffPersonal")}</span>
     <h2>{member.name}</h2><span dir="ltr" className="muted">{member.email}</span></div>
     <Badge value={member.status}/></div>
    <div className="staff-role-summary">
@@ -598,9 +1055,10 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
     <div><small className="muted">{t("joinedOn")}</small><strong>{date(member.joinedAt)}</strong></div>
     <div><small className="muted">{t("mfa")}</small><strong>{t(member.mfaEnabled?"on":"off")}</strong></div>
    </div>
-   <Banner>{t("sessionImpact")}</Banner>
+   <Banner>{t("sessionImpact")} {t("staffChanged")}</Banner>
   </section>
-  {data.canManage&&<section className="card panel"><h2>{t("roleChange")}</h2>
+  {data.canManage&&<section className="card panel clinic-phase13-staff-actions"><h2>{t("editStaff")}</h2>
+   <p className="clinic-phase13-inline-note">{t("staffChanged")}</p>
    {!ctx.mfaEnabled?<div><Banner kind="warning">{t("activateMfa")}</Banner>
     <AdminMfaSetup home={typeof window !== "undefined" ? window.location.pathname+window.location.search : "/clinic/staff"}/></div>:<>
     <div className="staff-roles-controls">
@@ -609,16 +1067,19 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
       <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
     </div>
     <div className="phase-actions">
-      <button className="btn btn-primary" disabled={busy||role===member.role||reason.trim().length<5}
-       onClick={()=>action("/role",{role,reason},true)}>{t("change")}</button>
-      {member.status==="active"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+      <button className="btn btn-primary" disabled={busy||!canChangeRole||
+        role===member.role||!options.includes(role as StaffRole)||reason.trim().length<5}
+       onClick={()=>action("/role",{role,reason},true)}>
+       <CareIcon name="edit" size={17}/>{t("change")}</button>
+      {member.status==="active"&&<button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
        onClick={()=>action("/status",{action:"suspend",reason},true)}>{t("suspend")}</button>}
-      {member.status==="suspended"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+      {member.status==="suspended"&&<button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
        onClick={()=>action("/status",{action:"reactivate",reason},true)}>{t("reactivate")}</button>}
-      {member.status!=="revoked"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+      {member.status!=="revoked"&&<button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
        onClick={()=>action("/status",{action:"revoke",reason},true)}>{t("revoke")}</button>}
-      <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
-       onClick={()=>action("/force-logout",{reason},true)}>{t("forceLogout")}</button>
+      <button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
+       onClick={()=>action("/force-logout",{reason},true)}>
+       <CareIcon name="logout" size={17}/>{t("forceLogout")}</button>
     </div>
     <p className="muted staff-small">{t("ownerSafe")} {t("suspendedInfo")}</p>
    </>}
@@ -626,7 +1087,7 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
   {data.canManage&&space.role==="owner"&&member.role==="manager"&&ctx.mfaEnabled&&
    <section className="card panel"><h2>{t("clinicalAffiliation")}</h2>
     <p className="muted">{t("notPublic")}</p>
-    <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+    <button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
      onClick={()=>action("/clinician",{enabled:!member.clinicianEnabled,reason},true)}>
      {t(member.clinicianEnabled?"clinicianOff":"clinicianOn")}</button>
     <p className="muted staff-small">{t("roleReason")}: {t("reason")}</p>
@@ -654,6 +1115,19 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
    {data.events.map((ev:any,i:number)=><p key={i}>{date(ev.createdAt)} · {ev.action} · {ev.outcome}</p>)}
   </section>}
   {problem&&<Banner kind="error">{problem}</Banner>}{notice&&<Banner kind="success">{notice}</Banner>}
+  {review&&<StaffReviewDialog title={t("staffReviewTitle")}
+   description={t("staffReviewNote")} checked={reviewed}
+   onChecked={setReviewed} onCancel={closeReview}
+   onConfirm={()=>void confirmReview()} busy={busy} confirmText={t("staffReviewConfirm")}>
+   <div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>
+   <div><dt>{t("modalMember")}</dt><dd>{member.name}
+    {" · "}<bdi dir="ltr">{member.email}</bdi></dd></div>
+   <div><dt>{t("currentRole")}</dt><dd>{t(member.role)}</dd></div>
+   <div><dt>{t("modalImpact")}</dt><dd>{review.actionName}
+    {review.path==="/role"?" → "+t(review.body.role):""}</dd></div>
+   <div><dt>{t("modalReason")}</dt><dd>{review.body.reason}</dd></div>
+   <div><dt>{t("sessionImpact")}</dt><dd>{t("sessionImpact")}</dd></div>
+  </StaffReviewDialog>}
  </div>;
 }
 export function InvitationAccept(){
