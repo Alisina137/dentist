@@ -508,37 +508,68 @@ function Overview({space,go}:{space:Space;go:(x:string)=>void}){
  if(error)return <Failure code={error} retry={refresh}/>;
  if(!data)return <Busy/>;
  const s=data.summary;
- return <div className="phase10-stack">
-  <div className="phase10-kpis">
+ return <div className="phase10-stack clinic-phase12-overview">
+  <div className="clinic-phase12-overview-intro">
+   <div><span className="clinic-phase12-kicker">{t("financeToday")}</span>
+    <h2>{t("overview")}</h2><p>{t("financeSummaryHint")}</p></div>
+   <button type="button" className="btn btn-secondary" onClick={refresh}>
+    <CareIcon name="activity" size={16}/>{t("financeUpdate")}</button>
+  </div>
+  <div className="phase10-kpis clinic-phase12-kpis">
    {(["todayReceipts","outstanding","overdueTotal","monthCollections"] as const).map((key,index)=>{
     const value=[s.today_receipts,s.outstanding,s.overdue,s.month_collections][index];
     const goto=index===2?"balances":index===1?"invoices":"payments";
     return <button className="card phase10-kpi" type="button" key={key} onClick={()=>go(goto)}>
-     <span className="phase10-kpi-icon" aria-hidden="true">{["↗","◈","!","▥"][index]}</span>
+     <span className="phase10-kpi-icon" aria-hidden="true">
+      <CareIcon name={(["activity","receipt","clock","chart-columns"] as const)[index]} size={22}/>
+     </span>
      <span>{t(key)}</span><strong><Money amount={value}/></strong><small>{t("viewAll")} →</small>
     </button>;
    })}
   </div>
-  <div className="phase10-grid">
+  <section className="card phase10-panel clinic-phase12-quick">
+   <Title title={t("financeQuick")} desc={t("financeQuickHint")}/>
+   <div className="clinic-phase12-quick-grid">
+    {([
+      ["invoices","financeNewInvoice","receipt"],
+      ["payments","financeOpenLedger","credit-card"],
+      ["balances","financeReceivables","chart-columns"],
+      ["expenses","financeExpense","clipboard"]
+     ] as const).map(([target,label,icon])=><button type="button" key={target}
+      className="clinic-phase12-quick-action" onClick={()=>go(target)}>
+      <span className="clinic-phase12-quick-icon"><CareIcon name={icon} size={21}/></span>
+      <strong>{t(label)}</strong>
+      <CareIcon name="arrow" size={16}/>
+     </button>)}
+   </div>
+  </section>
+  <div className="phase10-grid clinic-phase12-overview-grid">
    <section className="card phase10-panel">
-    <Title title={t("recent")} desc={t("cashMovement")}
+    <Title title={t("recent")} desc={t("financeSummaryHint")}
      action={<button className="btn btn-secondary" onClick={()=>go("payments")}>{t("viewAll")} →</button>}/>
     {!data.recent.length?<TableEmpty/>:<div className="phase10-recent-list">
      {data.recent.map((e:any)=><div className="phase10-recent" key={e.id}>
-      <span className={"phase10-recent-icon "+e.kind}>{e.kind==="reversal"?"↩":"↗"}</span>
+      <span className={"phase10-recent-icon "+e.kind}>
+       <CareIcon name={e.kind==="reversal"?"arrow":e.kind==="credit"?"receipt":"activity"} size={19}/>
+      </span>
       <div><strong>{t(e.kind)}</strong><p>{e.patient_name} · {date(e.occurred_at)}</p></div>
-      <Money amount={(e.kind==="reversal"?-1:1)*e.amount_afn}/>
+      <Money amount={clinicFinancialNet(e.kind,e.amount_afn)}/>
      </div>)}</div>}
    </section>
    <aside className="card phase10-panel phase10-guidance">
     <span className="phase10-kicker">{t("attention")}</span>
     <h2>{s.open_count} {t("openCount")}</h2>
     <p>{t("issuedNotPaid")}</p><p>{t("taxNote")}</p>
+    <p className="clinic-phase12-clarification">{t("financeLimited")}</p>
     <button className="btn btn-primary" onClick={()=>go("balances")}>{t("aging")} →</button>
     <button className="btn btn-secondary" onClick={()=>go("expenses")}>{t("expenses")} →</button>
    </aside>
   </div>
   <CashFlowInsights space={space}/>
+  <div className="card clinic-phase12-permission-banner">
+   <CareIcon name="shield-check" size={19}/>
+   <div><strong>{t("financeApprovals")}</strong><p>{t("financePermissions")}</p></div>
+  </div>
  </div>;
 }
 function Invoices({space,patientId}:{space:Space;patientId?:string}){
