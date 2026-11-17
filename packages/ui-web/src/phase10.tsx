@@ -647,16 +647,27 @@ function InvoiceEditor({space,defaultPatient,original,onCancel,onSaved}:{space:S
  const selectedSource=sources.data?.sources?.find((x:Source)=>x.id===sourceId) as Source|undefined;
  const available=(catalog.data?.services||[] as Service[]).filter((s:Service)=>
   original?original.items.some(x=>x.serviceId===s.id):selectedSource?.serviceIds.includes(s.id));
+ const priceOf=(id:string)=>{
+  const originalUnit=original?.items.find(v=>v.serviceId===id)?.unitPriceAfn;
+  if(originalUnit!==undefined)return originalUnit;
+  return (catalog.data?.services||[] as Service[]).find((svc:Service)=>svc.id===id)?.base_price_afn;
+ };
+ const canDiscount=["owner","manager"].includes(space.role);
+ const lineIssue=clinicInvoiceLineIssue(items,priceOf,canDiscount);
  const total=items.reduce((sum,x)=>{
-  const svc=(catalog.data?.services||[] as Service[]).find((s:Service)=>s.id===x.serviceId);
-  const unit=original?.items.find(v=>v.serviceId===x.serviceId)?.unitPriceAfn??svc?.base_price_afn??0;
+  const unit=priceOf(x.serviceId)||0;
   return sum+unit*x.quantity-x.discountAfn;
  },0);
  function changeItem(index:number,key:string,value:any){
   setItems(prev=>prev.map((item,i)=>i===index?{...item,[key]:value}:item));
  }
  async function submit(e:FormEvent){
-  e.preventDefault();if(busy)return;setBusy(true);setError("");
+  e.preventDefault();if(busy)return;
+  if(lineIssue||!catalog.data||!patientId||(!original&&!sourceId)||
+   total<=0||total>2000000000){
+   setError(lineIssue||"INVALID_INVOICE_LINES");return;
+  }
+  setBusy(true);setError("");
   try{
    const payload={items, dueDate:dueDate||null,note:note||null};
    const r=original?await api(b(space.clinicId)+"/invoices/"+original.invoice.id,"PUT",
@@ -667,6 +678,10 @@ function InvoiceEditor({space,defaultPatient,original,onCancel,onSaved}:{space:S
  }
  return <form onSubmit={submit} className="phase10-editor">
   <Alert kind="info">{t("evidence")} {t("taxNote")}</Alert>
+  <div className="clinic-phase12-editor-notice">
+   <CareIcon name="shield-check" size={18}/>
+   <span>{t("financeEstimateWarning")} {t("noCharge")}</span>
+  </div>
   {!original&&<>
    {!defaultPatient&&<label className="phase10-field"><span>{t("patientSearch")}</span>
     <div className="phase10-field-search"><input aria-label={t("patientSearch")} value={patientSearch}
@@ -701,33 +716,45 @@ function InvoiceEditor({space,defaultPatient,original,onCancel,onSaved}:{space:S
    const unit=originalLine?.unitPriceAfn??svc?.base_price_afn??0;
    return <div className="phase10-line-edit" key={index}>
     <label className="phase10-field"><span>{t("service")}</span><select required value={x.serviceId}
-     onChange={e=>changeItem(index,"serviceId",e.target.value)}>
+     disabled={busy} onChange={e=>changeItem(index,"serviceId",e.target.value)}>
      <option value="">{t("service")}</option>
      {available.map((s:Service)=><option key={s.id} value={s.id}>{s.name} · {money(s.base_price_afn)} AFN</option>)}
      {originalLine&&!available.some((s:Service)=>s.id===x.serviceId)&&<option value={x.serviceId}>{originalLine.name}</option>}
     </select></label>
-    <label className="phase10-field"><span>{t("quantity")}</span><input type="number" required min={1} max={20} value={x.quantity}
-     onChange={e=>changeItem(index,"quantity",Number(e.target.value))}/></label>
-    <label className="phase10-field"><span>{t("discount")}</span><input type="number" min={0} max={10000000}
-     disabled={!["owner","manager"].includes(space.role)} value={x.discountAfn}
-     onChange={e=>changeItem(index,"discountAfn",Number(e.target.value))}/></label>
-    <div className="phase10-line-value">{t("lineTotal")}<strong><Money amount={unit*x.quantity-x.discountAfn}/></strong></div>
-    {items.length>1&&<button className="phase10-remove" type="button"
+    <label className="phase10-field"><span>{t("quantity")}</span>
+     <input type="number" required min={1} max={20} step={1} value={x.quantity}
+      disabled={busy} onChange={e=>changeItem(index,"quantity",Number(e.target.value))}/></label>
+    <label className="phase10-field"><span>{t("discount")}</span>
+     <input type="number" min={0} max={Math.min(10000000,Math.floor(unit*x.quantity*0.3))}
+      step={1} disabled={!canDiscount||busy} value={x.discountAfn}
+      onChange={e=>changeItem(index,"discountAfn",Number(e.target.value))}/></label>
+    <div className="phase10-line-value">{t("lineTotal")}<strong>
+     <Money amount={Math.max(0,unit*x.quantity-x.discountAfn)}/></strong></div>
+    {items.length>1&&<button className="phase10-remove" type="button" disabled={busy}
      onClick={()=>setItems(x=>x.filter((_,i)=>i!==index))}>{t("remove")}</button>}
    </div>;
   })}</div>
-  <div className="phase10-quote-total"><span>{t("total")}</span><strong><Money amount={Math.max(0,total)}/></strong></div>
+  {lineIssue&&<Alert kind="warning">{t("financeInvalid")} ({lineIssue})</Alert>}
+  <div className="phase10-quote-total clinic-phase12-draft-preview">
+   <span>{t("financeAmountPreview")}</span>
+   <strong><Money amount={Math.max(0,total)}/></strong>
+  </div>
   <div className="phase10-form-grid">
    <label className="phase10-field"><span>{t("dueDate")}</span>
-    <input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></label>
+    <input type="date" value={dueDate} disabled={busy}
+     onChange={e=>setDueDate(e.target.value)}/></label>
    <label className="phase10-field phase10-wide"><span>{t("noteOptional")}</span>
-    <textarea rows={2} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)}/></label>
+    <textarea rows={2} maxLength={1000} value={note} disabled={busy}
+     onChange={e=>setNote(e.target.value)}/></label>
   </div>
   {error&&<Failure code={error}/>}
   <div className="phase10-actions">
-   <button type="submit" className="btn btn-primary" disabled={busy||total<=0||
-    !patientId||(!original&&!sourceId)||!catalog.data}>{busy?t("loading"):t(original?"save":"createDraft")} →</button>
-   <button className="btn btn-secondary" type="button" onClick={onCancel}>{t("cancel")}</button>
+   <button type="submit" className="btn btn-primary"
+    disabled={busy||Boolean(lineIssue)||total<=0||total>2000000000||
+     !patientId||(!original&&!sourceId)||!catalog.data}>
+    <CareIcon name="check" size={16}/>{busy?t("loading"):t(original?"save":"createDraft")}</button>
+   <button className="btn btn-secondary" disabled={busy}
+    type="button" onClick={onCancel}>{t("cancel")}</button>
   </div>
  </form>;
 }
