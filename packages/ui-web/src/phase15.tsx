@@ -1194,7 +1194,7 @@ function Notifications({cid}:{cid:string}){
       onClick={()=>setPage(x=>Math.min(pages,x+1))}>{t("next")}</button>
     </nav>}
     <p className="j-delivery-help"><CareIcon name="shield-check" size={15}/>
-     {copy.window} {t("deliveryNoPush")}</p>
+     {t("deliveryLimit")} {t("deliveryNoPush")}</p>
    </>}
  </section>;
 }
