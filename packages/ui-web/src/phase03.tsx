@@ -859,53 +859,128 @@ function SecurityPanel({space,ctx}:{space:Space,ctx:Context}){
  const canManage=space.capabilities.includes("security.read");
  const {data,error,reload}=useData(canManage?"/clinics/"+space.clinicId+"/security":null);
  const {data:sessions,error:sessionError,reload:reloadSessions}=useData("/sessions");
- const [reason,setReason]=useState("Close unused sessions");
- const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+ const [reason,setReason]=useState("Close unused sessions"),[busy,setBusy]=useState(false),
+  [notice,setNotice]=useState(""),[review,setReview]=useState(false),
+  [reviewed,setReviewed]=useState(false),[eventPage,setEventPage]=useState(1),
+  [sessionPage,setSessionPage]=useState(1),[accessPage,setAccessPage]=useState(1),
+  [query,setQuery]=useState("");
+ useEffect(()=>{
+  setReview(false);setReviewed(false);setNotice("");
+  setEventPage(1);setSessionPage(1);setAccessPage(1);setQuery("");
+ },[space.clinicId]);
  async function allLogout(){
-  if(!window.confirm(t("confirm")))return;
+  if(!review||!reviewed||busy||reason.trim().length<5)return;
   setBusy(true);setNotice("");
   try{
-   await api("/sessions/revoke","POST",{reason});
+   await api("/sessions/revoke","POST",{reason:reason.trim()});
    location.assign("/clinic/login");
   }catch(e){setNotice((e as Error).message);setBusy(false);}
  }
- return <div className="staff-gap">
-  <section className="card panel"><h2>{t("security")}</h2>
-   <Banner>{t("securityNote")}</Banner>
-   <div className="phase-actions"><a className="btn btn-secondary" href="/clinic/reset-password">{t("password")}</a></div>
+ const access=(data?.access||[]).filter((m:any)=>
+  !query.trim()||(m.name+" "+m.email+" "+m.role).toLocaleLowerCase()
+   .includes(query.trim().toLocaleLowerCase()));
+ const accessRows=staffPage(access,accessPage);
+ const eventRows=staffPage(data?.events||[],eventPage);
+ const sessionRows=staffPage(sessions?.sessions||[],sessionPage);
+ return <div className="staff-gap clinic-phase13-security">
+  <section className="card panel clinic-phase13-security-intro">
+   <span className="clinic-phase13-kicker"><CareIcon name="shield-check" size={17}/>
+    {t("securitySummary")}</span>
+   <h2>{t("security")}</h2><p>{t("securityNote")} {t("securityNoAuto")}</p>
+   <div className="phase-actions"><a className="btn btn-secondary" href="/clinic/reset-password">
+    <CareIcon name="security" size={16}/>{t("password")}</a></div>
   </section>
-  {canManage&&<section className="card panel"><h2>{t("people")} · {t("security")}</h2>
-   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
-    <div className="staff-scroll"><table className="staff-table"><thead><tr>
-      <th>{t("name")}</th><th>{t("role")}</th><th>{t("status")}</th>
-      <th>{t("mfa")}</th><th>{t("lastChanged")}</th>
-     </tr></thead><tbody>{data.access.map((m:any)=><tr key={m.id}>
-      <td><a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{m.name}</a>
-       <div className="muted staff-small" dir="ltr">{m.email}</div></td>
-      <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
-      <td>{t(m.mfaEnabled?"on":"off")}</td><td>{date(m.changedAt)}</td>
-     </tr>)}</tbody></table></div>}
+  {canManage&&<section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("people")} · {t("security")}</h2>
+    <p>{t("teamPermissions")}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={reload}>
+     <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button></div>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:<>
+    <div className="clinic-phase13-metrics clinic-phase13-security-metrics">
+     <div className="clinic-phase13-metric"><CareIcon name="users" size={20}/>
+      <strong>{data.access.length}</strong><span>{t("securityMemberCount")}</span></div>
+     <div className="clinic-phase13-metric"><CareIcon name="shield-check" size={20}/>
+      <strong>{data.access.filter((m:any)=>m.mfaEnabled&&m.status==="active").length}</strong>
+      <span>{t("mfa")}</span></div>
+     <div className="clinic-phase13-metric"><CareIcon name="activity" size={20}/>
+      <strong>{data.events.length}</strong><span>{t("securityEvents")}</span></div>
+    </div>
+    <label className="clinic-phase13-search clinic-phase13-security-search">
+     <span>{t("teamSearch")}</span>
+     <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+      <input type="search" value={query} maxLength={120}
+       onChange={e=>{setQuery(e.target.value);setAccessPage(1);}}
+       placeholder={t("teamSearchHint")}/></span></label>
+    {!accessRows.rows.length?<div className="clinic-phase13-empty"><p>{t("teamEmpty")}</p></div>:
+     <div className="staff-scroll clinic-phase13-staff-table-scroll">
+      <table className="staff-table"><thead><tr><th>{t("name")}</th><th>{t("role")}</th>
+       <th>{t("status")}</th><th>{t("mfa")}</th><th>{t("lastChanged")}</th>
+      </tr></thead><tbody>{accessRows.rows.map((m:any)=><tr key={m.id}>
+       <td><a className="text-link" href={"/clinic/staff/"+encodeURIComponent(m.id)+
+        "?clinic="+encodeURIComponent(space.clinicId)}>{m.name}</a>
+        <div className="muted staff-small" dir="ltr">{m.email}</div></td>
+       <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
+       <td><span className={"clinic-phase13-mfa"+(m.mfaEnabled?" is-on":"")}>
+        <CareIcon name={m.mfaEnabled?"shield-check":"clock"} size={15}/>
+        {t(m.mfaEnabled?"on":"off")}</span></td>
+       <td>{date(m.changedAt)}</td>
+      </tr>)}</tbody></table></div>}
+    <StaffPager page={accessRows.page} pages={accessRows.pages}
+     onPage={setAccessPage} label={t("securityMemberCount")}/>
+   </>}
   </section>}
-  <section className="card panel"><h2>{t("sessions")}</h2>
+  <section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("sessions")}</h2><p>{t("securitySessionHint")}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={reloadSessions}>
+     <CareIcon name="activity" size={16}/>{t("retry")}</button></div>
    {sessionError?<ErrorBox error={sessionError} retry={reloadSessions}/>:!sessions?<Busy/>:
-    !sessions.sessions.length?<Empty text={t("noHistory")}/>:
-    <div className="phase-list">{sessions.sessions.map((s:any)=><div className="phase-row phase-list-item" key={s.id}>
-      <div><strong>{s.userAgent||t("account")}</strong><p className="muted">{date(s.createdAt)} · {date(s.expiresAt)}</p></div>
+    !sessionRows.rows.length?<div className="clinic-phase13-empty"><p>{t("noHistory")}</p></div>:
+    <div className="phase-list clinic-phase13-session-list">
+     {sessionRows.rows.map((s:any)=><div className="phase-row phase-list-item" key={s.id}>
+      <span className="clinic-phase13-session-icon"><CareIcon name="security" size={20}/></span>
+      <div><strong>{s.userAgent||t("account")}</strong>
+       <p className="muted">{date(s.createdAt)} · {date(s.expiresAt)}</p></div>
       <Badge value="active"/>
-    </div>)}</div>}
-   <div className="phase-form">
-    <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
-    <button className="btn btn-secondary" disabled={busy||reason.trim().length<5} onClick={allLogout}>{t("signoutAll")}</button>
+     </div>)}</div>}
+   <StaffPager page={sessionRows.page} pages={sessionRows.pages} onPage={setSessionPage}
+    label={t("sessions")}/>
+   <div className="clinic-phase13-session-actions">
+    <label className="clinic-phase13-reason"><span>{t("reason")}</span>
+     <textarea rows={2} maxLength={300} value={reason} disabled={busy}
+      onChange={e=>setReason(e.target.value)}/></label>
+    <p>{t("securityReasonHint")}</p>
+    <button type="button" className="btn btn-secondary"
+     disabled={busy||reason.trim().length<5}
+     onClick={()=>{setReview(true);setReviewed(false);setNotice("");}}>
+     <CareIcon name="logout" size={17}/>{t("signoutAll")}</button>
    </div>
    {notice&&<Banner kind="error">{notice}</Banner>}
   </section>
-  {canManage&&<section className="card panel"><h2>{t("lastActivity")}</h2>
-   {!data?<Busy/>:!data.events?.length?<Empty text={t("noHistory")}/>:
-    <div className="phase-list">{data.events.map((e:any)=><div key={e.id} className="phase-row phase-list-item">
+  {canManage&&<section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("lastActivity")}</h2><p>{t("securityEvents")} · {t("securityReadOnly")}</p></div></div>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
+    !eventRows.rows.length?<div className="clinic-phase13-empty"><p>{t("noHistory")}</p></div>:
+    <div className="phase-list clinic-phase13-event-list">
+     {eventRows.rows.map((e:any)=><div className="phase-row phase-list-item" key={e.id}>
+      <span className="clinic-phase13-session-icon"><CareIcon name="activity" size={19}/></span>
       <div><strong>{e.action}</strong><p className="muted">{date(e.createdAt)} · {e.outcome}</p></div>
-      <span className="muted staff-small">{e.subjectId||"—"}</span>
-    </div>)}</div>}
+      <span className="muted staff-small" dir="ltr">{e.subjectId?.slice(0,8)||"—"}</span>
+     </div>)}</div>}
+   <StaffPager page={eventRows.page} pages={eventRows.pages} onPage={setEventPage}
+    label={t("securityEvents")}/>
   </section>}
+  {review&&<StaffReviewDialog title={t("securityActionReview")}
+   description={t("securityReasonHint")} busy={busy} checked={reviewed}
+   onChecked={setReviewed} onCancel={()=>{if(!busy){setReview(false);setReviewed(false);}}}
+   onConfirm={()=>void allLogout()} confirmText={t("signoutAll")}>
+   <div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>
+   <div><dt>{t("account")}</dt><dd>{ctx.name} · <bdi dir="ltr">{ctx.email}</bdi></dd></div>
+   <div><dt>{t("modalReason")}</dt><dd>{reason}</dd></div>
+   <div><dt>{t("modalImpact")}</dt><dd>{t("securityActionCheck")}</dd></div>
+  </StaffReviewDialog>}
  </div>;
 }
 function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
