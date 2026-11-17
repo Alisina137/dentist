@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React,{useEffect,useState} from "react";
 import {CareIcon,usePreferences} from "./index";
 import {pilotHandoffFilename,clinicPilotHandoff,
  type PilotHandoffInput,type PilotHandoffReason} from "./clinic-pilot-handoff-model";
@@ -53,6 +53,12 @@ const reasonKey:Record<PilotHandoffReason,"ready"|"scope"|"loading"|"stale"|"unv
 export function ClinicPilotHandoff({input,onRefresh}:{input:PilotHandoffInput;onRefresh:()=>void}){
  const {locale}=usePreferences();
  const t=messages[locale as Locale]||messages.en;
+ const [,setClockTick]=useState(0);
+ // Availability expires naturally even if the operator leaves this tab open.
+ useEffect(()=>{
+  const timer=window.setInterval(()=>setClockTick(value=>value+1),30000);
+  return()=>window.clearInterval(timer);
+ },[]);
  const result=clinicPilotHandoff(input);
  function exportPacket(){
   // Recalculate at click-time: a stale result or tenant switch never exports.
