@@ -5,6 +5,8 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
+import {NativeClinicPhase20,NativeDentistPhase20,NativeClinicTeamPhase20,
+ NativeInviteAcceptance} from "./native-clinic-phase20";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -185,7 +187,7 @@ const i18n={
  }
 } as const;
 
-type JsonMethod="GET"|"POST";
+type JsonMethod="GET"|"POST"|"PATCH";
 async function clinicRequest<T>(path:string,method:JsonMethod="GET",
  body?:unknown,token?:string|null,signal?:AbortSignal):Promise<{data:T;headers:Headers}>{
  if(!API)throw new ApiError(0,"API_NOT_CONFIGURED");
@@ -275,6 +277,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const [planId,setPlanId]=useState("");
  const [draft,setDraft]=useState<ClinicDraft>({...blankClinicDraft});
  const [stage,setStage]=useState(0);
+ const [creatingNew,setCreatingNew]=useState(false);
  const [summary,setSummary]=useState<ClinicOperations|null>(null);
  const [appointments,setAppointments]=useState<ClinicAppointments|null>(null);
  const [dataIssue,setDataIssue]=useState(false),[working,setWorking]=useState(false);
@@ -285,7 +288,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const clearSession=useCallback(async()=>{
   generation.current++;tokenRef.current=null;
   setToken(null);setContext(null);setSelected(null);setRecords([]);
-  setSummary(null);setAppointments(null);setPassword("");
+  setSummary(null);setAppointments(null);setPassword("");setCreatingNew(false);
   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
  },[]);
 
@@ -312,6 +315,23 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
     Array.isArray(res.data?.clinics))setRecords(res.data.clinics);
   }).catch(()=>{});
  },[]);
+
+ // Each protected native action uses the current SecureStore-backed bearer.
+ // Reject a response if the user signs out or switches sessions while loading.
+ const phase20Request=useCallback(<T,>(path:string,method:JsonMethod="GET",
+  body?:unknown,signal?:AbortSignal):Promise<T>=>{
+  const bearer=tokenRef.current,session=generation.current;
+  if(!bearer)return Promise.reject(new ApiError(401,"AUTH_REQUIRED"));
+  return clinicRequest<T>(path,method,body,bearer,signal).then(value=>{
+   if(session!==generation.current||tokenRef.current!==bearer||signal?.aborted)
+    throw new ApiError(401,"SESSION_CHANGED");
+   return value.data;
+  });
+ },[]);
+ const reloadClinic=useCallback(async()=>{
+  const bearer=tokenRef.current;
+  if(bearer)await refreshSession(bearer);
+ },[refreshSession]);
 
  useEffect(()=>{
   let live=true;
@@ -442,7 +462,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    if(!response.data?.clinic?.id)throw Error("INVALID_CREATED_CLINIC");
    await refreshSession(token);
    setSelected(response.data.clinic.id);
-   setTab("overview");setStage(0);
+   setTab("onboard");setStage(0);setCreatingNew(false);
    setMessage(t.saved);
   }catch(e){
    setError(e instanceof ApiError&&e.status===409?
@@ -527,7 +547,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
         {c.clinicName}</Text></Pressable>)}
      </ScrollView>
     </Card>}
-    {tab==="onboard"?<View style={{gap:14}}>
+    {tab==="onboard"&&(!active||creatingNew)?<View style={{gap:14}}>
      <View style={st.formHeader}>
       <SectionTitle text={t.noClinic} hint={t.formHelp}/>
       <View style={st.stepBar}>{steps.map((label,index)=>
@@ -590,11 +610,28 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
         onPress={()=>{void saveClinic()}} icon="check"/>}
       </View>
      </Card>
+    </View>:tab==="onboard"&&active?.role==="owner"&&token?
+    <View style={{gap:14}}>
+     <NativeClinicPhase20 key={active.clinicId} clinicId={active.clinicId}
+      locale={locale} token={token} api={API} request={phase20Request}
+      onRefresh={reloadClinic}/>
+     <Action text={t.newClinic} secondary icon="plus"
+      onPress={()=>{setCreatingNew(true);setDraft({...blankClinicDraft});setStage(0)}}/>
+    </View>:
+    tab==="onboard"&&active?<View style={{gap:14}}>
+     <Card><SectionTitle text={t.setupTitle} hint={t.reviewHuman}/>
+      <Text style={st.caption}>{t.statusInfo}</Text>
+      <Action text={t.connectWeb} secondary onPress={()=>openWeb("/clinic/onboarding?clinic="+encodeURIComponent(active.clinicId))}/>
+     </Card>
+     <Action text={t.newClinic} secondary icon="plus"
+      onPress={()=>{setCreatingNew(true);setDraft({...blankClinicDraft});setStage(0)}}/>
     </View>:!active?<View style={{gap:14}}>
      <Card><SectionTitle text={t.noClinic} hint={t.noClinicBody}/>
       <Action text={t.start} onPress={()=>{setTab("onboard");setStage(0);setError("");setMessage("")}} icon="plus"/>
       <Text style={st.caption}>{t.needLogin}</Text>
      </Card>
+     <NativeInviteAcceptance locale={locale} request={phase20Request}
+      onAccepted={reloadClinic}/>
     </View>:tab==="overview"?<View style={{gap:14}}>
      <Card>
       <View style={st.infoRow}><Text style={st.infoLabel}>{t.selected}</Text>
@@ -623,10 +660,22 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      {!working&&dataIssue&&<Text style={st.warnText}>{t.noData}</Text>}
      <Action text={t.refresh} onPress={()=>setRevision(x=>x+1)} secondary icon="calendar"/>
      <Card><SectionTitle text={t.setupTitle} hint={t.setupIntro}/>
+      {active.role==="owner"&&<Action text={t.onboard} icon="check"
+       onPress={()=>{setCreatingNew(false);setTab("onboard")}}/>}
       <Action text={t.connectWeb} onPress={()=>openWeb("/clinic/onboarding?clinic="+encodeURIComponent(active.clinicId))} icon="clinic"/>
       <Text style={st.caption}>{t.webSignIn}</Text>
      </Card>
     </View>:tab==="team"?<View style={{gap:14}}>
+     {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
+      <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
+       clinicId={active.clinicId} membershipId={active.membershipId}
+       locale={locale} request={phase20Request}/>}
+     {(active.role==="owner"||active.role==="manager")&&
+      <NativeClinicTeamPhase20 key={active.clinicId} clinicId={active.clinicId}
+       locale={locale} request={phase20Request} mfa={Boolean(context?.mfaEnabled)}
+       openWeb={()=>openWeb("/clinic/staff?clinic="+encodeURIComponent(active.clinicId))}/>}
+     <NativeInviteAcceptance locale={locale} request={phase20Request}
+      onAccepted={reloadClinic}/>
      <Card><SectionTitle text={t.team} hint={t.expectedNote}/>
       {owned&&<Metric name={t.plannedDentistCount} value={owned.plannedDentistCount}/>}
       <Text style={st.body}>{t.emptyTeam}</Text>
