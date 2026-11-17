@@ -2,6 +2,7 @@
 import React,{useEffect,useMemo,useState,type FormEvent} from "react";
 import {usePreferences,InlineAlert,CareIcon} from "./index";
 import {ClinicOpsBridge} from "./clinic-ops-bridge";
+import {ClinicOpsConnection} from "./clinic-ops-connection";
 import {clinicReportPeriodIssue,clinicReportPreset,clinicReportCompletion,clinicReportBars,
  clinicOpsHref,type ReportPeriod,type ReportPreset} from "./clinic-ops-bridge-model";
 import {clinicCsvRows} from "./clinic-finance-model";
@@ -313,6 +314,7 @@ export function ClinicReportsPortal(){
      <CareIcon name="shield-check" size={17}/>{copy.safe}</div>
    </header>
    <ClinicOpsBridge clinicId={space.clinicId} role={space.role} active="reports"/>
+   <ClinicOpsConnection onRefresh={()=>setCounter(x=>x+1)}/>
    <section className="card clinic-phase14-report-controls" aria-label={t("period")}>
     <div className="clinic-phase14-report-controls-head">
      <div><h2>{t("period")}</h2><p>{copy.periodToday}</p></div>
