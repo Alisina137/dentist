@@ -35,7 +35,7 @@ test("Clinic Phase 12: financial tab selection obeys staff roles and carries aut
   '["owner","manager","cashier","receptionist"].includes(space.role)',
   'const controller=new AbortController()',
   'api(path,"GET",undefined,controller.signal)',
-  'return()=>controller.abort()',
+  'return()=>{controller.abort();};',
   'data:snapshot.path===path?snapshot.data:null',
   'setTab(clinicFinanceTab(new URLSearchParams(location.search).get("tab"),canOverview))'
  ])assert.ok(ui.includes(marker),marker);
@@ -148,7 +148,7 @@ test("Clinic Phase 12: manual payments and credits require explicit reviewed con
 
 test("Clinic Phase 12: issuance, void and ledger reversals are review-gated with immutable records",()=>{
  for(const marker of [
-  'const [reviewed,setReviewed]=useState(false),[reverseKey,setReverseKey]=useState("")',
+  '[reviewed,setReviewed]=useState(false),[reverseKey,setReverseKey]=useState("")',
   'function beginReview(type:"issue"|"void"|"reverse")',
   'async function finalize()',
   'if(busy||!review||!reviewed||!data)return',
@@ -212,7 +212,7 @@ test("Clinic Phase 12: billing and receipt screens disclose bounded server windo
   'financeResultLimit:"جستجو فقط در آخرین ۴۰۰ بل',
   'financeResultLimit:"پلټنه یوازې د وروستیو ۴۰۰',
   'data.total',
-  '((page-1)*15+1)',
+  '{(page-1)*15+1}',
   'const visibleInvoices=inv.slice((page-1)*5,page*5)',
   'const visibleStatement=statementInvoices.slice((page-1)*5,page*5)',
   'const visibleEntries=entries.slice((page-1)*5,page*5)',
