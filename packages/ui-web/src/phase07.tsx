@@ -1,5 +1,5 @@
 "use client";
-import React,{useEffect,useState,type FormEvent,type ReactNode} from "react";
+import React,{useEffect,useRef,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
@@ -1006,85 +1006,206 @@ async function fileBase64(file:File){
  return btoa(result);
 }
 function Files({space,patientId}:{space:Space;patientId:string}){
- const {t,fmt}=useW(),base="/clinics/"+space.clinicId+"/patients/"+patientId;
+ const {t,fmt}=useW();
+ const base="/clinics/"+encodeURIComponent(space.clinicId)+"/patients/"+encodeURIComponent(patientId);
  const [kind,setKind]=useState("all");
  const {data,error,refresh}=useLoad(base+"/files?kind="+kind);
+ const [search,setSearch]=useState(""),[page,setPage]=useState(1);
  const [title,setTitle]=useState(""),[notes,setNotes]=useState(""),[fileKind,setFileKind]=useState("photo");
  const [selected,setSelected]=useState<File[]>([]),[busy,setBusy]=useState(false),[progress,setProgress]=useState("");
  const [failure,setFailure]=useState(""),[success,setSuccess]=useState("");
  const [preview,setPreview]=useState<string|null>(null);
+ const previewRef=useRef<string|null>(null),fileInput=useRef<HTMLInputElement|null>(null);
  const linked=typeof location==="undefined"?null:new URLSearchParams(location.search).get("encounterId");
+ const kinds=["all","xray","photo","consent","other"];
+ const allFiles:Array<{id:string;title:string;kind:string;file_name:string;mime:string;
+  size_bytes:number;scan_status:string;notes:string|null;encounter_id:string|null;
+  created_at:string;uploaded_by_name:string}>=data?.files||[];
+ const term=search.trim().toLocaleLowerCase();
+ const matches=allFiles.filter(f=>
+  !term||(f.title+" "+f.file_name+" "+f.uploaded_by_name).toLocaleLowerCase().includes(term));
+ const pages=Math.max(1,Math.ceil(matches.length/5));
+ const safePage=Math.min(page,pages);
+ const visible=matches.slice((safePage-1)*5,safePage*5);
+ function closePreview(){
+  if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+  previewRef.current=null;setPreview(null);
+ }
+ useEffect(()=>{
+  return()=>{if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+   previewRef.current=null;};
+ },[space.clinicId,patientId]);
+ useEffect(()=>{
+  if(!preview)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape")closePreview();
+  };
+  document.addEventListener("keydown",onEscape);
+  return()=>document.removeEventListener("keydown",onEscape);
+ },[preview]);
  async function upload(event:FormEvent){
-  event.preventDefault();if(!selected.length){setFailure(t("chooseFile"));return;}
+  event.preventDefault();if(busy)return;
+  if(!selected.length||selected.length>8){setFailure("INVALID_FILE_COUNT");return;}
+  if(selected.some(file=>!["image/png","image/jpeg","application/pdf"].includes(file.type)||
+   file.size>2097152||file.size===0)){setFailure("INVALID_FILE");return;}
   setBusy(true);setFailure("");setSuccess("");
+  let completed=0;
   try{
    for(let i=0;i<selected.length;i++){
     const file=selected[i];
-    if(!["image/png","image/jpeg","application/pdf"].includes(file.type))throw new Error("FILE_TYPE_UNSUPPORTED");
-    if(file.size>2097152||file.size===0)throw new Error("FILE_TOO_LARGE");
     setProgress((i+1)+" / "+selected.length);
     await call(base+"/files","POST",{title:title.trim()||file.name,fileName:file.name,
      kind:fileKind,notes,mime:file.type,encounterId:linked,
      contentBase64:await fileBase64(file)});
+    completed++;
    }
    setSelected([]);setTitle("");setNotes("");setSuccess(t("uploadDone"));refresh();
-  }catch(e:any){setFailure(t("uploadFailed")+" "+e.message);}finally{setBusy(false);setProgress("");}
+   if(fileInput.current)fileInput.current.value="";
+  }catch(e:any){
+   setFailure(e instanceof Error?e.message:"NETWORK_ERROR");
+   if(completed>0){
+    setSelected(selected.slice(completed));
+    setSuccess(t("documentsPartial")+" "+completed+" / "+selected.length);
+    refresh();
+   }
+   if(fileInput.current)fileInput.current.value="";
+  }finally{setBusy(false);setProgress("");}
  }
- async function openFile(file:any){
+ async function openFile(file:(typeof allFiles)[number]){
+  if(file.scan_status==="quarantined"){setFailure("FILE_QUARANTINED");return;}
   setFailure("");
   try{
-   const r=await fetch(API+"/v1/clinical"+base+"/files/"+file.id+"/content",{
+   const r=await fetch(API+"/v1/clinical"+base+"/files/"+encodeURIComponent(file.id)+"/content",{
     credentials:"include",cache:"no-store"});
-   if(!r.ok){const p=await r.json().catch(()=>({}));throw Error(p.code||"FILE_UNAVAILABLE");}
+   if(!r.ok){const body=await r.json().catch(()=>({}));
+    throw Error(body.code||"FILE_UNAVAILABLE");}
    const blob=await r.blob(),url=URL.createObjectURL(blob);
    if(file.mime==="application/pdf"){
-    const a=document.createElement("a");a.href=url;a.download=file.file_name||"clinical-file.pdf";
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-   }else{if(preview)URL.revokeObjectURL(preview);setPreview(url);}
-  }catch(e:any){setFailure(e.message);}
+    const a=document.createElement("a");a.href=url;a.download="clinical-file.pdf";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+   }else{
+    if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+    previewRef.current=url;setPreview(url);
+   }
+  }catch(e:any){setFailure(e instanceof Error?e.message:"NETWORK_ERROR");}
  }
- const kinds=["all","xray","photo","consent","other"];
- return <div className="phase07-grid">
-  <section className="card phase07-panel">
-   <div className="phase07-section"><div><h2>{t("patientFiles")}</h2>
-    <p className="muted">{data?.patient?patientName(data.patient):t("storage")}</p></div>
-    <select aria-label={t("fileFilter")} value={kind} onChange={e=>setKind(e.target.value)}>
-     {kinds.map(k=><option key={k} value={k}>{t(k)}</option>)}</select></div>
+ return <div className="phase07-grid clinic-phase11-documents">
+  <section className="card phase07-panel clinic-phase11-documents-list">
+   <div className="phase07-section">
+    <div><span className="clinic-phase11-kicker"><CareIcon name="file" size={17}/>{t("documentsTitle")}</span>
+     <h2>{data?.patient?patientName(data.patient):t("patientFiles")}</h2>
+     <p className="clinic-phase11-subtitle">{t("documentsIntro")}</p></div>
+    <span className="phase07-count" aria-label={t("documentsSelected")}>{allFiles.length}</span>
+   </div>
+   <div className="clinic-phase11-documents-toolbar">
+    <label className="clinic-phase11-search"><span>{t("documentsSearch")}</span>
+     <span className="clinic-phase11-search-input"><CareIcon name="search" size={17}/>
+      <input type="search" autoComplete="off" maxLength={120} value={search}
+       placeholder={t("documentsSearchHint")}
+       onChange={event=>{setSearch(event.target.value);setPage(1);}}/></span>
+    </label>
+    <label className="clinic-phase11-select"><span>{t("documentsStatus")}</span>
+     <select aria-label={t("fileFilter")} value={kind}
+      onChange={event=>{setKind(event.target.value);setPage(1);}}>
+      {kinds.map(k=><option key={k} value={k}>{t(k==="all"?"all":k)}</option>)}</select>
+    </label>
+    <button className="btn btn-secondary" type="button" onClick={refresh}>
+     <CareIcon name="activity" size={16}/>{t("recordsRefresh")}</button>
+   </div>
+   <div className="clinic-phase11-documents-chips" role="group" aria-label={t("fileFilter")}>
+    {kinds.map(key=><button type="button" key={key} className={kind===key?"is-active":""}
+     aria-pressed={kind===key} onClick={()=>{setKind(key);setPage(1);}}>{t(key)}</button>)}
+   </div>
    {error?<ErrorBox error={error} retry={refresh}/>:!data?<Loading/>:
-    !data.files.length?<p className="phase07-empty">{t("noFiles")}</p>:
-    <div className="phase07-rows">{data.files.map((f:any)=><article className="phase07-visit-row" key={f.id}>
-     <div className="phase07-fileicon">{f.mime==="application/pdf"?"PDF":"▧"}</div>
-     <div className="phase07-row-main"><h3>{f.title}</h3><p className="phase07-meta">
-      {t(f.kind)} · {f.file_name} · {Math.ceil(f.size_bytes/1024)} KB · {fmt(f.created_at)}
-      </p><p className="phase07-meta">{f.uploaded_by_name}</p></div>
-     <button className="btn btn-secondary" type="button" onClick={()=>openFile(f)}>
-      {t(f.mime==="application/pdf"?"download":"preview")} →</button></article>)}</div>}
-   {preview&&<div className="phase07-preview" role="dialog" aria-modal="true" aria-label={t("preview")}>
-    <button className="btn btn-secondary" onClick={()=>{URL.revokeObjectURL(preview);setPreview(null);}}>
-     {t("close")} ✕</button>
-    <img src={preview} alt={t("preview")}/></div>}
+    !visible.length?<div className="clinic-phase11-empty" role="status">
+     <CareIcon name="file" size={25}/><p>{!allFiles.length&&!search?t("noFiles"):t("documentsEmpty")}</p>
+     {(search||kind!=="all")&&<button type="button" className="btn btn-secondary"
+      onClick={()=>{setSearch("");setKind("all");setPage(1);}}>{t("documentsClear")}</button>
+    </div>:
+    <div className="phase07-rows clinic-phase11-file-list">
+     {visible.map(f=><article className="phase07-visit-row clinic-phase11-file-card" key={f.id}>
+      <div className="phase07-fileicon" aria-hidden="true">
+       {f.mime==="application/pdf"?"PDF":<CareIcon name="images" size={21}/>}</div>
+      <div className="phase07-row-main">
+       <h3>{f.title}</h3>
+       <p className="phase07-meta">{t(f.kind)} · {f.file_name} ·
+        <bdi dir="ltr"> {Math.ceil(f.size_bytes/1024)} KB</bdi> · {fmt(f.created_at)}</p>
+       <p className="phase07-meta">{f.uploaded_by_name}</p>
+       {f.encounter_id&&<a className="clinic-phase11-file-encounter" href={
+        link(space.clinicId,patientId,"visits",f.encounter_id)}>
+        <CareIcon name="clipboard" size={15}/>{t("documentsLinked")}:
+        <bdi dir="ltr">{f.encounter_id.slice(0,8)}</bdi></a>}
+       <span className={"clinic-phase11-file-state"+(f.scan_status==="quarantined"?" is-quarantined":"")}>
+        {t(f.scan_status==="quarantined"?"documentsQuarantined":"documentsAvailable")}</span>
+      </div>
+      <button className="btn btn-secondary" type="button"
+       disabled={f.scan_status==="quarantined"} onClick={()=>void openFile(f)}>
+       <CareIcon name={f.mime==="application/pdf"?"download":"images"} size={16}/>
+       {t(f.mime==="application/pdf"?"download":"preview")}</button>
+     </article>)}
+    </div>}
+   {data&&<div className="clinic-phase11-documents-end">
+    <p className="clinic-phase11-count-note" role="status" aria-live="polite">
+     {t("recordsCount")} {matches.length?(safePage-1)*5+1:0}–{Math.min(safePage*5,matches.length)}
+     {" "}{t("recordsOf")} {matches.length}. {t("documentsLimit")}
+    </p>
+    {matches.length>5&&<nav className="clinic-phase11-pagination" aria-label={t("documentsSelected")}>
+     <button type="button" className="btn btn-secondary" disabled={safePage<=1}
+      onClick={()=>setPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+     <span>{t("page")} {safePage}/{pages}</span>
+     <button type="button" className="btn btn-secondary" disabled={safePage>=pages}
+      onClick={()=>setPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+    </nav>}
+   </div>}
+   {preview&&<div className="phase07-preview clinic-phase11-document-preview"
+    role="dialog" aria-modal="true" aria-label={t("documentsPreview")}>
+    <button type="button" className="btn btn-secondary" onClick={closePreview}>
+     <CareIcon name="close" size={17}/>{t("documentsDismiss")}</button>
+    <img src={preview} alt={t("documentsPreview")}/></div>}
+   {failure&&<ErrorBox error={failure}/>}
   </section>
-  <aside className="card phase07-panel phase07-sidebar">
-   <h2>{t("upload")}</h2><p className="muted">{t("size")}</p>
-   <form onSubmit={upload} className="phase07-form">
-    <label className="field"><span>{t("file")} *</span>
-     <input type="file" accept="image/jpeg,image/png,application/pdf" multiple
-      onChange={e=>setSelected(Array.from(e.target.files||[]))} disabled={busy}/></label>
-    <label className="field"><span>{t("title")}</span>
-     <input value={title} maxLength={150} onChange={e=>setTitle(e.target.value)} disabled={busy}/></label>
-    <label className="field"><span>{t("type")} *</span>
-     <select value={fileKind} onChange={e=>setFileKind(e.target.value)} disabled={busy}>
-      {kinds.filter(x=>x!=="all").map(k=><option value={k} key={k}>{t(k)}</option>)}</select></label>
-    <label className="field"><span>{t("notes")}</span>
-     <textarea value={notes} rows={3} maxLength={500} onChange={e=>setNotes(e.target.value)}
-      disabled={busy}/></label>
-    {linked&&<Banner>{t("chooseAppointment")}: <bdi dir="ltr">{linked.slice(0,8)}</bdi></Banner>}
-    <button className="btn btn-primary" disabled={busy||!selected.length} type="submit">
-     {busy?t("busy")+" "+progress:t("upload")}</button>
-    {failure&&<Banner kind="error">{failure}</Banner>}
-    {success&&<Banner kind="success">{success}</Banner>}
-    <Banner kind="warning">{t("protected")}. {t("storage")}</Banner>
-   </form>
+  <aside className="clinic-phase11-documents-aside">
+   <section className="card phase07-panel phase07-sidebar clinic-phase11-upload">
+    <span className="clinic-phase11-kicker"><CareIcon name="plus" size={17}/>{t("documentsNew")}</span>
+    <h2>{t("upload")}</h2>
+    <p className="muted">{t("documentsMax")}</p>
+    <form onSubmit={upload} className="phase07-form">
+     <label className="field"><span>{t("file")} *</span>
+      <input ref={fileInput} type="file" accept="image/jpeg,image/png,application/pdf" multiple
+       onChange={event=>{setSelected(Array.from(event.target.files||[]));setFailure("");}}
+       disabled={busy}/></label>
+     {selected.length>0&&<div className="clinic-phase11-upload-review">
+      <strong>{t("documentsReview")}: {selected.length}</strong>
+      <ul>{selected.map((file,index)=><li key={index}>
+       <span>{file.name}</span><bdi dir="ltr">{Math.ceil(file.size/1024)} KB</bdi>
+      </li>)}</ul>
+     </div>}
+     <label className="field"><span>{t("title")}</span>
+      <input value={title} maxLength={150} onChange={event=>setTitle(event.target.value)}
+       disabled={busy}/></label>
+     <label className="field"><span>{t("type")} *</span>
+      <select value={fileKind} onChange={event=>setFileKind(event.target.value)} disabled={busy}>
+       {kinds.filter(x=>x!=="all").map(k=><option value={k} key={k}>{t(k)}</option>)}</select>
+     </label>
+     <label className="field"><span>{t("notes")}</span>
+      <textarea value={notes} rows={3} maxLength={500}
+       onChange={event=>setNotes(event.target.value)} disabled={busy}/></label>
+     {linked?<Banner>{t("documentsLinked")}: <bdi dir="ltr">{linked.slice(0,8)}</bdi></Banner>:
+      <p className="clinic-phase11-link-hint">{t("documentsUnlinked")}</p>}
+     <p className="clinic-phase11-upload-safety">
+      <CareIcon name="shield-check" size={17}/>{t("documentsSafety")}</p>
+     <button className="btn btn-primary" type="submit"
+      disabled={busy||!selected.length||selected.length>8||
+       selected.some(file=>!["image/png","image/jpeg","application/pdf"].includes(file.type)||
+        file.size===0||file.size>2097152)}>
+      <CareIcon name="plus" size={17}/>{busy?t("documentsProgress")+" "+progress:t("upload")}</button>
+     {selected.length>8&&<Banner kind="warning">{t("documentsMax")}</Banner>}
+     {success&&<Banner kind="success">{success}</Banner>}
+     <Banner kind="warning">{t("protected")}. {t("storage")}</Banner>
+    </form>
+   </section>
+   <ClinicalCommunication space={space}/>
   </aside>
  </div>;
 }
