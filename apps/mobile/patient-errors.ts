@@ -4,10 +4,14 @@ import {ApiError} from "./api-error";
 type Language="en"|"fa-AF"|"ps-AF";
 type MessageKey="network"|"signIn"|"verification"|"changed"|"rateLimit"|"invalid"|
  "slotTaken"|"bookingChanged"|"deadline"|"publicationChanged"|"missingWeb"|"mfaWeb"|
- "localSignOut"|"generic"|"resetSent"|"verifySent"|"uncertain";
+ "localSignOut"|"generic"|"resetSent"|"verifySent"|"uncertain"|
+ "apiConfiguration"|"apiTunnel"|"apiUnavailable";
 const messages:Record<Language,Record<MessageKey,string>>={
  en:{
   network:"Cannot connect right now. Check your connection and try again.",
+  apiConfiguration:"The API address is missing. Start pnpm dev:api on your computer before starting Expo, then reload the app.",
+  apiTunnel:"The API address returned a web page instead of DandanLink data. Restart pnpm dev:api and reload Expo after the tunnel becomes ready.",
+  apiUnavailable:"The DandanLink API is temporarily unavailable. Check that pnpm dev:api is running and the database is ready, then try again.",
   signIn:"Your session has expired. Sign in again to continue.",
   verification:"Verify your email address using the latest link, then sign in.",
   changed:"The signed-in account changed. Open this page again to continue safely.",
@@ -27,6 +31,9 @@ const messages:Record<Language,Record<MessageKey,string>>={
  },
  "fa-AF":{
   network:"ارتباط برقرار نشد. اتصال اینترنت را بررسی کرده و دوباره کوشش کنید.",
+  apiConfiguration:"آدرس API تنظیم نشده است. در کمپیوتر pnpm dev:api را پیش از Expo اجرا کنید و برنامه را دوباره باز کنید.",
+  apiTunnel:"به‌جای معلومات دندان‌لینک یک صفحۀ وب از آدرس API دریافت شد. pnpm dev:api را دوباره اجرا کرده و Expo را تازه کنید.",
+  apiUnavailable:"سرور دندان‌لینک فعلاً پاسخ نمی‌دهد. مطمئن شوید pnpm dev:api فعال و دیتابیس آماده است، سپس دوباره کوشش کنید.",
   signIn:"نشست شما پایان یافته است. دوباره وارد شوید.",
   verification:"ایمیل خود را از طریق آخرین لینک تأیید کرده، سپس وارد شوید.",
   changed:"حساب واردشده تغییر کرده است. این صفحه را دوباره باز کنید.",
@@ -46,6 +53,9 @@ const messages:Record<Language,Record<MessageKey,string>>={
  },
  "ps-AF":{
   network:"اړیکه نشته. خپل انټرنېټ وګورئ او بیا هڅه وکړئ.",
+  apiConfiguration:"د API پته نه ده ټاکل شوې. په کمپیوټر کې له Expo مخکې pnpm dev:api وچلوئ او اپ بیا پرانیزئ.",
+  apiTunnel:"د API پر ځای وېبپاڼه راغلې. pnpm dev:api بیا چالان کړئ او د تونل له جوړېدو وروسته Expo تازه کړئ.",
+  apiUnavailable:"د دندان‌لینک سرور اوس ځواب نه ورکوي. وګورئ pnpm dev:api روان او ډیټابېس تیار دی، بیا هڅه وکړئ.",
   signIn:"ستاسو ناسته پای ته رسېدلې. بیا ننوځئ.",
   verification:"خپل ایمیل د وروستي لینک په وسیله تایید او بیا ننوځئ.",
   changed:"ننوتلی حساب بدل شو. دا پاڼه بیا پرانیزئ.",
@@ -70,7 +80,12 @@ export function patientText(locale:Language,key:MessageKey):string{
 export function patientError(error:unknown,locale:Language):string{
  if(!(error instanceof ApiError))return messages[locale].generic;
  const code=error.code;
- if(["NETWORK_UNAVAILABLE","API_NOT_CONFIGURED","HTTPS_REQUIRED"].includes(code))return messages[locale].network;
+ if(code==="API_NOT_CONFIGURED")return messages[locale].apiConfiguration;
+ if(["API_NON_JSON_RESPONSE","API_INVALID_JSON_RESPONSE","SIGNUP_RESPONSE_INVALID"].includes(code))
+  return messages[locale].apiTunnel;
+ if(["SERVER_UNAVAILABLE","API_UNAVAILABLE"].includes(code)||error.status>=500)
+  return messages[locale].apiUnavailable;
+ if(["NETWORK_UNAVAILABLE","HTTPS_REQUIRED"].includes(code))return messages[locale].network;
  if(["SESSION_CHANGED"].includes(code))return messages[locale].changed;
  if(error.status===401||["AUTH_REQUIRED","INVALID_SESSION","SESSION_EXPIRED"].includes(code))return messages[locale].signIn;
  if(["EMAIL_VERIFICATION_REQUIRED","EMAIL_VERIFICATION_OR_SESSION_REQUIRED","EMAIL_NOT_VERIFIED"].includes(code))
