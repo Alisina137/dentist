@@ -755,6 +755,30 @@ function Visits({space,patientId}:{space:Space;patientId:string}){
   </aside>
  </div>;
 }
+function ClinicalCommunication({space,appointmentId}:{space:Space;appointmentId?:string|null}){
+ const {t}=useW();
+ const monitoring=["owner","manager"].includes(space.role);
+ return <section className="card phase07-panel clinic-phase11-communication"
+  aria-label={t("communication")}>
+  <div className="clinic-phase11-communication-top">
+   <span className="clinic-phase11-communication-icon"><CareIcon name="message" size={21}/></span>
+   <div><h2>{t("communication")}</h2><p>{t("communicationIntro")}</p></div>
+  </div>
+  <p className="clinic-phase11-communication-warning" role="note">
+   <CareIcon name="shield-check" size={17}/>{t("communicationNoSend")}</p>
+  <div className="clinic-phase11-communication-actions">
+   {appointmentId&&<a className="btn btn-secondary"
+    href={"/clinic/appointments/"+encodeURIComponent(appointmentId)+
+     "?clinic="+encodeURIComponent(space.clinicId)}>
+    <CareIcon name="calendar" size={16}/>{t("communicationBooking")}</a>}
+   {monitoring&&<a className="btn btn-secondary"
+    href={"/clinic/settings/notifications?clinic="+encodeURIComponent(space.clinicId)}>
+    <CareIcon name="activity" size={16}/>{t("communicationSettings")}</a>}
+  </div>
+  <p className="clinic-phase11-communication-footnote">
+   {t("communicationChannel")} {t("communicationNotice")}</p>
+ </section>;
+}
 function NoteFields({note,setNote,disabled=false}:{note:Note;setNote:(n:Note)=>void;disabled?:boolean}){
  const {t}=useW();
  const field=(key:keyof Note,value:string)=>setNote({...note,[key]:value});
