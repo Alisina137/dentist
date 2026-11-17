@@ -178,7 +178,7 @@ test("Clinic Phase 14: notification filters/paging are derived from real server 
   'role="status" aria-live="polite"',
   '!data.emailConfigured&&',
   'safeDeliveryCode(event.last_error_code)',
-  'copy.unavailable','copy.window',
+  'copy.unavailable','t("deliveryLimit")',
   'const copy=deliveryUi[locale as keyof typeof deliveryUi]||deliveryUi.en',
   'type DeliveryEvent=ClinicDelivery'
  ])assert.ok(alerts.includes(token),token);
