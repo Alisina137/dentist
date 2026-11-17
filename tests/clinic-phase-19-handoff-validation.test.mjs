@@ -122,7 +122,7 @@ function scriptedPublicApi({unauthorized=true,html=false,release=false}={}){
   if(path==="/v1/public/status")return html?
    new Response("<html>Warning</html>",{headers:{"content-type":"text/html"}}):
    response({product:"DandanLink",pilotReleaseEnabled:release});
-  return response({code:"AUTH_REQUIRED",patient:"SHOULD_NOT_BE_LOGGED"},
+  return response({code:"AUTH_REQUIRED"},
    unauthorized?401:200,{
     "cache-control":"private, no-store","x-request-id":"test-run-12345678"
    });
