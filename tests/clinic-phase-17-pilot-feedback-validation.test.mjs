@@ -148,7 +148,7 @@ test("Clinic Phase 17: owner QA tracker never sends free text, reports no identi
   'const active=snapshot?.clinicId===clinicId?snapshot:null',
   'request<unknown>(path(clinicId),"GET",undefined,controller.signal)',
   'if(!pilotValidList(data))throw Error("INVALID_PILOT_RESULT")',
-  'return()=>{clearTimeout(timeout);controller.abort();}',
+  'return()=>{live=false;clearTimeout(timeout);controller.abort();}',
   'if(saving||!pilotValidInput(form))return;',
   'await request(path(clinicId),"POST",form);',
   'disabled={!mfaEnabled||saving}',
