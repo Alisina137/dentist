@@ -118,7 +118,7 @@ test("Clinic Phase 13: invitation review validates recipient and respects role c
   'mayAssign(scope.role,role)',
   'SELF_INVITE_FORBIDDEN','INVITATION_ALREADY_PENDING',
   'PLAN_STAFF_LIMIT','INVITATION_DELIVERY_FAILED',
-  'ORDER BY','limit(100)',
+  '.orderBy(desc(','limit(100)',
   'required(req.body?.reason,5,300,"REASON")',
   'await audit(tx,req.actor!.id,cid,"staff.invitation.revoked",iid)'
  ])assert.ok(invitesApi.includes(marker),marker);
@@ -178,7 +178,7 @@ test("Clinic Phase 13: security lists reflect authenticated staff, audit and onl
  ])assert.ok(team.includes(marker),marker);
  for(const marker of [
   'await permission(req,clinicId,"security.read")',
-  'ORDER BY','limit(60)',
+  '.orderBy(desc(','limit(60)',
   'res.setHeader("Cache-Control","no-store")',
   'eq(schema.auditEvent.clinicId,clinicId)'
  ])assert.ok(staffApi.includes(marker),marker);
