@@ -574,7 +574,12 @@ export function NativeDentistPhase20({clinicId,membershipId,locale,request}:{cli
   <Text style={s.hint}>{t.loading}</Text></View>;
  if(!loaded)return <View style={s.progressCard}><Banner text={error||t.credentialError}/>
   <NativePhase20Button label={t.refresh} onPress={()=>setRevision(x=>x+1)}/></View>;
- const verified=verification?.verification?.status==="verified";
+ // A previously verified case is NOT current if the professional draft
+ // changed or the credential has expired in Afghanistan local time.
+ const verified=verification?.verification?.status==="verified"&&
+  verification.verification.approvedDraftVersion===loaded.draft?.draftVersion&&
+  typeof verification.verification.validUntil==="string"&&
+  verification.verification.validUntil.slice(0,10)>=todayAfghanistan();
  const pending=verification?.verification?.status==="pending";
  return <View style={s.root}>
   <View style={s.hero}><Text style={s.heroEyebrow}>{t.staffTitle}</Text>
