@@ -83,7 +83,7 @@ export function patientError(error:unknown,locale:Language):string{
  if(code==="API_NOT_CONFIGURED")return messages[locale].apiConfiguration;
  if(["API_NON_JSON_RESPONSE","API_INVALID_JSON_RESPONSE","SIGNUP_RESPONSE_INVALID"].includes(code))
   return messages[locale].apiTunnel;
- if(["SERVER_UNAVAILABLE","API_UNAVAILABLE"].includes(code)||error.status>=500)
+ if(["SERVER_UNAVAILABLE","API_UNAVAILABLE"].includes(code))
   return messages[locale].apiUnavailable;
  if(["NETWORK_UNAVAILABLE","HTTPS_REQUIRED"].includes(code))return messages[locale].network;
  if(["SESSION_CHANGED"].includes(code))return messages[locale].changed;
