@@ -2,6 +2,8 @@
 import React,{useEffect,useMemo,useRef,useState,type ReactNode,type FormEvent,type CSSProperties} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {Shell} from "./phase03";
+import {CareIcon} from "./care-icons";
+import {clinicErrorText} from "./clinic-feedback";
 
 type Language="en"|"fa-AF"|"ps-AF";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
@@ -61,7 +63,21 @@ const dict:Record<Language,Record<string,string>>={
  patientSummary:"Patient context",selected:"Selected",reset:"Reset form",privacy:"Clinic-private record",
  unvalidated:"Awaiting clinician validation",startVisit:"Start an authorized examination",
  viewChart:"Dental chart",noticeDate:"Dates are Gregorian for clinical accuracy; historical display follows selected locale.",
- invalid:"Check the tooth, visit, date, condition and surfaces.",retryAction:"Retry save"
+ invalid:"Check the tooth, visit, date, condition and surfaces.",retryAction:"Retry save",
+  workspaceTitle:"Interactive clinical chart",workspaceHelp:"Review actual validated findings before recording new observations. Empty teeth are not diagnoses.",
+  recorded:"Validated findings",unrecorded:"Without validated finding",pendingReview:"Drafts pending review",
+  toothFinder:"Go to FDI tooth",toothFinderHint:"Enter a tooth number, e.g. 16",
+  toothFinderGo:"Select tooth",toothFinderError:"Choose a valid FDI tooth for the selected dentition.",
+  chartShortcuts:"Clinical workspace shortcuts",chartAllTeeth:"Teeth in selected dentition",
+  selectedDetails:"Selected tooth details",chartObservations:"Observations returned for this view",
+  chartReview:"Review validation",chartReviewHint:"Validate only after reviewing the actual observation, clinical encounter and patient. Validation changes the longitudinal chart.",
+  chartReviewConfirm:"Confirm clinician validation",chartReviewCancel:"Keep as draft",
+  chartReviewSafety:"This is a clinical sign-off, not an automated diagnosis.",
+  chartHistoryAnchor:"Observation history",chartShowHistory:"View history below",chartOnlyValidated:"Only validated observations affect this map.",
+  chartReload:"Refresh chart",chartSelectAll:"Reset selection",chartBeforeSaving:"Check patient, FDI number and encounter before saving.",
+  chartAssistantLimited:"Assistant observations remain drafts until the assigned clinician validates.",
+  chartReadOnly:"This encounter cannot accept additional observations.",
+  chartNoHistory:"No earlier observations were returned for this selection.",
  },
  "fa-AF":{
  chart:"چارت دندان",treatments:"پلان‌های تداوی",billing:"حساب مریض",description:"مشاهدات دندان با سیستم FDI · معلومات کلینیکی خصوصی",
@@ -105,7 +121,21 @@ const dict:Record<Language,Record<string,string>>={
  startVisit:"آغاز معاینه مجاز",viewChart:"چارت دندان",
  noticeDate:"تاریخ ورودی میلادی است؛ نمایش تاریخچه مطابق زبان و تقویم انتخابی است.",
  invalid:"دندان، معاینه، تاریخ، حالت و سطح‌ها را بررسی کنید.",
- retryAction:"تلاش دوباره برای ذخیره"
+ retryAction:"تلاش دوباره برای ذخیره",
+ workspaceTitle:"چارت کلینیکی تعاملی",workspaceHelp:"قبل از ثبت مشاهده جدید، معلومات تأییدشده را بررسی کنید. دندان بدون مشاهده، تشخیص نیست.",
+ recorded:"مشاهدات تأییدشده",unrecorded:"بدون مشاهدۀ تأییدشده",pendingReview:"پیش‌نویس‌های منتظر بررسی",
+ toothFinder:"رفتن به شماره FDI",toothFinderHint:"شماره دندان؛ مانند ۱۶",
+ toothFinderGo:"انتخاب دندان",toothFinderError:"شماره FDI مطابق نوع دندان را وارد کنید.",
+ chartShortcuts:"لینک‌های بخش کلینیکی",chartAllTeeth:"تعداد دندان‌ها",selectedDetails:"جزئیات دندان",
+ chartObservations:"مشاهدات همین نما",chartReview:"بررسی تأیید",chartReviewHint:"پیش از تأیید، مشاهده، معاینه و مریض را بررسی کنید. تأیید، چارت طولانی‌مدت را تغییر می‌دهد.",
+ chartReviewConfirm:"تأیید کلینیکی نهایی",chartReviewCancel:"حفظ پیش‌نویس",
+ chartReviewSafety:"این تأیید کلینیکی است، نه تشخیص خودکار.",
+ chartHistoryAnchor:"تاریخچه مشاهدات",chartShowHistory:"نمایش تاریخچه در پایین",
+ chartOnlyValidated:"فقط مشاهدات تأییدشده روی نقشه اثر می‌گذارند.",
+ chartReload:"تازه‌سازی چارت",chartSelectAll:"بازنشانی انتخاب",chartBeforeSaving:"مریض، نمبر FDI و معاینه را قبل از ثبت بررسی کنید.",
+ chartAssistantLimited:"مشاهدات دستیار تا تأیید داکتر پیش‌نویس می‌ماند.",
+ chartReadOnly:"این معاینه دیگر مشاهدۀ جدید نمی‌پذیرد.",
+ chartNoHistory:"مشاهدۀ قبلی برای این انتخاب برنگشت.",
  },
  "ps-AF":{
  chart:"د غاښونو چارټ",treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",description:"د FDI د غاښونو کتنې · شخصي کلینیکي معلومات",
@@ -149,7 +179,21 @@ const dict:Record<Language,Record<string,string>>={
  privacy:"د کلینیک شخصي ثبت",unvalidated:"د ډاکټر تایید ته منتظر",
  startVisit:"اجازه لرونکې معاینه پیل کړئ",viewChart:"د غاښونو چارټ",
  noticeDate:"د لیکلو نېټه میلادي ده؛ د ښودلو نېټه له ټاکلي تقویم سره سمون لري.",
- invalid:"غاښ، معاینه، نېټه، حالت او برخې وګورئ.",retryAction:"بیا خوندي کړئ"
+ invalid:"غاښ، معاینه، نېټه، حالت او برخې وګورئ.",retryAction:"بیا خوندي کړئ",
+ workspaceTitle:"تعامل لرونکی کلینیکي چارټ",workspaceHelp:"له نوې ثبتونې مخکې تایید شوې کتنې وګورئ. بې ثبت غاښ تشخیص نه دی.",
+ recorded:"تایید شوې کتنې",unrecorded:"بې تایید شوې کتنې",pendingReview:"د کتنې مسودې",
+ toothFinder:"د FDI غاښ ته ولاړ شئ",toothFinderHint:"د غاښ شمېره لکه ۱۶",
+ toothFinderGo:"غاښ غوره کړئ",toothFinderError:"د ټاکل شوي ډول سم FDI نمبر وټاکئ.",
+ chartShortcuts:"د کلینیکي برخې لارې",chartAllTeeth:"د غاښونو شمېر",selectedDetails:"د غاښ جزیات",
+ chartObservations:"د دې لیدنې کتنې",chartReview:"د تایید کتنه",chartReviewHint:"د تایید مخکې ناروغ، کتنه او معاینه وګورئ. تایید د غاښونو تاریخ بدلوي.",
+ chartReviewConfirm:"کلینیکي تایید بشپړ کړئ",chartReviewCancel:"مسوده وساتئ",
+ chartReviewSafety:"دا کلینیکي تایید دی، اتومات تشخیص نه دی.",
+ chartHistoryAnchor:"د کتنو تاریخ",chartShowHistory:"لاندې تاریخ وګورئ",
+ chartOnlyValidated:"یوازې تایید شوې کتنې په نقشه کې ښکاري.",
+ chartReload:"چارټ تازه کړئ",chartSelectAll:"انتخاب بیا پیل کړئ",chartBeforeSaving:"له ثبت مخکې ناروغ، FDI نمبر او معاینه وګورئ.",
+ chartAssistantLimited:"د مرستیال کتنې د ډاکټر تر تایید پورې مسودې وي.",
+ chartReadOnly:"دا معاینه نوې کتنې نه شي منلی.",
+ chartNoHistory:"د دې انتخاب پخوانۍ کتنه نشته.",
  }
 };
 function useWords(){
@@ -172,8 +216,8 @@ function today(){
  const d=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
  return [d.year,d.month,d.day].join("-");
 }
-async function api(path:string,method="GET",body?:unknown):Promise<any>{
- const response=await fetch(BASE+"/v1/chart"+path,{method,cache:"no-store",credentials:"include",
+async function api(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const response=await fetch(BASE+"/v1/chart"+path,{method,cache:"no-store",credentials:"include",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await response.json().catch(()=>({}));
@@ -181,15 +225,23 @@ async function api(path:string,method="GET",body?:unknown):Promise<any>{
  return data;
 }
 function useQuery(path:string|null){
- const [data,setData]=useState<any>(null),[error,setError]=useState("");
+ // Never paint data from the preceding patient, clinic, mode, or tooth.
+ const [snapshot,setSnapshot]=useState<{path:string|null;data:any;error:string}>({
+  path:null,data:null,error:""
+ });
  const [seq,setSeq]=useState(0);
- const refresh=()=>{setError("");setData(null);setSeq(s=>s+1);};
- useEffect(()=>{if(!path){setData(null);setError("");return;}
-  let active=true;setData(null);setError("");
-  api(path).then(x=>{if(active)setData(x);}).catch(e=>{if(active)setError(e.message);});
-  return()=>{active=false;};
+ const refresh=()=>setSeq(s=>s+1);
+ useEffect(()=>{
+  if(!path){setSnapshot({path:null,data:null,error:""});return;}
+  const controller=new AbortController();
+  setSnapshot({path,data:null,error:""});
+  api(path,"GET",undefined,controller.signal)
+   .then(x=>{if(!controller.signal.aborted)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(!controller.signal.aborted)setSnapshot({path,data:null,error:e.message||"CHART_UNAVAILABLE"});});
+  return()=>controller.abort();
  },[path,seq]);
- return {data,error,refresh};
+ return {data:snapshot.path===path?snapshot.data:null,
+  error:snapshot.path===path?snapshot.error:"",refresh};
 }
 const patientPath=(cid:string,id:string)=>"/clinic/patients/"+id+"?clinic="+encodeURIComponent(cid);
 const visitPath=(cid:string,id:string)=>"/clinic/patients/"+id+"/visits?clinic="+encodeURIComponent(cid);
@@ -201,10 +253,10 @@ function Notice({children,kind="info"}:{children:ReactNode;kind?:"info"|"warning
 function Busy(){const {t}=useWords();return <div className="card phase08-loading" aria-live="polite">
  <span className="phase05-spinner" aria-hidden="true"/>{t("loading")}</div>;}
 function Problem({code,retry,patientId,clinicId}:{code:string;retry?:()=>void;patientId?:string;clinicId?:string}){
- const {t}=useWords();
+ const {t,lang}=useWords();
  const message=code==="CHART_CASE_NOT_ASSIGNED"?t("noCase"):
  code==="DUPLICATE_ACTION_CHANGED"||code==="CHART_CONFLICT"?t("conflict"):
- code.startsWith("INVALID_")?t("invalid"):code==="CHART_ROLE_DENIED"?t("unavailable"):t("error")+" ("+code+")";
+ code.startsWith("INVALID_")?t("invalid"):code==="CHART_ROLE_DENIED"?t("unavailable"):clinicErrorText(code,lang);
  return <section className="card phase08-error" role="alert"><strong>{message}</strong>
   <div className="phase08-actions">{retry&&<button className="btn btn-secondary" onClick={retry}>{t("retry")} ↻</button>}
   {patientId&&clinicId&&code==="CHART_CASE_NOT_ASSIGNED"&&<a className="btn btn-primary" href={visitPath(clinicId,patientId)}>
