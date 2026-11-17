@@ -129,7 +129,7 @@ type Space={clinicId:string;clinicName:string;membershipId:string;
  role:"owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
  clinicianEnabled:boolean;clinicStatus:string;capabilities:string[]};
 type Context={name:string;email:string;clinics:Space[];mfaEnabled:boolean};
-type Report={from:string;to:string;timezone:string;basis:string;
+type Report={clinicId:string;from:string;to:string;timezone:string;basis:string;
  appointments:{total:number;byStatus:Record<string,number>;byDay:{day:string;count:number}[]};
  patients:{newRegistered:number;activeTotal:number};
  revenue:{netReceiptsAfn:number;byMethodAfn:Record<string,number>;issuedInvoices:number;
