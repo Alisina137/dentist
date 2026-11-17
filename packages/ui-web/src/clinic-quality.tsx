@@ -3,6 +3,7 @@ import React,{useEffect,useState} from "react";
 import {CareIcon,usePreferences,InlineAlert} from "./index";
 import {useClinicWorkspaceSession} from "./clinic-shell-context";
 import {ClinicLoadingState} from "./clinic-feedback";
+import {ClinicPilotFeedback} from "./clinic-pilot-feedback";
 import {pilotSignal,pilotReviewControls,pilotControlLabel,pilotAuditSignal,
  type PilotSignal} from "./clinic-pilot-readiness-model";
 import {clinicQualityChecks,clinicQualitySummary,clinicQualityOverview,clinicQualityStatus,
@@ -346,6 +347,8 @@ export function ClinicQualityPortal(){
    <p className="clinic-phase16-gate-disclaimer">
     <CareIcon name="about" size={16}/>{copy.pilotNoAction}</p>
   </section>
+  <ClinicPilotFeedback clinicId={cid} role={space.role as "owner"|"manager"}
+   mfaEnabled={session.ctx.mfaEnabled}/>
   <section className="clinic-quality-metrics" aria-label={copy.overview}>
    {([
     {label:copy.passed,value:score.passed,icon:"check"},
