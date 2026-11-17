@@ -4,6 +4,9 @@ import {usePreferences,InlineAlert} from "./index";
 import {Shell} from "./phase03";
 import {CareIcon} from "./care-icons";
 import {clinicErrorText} from "./clinic-feedback";
+import {ClinicOpsBridge} from "./clinic-ops-bridge";
+import {clinicDeliveryFiltered,clinicDeliveryStats,clinicDeliveryPage,
+ type ClinicDelivery,type ClinicOpsRole} from "./clinic-ops-bridge-model";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -599,10 +602,12 @@ function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,chil
   return <Page heading={title}><Banner text={t("roleRestricted")}/></Page>;
  return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
   <Page heading={title} sub={space.clinicName} overline="DandanLink · Clinic workspace">
+   {activeKey==="notifications"?<ClinicOpsBridge clinicId={space.clinicId}
+    role={space.role as ClinicOpsRole} active="notifications"/>:
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
     {["owner","manager"].includes(space.role)&&
-     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a>}</nav>
+     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a>}</nav>}
    {children(space.clinicId,space.role,space.clinicianEnabled)}
   </Page>
  </Shell>;
@@ -987,8 +992,54 @@ function ApprovedRecordReleases({cid,link,enabled}:{cid:string;link:LinkRequest;
 }
 
 type DeliveryStatus="all"|"queued"|"sent"|"failed"|"skipped";
-type DeliveryEvent={event_name:string;status:string;attempt_count:number;
- created_at:string;sent_at:string|null;last_error_code:string|null};
+type DeliveryEvent=ClinicDelivery;
+const deliveryUi={
+ en:{
+  eyebrow:"DELIVERY OPERATIONS",heading:"Patient booking messages",
+  sub:"Track real outbound booking notification attempts, channel readiness and safe delivery metadata.",
+  search:"Find delivery events",searchHint:"Search event type, not patient details",
+  all:"All events",results:"Showing",of:"of",channel:"Channel readiness",
+  history:"Recent delivery attempts",status:"Message status",sentAt:"Sent at",
+  failure:"Failure code",none:"No delivery events match these filters.",
+  clear:"Clear filters",pending:"Delivery is not guaranteed until a message is marked sent.",
+  unavailable:"Email is not configured. Booking messages cannot be delivered by email until SMTP is ready.",
+  synced:"Last synchronized",refreshing:"Refreshing message status",
+  window:"This is the last 100 records returned for the selected clinic, not lifetime delivery history.",
+  private:"Delivery metadata only. No patient names, contact details or clinical information.",
+  jump:"Review booking requests"
+ },
+ "fa-AF":{
+  eyebrow:"عملیات ارسال",heading:"پیام‌های نوبت‌دهی مریضان",
+  sub:"تلاش‌های واقعی ارسال، آماده‌بودن کانال‌ها و وضعیت پیام‌ها را بررسی کنید.",
+  search:"جستجوی رویداد ارسال",searchHint:"نوع رویداد، نه معلومات مریض",
+  all:"همه رویدادها",results:"نمایش",of:"از",channel:"آمادگی کانال",
+  history:"آخرین تلاش‌های ارسال",status:"وضعیت پیام",sentAt:"زمان ارسال",
+  failure:"کُد خطا",none:"رویدادی مطابق این فیلتر وجود ندارد.",
+  clear:"پاک‌کردن فیلترها",pending:"تا زمانی که پیام ارسال‌شده ثبت نشود، تحویل تضمین نیست.",
+  unavailable:"ایمیل تنظیم نشده؛ تا تنظیم SMTP ارسال پیام‌های نوبت‌دهی ممکن نیست.",
+  synced:"آخرین به‌روزرسانی",refreshing:"وضعیت پیام‌ها تازه می‌شود",
+  window:"فقط ۱۰۰ رکورد اخیر کلینیک انتخاب‌شده، نه تمام تاریخچه.",
+  private:"فقط وضعیت ارسال؛ بدون نام، تماس یا اطلاعات طبی مریض.",
+  jump:"بررسی درخواست‌های نوبت"
+ },
+ "ps-AF":{
+  eyebrow:"د خبرتیا چارې",heading:"د ناروغانو د ملاقات پیغامونه",
+  sub:"د استولو رښتینې هڅې، د کانال چمتووالی او خوندي حالت وګورئ.",
+  search:"د استولو پېښې ولټوئ",searchHint:"د پېښې ډول، نه د ناروغ معلومات",
+  all:"ټولې پېښې",results:"ښودل",of:"له",channel:"د کانال چمتووالی",
+  history:"وروستۍ هڅې",status:"د پیغام حالت",sentAt:"د استولو وخت",
+  failure:"د تېروتنې کوډ",none:"په دې چاڼ کې پېښه نشته.",
+  clear:"چاڼ پاک کړئ",pending:"تر استول شوي حالت مخکې د پیغام رسېدل تضمین نه دي.",
+  unavailable:"ایمیل نه دی تنظیم شوی؛ تر SMTP چمتو کېدو مخکې پیغام نه استول کېږي.",
+  synced:"وروستی تازه‌والی",refreshing:"د پیغام حالت تازه کېږي",
+  window:"د ټاکل شوي کلینیک یوازې وروستي ۱۰۰ ریکارډونه، نه ټول تاریخ.",
+  private:"یوازې د استولو معلومات؛ د ناروغ نوم، اړیکه یا طبي معلومات نه ښکاري.",
+  jump:"د ملاقات غوښتنې وګورئ"
+ }
+} as const;
+function safeDeliveryCode(value:string|null){
+ return value&&/^[A-Z0-9_]{1,55}$/.test(value)?value:null;
+}
 type DeliveryRead={deliveries:DeliveryEvent[];emailConfigured:boolean;
  smsConfigured:boolean;pushConfigured:boolean};
 function deliveryGroup(value:string):Exclude<DeliveryStatus,"all">{
@@ -1003,17 +1054,22 @@ export function ClinicNotificationsPage(){
   {cid=><Notifications key={cid} cid={cid}/>}</ClinicShell>;
 }
 function Notifications({cid}:{cid:string}){
- const {t,fmt}=useWords();
- const [filter,setFilter]=useState<DeliveryStatus>("all"),[page,setPage]=useState(1);
+ const {t,fmt}=useWords(),{locale}=usePreferences();
+ const copy=deliveryUi[locale as keyof typeof deliveryUi]||deliveryUi.en;
+ const [filter,setFilter]=useState<DeliveryStatus>("all"),[page,setPage]=useState(1),
+  [search,setSearch]=useState("");
  const [revision,setRevision]=useState(0);
  const [snapshot,setSnapshot]=useState<{cid:string;data:DeliveryRead|null;
   error:string;loading:boolean;syncedAt:string|null}|null>(null);
  const reload=useCallback(()=>setRevision(x=>x+1),[]);
  const current=snapshot?.cid===cid?snapshot:null;
  const data=current?.data,loading=current?.loading??true,error=current?.error||"";
+ useEffect(()=>{setFilter("all");setPage(1);setSearch("");},[cid]);
  useEffect(()=>{
   const controller=new AbortController();
-  setSnapshot({cid,data:null,error:"",loading:true,syncedAt:null});
+  setSnapshot(previous=>({cid,
+   data:previous?.cid===cid?previous.data:null,error:"",loading:true,
+   syncedAt:previous?.cid===cid?previous.syncedAt:null}));
   api<DeliveryRead>("/v1/booking/clinics/"+encodeURIComponent(cid)+"/notifications",
    "GET",undefined,controller.signal).then(result=>{
    if(!controller.signal.aborted)setSnapshot({cid,data:result,error:"",loading:false,
@@ -1033,27 +1089,44 @@ function Notifications({cid}:{cid:string}){
    document.removeEventListener("visibilitychange",visible)};
  },[cid,reload]);
  const deliveries=data?.deliveries||[];
- const counts={queued:0,sent:0,failed:0,skipped:0};
- for(const event of deliveries)counts[deliveryGroup(event.status)]++;
- const matches=deliveries.filter(event=>filter==="all"||deliveryGroup(event.status)===filter);
- const pages=Math.max(1,Math.ceil(matches.length/10));
- const safePage=Math.min(page,pages);
+ const counts=clinicDeliveryStats(deliveries);
+ const matches=clinicDeliveryFiltered(deliveries,filter,search);
+ const paging=clinicDeliveryPage(matches,page,10);
+ const pages=paging.pages;
+ const safePage=paging.current;
  const visible=matches.slice((safePage-1)*10,safePage*10);
  const filters:DeliveryStatus[]=["all","queued","sent","failed","skipped"];
  const title=(value:DeliveryStatus)=>value==="all"?t("deliveryAll"):
   value==="queued"?t("deliveryQueued"):value==="sent"?t("deliverySent"):
   value==="failed"?t("deliveryFailed"):t("deliverySkipped");
- return <section className="p15-panel j-deliveries" aria-label={t("notificationStatus")}>
-  <div className="j-delivery-head"><div><h2>{t("notificationStatus")}</h2>
-   <p>{t("deliveryHint")}</p></div>
-   <button type="button" className="p15-button p15-button-secondary"
-    onClick={reload} disabled={loading}>{t("refreshDelivery")}</button>
-  </div>
-  <p className="j-delivery-help">{t("deliverySync")}</p>
+ return <section className="p15-panel j-deliveries clinic-phase14-notifications"
+  aria-label={t("notificationStatus")}>
+  <header className="clinic-phase14-notification-head">
+   <div><span className="clinic-phase14-eyebrow"><CareIcon name="mail" size={16}/>
+    {copy.eyebrow}</span><h2>{copy.heading}</h2>
+    <p>{copy.sub}</p></div>
+   <div className="clinic-phase14-head-actions">
+    <a className="p15-button p15-button-secondary"
+     href={"/clinic/appointments/requests?clinic="+encodeURIComponent(cid)}>
+     <CareIcon name="calendar" size={16}/>{copy.jump}</a>
+    <button type="button" className="p15-button p15-button-secondary"
+     onClick={reload} disabled={loading}>
+     <CareIcon name="activity" size={16}/>{t("refreshDelivery")}</button>
+   </div>
+  </header>
+  <p className="clinic-phase14-delivery-privacy"><CareIcon name="shield-check" size={16}/>
+   {copy.private}</p>
+  <p className="j-delivery-help" aria-live="polite">
+   {loading?copy.refreshing:copy.pending}
+   {current?.syncedAt?" · "+copy.synced+": "+fmt(current.syncedAt,true):""}
+  </p>
   <ErrorNote message={error}/>
-  {loading?<Spinner/>:error?
+  {loading&&!data?<Spinner/>:error?
    <button type="button" className="p15-button p15-button-secondary" onClick={reload}>{t("tryAgain")}</button>:
    data&&<>
+    {!data.emailConfigured&&<div className="clinic-phase14-delivery-warning" role="status">
+     <CareIcon name="about" size={18}/>{copy.unavailable}</div>}
+    <h3 className="clinic-phase14-section-label">{copy.channel}</h3>
     <div className="j-channel-grid">
      {([{name:t("deliveryEmail"),configured:data.emailConfigured},
        {name:t("deliverySms"),configured:data.smsConfigured},
@@ -1069,19 +1142,50 @@ function Notifications({cid}:{cid:string}){
        aria-pressed={filter===status} onClick={()=>{setFilter(status);setPage(1)}}>
        <span>{title(status)}</span><strong>{counts[status]}</strong></button>)}
     </div>
+    <div className="clinic-phase14-delivery-controls">
+     <label className="clinic-phase14-delivery-search"><span>{copy.search}</span>
+      <span className="clinic-phase14-search-field"><CareIcon name="search" size={17}/>
+       <input type="search" autoComplete="off" maxLength={120}
+        placeholder={copy.searchHint} value={search}
+        onChange={e=>{setSearch(e.target.value);setPage(1);}}/></span></label>
+     {(search||filter!=="all")&&<button type="button" className="p15-button p15-button-secondary"
+      onClick={()=>{setSearch("");setFilter("all");setPage(1);}}>
+      <CareIcon name="close" size={16}/>{copy.clear}</button>}
+    </div>
     <div className="j-delivery-filters" role="group" aria-label={t("deliveryRecent")}>
      {filters.map(value=><button key={value} type="button" aria-pressed={filter===value}
       className={"j-delivery-filter"+(filter===value?" active":"")}
       onClick={()=>{setFilter(value);setPage(1)}}>{title(value)}</button>)}
     </div>
-    {visible.length?<div className="j-delivery-items">{visible.map((event,index)=>
-     <article className="j-delivery-row" key={event.created_at+":"+event.event_name+":"+index}>
-      <div><strong>{event.event_name.replace(/_/g," ")}</strong>
-       <small>{t("deliveryTime")}: {fmt(event.created_at,true)}</small></div>
-      <span className={"j-delivery-badge j-"+deliveryGroup(event.status)}>
-       {title(deliveryGroup(event.status))}</span>
-      <small>{t("deliveryAttempts")}: {event.attempt_count}</small>
-     </article>)}</div>:<p className="p15-empty">{t("deliveryNoData")}</p>}
+    <div className="clinic-phase14-delivery-table-head">
+     <h3>{copy.history}</h3><span role="status" aria-live="polite">
+      {copy.results} {paging.start}–{paging.end} {copy.of} {paging.total}</span>
+    </div>
+    {visible.length?<div className="j-delivery-items clinic-phase14-delivery-items">
+     {visible.map((event,index)=>
+      <article className="j-delivery-row clinic-phase14-delivery-row"
+       key={event.created_at+":"+event.event_name+":"+index}>
+       <span className="clinic-phase14-delivery-event-icon">
+        <CareIcon name={deliveryGroup(event.status)==="sent"?"check":
+         deliveryGroup(event.status)==="failed"?"about":"clock"} size={20}/></span>
+       <div className="clinic-phase14-delivery-event-main">
+        <strong>{event.event_name.replace(/_/g," ")}</strong>
+        <small>{t("deliveryTime")}: {fmt(event.created_at,true)}</small>
+        {event.sent_at&&deliveryGroup(event.status)==="sent"&&
+         <small>{copy.sentAt}: {fmt(event.sent_at,true)}</small>}
+        {deliveryGroup(event.status)==="failed"&&safeDeliveryCode(event.last_error_code)&&
+         <small>{copy.failure}: <bdi dir="ltr">{safeDeliveryCode(event.last_error_code)}</bdi></small>}
+       </div>
+       <span className={"j-delivery-badge j-"+deliveryGroup(event.status)}>
+        {title(deliveryGroup(event.status))}</span>
+       <small className="clinic-phase14-delivery-attempts">
+        {t("deliveryAttempts")}: {event.attempt_count}</small>
+      </article>)}</div>:
+     <div className="clinic-phase14-empty"><CareIcon name="mail" size={24}/>
+      <p>{copy.none}</p>
+      {(filter!=="all"||search)&&<button type="button" className="p15-button p15-button-secondary"
+       onClick={()=>{setSearch("");setFilter("all");setPage(1);}}>{copy.clear}</button>}
+     </div>}
     {pages>1&&<nav className="j-delivery-paging" aria-label={t("deliveryPage")}>
      <button type="button" className="p15-button p15-button-secondary" disabled={safePage===1}
       onClick={()=>setPage(x=>Math.max(1,x-1))}>{t("back")}</button>
@@ -1089,8 +1193,8 @@ function Notifications({cid}:{cid:string}){
      <button type="button" className="p15-button p15-button-secondary" disabled={safePage===pages}
       onClick={()=>setPage(x=>Math.min(pages,x+1))}>{t("next")}</button>
     </nav>}
-    <p className="j-delivery-help">{t("deliveryLimit")}
-     {current?.syncedAt?" · "+fmt(current.syncedAt,true):""}</p>
+    <p className="j-delivery-help"><CareIcon name="shield-check" size={15}/>
+     {t("deliveryLimit")} {t("deliveryNoPush")}</p>
    </>}
  </section>;
 }
