@@ -576,28 +576,51 @@ function Invoices({space,patientId}:{space:Space;patientId?:string}){
  const {t}=useWords();const [create,setCreate]=useState(false),
   [filter,setFilter]=useState("all"),[text,setText]=useState(""),[search,setSearch]=useState(""),
   [page,setPage]=useState(1);
+ useEffect(()=>{
+  setCreate(false);setFilter("all");setText("");setSearch("");setPage(1);
+ },[space.clinicId,patientId]);
  const qs=new URLSearchParams({status:filter,q:search,page:String(page),
   ...(patientId?{patientId}:{})});
  const {data,error,refresh}=useLoad(b(space.clinicId)+"/invoices?"+qs);
  return <div className="phase10-stack">
   <section className="card phase10-panel">
    <Title title={patientId?t("invoiceHistory"):t("invoices")}
-    action={<button className="btn btn-primary" type="button" onClick={()=>setCreate(x=>!x)}>
-     {create?t("cancel"):"+ "+t("newInvoice")}</button>}/>
+    desc={t("financeTotalHint")}
+    action={<button className="btn btn-primary clinic-phase12-invoice-create" type="button"
+      onClick={()=>setCreate(x=>!x)}>
+     <CareIcon name={create?"close":"plus"} size={17}/>
+     {create?t("cancel"):t("newInvoice")}</button>}/>
    {create?<InvoiceEditor space={space} defaultPatient={patientId}
     onCancel={()=>setCreate(false)} onSaved={id=>location.assign(invoiceHref(space.clinicId,id))}/>:<>
-    <div className="phase10-toolbar">
-     <div className="phase10-filter-chips">{["all","draft","issued","partially_paid","paid","overdue","void"].map(x=>
+    <div className="phase10-toolbar clinic-phase12-invoice-toolbar">
+     <div className="phase10-filter-chips" aria-label={t("selectStatus")}>{["all","draft","issued","partially_paid","paid","overdue","void"].map(x=>
       <button key={x} aria-pressed={filter===x} type="button"
        onClick={()=>{setFilter(x);setPage(1);}}>{t(x)}</button>)}</div>
      <form className="phase10-search" onSubmit={e=>{e.preventDefault();setSearch(text);setPage(1);}}>
-      <input maxLength={100} aria-label={t("search")} placeholder={t("search")}
-       value={text} onChange={e=>setText(e.target.value)}/>
-      <button type="submit" className="btn btn-secondary">{t("search")}</button>
+      <input type="search" autoComplete="off" maxLength={100} aria-label={t("search")}
+       placeholder={t("search")} value={text} onChange={e=>setText(e.target.value)}/>
+      <button type="submit" className="btn btn-secondary">
+       <CareIcon name="search" size={16}/>{t("search")}</button>
      </form>
+     {(filter!=="all"||search)&&<button type="button" className="btn btn-secondary"
+      onClick={()=>{setFilter("all");setSearch("");setText("");setPage(1);}}>
+      <CareIcon name="close" size={15}/>{t("financeClear")}</button>}
+     <button type="button" className="btn btn-secondary" onClick={refresh}>
+      <CareIcon name="activity" size={15}/>{t("refresh")}</button>
     </div>
     {error?<Failure code={error} retry={refresh}/>:!data?<Busy/>:
-     !data.invoices.length?<TableEmpty text={t("noInvoice")}/>:<>
+     !data.invoices.length?<div className="clinic-phase12-empty">
+      <CareIcon name="file" size={27}/>
+      <p>{search||filter!=="all"?t("noData"):t("financeNoInvoices")}</p>
+      {(filter!=="all"||search)&&<button type="button" className="btn btn-secondary"
+       onClick={()=>{setFilter("all");setSearch("");setText("");setPage(1);}}>
+       {t("financeClear")}</button>}
+     </div>:<>
+      <div className="clinic-phase12-results-bar">
+       <strong>{t("financeResult")} {(page-1)*15+1}–{(page-1)*15+data.invoices.length}
+        {" "}{t("financeOf")} {data.total}</strong>
+       <span>{t("financeResultLimit")}</span>
+      </div>
       <InvoiceRows rows={data.invoices} space={space}/>
       <Pager page={page} next={data.hasMore} setPage={setPage}/>
      </>}
