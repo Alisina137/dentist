@@ -30,6 +30,7 @@ import { adminFinanceRouter } from "./admin-finance-router.js";
 import { adminSecurityRouter } from "./admin-security-router.js";
 import { adminCenterRouter } from "./admin-center-router.js";
 import { portabilityRouter } from "./portability-router.js";
+import { pilotFeedbackRouter } from "./pilot-feedback-router.js";
 import { protectHealthWrites, getPilotReadiness } from "./pilot-gate.js";
 import { startBookingNotificationWorker } from "./booking-notifications.js";
 import { assertProductionConfiguration } from "./production-config.js";
@@ -91,6 +92,7 @@ app.use("/v1/admin/finance", adminFinanceRouter());
 app.use("/v1/admin/security", adminSecurityRouter());
 app.use("/v1/admin/center", adminCenterRouter());
 app.use("/v1/portability", portabilityRouter());
+app.use("/v1/pilot-feedback", pilotFeedbackRouter());
 app.use("/v1/operations", operationsRouter());
 app.use("/v1/appointments", appointmentsRouter());
 // PH07 private clinical files have their own strictly bounded body parser.
