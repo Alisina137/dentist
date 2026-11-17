@@ -6,6 +6,7 @@ import {CareIcon} from "./care-icons";
 import {clinicErrorText} from "./clinic-feedback";
 import {clinicValidDeliveryPayload,clinicSafeApiCode} from "./clinic-ops-integrity";
 import {ClinicOpsBridge} from "./clinic-ops-bridge";
+import {ClinicOpsConnection} from "./clinic-ops-connection";
 import {clinicDeliveryFiltered,clinicDeliveryStats,clinicDeliveryPage,
  type ClinicDelivery,type ClinicOpsRole} from "./clinic-ops-bridge-model";
 
@@ -1116,6 +1117,7 @@ function Notifications({cid}:{cid:string}){
      <CareIcon name="activity" size={16}/>{t("refreshDelivery")}</button>
    </div>
   </header>
+  <ClinicOpsConnection onRefresh={reload}/>
   <p className="clinic-phase14-delivery-privacy"><CareIcon name="shield-check" size={16}/>
    {copy.private}</p>
   <p className="j-delivery-help" aria-live="polite">
