@@ -1,11 +1,12 @@
 "use client";
-import React,{useEffect,useState,type FormEvent,type ReactNode} from "react";
+import React,{useEffect,useRef,useState,type FormEvent,type ReactNode} from "react";
 import {InlineAlert,usePreferences} from "./index";
 import {ClinicLoadingState,ClinicFailureState,useClinicFeedback} from "./clinic-feedback";
 import {Shell} from "./phase03";
 import {CareIcon} from "./care-icons";
 import {clinicValidDay} from "./clinic-scheduling-dates";
 import {clinicCanLinkClinicalEncounter,clinicHandoffStatusKey} from "./clinic-handoff-model";
+import {clinicErrorText} from "./clinic-feedback";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Role="owner"|"manager"|"dentist"|"assistant"|"receptionist"|"cashier";
@@ -76,6 +77,41 @@ const labels:Record<Language,Record<string,string>>={
  handoffActive:"Appointments on selected day",handoffLinked:"Clinical record",
  handoffDesk:"Open reception queue to record arrival. Only authorized reception staff can check a patient in.",
  handoffNeedsVerification:"Confirm the patient identity, clinical alerts and consent before documenting care.",
+ recordsTitle:"Clinical record workspace",recordsIntro:"Browse assigned visits and signed clinical history. Changes to signed notes require an audited amendment.",
+ recordsSearch:"Search recorded visits",recordsSearchHint:"Complaint or recording clinician",recordsStatus:"Record status",
+ recordsAll:"All records",recordsDrafts:"Draft notes",recordsSigned:"Signed records",recordsCount:"Showing",
+ recordsOf:"of",recordsPage:"Records page",recordsLimit:"Showing up to 100 latest authorized visits, not the patient's complete clinical history.",
+ recordsEmpty:"No records match the current search and status.",recordsClear:"Clear filters",
+ recordsDetail:"Open clinical note",recordsRefresh:"Refresh records",recordsNew:"New encounter",
+ recordPreview:"Clinical note review",recordReviewSign:"Sign and lock baseline",
+ recordReviewAmend:"Append audited correction",recordReviewTitle:"Review the correct patient and clinical content before confirming.",
+ recordReviewWarning:"Signing locks the original clinical note. Later corrections create append-only versions and require a reason.",
+ recordReviewAmendWarning:"This correction will be permanently added to the record history. Existing signed content remains unchanged.",
+ recordReviewed:"I verified the patient identity, clinical findings and performed procedures.",
+ recordCancel:"Keep editing",recordConfirm:"Confirm clinical action",recordVersionCount:"Versions shown",
+ recordVersionNote:"Up to 100 latest audit versions are shown. Earlier versions may exist.",
+ recordFinal:"Latest recorded note",recordShowHistory:"Show audit history",
+ recordNoProcedure:"No procedures recorded",recordSignedStatus:"Signed baseline",
+ documentsTitle:"Private clinical documents",documentsIntro:"Only assigned staff can review these files. They are not automatically released to patients.",
+ documentsSearch:"Search files",documentsSearchHint:"File title, name or uploader",
+ documentsStatus:"File type",documentsSelected:"Files on this page",documentsNew:"Upload files",
+ documentsFilter:"Filtered attachments",documentsLimit:"Up to 100 recent authorized files are returned by the server; filters apply to this loaded set.",
+ documentsEmpty:"No documents match the selected filters.",documentsClear:"Clear file filters",
+ documentsPreview:"Protected image preview",documentsDismiss:"Close preview",
+ documentsSafety:"Verify file type, patient identity and linked encounter before upload. Do not upload unnecessary personal details.",
+ documentsQuarantined:"File quarantined; opening is blocked.",documentsAvailable:"Available private file",
+ documentsReview:"Review selected files",documentsMax:"Choose up to eight JPG, PNG or PDF files; each must be between 1 byte and 2 MB.",
+ documentsPartial:"Some files were uploaded. Only remaining files are selected for retry.",
+ documentsUploaded:"Files uploaded in this session",documentsRetry:"Retry remaining",
+ documentsLinked:"Linked clinical encounter",documentsUnlinked:"Not linked to an encounter",
+ documentsFilename:"File",documentsSize:"Size",documentsProgress:"Uploading",
+ communication:"Patient communication",communicationIntro:"Booking notifications are separate from private clinical notes and documents.",
+ communicationNoSend:"Viewing or uploading a medical record never emails, sends SMS or releases that record to a patient.",
+ communicationBooking:"Open appointment status",communicationSettings:"Booking delivery monitoring",
+ communicationChannel:"Only opted-in, configured booking-status email delivery is supported. No clinical contents are included.",
+ communicationNoAppointment:"No linked appointment for this clinical encounter.",
+ communicationNoSent:"No notification has been sent by this clinical workflow.",
+ communicationReview:"Review booking communications",communicationNotice:"Private files and signed notes must not be included in booking notifications.",
  },
  "fa-AF":{
  page:"صفحه",previous:"قبلی",next:"بعدی",
@@ -133,6 +169,41 @@ const labels:Record<Language,Record<string,string>>={
  handoffActive:"ملاقات‌های تاریخ انتخاب‌شده",handoffLinked:"سند کلینیکی",
  handoffDesk:"برای ثبت حضور صف پذیرش را باز کنید. فقط پذیرش مجاز می‌تواند حضور را ثبت کند.",
  handoffNeedsVerification:"قبل از ثبت تداوی، هویت مریض، هشدارهای صحی و رضایت را بررسی کنید.",
+ recordsTitle:"بخش سوابق کلینیکی",recordsIntro:"معاینات مجاز و سوابق امضاشده را بررسی کنید. اصلاح سند امضاشده به نسخه جدید ثبت می‌شود.",
+ recordsSearch:"جستجوی معاینات",recordsSearchHint:"شکایت یا نام داکتر",recordsStatus:"وضعیت سند",
+ recordsAll:"تمام اسناد",recordsDrafts:"پیش‌نویس‌ها",recordsSigned:"اسناد امضاشده",recordsCount:"نمایش",
+ recordsOf:"از",recordsPage:"صفحۀ اسناد",recordsLimit:"حداکثر ۱۰۰ معاینۀ مجاز اخیر نمایش داده می‌شود؛ این تمام سابقه نیست.",
+ recordsEmpty:"در جستجو و فیلتر فعلی سندی یافت نشد.",recordsClear:"پاک‌کردن فیلترها",
+ recordsDetail:"بازکردن یادداشت",recordsRefresh:"تازه‌سازی سوابق",recordsNew:"معاینه جدید",
+ recordPreview:"بررسی یادداشت کلینیکی",recordReviewSign:"امضا و قفل سند اصلی",
+ recordReviewAmend:"افزودن اصلاحیه ثبت‌شده",recordReviewTitle:"قبل از تأیید، هویت مریض و محتوای کلینیکی را بررسی کنید.",
+ recordReviewWarning:"امضا سند اصلی را قفل می‌کند. اصلاحات بعدی نسخه جداگانه با دلیل می‌سازد.",
+ recordReviewAmendWarning:"اصلاحیه به‌طور دایمی به تاریخچه افزوده می‌شود؛ محتوای امضاشده قبلی حفظ می‌گردد.",
+ recordReviewed:"هویت مریض، یافته‌های کلینیکی و خدمات انجام‌شده را بررسی کردم.",
+ recordCancel:"ادامه ویرایش",recordConfirm:"تأیید عملیات کلینیکی",recordVersionCount:"نسخه‌های نمایش‌داده‌شده",
+ recordVersionNote:"حداکثر ۱۰۰ نسخۀ اخیر نمایش داده می‌شود؛ نسخه‌های قدیمی‌تر ممکن است موجود باشند.",
+ recordFinal:"آخرین یادداشت ثبت‌شده",recordShowHistory:"نمایش تاریخچۀ تغییرات",
+ recordNoProcedure:"عملیه‌ای ثبت نشده",recordSignedStatus:"سند اصلی امضاشده",
+ documentsTitle:"اسناد خصوصی کلینیکی",documentsIntro:"فقط کارمندان مجاز فایل‌ها را می‌بینند؛ به‌طور خودکار به مریضان نشر نمی‌شوند.",
+ documentsSearch:"جستجوی فایل‌ها",documentsSearchHint:"عنوان، نام فایل یا ثبت‌کننده",
+ documentsStatus:"نوع فایل",documentsSelected:"فایل‌های این صفحه",documentsNew:"بارگذاری فایل",
+ documentsFilter:"ضمیمه‌های فیلترشده",documentsLimit:"سرور حداکثر ۱۰۰ فایل مجاز اخیر را برمی‌گرداند؛ فیلترها تنها همین فهرست را می‌پالایند.",
+ documentsEmpty:"در این فیلتر فایل یافت نشد.",documentsClear:"پاک‌کردن فیلتر فایل",
+ documentsPreview:"پیش‌نمایش خصوصی عکس",documentsDismiss:"بستن پیش‌نمایش",
+ documentsSafety:"قبل از بارگذاری، نوع فایل، هویت مریض و معاینۀ مربوط را بررسی کنید.",
+ documentsQuarantined:"فایل قرنطین است و باز نمی‌شود.",documentsAvailable:"فایل خصوصی قابل مشاهده",
+ documentsReview:"بررسی فایل‌های انتخاب‌شده",documentsMax:"تا هشت فایل JPG، PNG یا PDF؛ اندازۀ هر فایل بین ۱ بایت تا ۲ مگابایت.",
+ documentsPartial:"بعضی فایل‌ها بارگذاری شدند؛ فقط فایل‌های باقی‌مانده برای تلاش دوباره انتخاب هستند.",
+ documentsUploaded:"فایل‌های بارگذاری‌شدۀ این نوبت",documentsRetry:"تلاش دوباره برای باقی‌مانده‌ها",
+ documentsLinked:"اتصال به معاینۀ کلینیکی",documentsUnlinked:"بدون اتصال به معاینه",
+ documentsFilename:"فایل",documentsSize:"حجم",documentsProgress:"بارگذاری",
+ communication:"ارتباط با مریض",communicationIntro:"اعلان‌های وقت ملاقات از یادداشت‌ها و فایل‌های خصوصی کلینیکی جدا هستند.",
+ communicationNoSend:"مشاهده یا بارگذاری سند طبی هیچ ایمیل، پیامک یا نشر خودکار برای مریض ایجاد نمی‌کند.",
+ communicationBooking:"مشاهدۀ حالت ملاقات",communicationSettings:"بررسی ارسال اعلان وقت",
+ communicationChannel:"فقط ایمیل وضعیت ملاقات با رضایت و تنظیم معتبر پشتیبانی می‌شود؛ بدون محتوای کلینیکی.",
+ communicationNoAppointment:"این معاینه وقت ملاقات مرتبط ندارد.",
+ communicationNoSent:"در این کار کلینیکی اعلانی فرستاده نشده است.",
+ communicationReview:"بررسی ارتباطات ملاقات",communicationNotice:"یادداشت‌ها و فایل‌های خصوصی نباید در اعلان‌های ملاقات فرستاده شوند.",
  },
  "ps-AF":{
  page:"پاڼه",previous:"مخکې",next:"راتلونکی",
@@ -188,6 +259,42 @@ const labels:Record<Language,Record<string,string>>={
  handoffActive:"د ټاکلې ورځې ملاقاتونه",handoffLinked:"کلینیکي ریکارډ",
  handoffDesk:"د راتګ د ثبت لپاره د استقبال کتار پرانیزئ. یوازې اجازه لرونکی استقبال راتګ ثبتوي.",
  handoffNeedsVerification:"تر ثبت وړاندې د ناروغ هویت، طبي خبرتیاوې او رضایت وګورئ.",
+ recordsTitle:"د کلینیکي ریکارډونو برخه",recordsIntro:"اجازه لرونکې معاینې او لاسلیک شوی تاریخ وګورئ. سمون نوې د پلټنې نسخه جوړوي.",
+ recordsSearch:"د معایناتو پلټنه",recordsSearchHint:"شکایت یا د ډاکټر نوم",recordsStatus:"د ریکارډ حالت",
+ recordsAll:"ټول ریکارډونه",recordsDrafts:"مسودې",recordsSigned:"لاسلیک شوي",recordsCount:"ښودل",
+ recordsOf:"له",recordsPage:"د ریکارډونو پاڼه",recordsLimit:"تر ۱۰۰ وروستي مجاز ریکارډونه ښودل کېږي؛ دا ټول تاریخ نه دی.",
+ recordsEmpty:"په دې پلټنه او چاڼ کې ریکارډ نشته.",recordsClear:"چاڼ پاک کړئ",
+ recordsDetail:"کلینیکي یادښت پرانیزئ",recordsRefresh:"ریکارډونه تازه کړئ",recordsNew:"نوې معاینه",
+ recordPreview:"د کلینیکي یادښت کتنه",recordReviewSign:"اصلي ریکارډ لاسلیک کړئ",
+ recordReviewAmend:"ثبت شوې سمونه زیاته کړئ",recordReviewTitle:"تر تایید مخکې د ناروغ هویت او طبي لیکنه وګورئ.",
+ recordReviewWarning:"لاسلیک اصل قفلوي؛ وروستۍ سمونې جلا د دلیل لرونکې نسخې جوړوي.",
+ recordReviewAmendWarning:"سمونه دایمي تاریخچه کې لیکل کېږي؛ پخوانی لاسلیک شوی متن پاتې دی.",
+ recordReviewed:"د ناروغ هویت، طبي موندنې او ترسره شوي کارونه مې وکتل.",
+ recordCancel:"لیکلو ته ستنېدل",recordConfirm:"کلینیکي عملیات تایید کړئ",
+ recordVersionCount:"ښودل شوې نسخې",recordVersionNote:"تر ۱۰۰ وروستۍ نسخې ښودل کېږي؛ نورې زړې نسخې ښايي شته وي.",
+ recordFinal:"وروستی ثبت شوی یادښت",recordShowHistory:"د بدلونونو تاریخ وګورئ",
+ recordNoProcedure:"ترسره شوې پروسه نه ده ثبت",recordSignedStatus:"لاسلیک شوی اصل",
+ documentsTitle:"شخصي کلینیکي اسناد",documentsIntro:"یوازې مجاز کارکوونکي فایلونه ویني؛ ناروغ ته په خپله نه خپرېږي.",
+ documentsSearch:"فایلونه ولټوئ",documentsSearchHint:"د فایل نوم، عنوان یا پورته کوونکی",
+ documentsStatus:"د فایل ډول",documentsSelected:"په دې پاڼه فایلونه",
+ documentsNew:"فایلونه پورته کړئ",
+ documentsFilter:"چاڼ شوي فایلونه",documentsLimit:"سرور تر ۱۰۰ مجاز وروستي فایلونه ښيي؛ چاڼ یوازې په دې لړ پلي کېږي.",
+ documentsEmpty:"په دې چاڼ کې فایل نشته.",documentsClear:"د فایل چاڼ پاک کړئ",
+ documentsPreview:"شخصي انځور کتل",documentsDismiss:"د انځور بندول",
+ documentsSafety:"تر پورته کولو مخکې د فایل ډول، ناروغ او تړلې معاینه وګورئ.",
+ documentsQuarantined:"فایل قرنطین دی؛ نه پرانیستل کېږي.",documentsAvailable:"شخصي فایل شته",
+ documentsReview:"غوره شوي فایلونه وګورئ",documentsMax:"تر اتو JPG، PNG یا PDF فایلونو؛ هر یو له ۱ بایټ تر ۲ MB.",
+ documentsPartial:"ځینې فایلونه پورته شول؛ یوازې پاتې فایلونه بیا هڅه کېږي.",
+ documentsUploaded:"په دې نوبت پورته شوي فایلونه",documentsRetry:"پاتې فایلونه بیا پورته کړئ",
+ documentsLinked:"په کلینیکي معاینه پورې تړلی",documentsUnlinked:"له معاینې سره نه دی تړلی",
+ documentsFilename:"فایل",documentsSize:"اندازه",documentsProgress:"پورته کېږي",
+ communication:"له ناروغ سره اړیکه",communicationIntro:"د ملاقات خبرتیاوې له شخصي کلینیکي یادښتونو او فایلونو جلا دي.",
+ communicationNoSend:"طبي ریکارډ کتل یا پورته کول په خپله ایمیل، SMS یا ناروغ ته خپرول نه کوي.",
+ communicationBooking:"د ملاقات حالت وګورئ",communicationSettings:"د خبرتیاوو رسېدنه وګورئ",
+ communicationChannel:"یوازې د رضایت لرونکو ملاقات حالت ایمیلونه کار کوي؛ طبي متن نه لېږل کېږي.",
+ communicationNoAppointment:"دې معاینې پورې تړلی ملاقات نشته.",
+ communicationNoSent:"په دې کلینیکي کار کې خبرتیا نه ده لېږل شوې.",
+ communicationReview:"د ملاقات اړیکې وګورئ",communicationNotice:"طبي یادښتونه او فایلونه د ملاقات په خبرتیا کې مه لېږئ.",
  }
 };
 function useW(){
@@ -203,8 +310,8 @@ function useW(){
  };
  return {t,fmt,lang};
 }
-async function call(path:string,method="GET",body?:unknown):Promise<any>{
- const r=await fetch(API+"/v1/clinical"+path,{method,credentials:"include",cache:"no-store",
+async function call(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const r=await fetch(API+"/v1/clinical"+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -538,33 +645,94 @@ function Worklist({space}:{space:Space}){
  </div>;
 }
 function Visits({space,patientId}:{space:Space;patientId:string}){
- const {t,fmt}=useW(),base="/clinics/"+space.clinicId+"/patients/"+patientId;
+ const {t,fmt}=useW(),base="/clinics/"+encodeURIComponent(space.clinicId)+"/patients/"+encodeURIComponent(patientId);
  const {data,error,refresh}=useLoad(base+"/encounters");
  const appointmentId=typeof location!=="undefined"?new URLSearchParams(location.search).get("appointmentId"):null;
  const [reason,setReason]=useState(""),[busy,setBusy]=useState(false),[failure,setFailure]=useState("");
+ const [search,setSearch]=useState(""),[status,setStatus]=useState<"all"|"draft"|"signed">("all");
+ const [page,setPage]=useState(1);
+ useEffect(()=>{setReason("");setFailure("");setSearch("");setStatus("all");setPage(1);},
+  [space.clinicId,patientId]);
  async function create(event:FormEvent){
-  event.preventDefault();setBusy(true);setFailure("");
-  try{const created=await call(base+"/encounters","POST",{reason,appointmentId});
+  event.preventDefault();if(busy||reason.trim().length<2)return;
+  setBusy(true);setFailure("");
+  try{const created=await call(base+"/encounters","POST",{reason:reason.trim(),appointmentId});
    location.assign(link(space.clinicId,patientId,"visits",created.id));
   }catch(e:any){setFailure(e.message);}finally{setBusy(false);}
  }
  if(error)return <ErrorBox error={error} retry={refresh}/>;
  if(!data)return <Loading/>;
+ const encounters:Array<{id:string;reason:string;status:"draft"|"signed";
+  author_name:string;created_at:string;revision:number}>=data.encounters||[];
+ const term=search.trim().toLocaleLowerCase();
+ const filtered=encounters.filter(e=>(status==="all"||e.status===status)&&
+  (!term||(e.reason+" "+e.author_name).toLocaleLowerCase().includes(term)));
+ const pages=Math.max(1,Math.ceil(filtered.length/5));
+ const safePage=Math.min(page,pages),visible=filtered.slice((safePage-1)*5,safePage*5);
  const canStart=space.role!=="assistant"||Boolean(appointmentId);
- return <div className="phase07-grid">
+ return <div className="phase07-grid clinic-phase11-records">
   <section className="card phase07-panel">
-   <div className="phase07-section"><div><span className="phase07-eyebrow">{t("record")} · <bdi dir="ltr">{data.patient.patientNumber}</bdi></span>
-    <h2>{patientName(data.patient)}</h2></div><span className="phase07-count">{data.encounters.length}</span></div>
-   {!data.encounters.length?<p className="phase07-empty">{t("noPatients")}</p>:
-    <ol className="phase07-timeline">{data.encounters.map((e:any)=><li key={e.id}>
-     <div className="phase07-datebadge">{fmt(e.created_at,{month:"short",day:"numeric"})}</div>
-     <div className="phase07-case"><div className="phase07-between"><h3>{e.reason}</h3>
-      <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
-      <div className="phase07-meta">{e.author_name} · {fmt(e.created_at)} · {t("revision")} {e.revision}</div>
-      <a className="phase07-textlink" href={link(space.clinicId,patientId,"visits",e.id)}>
-       {t("visitDetail")} →</a></div></li>)}</ol>}
+   <div className="phase07-section clinic-phase11-records-heading">
+    <div><span className="phase07-eyebrow">{t("record")} · <bdi dir="ltr">{data.patient.patientNumber}</bdi></span>
+     <h2>{patientName(data.patient)}</h2>
+     <p className="clinic-phase11-subtitle">{t("recordsIntro")}</p></div>
+    <span className="phase07-count" aria-label={t("recordsTitle")}>{encounters.length}</span>
+   </div>
+   <div className="clinic-phase11-records-toolbar">
+    <label className="clinic-phase11-search"><span>{t("recordsSearch")}</span>
+     <span className="clinic-phase11-search-input"><CareIcon name="search" size={17}/>
+      <input type="search" autoComplete="off" maxLength={120} value={search}
+       placeholder={t("recordsSearchHint")} onChange={event=>{setSearch(event.target.value);setPage(1);}}/>
+     </span>
+    </label>
+    <label className="clinic-phase11-select"><span>{t("recordsStatus")}</span>
+     <select value={status} onChange={event=>{
+      setStatus(event.target.value as "all"|"draft"|"signed");setPage(1);
+     }}><option value="all">{t("recordsAll")}</option>
+      <option value="draft">{t("recordsDrafts")}</option>
+      <option value="signed">{t("recordsSigned")}</option></select>
+    </label>
+    <button className="btn btn-secondary" type="button" onClick={refresh}>
+     <CareIcon name="activity" size={16}/>{t("recordsRefresh")}</button>
+   </div>
+   <div className="clinic-phase11-records-stats" role="group" aria-label={t("recordsTitle")}>
+    {(["all","draft","signed"] as const).map(key=><button type="button" key={key}
+     className={"clinic-phase11-records-stat"+(status===key?" is-active":"")}
+     aria-pressed={status===key} onClick={()=>{setStatus(key);setPage(1);}}>
+     <span>{t(key==="all"?"recordsAll":key==="draft"?"recordsDrafts":"recordsSigned")}</span>
+     <strong>{key==="all"?encounters.length:encounters.filter(e=>e.status===key).length}</strong>
+    </button>)}
+   </div>
+   {!visible.length?<div className="clinic-phase11-empty" role="status">
+    <CareIcon name="file" size={27}/>
+    <p>{!encounters.length?t("noPatients"):t("recordsEmpty")}</p>
+    {(search||status!=="all")&&<button type="button" className="btn btn-secondary"
+     onClick={()=>{setSearch("");setStatus("all");setPage(1);}}>
+     {t("recordsClear")}</button>}</div>:
+    <ol className="phase07-timeline clinic-phase11-record-list">
+     {visible.map(e=><li key={e.id}>
+      <div className="phase07-datebadge">{fmt(e.created_at,{month:"short",day:"numeric"})}</div>
+      <div className="phase07-case"><div className="phase07-between"><h3>{e.reason}</h3>
+       <span className={"phase07-badge "+e.status}>{t(e.status)}</span></div>
+       <div className="phase07-meta">{e.author_name} · {fmt(e.created_at)} · {t("revision")} {e.revision}</div>
+       <a className="phase07-textlink" href={link(space.clinicId,patientId,"visits",e.id)}>
+        {t("recordsDetail")} <CareIcon name="arrow" size={16}/></a>
+      </div></li>)}
+    </ol>}
+   <p className="clinic-phase11-count-note" role="status" aria-live="polite">
+    {t("recordsCount")} {filtered.length?((safePage-1)*5+1):0}–{Math.min(safePage*5,filtered.length)}
+    {" "}{t("recordsOf")} {filtered.length}. {t("recordsLimit")}
+   </p>
+   {filtered.length>5&&<nav className="clinic-phase11-pagination" aria-label={t("recordsPage")}>
+    <button type="button" className="btn btn-secondary" disabled={safePage<=1}
+     onClick={()=>setPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+    <span>{t("page")} {safePage}/{pages}</span>
+    <button type="button" className="btn btn-secondary" disabled={safePage>=pages}
+     onClick={()=>setPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+   </nav>}
   </section>
-  <aside className="card phase07-panel phase07-sidebar">
+  <aside className="card phase07-panel phase07-sidebar clinic-phase11-new-record">
+   <span className="clinic-phase11-kicker"><CareIcon name="clipboard" size={17}/>{t("recordsNew")}</span>
    <h2>{t("newVisit")}</h2><p className="muted">{t("newVisitHint")}</p>
    {canStart?<form className="phase07-form" onSubmit={create}>
     {appointmentId&&<div className="clinic-phase09-visit-origin">
@@ -575,14 +743,43 @@ function Visits({space,patientId}:{space:Space;patientId:string}){
       <CareIcon name="calendar" size={16}/>{t("handoffOpenAppointment")}</a>
      <p>{t("handoffNeedsVerification")}</p>
     </div>}
-    <label className="field"><span>{t("complaint")} *</span><textarea value={reason} required maxLength={2000}
-     rows={4} onChange={e=>setReason(e.target.value)}/></label>
-    <button className="btn btn-primary" disabled={busy||reason.trim().length<2}>
+    <label className="field"><span>{t("complaint")} *</span>
+     <textarea value={reason} required minLength={2} maxLength={2000} rows={4}
+      onChange={e=>setReason(e.target.value)}/></label>
+    <button type="submit" className="btn btn-primary" disabled={busy||reason.trim().length<2}>
      {busy?t("busy"):t("newVisit")}</button>
     {failure&&<ErrorBox error={failure}/>}
    </form>:<Banner kind="warning">{t("assistantHint")}</Banner>}
+   <div className="clinic-phase11-communication-hint">
+    <CareIcon name="shield-check" size={17}/>
+    <p>{t("communicationNoSend")}</p>
+   </div>
   </aside>
  </div>;
+}
+function ClinicalCommunication({space,appointmentId}:{space:Space;appointmentId?:string|null}){
+ const {t}=useW();
+ const monitoring=["owner","manager"].includes(space.role);
+ return <section className="card phase07-panel clinic-phase11-communication"
+  aria-label={t("communication")}>
+  <div className="clinic-phase11-communication-top">
+   <span className="clinic-phase11-communication-icon"><CareIcon name="message-square-star" size={21}/></span>
+   <div><h2>{t("communication")}</h2><p>{t("communicationIntro")}</p></div>
+  </div>
+  <p className="clinic-phase11-communication-warning" role="note">
+   <CareIcon name="shield-check" size={17}/>{t("communicationNoSend")}</p>
+  <div className="clinic-phase11-communication-actions">
+   {appointmentId&&<a className="btn btn-secondary"
+    href={"/clinic/appointments/"+encodeURIComponent(appointmentId)+
+     "?clinic="+encodeURIComponent(space.clinicId)}>
+    <CareIcon name="calendar" size={16}/>{t("communicationBooking")}</a>}
+   {monitoring&&<a className="btn btn-secondary"
+    href={"/clinic/settings/notifications?clinic="+encodeURIComponent(space.clinicId)}>
+    <CareIcon name="activity" size={16}/>{t("communicationSettings")}</a>}
+  </div>
+  <p className="clinic-phase11-communication-footnote">
+   {t("communicationChannel")} {t("communicationNotice")}</p>
+ </section>;
 }
 function NoteFields({note,setNote,disabled=false}:{note:Note;setNote:(n:Note)=>void;disabled?:boolean}){
  const {t}=useW();
@@ -613,31 +810,59 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
  const {data,error,refresh}=useLoad(base+"/encounters/"+encounterId);
  const [note,setNote]=useState<Note>(empty),[reason,setReason]=useState("");
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[failure,setFailure]=useState("");
+ const [review,setReview]=useState<"sign"|"amend"|null>(null),[reviewed,setReviewed]=useState(false);
+ const [versionPage,setVersionPage]=useState(1);
+ useEffect(()=>{
+  setReview(null);setReviewed(false);setVersionPage(1);
+  setReason("");setFailure("");setNotice("");setNote(empty);
+ },[space.clinicId,patientId,encounterId]);
  useEffect(()=>{if(data?.encounter) setNote({...empty,...data.encounter.note,
   historyDate:data.encounter.note.historyDate||"",historySource:data.encounter.note.historySource||"",
   followUp:data.encounter.note.followUp||"",performedProcedures:data.encounter.note.performedProcedures||[]});},[data]);
  async function action(type:"save"|"sign"|"amend"){
-  if(!data)return;
-  if(type==="sign"&&!confirm(t("signConfirm")))return;
-  if(type==="amend"&&!confirm(t("amendConfirm")))return;
+  if(!data||busy||((type==="sign"||type==="amend")&&
+   (review!==type||!reviewed)))return;
+  if(type==="sign"&&(!data.canSign||!note.reason.trim()||
+   !note.findings.trim()||!note.assessment.trim()))return;
+  if(type==="amend"&&(!data.canAmend||reason.trim().length<10))return;
   setBusy(true);setFailure("");setNotice("");
+  let draftSaved=false;
   try{
    const rev=data.encounter.revision;
    if(type==="save")await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
    if(type==="sign"){
-    // Persist the visible form first so the signed snapshot exactly matches what was confirmed.
-    await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
-    await call(base+"/encounters/"+encounterId+"/sign","POST",{revision:rev+1,confirmation:"SIGN"});
+    // Persist the visible note first. Sign only the server-returned revision.
+    // A failure in signing never claims the encounter was signed.
+    const result=await call(base+"/encounters/"+encounterId,"PATCH",{...note,revision:rev});
+    draftSaved=true;
+    await call(base+"/encounters/"+encounterId+"/sign","POST",
+     {revision:result.revision,confirmation:"SIGN"});
    }
    if(type==="amend")await call(base+"/encounters/"+encounterId+"/amend","POST",
     {...note,revision:rev,correctionReason:reason});
-   setNotice(t(type==="sign"?"signedSuccess":"saved"));setReason("");refresh();
-  }catch(e:any){setFailure(e.message);}finally{setBusy(false);}
+   setReview(null);setReviewed(false);setNotice(t(type==="sign"?"signedSuccess":"saved"));
+   setReason("");refresh();
+  }catch(e:any){
+   setFailure(e instanceof Error?e.message:"NETWORK_ERROR");
+   if(draftSaved){setReview(null);setReviewed(false);refresh();}
+  }finally{setBusy(false);}
  }
+ useEffect(()=>{
+  if(!review)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy){setReview(null);setReviewed(false);}
+  };
+  document.addEventListener("keydown",onEscape);
+  return()=>document.removeEventListener("keydown",onEscape);
+ },[review,busy]);
  if(error)return <ErrorBox error={error} retry={refresh}/>;
  if(!data)return <Loading/>;
  const e:Encounter=data.encounter,showEdit=data.canEdit||data.canAmend;
- return <div className="phase07-grid">
+ const versions:Array<{id:string;revision:number;action:string;created_at:string;
+  author_name:string;correction_reason:string|null;note:Note}>=data.versions||[];
+ const pages=Math.max(1,Math.ceil(versions.length/5)),safeVersionPage=Math.min(versionPage,pages);
+ const visibleVersions=versions.slice((safeVersionPage-1)*5,safeVersionPage*5);
+ return <div className="phase07-grid clinic-phase11-note-workspace">
   <main className="phase07-stack">
    <section className="card phase07-panel">
     <div className="phase07-between"><div><span className="phase07-eyebrow">{t("record")} · <bdi dir="ltr">
@@ -658,6 +883,7 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
    <section className="card phase07-panel">
     <div className="phase07-section"><h2>{t("clinicianNote")}</h2>
      <span className="phase07-badge">{t("latest")}</span></div>
+    <p className="clinic-phase11-subtitle">{t("recordsIntro")}</p>
     <NoteFields note={note} setNote={setNote} disabled={!showEdit||busy}/>
     {data.canAmend&&<label className="field phase07-correction"><span>{t("correction")} *</span>
      <textarea value={reason} maxLength={500} rows={3} onChange={ev=>setReason(ev.target.value)}
@@ -667,18 +893,22 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       onClick={()=>action("save")}>{busy?t("busy"):t("saveDraft")}</button>}
      {data.canSign&&<button type="button" className="btn btn-primary" disabled={busy||
       !note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
-      onClick={()=>action("sign")}>{busy?t("busy"):t("sign")}</button>}
+      onClick={()=>{setReview("sign");setReviewed(false);setFailure("");}}>
+       <CareIcon name="shield-check" size={17}/>{busy?t("busy"):t("sign")}</button>}
      {data.canAmend&&<button type="button" className="btn btn-primary" disabled={busy||
       reason.trim().length<10||!note.reason.trim()||!note.findings.trim()||!note.assessment.trim()}
-      onClick={()=>action("amend")}>{busy?t("busy"):t("amend")}</button>}
+      onClick={()=>{setReview("amend");setReviewed(false);setFailure("");}}>
+       <CareIcon name="edit" size={17}/>{busy?t("busy"):t("amend")}</button>}
     </div>}
     {data.canSign&&<p className="muted">{t("signConfirm")}</p>}
     {notice&&<Banner kind="success">{notice}</Banner>}
     {failure&&<ErrorBox error={failure} retry={failure==="STALE_ENCOUNTER_REVISION"?refresh:undefined}/>}
    </section>
-   <section className="card phase07-panel">
-    <div className="phase07-section"><h2>{t("timeline")}</h2></div>
-    <ol className="phase07-version-list">{data.versions.map((v:any)=><li key={v.id}>
+   <section className="card phase07-panel" id="clinic-phase11-versions">
+    <div className="phase07-section"><div><h2>{t("timeline")}</h2>
+     <p className="clinic-phase11-subtitle">{t("recordVersionNote")}</p></div>
+     <span className="phase07-count" aria-label={t("recordVersionCount")}>{versions.length}</span></div>
+    <ol className="phase07-version-list clinic-phase11-version-list">{visibleVersions.map((v:any)=><li key={v.id}>
      <div className="phase07-between"><strong>{t("revision")} {v.revision} ·
       {v.action==="signed"?t("signed"):v.action==="amended"?t("amend"):t("draft")}</strong>
       <time>{fmt(v.created_at)}</time></div>
@@ -690,6 +920,13 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       <p>{t("assessment")}: {v.note.assessment||"—"}</p>
       <p>{t("followUp")}: {v.note.followUp||"—"}</p></details>
     </li>)}</ol>
+    {versions.length>5&&<nav className="clinic-phase11-pagination" aria-label={t("timeline")}>
+     <button type="button" className="btn btn-secondary" disabled={safeVersionPage<=1}
+      onClick={()=>setVersionPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+     <span>{t("page")} {safeVersionPage}/{pages}</span>
+     <button type="button" className="btn btn-secondary" disabled={safeVersionPage>=pages}
+      onClick={()=>setVersionPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+    </nav>}
    </section>
   </main>
   <aside className="phase07-stack">
@@ -718,7 +955,54 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
       <CareIcon name="clipboard" size={16}/>{t("treatments")} →</a>
     </div>}
    </section>
+   <ClinicalCommunication space={space} appointmentId={e.appointmentId}/>
   </aside>
+  {review&&<div className="clinic-phase11-confirm-backdrop"
+   onMouseDown={event=>{if(event.currentTarget===event.target&&!busy){
+    setReview(null);setReviewed(false);
+   }}}>
+   <section className="clinic-phase11-confirm-dialog" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase11-confirm-title">
+    <div className="clinic-phase11-confirm-heading">
+     <span className="clinic-phase11-confirm-icon"><CareIcon name="shield-check" size={22}/></span>
+     <button type="button" autoFocus className="clinic-phase11-close" disabled={busy}
+      aria-label={t("close")} onClick={()=>{setReview(null);setReviewed(false);}}>
+      <CareIcon name="close" size={19}/></button>
+    </div>
+    <h2 id="clinic-phase11-confirm-title">{t(review==="sign"?"recordReviewSign":"recordReviewAmend")}</h2>
+    <p>{t("recordReviewTitle")}</p>
+    <div className="clinic-phase11-confirm-patient">
+     <strong>{patientName(data.patient)}</strong>
+     <bdi dir="ltr">{data.patient.patientNumber}</bdi>
+     <span>{t("revision")} {e.revision}</span>
+    </div>
+    <dl className="clinic-phase11-confirm-details">
+     {([["complaint",note.reason],["findings",note.findings],["assessment",note.assessment],
+      ["followUp",note.followUp||t("none")]] as [string,string][]).map(([key,value])=>
+      <div key={key}><dt>{t(key)}</dt><dd>{value}</dd></div>)}
+     <div><dt>{t("procedure")}</dt>
+      <dd>{note.performedProcedures.length?
+       note.performedProcedures.map(p=>p.description).join("; "):t("recordNoProcedure")}</dd></div>
+     {review==="amend"&&<div><dt>{t("correction")}</dt><dd>{reason}</dd></div>}
+    </dl>
+    <p className="clinic-phase11-confirm-warning">
+     <CareIcon name="about" size={17}/>
+     {t(review==="sign"?"recordReviewWarning":"recordReviewAmendWarning")}</p>
+    <label className="clinic-phase11-confirm-check">
+     <input type="checkbox" checked={reviewed} disabled={busy}
+      onChange={event=>setReviewed(event.target.checked)}/>
+     <span>{t("recordReviewed")}</span>
+    </label>
+    {failure&&<ErrorBox error={failure}/>}
+    <div className="clinic-phase11-confirm-actions">
+     <button type="button" className="btn btn-secondary" disabled={busy}
+      onClick={()=>{setReview(null);setReviewed(false);}}>{t("recordCancel")}</button>
+     <button type="button" className="btn btn-primary" disabled={busy||!reviewed}
+      onClick={()=>void action(review)}>
+      <CareIcon name="check" size={17}/>{busy?t("busy"):t("recordConfirm")}</button>
+    </div>
+   </section>
+  </div>}
  </div>;
 }
 async function fileBase64(file:File){
@@ -728,85 +1012,226 @@ async function fileBase64(file:File){
  return btoa(result);
 }
 function Files({space,patientId}:{space:Space;patientId:string}){
- const {t,fmt}=useW(),base="/clinics/"+space.clinicId+"/patients/"+patientId;
+ const {t,fmt}=useW();
+ const base="/clinics/"+encodeURIComponent(space.clinicId)+"/patients/"+encodeURIComponent(patientId);
  const [kind,setKind]=useState("all");
  const {data,error,refresh}=useLoad(base+"/files?kind="+kind);
+ const [search,setSearch]=useState(""),[page,setPage]=useState(1);
  const [title,setTitle]=useState(""),[notes,setNotes]=useState(""),[fileKind,setFileKind]=useState("photo");
  const [selected,setSelected]=useState<File[]>([]),[busy,setBusy]=useState(false),[progress,setProgress]=useState("");
  const [failure,setFailure]=useState(""),[success,setSuccess]=useState("");
  const [preview,setPreview]=useState<string|null>(null);
+ const previewRef=useRef<string|null>(null),fileInput=useRef<HTMLInputElement|null>(null);
+ const uploadAbort=useRef<AbortController|null>(null),viewAbort=useRef<AbortController|null>(null);
  const linked=typeof location==="undefined"?null:new URLSearchParams(location.search).get("encounterId");
+ const kinds=["all","xray","photo","consent","other"];
+ const allFiles:Array<{id:string;title:string;kind:string;file_name:string;mime:string;
+  size_bytes:number;scan_status:string;notes:string|null;encounter_id:string|null;
+  created_at:string;uploaded_by_name:string}>=data?.files||[];
+ const term=search.trim().toLocaleLowerCase();
+ const matches=allFiles.filter(f=>
+  !term||(f.title+" "+f.file_name+" "+f.uploaded_by_name).toLocaleLowerCase().includes(term));
+ const pages=Math.max(1,Math.ceil(matches.length/5));
+ const safePage=Math.min(page,pages);
+ const visible=matches.slice((safePage-1)*5,safePage*5);
+ function closePreview(){
+  if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+  previewRef.current=null;setPreview(null);
+ }
+ useEffect(()=>{
+  // An unmounted patient workspace must never continue uploading files to
+  // the previously selected clinic or patient, or show their prior preview.
+  setPreview(null);setSelected([]);setSearch("");setPage(1);
+  setTitle("");setNotes("");setFailure("");setSuccess("");
+  if(fileInput.current)fileInput.current.value="";
+  return()=>{
+   uploadAbort.current?.abort();viewAbort.current?.abort();
+   if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+   previewRef.current=null;
+  };
+ },[space.clinicId,patientId]);
+ useEffect(()=>{
+  if(!preview)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape")closePreview();
+  };
+  document.addEventListener("keydown",onEscape);
+  return()=>document.removeEventListener("keydown",onEscape);
+ },[preview]);
  async function upload(event:FormEvent){
-  event.preventDefault();if(!selected.length){setFailure(t("chooseFile"));return;}
+  event.preventDefault();if(busy)return;
+  if(!selected.length||selected.length>8){setFailure("INVALID_FILE_COUNT");return;}
+  if(selected.some(file=>!["image/png","image/jpeg","application/pdf"].includes(file.type)||
+   file.size>2097152||file.size===0)){setFailure("INVALID_FILE");return;}
+  const controller=new AbortController();uploadAbort.current=controller;
   setBusy(true);setFailure("");setSuccess("");
+  let completed=0;
   try{
    for(let i=0;i<selected.length;i++){
+    if(controller.signal.aborted)throw new Error("NETWORK_ERROR");
     const file=selected[i];
-    if(!["image/png","image/jpeg","application/pdf"].includes(file.type))throw new Error("FILE_TYPE_UNSUPPORTED");
-    if(file.size>2097152||file.size===0)throw new Error("FILE_TOO_LARGE");
     setProgress((i+1)+" / "+selected.length);
+    const contentBase64=await fileBase64(file);
+    if(controller.signal.aborted)throw new Error("NETWORK_ERROR");
     await call(base+"/files","POST",{title:title.trim()||file.name,fileName:file.name,
      kind:fileKind,notes,mime:file.type,encounterId:linked,
-     contentBase64:await fileBase64(file)});
+     contentBase64},controller.signal);
+    completed++;
    }
    setSelected([]);setTitle("");setNotes("");setSuccess(t("uploadDone"));refresh();
-  }catch(e:any){setFailure(t("uploadFailed")+" "+e.message);}finally{setBusy(false);setProgress("");}
+   if(fileInput.current)fileInput.current.value="";
+  }catch(e:any){
+   setFailure(e instanceof Error?e.message:"NETWORK_ERROR");
+   if(completed>0){
+    setSelected(selected.slice(completed));
+    setSuccess(t("documentsPartial")+" "+completed+" / "+selected.length);
+    refresh();
+   }
+   if(fileInput.current)fileInput.current.value="";
+  }finally{if(uploadAbort.current===controller)uploadAbort.current=null;
+   setBusy(false);setProgress("");}
  }
- async function openFile(file:any){
+ async function openFile(file:(typeof allFiles)[number]){
+  if(file.scan_status==="quarantined"){setFailure("FILE_QUARANTINED");return;}
+  viewAbort.current?.abort();
+  const controller=new AbortController();viewAbort.current=controller;
   setFailure("");
   try{
-   const r=await fetch(API+"/v1/clinical"+base+"/files/"+file.id+"/content",{
-    credentials:"include",cache:"no-store"});
-   if(!r.ok){const p=await r.json().catch(()=>({}));throw Error(p.code||"FILE_UNAVAILABLE");}
-   const blob=await r.blob(),url=URL.createObjectURL(blob);
+   const r=await fetch(API+"/v1/clinical"+base+"/files/"+encodeURIComponent(file.id)+"/content",{
+    credentials:"include",cache:"no-store",signal:controller.signal});
+   if(!r.ok){const body=await r.json().catch(()=>({}));
+    throw Error(body.code||"FILE_UNAVAILABLE");}
+   const blob=await r.blob();
+   if(controller.signal.aborted)return;
+   const url=URL.createObjectURL(blob);
    if(file.mime==="application/pdf"){
-    const a=document.createElement("a");a.href=url;a.download=file.file_name||"clinical-file.pdf";
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-   }else{if(preview)URL.revokeObjectURL(preview);setPreview(url);}
-  }catch(e:any){setFailure(e.message);}
+    const a=document.createElement("a");a.href=url;a.download="clinical-file.pdf";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+   }else{
+    if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+    previewRef.current=url;setPreview(url);
+   }
+  }catch(e:any){if(!controller.signal.aborted)
+   setFailure(e instanceof Error?e.message:"NETWORK_ERROR");}
+  finally{if(viewAbort.current===controller)viewAbort.current=null;}
  }
- const kinds=["all","xray","photo","consent","other"];
- return <div className="phase07-grid">
-  <section className="card phase07-panel">
-   <div className="phase07-section"><div><h2>{t("patientFiles")}</h2>
-    <p className="muted">{data?.patient?patientName(data.patient):t("storage")}</p></div>
-    <select aria-label={t("fileFilter")} value={kind} onChange={e=>setKind(e.target.value)}>
-     {kinds.map(k=><option key={k} value={k}>{t(k)}</option>)}</select></div>
+ return <div className="phase07-grid clinic-phase11-documents">
+  <section className="card phase07-panel clinic-phase11-documents-list">
+   <div className="phase07-section">
+    <div><span className="clinic-phase11-kicker"><CareIcon name="file" size={17}/>{t("documentsTitle")}</span>
+     <h2>{data?.patient?patientName(data.patient):t("patientFiles")}</h2>
+     <p className="clinic-phase11-subtitle">{t("documentsIntro")}</p></div>
+    <span className="phase07-count" aria-label={t("documentsSelected")}>{allFiles.length}</span>
+   </div>
+   <div className="clinic-phase11-documents-toolbar">
+    <label className="clinic-phase11-search"><span>{t("documentsSearch")}</span>
+     <span className="clinic-phase11-search-input"><CareIcon name="search" size={17}/>
+      <input type="search" autoComplete="off" maxLength={120} value={search}
+       placeholder={t("documentsSearchHint")}
+       onChange={event=>{setSearch(event.target.value);setPage(1);}}/></span>
+    </label>
+    <label className="clinic-phase11-select"><span>{t("documentsStatus")}</span>
+     <select aria-label={t("fileFilter")} value={kind}
+      onChange={event=>{setKind(event.target.value);setPage(1);}}>
+      {kinds.map(k=><option key={k} value={k}>{t(k==="all"?"all":k)}</option>)}</select>
+    </label>
+    <button className="btn btn-secondary" type="button" onClick={refresh}>
+     <CareIcon name="activity" size={16}/>{t("recordsRefresh")}</button>
+   </div>
+   <div className="clinic-phase11-documents-chips" role="group" aria-label={t("fileFilter")}>
+    {kinds.map(key=><button type="button" key={key} className={kind===key?"is-active":""}
+     aria-pressed={kind===key} onClick={()=>{setKind(key);setPage(1);}}>{t(key)}</button>)}
+   </div>
    {error?<ErrorBox error={error} retry={refresh}/>:!data?<Loading/>:
-    !data.files.length?<p className="phase07-empty">{t("noFiles")}</p>:
-    <div className="phase07-rows">{data.files.map((f:any)=><article className="phase07-visit-row" key={f.id}>
-     <div className="phase07-fileicon">{f.mime==="application/pdf"?"PDF":"▧"}</div>
-     <div className="phase07-row-main"><h3>{f.title}</h3><p className="phase07-meta">
-      {t(f.kind)} · {f.file_name} · {Math.ceil(f.size_bytes/1024)} KB · {fmt(f.created_at)}
-      </p><p className="phase07-meta">{f.uploaded_by_name}</p></div>
-     <button className="btn btn-secondary" type="button" onClick={()=>openFile(f)}>
-      {t(f.mime==="application/pdf"?"download":"preview")} →</button></article>)}</div>}
-   {preview&&<div className="phase07-preview" role="dialog" aria-modal="true" aria-label={t("preview")}>
-    <button className="btn btn-secondary" onClick={()=>{URL.revokeObjectURL(preview);setPreview(null);}}>
-     {t("close")} ✕</button>
-    <img src={preview} alt={t("preview")}/></div>}
+    !visible.length?<div className="clinic-phase11-empty" role="status">
+     <CareIcon name="file" size={25}/><p>{!allFiles.length&&!search?t("noFiles"):t("documentsEmpty")}</p>
+     {(search||kind!=="all")&&<button type="button" className="btn btn-secondary"
+      onClick={()=>{setSearch("");setKind("all");setPage(1);}}>{t("documentsClear")}</button>}
+    </div>:
+    <div className="phase07-rows clinic-phase11-file-list">
+     {visible.map(f=><article className="phase07-visit-row clinic-phase11-file-card" key={f.id}>
+      <div className="phase07-fileicon" aria-hidden="true">
+       {f.mime==="application/pdf"?"PDF":<CareIcon name="images" size={21}/>}</div>
+      <div className="phase07-row-main">
+       <h3>{f.title}</h3>
+       <p className="phase07-meta">{t(f.kind)} · {f.file_name} ·
+        <bdi dir="ltr"> {Math.ceil(f.size_bytes/1024)} KB</bdi> · {fmt(f.created_at)}</p>
+       <p className="phase07-meta">{f.uploaded_by_name}</p>
+       {f.encounter_id&&<a className="clinic-phase11-file-encounter" href={
+        link(space.clinicId,patientId,"visits",f.encounter_id)}>
+        <CareIcon name="clipboard" size={15}/>{t("documentsLinked")}:
+        <bdi dir="ltr">{f.encounter_id.slice(0,8)}</bdi></a>}
+       <span className={"clinic-phase11-file-state"+(f.scan_status==="quarantined"?" is-quarantined":"")}>
+        {t(f.scan_status==="quarantined"?"documentsQuarantined":"documentsAvailable")}</span>
+      </div>
+      <button className="btn btn-secondary" type="button"
+       disabled={f.scan_status==="quarantined"} onClick={()=>void openFile(f)}>
+       <CareIcon name={f.mime==="application/pdf"?"download":"images"} size={16}/>
+       {t(f.mime==="application/pdf"?"download":"preview")}</button>
+     </article>)}
+    </div>}
+   {data&&<div className="clinic-phase11-documents-end">
+    <p className="clinic-phase11-count-note" role="status" aria-live="polite">
+     {t("recordsCount")} {matches.length?(safePage-1)*5+1:0}–{Math.min(safePage*5,matches.length)}
+     {" "}{t("recordsOf")} {matches.length}. {t("documentsLimit")}
+    </p>
+    {matches.length>5&&<nav className="clinic-phase11-pagination" aria-label={t("documentsSelected")}>
+     <button type="button" className="btn btn-secondary" disabled={safePage<=1}
+      onClick={()=>setPage(p=>Math.max(1,p-1))}>{t("previous")}</button>
+     <span>{t("page")} {safePage}/{pages}</span>
+     <button type="button" className="btn btn-secondary" disabled={safePage>=pages}
+      onClick={()=>setPage(p=>Math.min(pages,p+1))}>{t("next")}</button>
+    </nav>}
+   </div>}
+   {preview&&<div className="phase07-preview clinic-phase11-document-preview"
+    role="dialog" aria-modal="true" aria-label={t("documentsPreview")}>
+    <button type="button" autoFocus className="btn btn-secondary" onClick={closePreview}>
+     <CareIcon name="close" size={17}/>{t("documentsDismiss")}</button>
+    <img src={preview} alt={t("documentsPreview")}/></div>}
+   {failure&&<ErrorBox error={failure}/>}
   </section>
-  <aside className="card phase07-panel phase07-sidebar">
-   <h2>{t("upload")}</h2><p className="muted">{t("size")}</p>
-   <form onSubmit={upload} className="phase07-form">
-    <label className="field"><span>{t("file")} *</span>
-     <input type="file" accept="image/jpeg,image/png,application/pdf" multiple
-      onChange={e=>setSelected(Array.from(e.target.files||[]))} disabled={busy}/></label>
-    <label className="field"><span>{t("title")}</span>
-     <input value={title} maxLength={150} onChange={e=>setTitle(e.target.value)} disabled={busy}/></label>
-    <label className="field"><span>{t("type")} *</span>
-     <select value={fileKind} onChange={e=>setFileKind(e.target.value)} disabled={busy}>
-      {kinds.filter(x=>x!=="all").map(k=><option value={k} key={k}>{t(k)}</option>)}</select></label>
-    <label className="field"><span>{t("notes")}</span>
-     <textarea value={notes} rows={3} maxLength={500} onChange={e=>setNotes(e.target.value)}
-      disabled={busy}/></label>
-    {linked&&<Banner>{t("chooseAppointment")}: <bdi dir="ltr">{linked.slice(0,8)}</bdi></Banner>}
-    <button className="btn btn-primary" disabled={busy||!selected.length} type="submit">
-     {busy?t("busy")+" "+progress:t("upload")}</button>
-    {failure&&<Banner kind="error">{failure}</Banner>}
-    {success&&<Banner kind="success">{success}</Banner>}
-    <Banner kind="warning">{t("protected")}. {t("storage")}</Banner>
-   </form>
+  <aside className="clinic-phase11-documents-aside">
+   <section className="card phase07-panel phase07-sidebar clinic-phase11-upload">
+    <span className="clinic-phase11-kicker"><CareIcon name="plus" size={17}/>{t("documentsNew")}</span>
+    <h2>{t("upload")}</h2>
+    <p className="muted">{t("documentsMax")}</p>
+    <form onSubmit={upload} className="phase07-form">
+     <label className="field"><span>{t("file")} *</span>
+      <input ref={fileInput} type="file" accept="image/jpeg,image/png,application/pdf" multiple
+       onChange={event=>{setSelected(Array.from(event.target.files||[]));setFailure("");}}
+       disabled={busy}/></label>
+     {selected.length>0&&<div className="clinic-phase11-upload-review">
+      <strong>{t("documentsReview")}: {selected.length}</strong>
+      <ul>{selected.map((file,index)=><li key={index}>
+       <span>{file.name}</span><bdi dir="ltr">{Math.ceil(file.size/1024)} KB</bdi>
+      </li>)}</ul>
+     </div>}
+     <label className="field"><span>{t("title")}</span>
+      <input value={title} maxLength={150} onChange={event=>setTitle(event.target.value)}
+       disabled={busy}/></label>
+     <label className="field"><span>{t("type")} *</span>
+      <select value={fileKind} onChange={event=>setFileKind(event.target.value)} disabled={busy}>
+       {kinds.filter(x=>x!=="all").map(k=><option value={k} key={k}>{t(k)}</option>)}</select>
+     </label>
+     <label className="field"><span>{t("notes")}</span>
+      <textarea value={notes} rows={3} maxLength={500}
+       onChange={event=>setNotes(event.target.value)} disabled={busy}/></label>
+     {linked?<Banner>{t("documentsLinked")}: <bdi dir="ltr">{linked.slice(0,8)}</bdi></Banner>:
+      <p className="clinic-phase11-link-hint">{t("documentsUnlinked")}</p>}
+     <p className="clinic-phase11-upload-safety">
+      <CareIcon name="shield-check" size={17}/>{t("documentsSafety")}</p>
+     <button className="btn btn-primary" type="submit"
+      disabled={busy||!selected.length||selected.length>8||
+       selected.some(file=>!["image/png","image/jpeg","application/pdf"].includes(file.type)||
+        file.size===0||file.size>2097152)}>
+      <CareIcon name="plus" size={17}/>{busy?t("documentsProgress")+" "+progress:t("upload")}</button>
+     {selected.length>8&&<Banner kind="warning">{t("documentsMax")}</Banner>}
+     {success&&<Banner kind="success">{success}</Banner>}
+     <Banner kind="warning">{t("protected")}. {t("storage")}</Banner>
+    </form>
+   </section>
+   <ClinicalCommunication space={space}/>
   </aside>
  </div>;
 }
