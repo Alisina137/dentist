@@ -708,67 +708,150 @@ function Invitations({space,ctx}:{space:Space,ctx:Context}){
  const {data,error,reload}=useData("/clinics/"+space.clinicId+"/invitations");
  const [email,setEmail]=useState(""),[role,setRole]=useState("receptionist");
  const [busy,setBusy]=useState(false),[failure,setFailure]=useState(""),[success,setSuccess]=useState("");
- const [reason,setReason]=useState(""),[page,setPage]=useState(1),[filter,setFilter]=useState("pending");
- const roles=["dentist","receptionist","assistant","cashier",...(space.role==="owner"?["manager"]:[])];
- async function submit(e:FormEvent){
-  e.preventDefault();setBusy(true);setFailure("");setSuccess("");
-  try{
-   await api("/clinics/"+space.clinicId+"/invitations","POST",{email,role});
-   setEmail("");setSuccess(t("sentSuccess"));reload();
-  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ const [reason,setReason]=useState(""),[page,setPage]=useState(1),
+  [filter,setFilter]=useState("pending"),[query,setQuery]=useState("");
+ const [review,setReview]=useState<{kind:"send"|"resend"|"revoke";id?:string;email:string;role:string}|null>(null),
+  [reviewed,setReviewed]=useState(false);
+ const roles=staffAssignableRoles(space.role);
+ const eligible=staffMayInvite(space.role,ctx.mfaEnabled);
+ const close=()=>{if(!busy){setReview(null);setReviewed(false);}};
+ useEffect(()=>{
+  setEmail("");setRole("receptionist");setFilter("pending");setPage(1);
+  setQuery("");setReview(null);setReviewed(false);setReason("");
+  setFailure("");setSuccess("");
+ },[space.clinicId]);
+ function submit(e:FormEvent){
+  e.preventDefault();if(busy||!eligible)return;
+  const normalized=staffEmail(email);
+  if(!normalized||normalized===ctx.email.toLocaleLowerCase()||!roles.includes(role as StaffRole)){
+   setFailure("INVALID_INVITATION");return;
+  }
+  setFailure("");setSuccess("");setReviewed(false);
+  setReview({kind:"send",email:normalized,role});
  }
- async function action(id:string,operation:"resend"|"revoke"){
-  if(operation==="revoke" && (!reason.trim()||!window.confirm(t("confirm"))))return;
+ function begin(row:any,kind:"resend"|"revoke"){
+  if(busy||!eligible)return;
+  if(kind==="revoke"&&reason.trim().length<5)return;
+  if(!roles.includes(row.role as StaffRole))return;
+  setFailure("");setSuccess("");setReviewed(false);
+  setReview({kind,id:row.id,email:row.email,role:row.role});
+ }
+ async function confirm(){
+  if(!review||!reviewed||busy||!eligible)return;
+  const current=review;
+  if(current.kind==="send"&&(!staffEmail(current.email)||!roles.includes(current.role as StaffRole)))return;
+  if(current.kind==="revoke"&&reason.trim().length<5)return;
   setBusy(true);setFailure("");setSuccess("");
   try{
-   await api("/clinics/"+space.clinicId+"/invitations/"+id+"/"+operation,"POST",
-     operation==="revoke"?{reason}:undefined);
-   reload();setReason("");setSuccess(t("updateSuccess"));
+   const root="/clinics/"+space.clinicId+"/invitations";
+   if(current.kind==="send")await api(root,"POST",{email:current.email,role:current.role});
+   else await api(root+"/"+current.id+"/"+current.kind,"POST",
+    current.kind==="revoke"?{reason:reason.trim()}:undefined);
+   if(current.kind==="send")setEmail("");
+   setReason("");setReview(null);setReviewed(false);setPage(1);
+   setSuccess(t(current.kind==="send"?"sentSuccess":"updateSuccess"));reload();
   }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
  }
- const entries=(data?.invitations||[]).filter((i:any)=>filter==="all"||i.status===filter);
- const pages=Math.max(1,Math.ceil(entries.length/5));
- if(!ctx.mfaEnabled)return <section className="card panel">
+ const entries=(data?.invitations||[]).filter((i:any)=>
+  (filter==="all"||i.status===filter)&&
+  (!query.trim()||(i.email+" "+i.role).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())));
+ const slice=staffPage(entries,page);
+ if(!eligible)return <section className="card panel clinic-phase13-staff-panel">
   <Banner kind="warning">{t("activateMfa")}</Banner>
-  <AdminMfaSetup home={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}/>
+  {["owner","manager"].includes(space.role)&&
+   <AdminMfaSetup home={"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab=invitations"}/>}
  </section>;
- return <div className="staff-gap">
-  <section className="card panel"><h2>{t("invite")}</h2><p className="muted">{t("inviteHint")}</p>
-   <form className="staff-invite-form" onSubmit={submit}>
-    <Field label={t("email")} value={email} type="email" required maxLength={160} onChange={setEmail}/>
-    <Select label={t("role")} value={role} onChange={setRole}
-      options={roles.map(value=>({value,label:t(value)}))}/>
-    <button className="btn btn-primary" disabled={busy||!email.trim()}>{busy?t("loading"):t("send")}</button>
+ return <div className="staff-gap clinic-phase13-invitations">
+  <section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <span className="clinic-phase13-kicker"><CareIcon name="mail" size={16}/>{t("invitationSafety")}</span>
+    <h2>{t("invite")}</h2><p>{t("inviteHint")}</p></div>
+    <span className="clinic-phase13-capability"><CareIcon name="shield-check" size={16}/>
+     {t("mfa")}</span>
+   </div>
+   <form className="staff-invite-form clinic-phase13-invite-form" onSubmit={submit}>
+    <label className="clinic-phase13-email"><span>{t("email")} *</span>
+     <input type="email" autoComplete="off" maxLength={160} required
+      value={email} disabled={busy} onChange={e=>setEmail(e.target.value)}
+      placeholder="name@example.com" dir="ltr"/></label>
+    <Select label={t("role")} value={role} onChange={value=>{setRole(value);setFailure("");}}
+     options={roles.map(value=>({value,label:t(value)}))}/>
+    <button type="submit" className="btn btn-primary"
+     disabled={busy||!staffEmail(email)||staffEmail(email)===ctx.email.toLocaleLowerCase()}>
+     <CareIcon name="plus" size={17}/>
+     {busy?t("loading"):t("invitationReview")}</button>
    </form>
-   <p className="muted staff-small">{t("receipt")} {t("unpaid")}</p>
+   <div className="clinic-phase13-invite-safety">
+    <CareIcon name="shield-check" size={18}/><p>{t("receipt")} {t("unpaid")}
+     {" "}{t("invitationNoAuto")}</p></div>
    {failure&&<Banner kind="error">{t("inviteFailed")}: {failure}</Banner>}
    {success&&<Banner kind="success">{success}</Banner>}
   </section>
-  <section className="card panel"><div className="staff-panel-heading"><h2>{t("invitations")}</h2>
-   <Select label={t("filter")} value={filter} onChange={v=>{setFilter(v);setPage(1);}}
-    options={["pending","all","expired","accepted","revoked"].map(value=>({value,label:t(value)}))}/></div>
-   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:
-    entries.length? <div className="phase-list">{entries.slice((page-1)*5,page*5).map((i:any)=>
-     <article className="staff-invitation-row" key={i.id}>
-      <div><strong dir="ltr">{i.email}</strong><div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)} {i.resolutionReason?" · "+i.resolutionReason:""}</div></div>
-      <div className="staff-invite-actions"><Badge value={i.status}/>
-       {(i.status==="pending"||i.status==="expired")&&
-         <button className="btn btn-secondary" disabled={busy||
-           (i.sentAt && Date.now()-new Date(i.sentAt).getTime()<60000)}
-           title={i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000?t("retryLater"):undefined}
-           onClick={()=>action(i.id,"resend")}>{t("resend")}</button>}
-       {i.status==="pending"&&
-         <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
-          onClick={()=>action(i.id,"revoke")}>{t("removeInvite")}</button>}
-      </div>
-     </article>)}</div>:<Empty text={t("noInvites")}/>}
-   <div className="phase-pagination">
-    <button className="btn btn-secondary" disabled={page===1} onClick={()=>setPage(v=>v-1)}>{t("previous")}</button>
-    <span>{page} / {pages}</span>
-    <button className="btn btn-secondary" disabled={page>=pages} onClick={()=>setPage(v=>v+1)}>{t("next")}</button>
+  <section className="card panel clinic-phase13-staff-panel">
+   <div className="clinic-phase13-panel-heading"><div>
+    <h2>{t("invitationsSummary")}</h2><p>{t("invitationLimit")}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={reload}>
+     <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button></div>
+   <div className="clinic-phase13-filters clinic-phase13-invite-filters">
+    <label className="clinic-phase13-search"><span>{t("invitesSearch")}</span>
+     <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+      <input type="search" autoComplete="off" maxLength={120} value={query}
+       placeholder={t("invitesSearchHint")}
+       onChange={e=>{setQuery(e.target.value);setPage(1);}}/></span></label>
+    <label><span>{t("filter")}</span><select value={filter} onChange={e=>{
+     setFilter(e.target.value);setPage(1);}}>
+     {["pending","all","expired","accepted","revoked"].map(value=>
+      <option key={value} value={value}>{t(value)}</option>)}</select></label>
+    {(query||filter!=="pending")&&<button type="button" className="btn btn-secondary"
+     onClick={()=>{setQuery("");setFilter("pending");setPage(1);}}>{t("teamReset")}</button>}
    </div>
-   <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
+   {error?<ErrorBox error={error} retry={reload}/>:!data?<Busy/>:!slice.rows.length?
+    <div className="clinic-phase13-empty"><CareIcon name="mail" size={26}/>
+     <p>{t("noInvites")}</p></div>:
+    <div className="phase-list clinic-phase13-invite-list">
+     {slice.rows.map((i:any)=><article className="staff-invitation-row clinic-phase13-invite-row" key={i.id}>
+      <div className="clinic-phase13-invite-info"><strong dir="ltr">{i.email}</strong>
+       <div className="staff-small muted">{t(i.role)} · {date(i.expiresAt)}
+        {i.resolutionReason?" · "+i.resolutionReason:""}</div>
+       <p className="clinic-phase13-invite-state"><Badge value={i.status}/>
+        {i.sentAt&&<span>{t("sent")}: {date(i.sentAt)}</span>}</p></div>
+      <div className="staff-invite-actions">
+       {(i.status==="pending"||i.status==="expired")&&roles.includes(i.role)&&
+        <button className="btn btn-secondary" type="button" disabled={busy||
+         (i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000)}
+         title={i.sentAt&&Date.now()-new Date(i.sentAt).getTime()<60000?t("retryLater"):undefined}
+         onClick={()=>begin(i,"resend")}><CareIcon name="mail" size={15}/>
+         {t("resend")}</button>}
+       {i.status==="pending"&&roles.includes(i.role)&&
+        <button className="btn btn-secondary" type="button" disabled={busy||reason.trim().length<5}
+         onClick={()=>begin(i,"revoke")}><CareIcon name="close" size={15}/>
+         {t("removeInvite")}</button>}
+      </div>
+     </article>)}
+    </div>}
+   <div className="clinic-phase13-table-bottom">
+    <p role="status" aria-live="polite">{t("teamCount")} {slice.start}–{slice.end}
+     {" "}{t("teamOf")} {slice.total}</p>
+    <StaffPager page={slice.page} pages={slice.pages} onPage={setPage}
+     label={t("invitationsSummary")}/>
+   </div>
+   <label className="clinic-phase13-reason"><span>{t("reason")}</span>
+    <textarea rows={2} maxLength={300} value={reason} disabled={busy}
+     onChange={e=>setReason(e.target.value)}/></label>
+   <p className="clinic-phase13-form-note">{t("invitationRevokeNote")}</p>
   </section>
+  {review&&<StaffReviewDialog title={t(review.kind==="revoke"?
+   "invitationRevokeReview":"invitationReview")}
+   description={t(review.kind==="revoke"?"invitationRevokeNote":"invitationReviewNote")}
+   checked={reviewed} onChecked={setReviewed}
+   onCancel={close} onConfirm={()=>void confirm()} busy={busy}
+   confirmText={t(review.kind==="revoke"?"removeInvite":review.kind==="resend"?"resend":"invitationConfirm")}>
+   <div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>
+   <div><dt>{t("invitationEmail")}</dt><dd dir="ltr">{review.email}</dd></div>
+   <div><dt>{t("invitationRole")}</dt><dd>{t(review.role)}</dd></div>
+   <div><dt>{t("modalExpiry")}</dt><dd>{t("invitationExpires")}</dd></div>
+   {review.kind==="revoke"&&<div><dt>{t("modalReason")}</dt><dd>{reason}</dd></div>}
+  </StaffReviewDialog>}
  </div>;
 }
 function SecurityPanel({space,ctx}:{space:Space,ctx:Context}){
