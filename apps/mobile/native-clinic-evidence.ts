@@ -13,7 +13,7 @@ export const CREDENTIAL_MAX_BYTES=1572864;
 
 export type EvidenceFile={
  name:string;mime:"application/pdf"|"image/png"|"image/jpeg";
- size:number;bytes:Uint8Array;
+ size:number;bytes:Uint8Array;cacheUri?:string;
 };
 export function detectEvidenceMime(bytes:Uint8Array):EvidenceFile["mime"]|null{
  if(bytes.length<8)return null;
@@ -50,7 +50,12 @@ export async function pickClinicEvidence(max=CLINIC_LICENSE_MAX_BYTES):Promise<E
  const bytes=await file.bytes();
  if(!validEvidence(bytes,item.size,max))throw new ApiError(415,"DOCUMENT_SIGNATURE_MISMATCH");
  const mime=detectEvidenceMime(bytes)!;
- return {name:evidenceFileName(item.name,mime),mime,size:bytes.length,bytes};
+ return {name:evidenceFileName(item.name,mime),mime,size:bytes.length,bytes,cacheUri:item.uri};
+}
+export function discardEvidence(file:EvidenceFile|null):void{
+ if(!file?.cacheUri)return;
+ // Picker copyToCacheDirectory:true ensures this targets only the app cache.
+ try{new File(file.cacheUri).delete()}catch{/* Cache may already be removed. */}
 }
 export function evidenceBase64(bytes:Uint8Array):string{
  // RFC4648, without importing filesystem content into external web tooling.
