@@ -62,7 +62,7 @@ export function clinicValidDeliveryPayload(value:unknown):value is ClinicDeliver
   value.deliveries.length>100||
   typeof value.emailConfigured!=="boolean"||
   value.smsConfigured!==false||value.pushConfigured!==false)return false;
- const allowed=["queued","processing","sent","failed","skipped"];
+ const allowed=["pending","queued","processing","sent","failed","skipped"];
  return value.deliveries.every(item=>dict(item)&&
   Object.keys(item).length===6&&
   /^[a-z][a-z0-9_]{0,59}$/.test(String(item.event_name))&&
