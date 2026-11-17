@@ -235,6 +235,28 @@ async function main() {
   console.info("\n[ready] API: " + apiOrigin);
   console.info("[ready] Public API (" + selected.provider + "): " + selected.url);
   console.info("[ready] Updated apps/mobile/.env -> EXPO_PUBLIC_API_URL");
+  // A live tunnel announcement alone does not guarantee that the *public*
+  // endpoint serves JSON. ngrok free accounts may display an HTML interstitial.
+  // We test the exact host Expo will use, without session tokens or PHI.
+  try{
+    const remote=await fetch(selected.url+"/v1/public/status",{
+      headers:{Accept:"application/json","ngrok-skip-browser-warning":"1"},
+      signal:AbortSignal.timeout(9000)
+    });
+    const kind=remote.headers.get("content-type")||"";
+    const body=kind.toLowerCase().includes("application/json")?
+      await remote.json().catch(()=>null):null;
+    if(remote.ok&&body?.product==="DandanLink"){
+      console.info("[ready] Public mobile API verified: JSON /v1/public/status");
+    }else{
+      console.warn("[warning] Public API tunnel did not return valid DandanLink JSON ("+
+        remote.status+"). Account signup may fail on Expo Go.");
+      console.warn("[warning] Run 'pnpm dev:api:check' to verify tunnel and database.");
+    }
+  }catch{
+    console.warn("[warning] Public API tunnel is not reachable from this computer.");
+    console.warn("[warning] Run 'pnpm dev:api:check'; keep API and tunnel open when using Expo Go.");
+  }
   console.info("[ready] Run 'pnpm dev:mobile' in another terminal. If Metro was running, restart it.");
   console.info("[ready] Keep this terminal open. The API and API tunnel stop together.");
   try {

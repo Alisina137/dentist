@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
+import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {patientError,patientText,isSlotConflict} from "./patient-errors";
 import {patientTheme} from "./patient-theme";
 import {PatientIcon} from "./patient-icons";
@@ -32,7 +33,7 @@ type NotificationFeed={events:Note[];emailConfigured:boolean;smsConfigured:boole
 const words={
  en:{login:"Sign in",signup:"Create account",name:"Full name",email:"Email",password:"Password",
  loginHelp:"Use your verified patient account to manage appointments securely.",
- signupHelp:"We will send an email verification link. Return to sign in after verification.",
+ signupHelp:"Create your account. If email verification is required, follow the email link before signing in.",
  forgot:"Forgot password?",checking:"Checking account…",invalid:"Please check the form.",
  signout:"Sign out",onboard:"Complete patient profile",city:"City",phone:"Phone (optional)",
  accept:"I accept the patient terms and acknowledge the privacy policy.",
@@ -70,7 +71,7 @@ const words={
  checkAppointments:"Check My appointments"},
  "fa-AF":{login:"ورود",signup:"ایجاد حساب",name:"نام مکمل",email:"ایمیل",password:"رمز عبور",
  loginHelp:"برای مدیریت مصون نوبت‌ها وارد حساب تأییدشده شوید.",
- signupHelp:"لینک تأیید به ایمیل ارسال می‌شود. پس از تأیید وارد شوید.",
+ signupHelp:"حساب خود را ایجاد کنید. اگر تأیید ایمیل لازم باشد، پیش از ورود لینک ایمیل را باز کنید.",
  forgot:"رمز را فراموش کرده‌اید؟",checking:"در حال بررسی حساب…",invalid:"معلومات فورم را بررسی کنید.",
  signout:"خروج",onboard:"تکمیل پروفایل مریض",city:"شهر",phone:"تلفن (اختیاری)",
  accept:"شرایط مریضان و حریم خصوصی را قبول دارم.",
@@ -108,7 +109,7 @@ const words={
  checkAppointments:"بررسی نوبت‌های من"},
  "ps-AF":{login:"ننوځئ",signup:"حساب جوړول",name:"بشپړ نوم",email:"ایمیل",password:"پټنوم",
  loginHelp:"د ملاقاتونو د سمبالولو لپاره تایید شوي حساب ته ننوځئ.",
- signupHelp:"د تایید لینک ایمیل ته استول کېږي؛ وروسته ننوځئ.",
+ signupHelp:"حساب جوړ کړئ. که د ایمیل تایید اړین وي، تر ننوتلو مخکې د ایمیل لینک پرانیزئ.",
  forgot:"پټنوم مو هېر دی؟",checking:"حساب کتل کېږي…",invalid:"فورمه وګورئ.",
  signout:"وتل",onboard:"د ناروغ پروفایل بشپړول",city:"ښار",phone:"شمېره (اختیاري)",
  accept:"زه د ناروغانو شرطونه او د محرمیت پالیسي منم.",
@@ -222,10 +223,8 @@ async function publicGet<T>(path:string):Promise<T>{
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
  try{
   const response=await fetch(API+path,{signal:controller.signal,
-   headers:{Accept:"application/json"}});
-  const data=await response.json().catch(()=>null) as T&{code?:string};
-  if(!response.ok)throw new ApiError(response.status,data?.code||"PUBLIC_UNAVAILABLE");
-  return data;
+   headers:nativeApiHeaders(API)});
+  return nativeJsonResponse<T>(response);
  }finally{clearTimeout(timer)}
 }
 export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCity,section="profile"}:{locale:Language;calendar:Calendar;
@@ -262,10 +261,15 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
   finally{setBusy(false)}
  };
  if(auth.loading)return <Block><Text>{t.checking}</Text><ActivityIndicator color={blue}/></Block>;
- if(auth.onlineError&&!auth.account)return <Block><ErrorBox message={patientError(new ApiError(0,auth.onlineError),locale)}/>
-  <Button title={t.retry} onPress={()=>void auth.refresh()}/></Block>;
+ // A failed restore of a previous session must never lock users out of
+ // sign-in or sign-up. Surface the connection error but keep the form usable.
  if(!auth.account)return <Block><Text style={p.title}>{mode==="login"?t.login:mode==="signup"?t.signup:t.forgot}</Text>
   <Text style={p.copy}>{mode==="signup"?t.signupHelp:t.loginHelp}</Text>
+  {auth.onlineError&&<>
+   <ErrorBox message={patientError(new ApiError(0,auth.onlineError),locale)}/>
+   <Button secondary title={t.retry} disabled={busy}
+    onPress={()=>void auth.refresh()}/>
+  </>}
   {mode==="signup"&&<Field label={t.name} value={name} onChangeText={setName}/>}
   <Field label={t.email} value={email} keyboardType="email-address" onChangeText={setEmail}/>
   {mode!=="recover"&&<Field label={t.password} value={password} secure onChangeText={setPassword}/>}

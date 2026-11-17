@@ -1,6 +1,7 @@
 import React,{createContext,useCallback,useContext,useEffect,useMemo,useRef,useState,type ReactNode} from "react";
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
+import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 export {ApiError} from "./api-error";
 
 /**
@@ -47,14 +48,13 @@ async function requestRaw<T>(path:string,method:HttpMethod="GET",body?:unknown,t
   const response=await fetch(API+path,{
    method,signal:controller.signal,cache:"no-store",
    headers:{
-    Accept:"application/json",
+    ...nativeApiHeaders(API),
     ...(body!==undefined?{"Content-Type":"application/json"}:{}),
     ...(token?{"Authorization":"Bearer "+token}:{})
    },
    ...(body!==undefined?{body:JSON.stringify(body)}:{})
   });
-  const data=await response.json().catch(()=>null) as T&{code?:string};
-  if(!response.ok)throw new ApiError(response.status,data?.code||"REQUEST_FAILED");
+  const data=await nativeJsonResponse<T>(response);
   return {data,headers:response.headers};
  }catch(error){
   if(error instanceof ApiError)throw error;
@@ -172,8 +172,13 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
   }finally{if(sessionGeneration.current===revision)setLoading(false)}
  },[clear]);
  const signUp=useCallback(async(name:string,email:string,password:string)=>{
-  await requestRaw("/api/auth/sign-up/email","POST",{name:name.trim(),
+  const result=await requestRaw<{user?:{id?:string;email?:string};token?:string|null}>(
+   "/api/auth/sign-up/email","POST",{name:name.trim(),
    email:email.trim().toLowerCase(),password});
+  // No account is created merely because a tunnel returned HTTP 200.
+  // Verify Better Auth's structured signup response before claiming success.
+  if(!result.data?.user?.id||!result.data.user.email)
+   throw new ApiError(502,"SIGNUP_RESPONSE_INVALID");
  },[]);
  const requestPasswordReset=useCallback(async(email:string)=>{
   if(!WEB||(!__DEV__&&!/^https:\/\//i.test(WEB)))
