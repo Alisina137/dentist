@@ -4,6 +4,9 @@ import {usePreferences,InlineAlert} from "./index";
 import {Shell} from "./phase03";
 import {CareIcon} from "./care-icons";
 import {clinicErrorText} from "./clinic-feedback";
+import {ClinicOpsBridge} from "./clinic-ops-bridge";
+import {clinicDeliveryFiltered,clinicDeliveryStats,clinicDeliveryPage,
+ type ClinicDelivery,type ClinicOpsRole} from "./clinic-ops-bridge-model";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
 type Lang="en"|"fa-AF"|"ps-AF";
@@ -599,10 +602,12 @@ function ClinicShell({title,activeKey="appointments",ownerManagerOnly=false,chil
   return <Page heading={title}><Banner text={t("roleRestricted")}/></Page>;
  return <Shell ctx={ctx as any} space={space as any} active={activeKey}>
   <Page heading={title} sub={space.clinicName} overline="DandanLink · Clinic workspace">
+   {activeKey==="notifications"?<ClinicOpsBridge clinicId={space.clinicId}
+    role={space.role as ClinicOpsRole} active="notifications"/>:
    <nav className="p15-tabs"><a href={"/clinic/appointments?clinic="+space.clinicId}>{t("overview")}</a>
     <a href={"/clinic/appointments/requests?clinic="+space.clinicId}>{t("clinicQueue")}</a>
     {["owner","manager"].includes(space.role)&&
-     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a>}</nav>
+     <a href={"/clinic/settings/notifications?clinic="+space.clinicId}>{t("notificationStatus")}</a>}</nav>}
    {children(space.clinicId,space.role,space.clinicianEnabled)}
   </Page>
  </Shell>;
