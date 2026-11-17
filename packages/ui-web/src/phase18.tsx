@@ -5,6 +5,8 @@ import {ClinicOpsBridge} from "./clinic-ops-bridge";
 import {clinicReportPeriodIssue,clinicReportPreset,clinicReportCompletion,clinicReportBars,
  clinicOpsHref,type ReportPeriod,type ReportPreset} from "./clinic-ops-bridge-model";
 import {clinicCsvRows} from "./clinic-finance-model";
+import {clinicValidReportPayload,clinicSafeApiCode} from "./clinic-ops-integrity";
+import {useClinicFeedback,ClinicLoadingState} from "./clinic-feedback";
 import {Shell} from "./phase03";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -96,7 +98,7 @@ export async function call18<T=any>(path:string,method="GET",body?:unknown,signa
   headers:body===undefined?{}:{"Content-Type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
- if(!r.ok)throw Error(data.code||"REQUEST_FAILED");
+ if(!r.ok)throw Error(clinicSafeApiCode(data?.code));
  return data as T;
 }
 export function Stat({label,value,caption}:{label:string;value:string|number|null|undefined;caption?:string}){
@@ -210,7 +212,7 @@ const clinicReportUi={
 } as const;
 
 export function ClinicReportsPortal(){
- const {t}=useWords(),{locale}=usePreferences();
+ const {t}=useWords(),{locale}=usePreferences(),{error:feedback}=useClinicFeedback();
  const copy=clinicReportUi[locale as keyof typeof clinicReportUi]||clinicReportUi.en;
  const [ctx,setCtx]=useState<Context|null>(null),[space,setSpace]=useState<Space|null>(null);
  const [contextError,setContextError]=useState(""),[loading,setLoading]=useState(true);
@@ -250,9 +252,13 @@ export function ClinicReportsPortal(){
   setSnapshot({key:reportKey,data:null,error:"",loading:true});
   call18<Report>("/insights/clinics/"+encodeURIComponent(space.clinicId)+"/report?"+
    new URLSearchParams({from:applied.from,to:applied.to}),"GET",undefined,controller.signal)
-   .then(result=>{if(!controller.signal.aborted)setSnapshot({
-    key:reportKey,data:result,error:"",loading:false
-   });}).catch(e=>{if(!controller.signal.aborted)setSnapshot({
+   .then(result=>{
+    if(controller.signal.aborted)return;
+    if(!clinicValidReportPayload(result,{
+     clinicId:space.clinicId,from:applied.from,to:applied.to
+    }))throw Error("REPORT_RESPONSE_INVALID");
+    setSnapshot({key:reportKey,data:result,error:"",loading:false});
+   }).catch(e=>{if(!controller.signal.aborted)setSnapshot({
     key:reportKey,data:null,error:e instanceof Error?e.message:"REQUEST_FAILED",
     loading:false
    });});
@@ -288,7 +294,7 @@ export function ClinicReportsPortal(){
  }
  if(loading)return <div className="p18-wrap"><InlineAlert>{t("loading")}</InlineAlert></div>;
  if(!ctx||!space)return <div className="p18-wrap">
-  <InlineAlert kind="warning">{contextError||t("needsClinic")}</InlineAlert>
+  <InlineAlert kind="warning">{contextError?feedback(contextError):t("needsClinic")}</InlineAlert>
   {contextError&&<button type="button" className="btn btn-secondary"
    onClick={()=>setContextCounter(x=>x+1)}>{t("refresh")}</button>}
   <a className="btn btn-primary" href="/clinic">{t("back")}</a></div>;
@@ -346,10 +352,8 @@ export function ClinicReportsPortal(){
      <CareIcon name={busy?"clock":"shield-check"} size={16}/>
      {busy?copy.old:reportError?copy.reportError:copy.done}</span>
    </div>
-   <Notice error={reportError||contextError}/>
-   {busy&&!data?<div className="card clinic-phase14-report-loading" role="status">
-    <span className="clinic-phase14-report-skeleton"/><span className="clinic-phase14-report-skeleton"/>
-    <span className="clinic-phase14-report-skeleton"/><span>{t("loading")}</span></div>:null}
+   <Notice error={reportError?feedback(reportError):contextError?feedback(contextError):""}/>
+   {busy&&!data?<ClinicLoadingState label={t("loading")} variant="cards"/>:null}
    {!busy&&reportError&&<button type="button" className="btn btn-secondary"
     onClick={()=>setCounter(x=>x+1)}>{t("refresh")}</button>}
    {data&&!busy&&<>
