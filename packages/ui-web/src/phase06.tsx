@@ -2,6 +2,7 @@
 import React,{useEffect,useMemo,useState,useCallback,type FormEvent,type ReactNode} from "react";
 import { InlineAlert,usePreferences,CareIcon } from "./index";
 import {ClinicOpsBridge} from "./clinic-ops-bridge";
+import {ClinicOpsConnection} from "./clinic-ops-connection";
 import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
 import {clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
  type ClinicDateWindow} from "./clinic-scheduling-dates";
@@ -665,6 +666,7 @@ function CalendarPanel({space}:{space:Space}){
   .map(state=><Badge key={state} status={state}/>)}
  </div>;
  return <div className="phase06-calendar-page">
+  <ClinicOpsConnection onRefresh={()=>{refresh();refreshOverview();}}/>
   <section className="phase06-stats" aria-label={t("today")}>
     {(["todayTotal","waiting","in_treatment","completedToday"] as const).map((key,i)=>{
      const values=[overview?.todayTotal,counts.arrived||0,counts.in_treatment||0,counts.completed||0];
@@ -1006,6 +1008,7 @@ function QueuePanel({space}:{space:Space}){
  const counts=columns.map(c=>filtered.filter(a=>a.status===c.status).length);
  const visibleColumns=queueStage==="all"?columns:columns.filter(c=>c.status===queueStage);
  return <div className="phase06-queue-page">
+  <ClinicOpsConnection onRefresh={refresh}/>
   <section className="phase06-queue-intro card">
    <div><span className="phase06-eyebrow">{t("queueToday")}</span>
     <h2>{dateTitle(day,lang,calendar)}</h2><p>{t("queueDateHint")}</p></div>
