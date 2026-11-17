@@ -24,8 +24,19 @@ export function clinicValidReportPayload(value:unknown,identity:ClinicReportIden
  if(value.clinicId!==identity.clinicId||
   value.from!==identity.from||value.to!==identity.to||
   value.timezone!=="Asia/Kabul"||value.currency!=="AFN")return false;
+ const expectedTop=["clinicId","from","to","timezone","currency","basis",
+  "appointments","patients","revenue"];
+ if(Object.keys(value).length!==expectedTop.length||
+  !expectedTop.every(key=>key in value)||typeof value.basis!=="string")return false;
  const a=value.appointments,p=value.patients,r=value.revenue;
- if(!dict(a)||!dict(p)||!dict(r)||!count(a.total)||
+ if(!dict(a)||!dict(p)||!dict(r)||
+  Object.keys(a).length!==3||
+  !["total","byStatus","byDay"].every(key=>key in a)||
+  Object.keys(p).length!==2||
+  !["newRegistered","activeTotal"].every(key=>key in p)||
+  Object.keys(r).length!==5||
+  !["netReceiptsAfn","byMethodAfn","issuedInvoices","issuedFaceValueAfn","postedExpensesAfn"]
+   .every(key=>key in r)||!count(a.total)||
   !mapping(a.byStatus,count)||!Array.isArray(a.byDay)||
   !count(p.newRegistered)||!count(p.activeTotal)||
   !amount(r.netReceiptsAfn)||!mapping(r.byMethodAfn,amount)||
@@ -39,7 +50,7 @@ export function clinicValidReportPayload(value:unknown,identity:ClinicReportIden
  if(a.byDay.length>367)return false;
  let previous="",dailyTotal=0;
  for(const row of a.byDay){
-  if(!dict(row)||!day(row.day)||row.day<identity.from||
+  if(!dict(row)||Object.keys(row).length!==2||!day(row.day)||row.day<identity.from||
    row.day>identity.to||row.day<=previous||!count(row.count))return false;
   dailyTotal+=row.count;previous=row.day;
  }
