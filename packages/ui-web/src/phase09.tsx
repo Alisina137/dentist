@@ -356,6 +356,17 @@ function PlanEditor({space,pid,catalog,onCancel,original,onSaved}:{space:Space;p
  async function submit(e:FormEvent){
   e.preventDefault();if(busy)return;setBusy(true);setError("");
   try{
+   const invalidStage=form.stages.some(stage=>{
+    const codes=stage.toothCodes.map(code=>code.trim()).filter(Boolean);
+    return codes.length!==new Set(codes).size||
+     codes.some(code=>!/^([1-4][1-8]|[5-8][1-5])$/.test(code));
+   });
+   if(invalidStage)throw new Error("INVALID_TOOTH_CODES");
+   if(form.items.some(line=>{
+    const service=catalog.services.find(s=>s.id===line.serviceId);
+    const subtotal=(service?.base_price_afn||0)*line.quantity;
+    return line.discountAfn>subtotal||line.discountAfn*10>subtotal*3;
+   }))throw new Error("DISCOUNT_EXCEEDS_POLICY");
    const body={...form,durationMinutes:form.durationMinutes?Number(form.durationMinutes):null,
     notes:form.notes||null,items:form.items.map(x=>({...x,quantity:Number(x.quantity),
      discountAfn:Number(x.discountAfn)})),stages:form.stages.map(x=>({...x,
@@ -428,13 +439,14 @@ function PlanEditor({space,pid,catalog,onCancel,original,onSaved}:{space:Space;p
      <label className="phase09-field"><span>{t("discount")}</span>
       <input type="number" min={0} max={10000000} disabled={!["owner","manager"].includes(space.role)}
        value={x.discountAfn} onChange={e=>item(i,"discountAfn",Number(e.target.value))}/></label>
-     <div className="phase09-line-amount">{t("lineTotal")}: <strong>{money((svc?.base_price_afn||0)*x.quantity-x.discountAfn)} AFN</strong></div>
+     <div className="phase09-line-amount">{t("lineTotal")}: <strong>{money(Math.max(0,(svc?.base_price_afn||0)*x.quantity-x.discountAfn))} AFN</strong></div>
      {form.items.length>1&&<button type="button" className="phase09-text-button"
       onClick={()=>update("items",form.items.filter((_,j)=>j!==i))}>{t("remove")}</button>}
     </div>;
    })}</div>
    <div className="phase09-estimate-total"><span>{t("total")}</span>
     <strong>{money(Math.max(0,total))} AFN</strong></div>
+   <Notice kind="warning">{t("priceWarning")}</Notice>
   </section>
   {original&&<label className="phase09-field"><span>{t("revisionReason")} *</span>
    <textarea required minLength={10} maxLength={500} rows={2} value={reason}
@@ -534,6 +546,20 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
  const [reason,setReason]=useState("");
  const [stageAction,setStageAction]=useState<{stageId:string;action:"complete"|"skip"}|null>(null);
  const [encounterId,setEncounterId]=useState("");
+ const [tabReady,setTabReady]=useState(false);
+ useEffect(()=>{
+  const requested=new URLSearchParams(location.search).get("tab");
+  if(["summary","stages","estimate","consent","timeline"].includes(requested||""))
+   setTab(requested!);
+  setTabReady(true);
+ },[]);
+ useEffect(()=>{
+  if(!tabReady)return;
+  const query=new URLSearchParams(location.search);
+  query.set("clinic",space.clinicId);
+  if(tab==="summary")query.delete("tab");else query.set("tab",tab);
+  history.replaceState(null,"",location.pathname+"?"+query.toString());
+ },[tabReady,tab,space.clinicId]);
  async function invoke(path:string,body:unknown,method="POST",confirmPrompt?:string){
   if(confirmPrompt&&!confirm(confirmPrompt))return;
   setBusy(true);setError("");setSuccess("");
@@ -560,6 +586,29 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
     <div><span>{t("consent")}</span><strong>{t(p.consentState)}</strong></div>
     <div><span>{t("stages")}</span><strong>{info.stages.filter(x=>x.status==="completed").length}/{info.stages.length}</strong></div>
     <div><span>{t("estimate")}</span><strong>{money(p.estimateTotalAfn)} AFN</strong></div></div>
+   <div className="clinic-phase10-plan-progress" role="group" aria-label={t("workspaceProgress")}>
+    <div>
+     <span>{t("workspaceCompletedStages")}</span>
+     <strong>{info.stages.filter(stage=>stage.status==="completed").length}/{info.stages.length}</strong>
+     <progress max={Math.max(1,info.stages.length)}
+      value={info.stages.filter(stage=>stage.status==="completed").length}/>
+    </div>
+    <div>
+     <span>{t("workspaceConsentState")}</span>
+     <strong>{t(p.consentState)}</strong>
+     <small>{t(p.consentState==="recorded"?"workspaceConsentActive":"workspaceNoConsent")}</small>
+    </div>
+   </div>
+   <nav className="clinic-phase10-plan-actions" aria-label={t("workspaceNext")}>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("stages")}>
+     <CareIcon name="clipboard" size={17}/>{t("workspaceReviewStages")}</button>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("consent")}>
+     <CareIcon name="shield-check" size={17}/>{t("workspaceReviewConsent")}</button>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("estimate")}>
+     <CareIcon name="receipt" size={17}/>{t("workspaceReviewEstimate")}</button>
+    <button type="button" className="btn btn-secondary" onClick={()=>setTab("timeline")}>
+     <CareIcon name="clock" size={17}/>{t("workspaceReviewHistory")}</button>
+   </nav>
   </section>
   {revising?<section className="card phase09-panel">
     {catalog.error?<ErrorBox code={catalog.error} retry={catalog.refresh}/>:
@@ -586,23 +635,33 @@ function PlanDetail({space,pid,id}:{space:Space;pid:string;id:string}){
    {tab==="stages"&&<section className="card phase09-panel">
     <div className="phase09-section-heading"><div><h2>{t("stages")}</h2><p>{t("stageProof")}</p></div>
      <span className="phase09-count">{info.stages.length}</span></div>
-    {!canAdvance&&<Notice kind="warning">{t("consentRequired")}</Notice>}
+    {!canAdvance&&<div className="clinic-phase10-consent-notice">
+     <Notice kind="warning">{t("consentRequired")}</Notice>
+     <button type="button" className="btn btn-secondary" onClick={()=>setTab("consent")}>
+      <CareIcon name="shield-check" size={17}/>{t("workspaceReviewConsent")}</button>
+    </div>}
+    <p className="clinic-phase10-evidence-warning" role="note">
+     <CareIcon name="about" size={17}/>{t("workspaceUnsafe")}</p>
     <div className="phase09-stage-list">{info.stages.map(s=><article className="phase09-stage-card" key={s.id}>
      <div className="phase09-stage-count">{s.position}</div>
      <div className="phase09-stage-info"><div className="phase09-between">
       <h3>{s.description}</h3><Status name={s.status||"pending"}/></div>
       <p>{t("stageVisits")}: {s.expectedVisits} · {t("teeth")}: {s.toothCodes.join(", ")||"—"} ·
        {t("dueDate")}: {date(s.dueDate)}</p>
-      {s.linkedEncounterId&&<p>{t("signedVisit")}: <bdi dir="ltr">{s.linkedEncounterId.slice(0,8)}</bdi></p>}
+      {s.linkedEncounterId&&<p>{t("signedVisit")}: <bdi dir="ltr">{s.linkedEncounterId.slice(0,8)}</bdi>
+       <a className="clinic-phase10-encounter-link" href={
+        "/clinic/patients/"+encodeURIComponent(pid)+"/visits/"+
+         encodeURIComponent(s.linkedEncounterId)+"?clinic="+encodeURIComponent(space.clinicId)}>
+        <CareIcon name="file" size={15}/>{t("workspaceLinkVisit")}</a></p>}
       {s.completionNote&&<p>{s.completionNote}</p>}
       {canAdvance&&s.status==="pending"&&<div className="phase09-stage-actions">
        <button className="btn btn-primary" type="button" disabled={busy}
         onClick={()=>invoke("/stages/"+s.id+"/action",{revision:p.revision,action:"start"})}>{t("start")}</button>
-       <button className="btn btn-secondary" type="button" onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
+       <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
       </div>}
       {canAdvance&&s.status==="in_progress"&&<div className="phase09-stage-actions">
-       <button className="btn btn-primary" type="button" onClick={()=>{setStageAction({stageId:s.id!,action:"complete"});setEncounterId("");}}>{t("complete")}</button>
-       <button className="btn btn-secondary" type="button" onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
+       <button className="btn btn-primary" type="button" disabled={busy} onClick={()=>{setStageAction({stageId:s.id!,action:"complete"});setEncounterId("");}}>{t("complete")}</button>
+       <button className="btn btn-secondary" type="button" disabled={busy} onClick={()=>setStageAction({stageId:s.id!,action:"skip"})}>{t("skip")}</button>
       </div>}
       {stageAction&&stageAction.stageId===s.id&&<div className="phase09-inline-form">
        {stageAction.action==="complete"?<>
