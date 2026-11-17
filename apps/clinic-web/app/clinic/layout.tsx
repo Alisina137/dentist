@@ -19,6 +19,7 @@ import "./clinic-pilot-readiness.css";
 import "./clinic-pilot-feedback.css";
 import "./clinic-phase18-responsive.css";
 import "./clinic-phase19-handoff.css";
+import "./clinic-premium-v2.css";
 
 // Next App Router preserves the clinic sidebar, header and clinic selector
 // while only the active page segment changes.
