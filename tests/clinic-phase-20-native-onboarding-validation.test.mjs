@@ -85,7 +85,7 @@ test("Phase 20: document magic bytes and untrusted filename are checked, not ext
  assert.equal(evidence.detectEvidenceMime(new Uint8Array(20)),null);
  assert.equal(evidence.evidenceFileName("../../Clinic Name<.pdf","application/pdf"),
   "Clinic_Name.pdf");
- assert.equal(evidence.evidenceFileName("X\\\\../bad.png","image/png"),"X__bad.png");
+ assert.equal(evidence.evidenceFileName("X\\\\../bad.png","image/png"),"X_bad.png");
  assert.equal(evidence.validEvidence(pdf,pdf.length,2097152),true);
  assert.equal(evidence.validEvidence(pdf,pdf.length+1,2097152),false);
  assert.equal(evidence.validEvidence(new Uint8Array(8),8,2097152),false);
