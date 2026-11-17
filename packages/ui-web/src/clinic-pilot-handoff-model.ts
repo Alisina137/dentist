@@ -55,7 +55,7 @@ export function clinicPilotHandoff(input:PilotHandoffInput,now:Date=new Date()):
   Number.isSafeInteger(value)&&value>=0&&value<=max;
  if(!audit||audit.bounded!==true||!boundedInt(audit.events,60)||
   !boundedInt(audit.successful,60)||!boundedInt(audit.failed,60)||
-  audit.successful!+audit.failed!==audit.events)return unavailable("unverified");
+  Number(audit.successful)+Number(audit.failed)!==audit.events)return unavailable("unverified");
  const passed=[...states.values()].filter(v=>v==="pass").length;
  const action=[...states.values()].filter(v=>v==="action").length;
  // The packet is constructed field by field from narrow scalars.
