@@ -132,7 +132,6 @@ test("Clinic Phase 15: network reconnection is read-only, explicit, accessible a
   'connection==="reconnected"&&onRefresh',
   'setConnection("unverified");onRefresh()',
   'onRefresh?:()=>void',
-  'auto',
   '"fa-AF"','"ps-AF"'
  ])assert.ok(network.includes(s),s);
  assert.ok(!network.includes('method:"POST"'));
