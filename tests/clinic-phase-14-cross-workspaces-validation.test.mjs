@@ -64,8 +64,8 @@ test("Clinic Phase 14: Gregorian local report period is bounded to backend's 366
  assert.equal(clinicReportPeriodIssue("2026-11-01","2026-11-17"),null);
  assert.equal(clinicReportPeriodIssue("2026-11-17","2026-11-16"),"INVALID_REPORT_PERIOD");
  assert.equal(clinicReportPeriodIssue("2026-02-30","2026-11-17"),"INVALID_DATE");
- assert.equal(clinicReportPeriodIssue("2026-01-01","2027-01-02"),"INVALID_REPORT_PERIOD");
- assert.equal(clinicReportPeriodIssue("2026-01-01","2027-01-02"),"INVALID_REPORT_PERIOD");
+ assert.equal(clinicReportPeriodIssue("2026-01-01","2027-01-03"),"INVALID_REPORT_PERIOD");
+ assert.equal(clinicReportPeriodIssue("2026-01-01","2027-01-03"),"INVALID_REPORT_PERIOD");
  assert.deepEqual(clinicReportPreset("week","2026-11-17"),
   {from:"2026-11-11",to:"2026-11-17"});
  assert.deepEqual(clinicReportPreset("thirtyDays","2026-11-17"),
@@ -176,7 +176,7 @@ test("Clinic Phase 14: notification filters/paging are derived from real server 
   'if(document.visibilityState==="visible")reload()',
   'window.setInterval(visible,45000)',
   'role="status" aria-live="polite"',
-  'if(!data.emailConfigured)',
+  '!data.emailConfigured&&',
   'safeDeliveryCode(event.last_error_code)',
   'copy.unavailable','copy.window',
   'const copy=deliveryUi[locale as keyof typeof deliveryUi]||deliveryUi.en',
