@@ -191,18 +191,21 @@ export function ClinicPilotFeedback({clinicId,role,mfaEnabled}:{
  },[clinicId,locale]);
  useEffect(()=>{
   if(!clinicId){setSnapshot(null);return;}
-  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),11000);
+  let live=true,timedOut=false;
+  const controller=new AbortController(),timeout=setTimeout(()=>{
+   timedOut=true;controller.abort();
+  },11000);
   setSnapshot({clinicId,rows:[],loading:true,error:""});
   request<unknown>(path(clinicId),"GET",undefined,controller.signal).then(data=>{
-   if(controller.signal.aborted)return;
+   if(!live||controller.signal.aborted)return;
    if(!pilotValidList(data))throw Error("INVALID_PILOT_RESULT");
    setSnapshot({clinicId,rows:data.observations,loading:false,error:""});
   }).catch(e=>{
-   if(controller.signal.aborted&&e?.name==="AbortError")return;
-   if(!controller.signal.aborted)setSnapshot({clinicId,rows:[],loading:false,
-    error:e instanceof Error?e.message:"REQUEST_FAILED"});
+   if(!live)return;
+   setSnapshot({clinicId,rows:[],loading:false,
+    error:timedOut?"REQUEST_TIMEOUT":e instanceof Error?e.message:"REQUEST_FAILED"});
   }).finally(()=>clearTimeout(timeout));
-  return()=>{clearTimeout(timeout);controller.abort();};
+  return()=>{live=false;clearTimeout(timeout);controller.abort();};
  },[clinicId,revision]);
  function change(field:keyof PilotObservationInput,value:string){
   setForm(old=>({...old,[field]:value}));
