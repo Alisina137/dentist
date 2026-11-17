@@ -36,7 +36,7 @@ test("Clinic Phase 11: authorized records stay tenant and patient scoped with re
   'api.use(authStaff)',
   'clinics.get("/patients/:patientId/encounters"',
   'await access(req,cid(req))',
-  'AND e.clinic_id=${cid(req)} AND e.patient_id=${pid(req)}',
+  'WHERE e.clinic_id=${cid(req)} AND e.patient_id=${pid(req)}',
   'ORDER BY e.created_at DESC LIMIT 100',
   'noStore(res);res.json({patient:',
   'canSign:e.status==="draft"&&canSign(ctx,e)',
@@ -183,7 +183,7 @@ test("Clinic Phase 11: patient communication never claims or triggers clinical-d
  for(const marker of [
   'Never sends names, clinical notes, prices or',
   'Missing SMTP or consent does not undo the database booking transaction.',
-  'const opted=item.event_name',
+  'opted=item.event_name',
   'if(!opted)',
   'if(!mailAvailable())return []',
   'No medical information is included in this message.'
