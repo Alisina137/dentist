@@ -316,6 +316,23 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   }).catch(()=>{});
  },[]);
 
+ // Each protected native action uses the current SecureStore-backed bearer.
+ // Reject a response if the user signs out or switches sessions while loading.
+ const phase20Request=useCallback(<T,>(path:string,method:JsonMethod="GET",
+  body?:unknown,signal?:AbortSignal):Promise<T>=>{
+  const bearer=tokenRef.current,session=generation.current;
+  if(!bearer)return Promise.reject(new ApiError(401,"AUTH_REQUIRED"));
+  return clinicRequest<T>(path,method,body,bearer,signal).then(value=>{
+   if(session!==generation.current||tokenRef.current!==bearer||signal?.aborted)
+    throw new ApiError(401,"SESSION_CHANGED");
+   return value.data;
+  });
+ },[]);
+ const reloadClinic=useCallback(async()=>{
+  const bearer=tokenRef.current;
+  if(bearer)await refreshSession(bearer);
+ },[refreshSession]);
+
  useEffect(()=>{
   let live=true;
   void Promise.all([
