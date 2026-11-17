@@ -1,7 +1,8 @@
 
 "use client";
 import React, { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls } from "./index";
+import { authClient, AccountStatus, InlineAlert, usePreferences, LocaleControls, CareIcon } from "./index";
+import {clinicSettingsCanSave} from "./clinic-staff-model";
 import { AdminModerationPortal } from "./phase12";
 import {ReviewModerationPage} from "./phase17";
 import {usePersistentAdminShell} from "./admin-shell-context";
@@ -791,38 +792,176 @@ function Onboarding(){
 
 function ClinicSettings(){
  const l=useText();
+ const {locale}=usePreferences();
+ const words={
+  en:{
+   eyebrow:"Clinic administration",subtitle:"Review your registered clinic identity, contact details and approval state. Only the clinic owner can submit changes.",
+   quick:"Clinic settings shortcuts",staff:"Manage staff",security:"Review access",subscription:"Subscription",
+   services:"Services & prices",hours:"Working hours",export:"Private data export",
+   snapshot:"Registered clinic",privacy:"Owner-only settings. Medical files and staff account permissions are managed in separate sections.",
+   pending:"Changes to approved details are submitted for review; they do not immediately replace the public listing.",
+   dirty:"You have unsaved changes",noChanges:"Your clinic details are up to date.",
+   save:"Submit clinic updates",reset:"Discard changes",changed:"Clinic record saved. Any approval-required updates are pending review.",
+   status:"Current clinic status",select:"Select owned clinic",contact:"Clinic contacts",revision:"Record version",
+   changeConfirm:"Discard unsaved clinic changes and switch clinics?",return:"Back to clinic dashboard",
+   review:"Public display requires separate verification; changes to an approved clinic go to review.",
+   stale:"This clinic changed on the server. Refresh before saving.",
+   ready:"Clinic overview",refresh:"Refresh clinic details"
+  },
+  "fa-AF":{
+   eyebrow:"ادارۀ کلینیک",subtitle:"هویت ثبت‌شده، تماس و حالت تأیید کلینیک را بررسی کنید. فقط مالک می‌تواند تغییرات را ثبت کند.",
+   quick:"راه‌های سریع تنظیمات",staff:"مدیریت کارمندان",security:"بررسی دسترسی",subscription:"اشتراک",
+   services:"خدمات و قیمت‌ها",hours:"ساعات کاری",export:"دریافت معلومات خصوصی",
+   snapshot:"کلینیک ثبت‌شده",privacy:"تنظیمات تنها برای مالک است. اسناد طبی و صلاحیت کارمندان در بخش جداگانه مدیریت می‌شوند.",
+   pending:"تغییرات کلینیک تأییدشده برای بازبینی ارسال می‌شود و فوراً در صفحۀ عمومی نشر نمی‌شود.",
+   dirty:"تغییرات ذخیره‌نشده دارید",noChanges:"معلومات کلینیک تازه است.",
+   save:"ثبت تغییرات کلینیک",reset:"لغو تغییرات",changed:"معلومات ذخیره شد؛ تغییرات نیازمند تأیید در انتظار بررسی است.",
+   status:"حالت فعلی کلینیک",select:"انتخاب کلینیک متعلق به شما",contact:"تماس کلینیک",revision:"نسخۀ ثبت",
+   changeConfirm:"تغییرات ذخیره‌نشده را رها کرده و کلینیک عوض شود؟",return:"بازگشت به داشبورد",
+   review:"نشر عمومی به تأیید جداگانه نیاز دارد؛ تغییرات کلینیک تأییدشده بازبینی می‌شود.",
+   stale:"معلومات کلینیک در سرور تغییر کرده؛ پیش از ثبت تازه‌سازی کنید.",
+   ready:"نمای کلی کلینیک",refresh:"تازه‌سازی معلومات"
+  },
+  "ps-AF":{
+   eyebrow:"د کلینیک اداره",subtitle:"د کلینیک ثبت شوې پېژندنه، اړیکې او د تایید حالت وګورئ. یوازې خاوند بدلون ثبتوي.",
+   quick:"د تنظیماتو لنډې لارې",staff:"کارکوونکي سمبال کړئ",security:"لاسرسی وګورئ",subscription:"ګډون",
+   services:"خدمتونه او بیې",hours:"کاري وختونه",export:"شخصي معلومات صادر کړئ",
+   snapshot:"ثبت شوی کلینیک",privacy:"دا د خاوند تنظیمات دي. طبي فایلونه او د کارکوونکو لاسرسی بېل سمبالېږي.",
+   pending:"د تایید شوي کلینیک بدلون بیا کتنې ته استول کېږي؛ ژر عامه نه خپرېږي.",
+   dirty:"ناخوندي بدلونونه لرئ",noChanges:"د کلینیک معلومات تازه دي.",
+   save:"د کلینیک بدلونونه ثبت کړئ",reset:"بدلونونه لغوه کړئ",changed:"معلومات خوندي شول؛ د تایید وړ بدلونونه بیا کتنه غواړي.",
+   status:"د کلینیک اوسنی حالت",select:"خپل کلینیک وټاکئ",contact:"د کلینیک اړیکې",revision:"د ریکارډ نسخه",
+   changeConfirm:"ناخوندي بدلونونه پرېږدئ او بل کلینیک ته ولاړ شئ؟",return:"ډشبورډ ته ستنېدل",
+   review:"د عامه ښودنې لپاره جلا تایید اړین دی؛ تایید شوي بدلونونه بیا کتل کېږي.",
+   stale:"په سرور کې معلومات بدل شوي؛ مخکې له خوندي کولو تازه کړئ.",
+   ready:"د کلینیک لنډیز",refresh:"معلومات تازه کړئ"
+  }
+ }[locale]||{
+  eyebrow:"Clinic administration",subtitle:"Owner-only clinic settings.",quick:"Settings",
+  staff:"Staff",security:"Security",subscription:"Subscription",services:"Services",
+  hours:"Hours",export:"Export",snapshot:"Clinic",privacy:"Owner-only",
+  pending:"Review required",dirty:"Unsaved",noChanges:"Up to date",save:"Save",
+  reset:"Discard",changed:"Saved",status:"Status",select:"Select",
+  contact:"Contacts",revision:"Version",changeConfirm:"Discard changes?",
+  return:"Back",review:"Review",stale:"Refresh",ready:"Clinic",refresh:"Refresh"
+ };
  const {data,error,refresh}=useResource("/clinics");
- const [selected,setSelected]=useState("");
+ const [selected,setSelected]=useState(()=>{
+  return typeof location==="undefined"?"":new URLSearchParams(location.search).get("clinic")||"";
+ });
  const [detail,setDetail]=useState<any>(null);
  const [form,setForm]=useState<any>(null);
+ const [detailError,setDetailError]=useState(""),[detailTick,setDetailTick]=useState(0);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[failure,setFailure]=useState("");
- useEffect(()=>{if(data?.clinics?.length&&!selected)setSelected(data.clinics[0].id);},[data,selected]);
- useEffect(()=>{if(selected)send("/clinics/"+selected).then(d=>{setDetail(d);setForm(d.clinic);})
-   .catch(e=>setFailure(e.message));},[selected]);
- async function save(e:FormEvent){
-  e.preventDefault();setBusy(true);setFailure("");setMessage("");
-  try{
-   const response=await send("/clinics/"+selected,"PATCH",{...form,revision:detail.clinic.revision});
-   setDetail({...detail,clinic:response.clinic});setForm(response.clinic);setMessage(l("success"));refresh();
-  }catch(e){setFailure((e as Error).message);}finally{setBusy(false);}
+ const owned=data?.clinics||[];
+ const current=owned.find((c:any)=>c.id===selected);
+ const dirty=Boolean(detail&&form)&&["displayName","legalName","clinicType","province","city",
+  "district","address","phone","email","licenseNumber"].some(
+   key=>String(form[key]??"")!==String(detail.clinic[key]??""));
+ const maySave=clinicSettingsCanSave(detail?.clinic?.status,form,detail?.clinic);
+ useEffect(()=>{
+  if(!data?.clinics)return;
+  // Never infer ownership of a clinic from the query parameter alone.
+  if(!data.clinics.some((c:any)=>c.id===selected))setSelected(data.clinics[0]?.id||"");
+ },[data,selected]);
+ useEffect(()=>{
+  if(!selected){setDetail(null);setForm(null);setDetailError("");return;}
+  let live=true;setDetail(null);setForm(null);setDetailError("");setFailure("");setMessage("");
+  send("/clinics/"+encodeURIComponent(selected)).then(d=>{
+   if(live){setDetail(d);setForm(d.clinic);}
+  }).catch(e=>{if(live)setDetailError(e instanceof Error?e.message:"NETWORK_ERROR");});
+  return()=>{live=false;};
+ },[selected,detailTick]);
+ function switchClinic(id:string){
+  if(id===selected)return;
+  if(dirty&&!window.confirm(words.changeConfirm))return;
+  setSelected(id);setDetail(null);setForm(null);setDetailError("");setMessage("");setFailure("");
+  const url=new URL(window.location.href);
+  url.searchParams.set("clinic",id);
+  history.replaceState(null,"",url.pathname+"?"+url.searchParams.toString());
  }
+ async function save(e:FormEvent){
+  e.preventDefault();
+  if(busy||!maySave||!current||!detail||!form)return;
+  setBusy(true);setFailure("");setMessage("");
+  try{
+   const response=await send("/clinics/"+encodeURIComponent(selected),"PATCH",
+    {...form,revision:detail.clinic.revision});
+   setDetail({...detail,clinic:response.clinic});setForm(response.clinic);
+   setMessage(words.changed);refresh();
+  }catch(e){
+   setFailure((e as Error).message);
+   if((e as Error).message==="STALE_REVISION")setDetailTick(x=>x+1);
+  }finally{setBusy(false);}
+ }
+ const refetch=()=>{if(dirty&&!window.confirm(words.changeConfirm))return;
+  setDetailTick(x=>x+1);};
  if(error)return <DataError message={error} retry={refresh}/>;
  if(!data)return <InlineAlert>{l("loading")}</InlineAlert>;
- if(!data.clinics.length)return <section className="card panel"><Empty>{l("noClinics")}</Empty>
-   <a className="btn btn-primary" href="/clinic/onboarding">{l("newClinic")}</a></section>;
- return <section className="card panel"><h1 className="phase-title">{l("titleSettings")}</h1>
-  <Select title={l("chooseClinic")} value={selected} change={setSelected} options={data.clinics.map((c:any)=>({id:c.id,label:c.displayName}))}/>
-  {detail&&<Status value={detail.clinic.status} l={l}/>}
-  {form&&<form onSubmit={save} className="phase-form">
-    <OrganizationFields form={form} setForm={setForm}/>
-    {detail?.clinic.status==="approved"&&<InlineAlert kind="warning">{l("editing")}</InlineAlert>}
-    {!["pending","suspended"].includes(detail?.clinic.status)&&
-    <button className="btn btn-primary" disabled={busy}>{l("update")}</button>}
-  </form>}
-  <div className="phase-actions"><a className="btn btn-secondary" href={"/clinic/settings/export?clinic="+selected}>Data export & retention →</a></div>
-  {failure&&<Alert message={failure}/>}
-  {message&&<Alert message={message} ok/>}
- </section>;
+ if(!owned.length)return <section className="card panel"><Empty>{l("noClinics")}</Empty>
+  <a className="btn btn-primary" href="/clinic/onboarding">{l("newClinic")}</a></section>;
+ return <div className="clinic-phase13-settings">
+  <section className="card clinic-phase13-settings-hero">
+   <span className="clinic-phase13-settings-kicker"><CareIcon name="shield-check" size={16}/>
+    {words.eyebrow}</span>
+   <h1>{l("titleSettings")}</h1><p>{words.subtitle}</p>
+   <div className="clinic-phase13-settings-hero-note"><CareIcon name="privacy" size={18}/>
+    {words.privacy}</div>
+  </section>
+  <section className="card panel clinic-phase13-settings-panel">
+   <div className="clinic-phase13-panel-heading">
+    <div><h2>{words.snapshot}</h2><p>{words.review}</p></div>
+    <button type="button" className="btn btn-secondary" onClick={refetch} disabled={busy}>
+     <CareIcon name="activity" size={16}/>{words.refresh}</button>
+   </div>
+   <Select title={words.select} value={selected} change={switchClinic}
+    options={owned.map((c:any)=>({id:c.id,label:c.displayName}))}/>
+   {detailError?<DataError message={detailError} retry={()=>setDetailTick(x=>x+1)}/>:
+    !detail||!form?<InlineAlert>{l("loading")}</InlineAlert>:
+    <div className="clinic-phase13-settings-detail">
+     <div className="clinic-phase13-settings-facts">
+      <div><span>{words.ready}</span><strong>{detail.clinic.displayName}</strong></div>
+      <div><span>{words.status}</span><Status value={detail.clinic.status} l={l}/></div>
+      <div><span>{words.revision}</span><strong>{detail.clinic.revision}</strong></div>
+     </div>
+     {detail.clinic.status==="approved"&&<InlineAlert kind="warning">{words.pending}</InlineAlert>}
+     <form onSubmit={save} className="phase-form clinic-phase13-settings-form">
+      <OrganizationFields form={form} setForm={setForm}
+       readonly={busy||["pending","suspended"].includes(detail.clinic.status)}/>
+      <div className="clinic-phase13-settings-save">
+       <span className={dirty?"is-dirty":""} role="status">
+        {dirty?words.dirty:words.noChanges}</span>
+       <div className="phase-actions">
+        <button type="button" className="btn btn-secondary" disabled={busy||!dirty}
+         onClick={()=>{setForm({...detail.clinic});setFailure("");}}>
+         <CareIcon name="close" size={16}/>{words.reset}</button>
+        <button type="submit" className="btn btn-primary" disabled={busy||!maySave}>
+         <CareIcon name="check" size={16}/>{busy?l("loading"):words.save}</button>
+       </div>
+      </div>
+     </form>
+    </div>}
+   {failure&&<Alert message={failure}/>}
+   {message&&<Alert message={message} ok/>}
+  </section>
+  <section className="card panel clinic-phase13-settings-panel">
+   <div className="clinic-phase13-panel-heading"><div><h2>{words.quick}</h2>
+    <p>{words.privacy}</p></div></div>
+   <div className="clinic-phase13-settings-links">
+    {([
+     ["staff","/clinic/staff","users"],
+     ["security","/clinic/settings/security","shield-check"],
+     ["services","/clinic/services","clipboard"],
+     ["hours","/clinic/settings/hours","clock"],
+     ["subscription","/clinic/settings/subscription","credit-card"],
+     ["export","/clinic/settings/export","download"]
+    ] as const).map(([key,path,icon])=><a key={key}
+     href={path+"?clinic="+encodeURIComponent(selected)}>
+     <span><CareIcon name={icon} size={20}/></span>
+     <strong>{words[key]}</strong><CareIcon name="arrow" size={16}/></a>)}
+   </div>
+  </section>
+ </div>;
 }
 function ClinicSubscription(){
  const l=useText();
