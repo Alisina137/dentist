@@ -483,61 +483,225 @@ function StaffRoute({ctx,space,view}:{ctx:Context,space:Space,view:"staff"|"secu
      <StaffDetail ctx={ctx} space={space}/>}
  </Shell>;
 }
-function TeamHub({ctx,space}:{ctx:Context,space:Space}){
+function StaffPager({page,pages,onPage,label}:{page:number;pages:number;
+ onPage:(n:number)=>void;label:string}){
  const {t}=useLang();
- const [tab,setTab]=useState("team");
- useEffect(()=>{const requested=new URLSearchParams(location.search).get("tab");
-  if(["team","dentists","invitations"].includes(requested||""))setTab(requested!);},[]);
- const url=(kind:string)=>"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab="+kind;
- return <div><h2>{t("staff")}</h2>
-  <div className="phase-tabs" role="tablist" aria-label={t("staff")}>
-    {["team","dentists","invitations"].map(key=><a href={url(key)} className={"team-tab "+(tab===key?"current":"")}
-       key={key} role="tab" aria-selected={tab===key}>{t(key)}</a>)}
-  </div>
-  {tab==="team"?<TeamList space={space}/>:tab==="dentists"?<DentistList space={space}/>:
-    <Invitations space={space} ctx={ctx}/>}
+ if(pages<=1)return null;
+ return <nav className="clinic-phase13-pager" aria-label={label}>
+  <button type="button" className="btn btn-secondary" disabled={page<=1}
+   onClick={()=>onPage(Math.max(1,page-1))}>{t("previous")}</button>
+  <span>{page} / {pages}</span>
+  <button type="button" className="btn btn-secondary" disabled={page>=pages}
+   onClick={()=>onPage(Math.min(pages,page+1))}>{t("next")}</button>
+ </nav>;
+}
+function StaffReviewDialog({title,description,checked,onChecked,onCancel,onConfirm,
+ busy,confirmText,children}:{title:string;description:string;checked:boolean;
+ onChecked:(value:boolean)=>void;onCancel:()=>void;onConfirm:()=>void;
+ busy:boolean;confirmText:string;children:ReactNode}){
+ const {t}=useLang();
+ useEffect(()=>{
+  const handler=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy)onCancel();
+  };
+  document.addEventListener("keydown",handler);
+  return()=>document.removeEventListener("keydown",handler);
+ },[busy,onCancel]);
+ return <div className="clinic-phase13-dialog-backdrop" onMouseDown={event=>{
+  if(!busy&&event.currentTarget===event.target)onCancel();
+ }}>
+  <section className="clinic-phase13-dialog" role="alertdialog" aria-modal="true"
+   aria-labelledby="clinic-phase13-dialog-title">
+   <header className="clinic-phase13-dialog-heading">
+    <span className="clinic-phase13-dialog-mark"><CareIcon name="shield-check" size={22}/></span>
+    <button type="button" autoFocus className="clinic-phase13-dialog-close"
+     disabled={busy} aria-label={t("modalClose")} onClick={onCancel}>
+     <CareIcon name="close" size={19}/></button>
+   </header>
+   <h2 id="clinic-phase13-dialog-title">{title}</h2>
+   <p>{description}</p>
+   <dl className="clinic-phase13-dialog-facts">{children}</dl>
+   <label className="clinic-phase13-dialog-check">
+    <input type="checkbox" disabled={busy} checked={checked}
+     onChange={event=>onChecked(event.target.checked)}/>
+    <span>{t("staffReviewCheck")}</span>
+   </label>
+   <footer className="clinic-phase13-dialog-actions">
+    <button type="button" className="btn btn-secondary" disabled={busy}
+     onClick={onCancel}>{t("modalCancel")}</button>
+    <button type="button" className="btn btn-primary" disabled={!checked||busy}
+     onClick={onConfirm}><CareIcon name="check" size={17}/>
+     {busy?t("loading"):confirmText}</button>
+   </footer>
+  </section>
  </div>;
 }
-function TeamList({space}:{space:Space}){
- const {t,date}=useLang();const {data,error,reload}=useData("/clinics/"+space.clinicId+"/team");
- const [filter,setFilter]=useState("all");
+function TeamHub({ctx,space}:{ctx:Context,space:Space}){
+ const {t}=useLang();
+ const [tab,setTab]=useState<"team"|"dentists"|"invitations">(()=>{
+  return staffTab(new URLSearchParams(location.search).get("tab"));
+ });
+ useEffect(()=>{
+  setTab(staffTab(new URLSearchParams(location.search).get("tab")));
+ },[space.clinicId]);
+ function choose(next:"team"|"dentists"|"invitations"){
+  setTab(next);
+  const query=new URLSearchParams(location.search);
+  query.set("clinic",space.clinicId);query.set("tab",next);
+  history.replaceState(null,"",location.pathname+"?"+query.toString());
+ }
+ const url=(kind:string)=>"/clinic/staff?clinic="+encodeURIComponent(space.clinicId)+"&tab="+kind;
+ return <div className="clinic-phase13-staff-home">
+  <section className="card clinic-phase13-hero">
+   <div><span className="clinic-phase13-eyebrow"><CareIcon name="shield-check" size={17}/>
+    {t("teamPermissions")}</span>
+    <h1>{t("teamWorkspace")}</h1><p>{t("teamIntro")}</p>
+    <div className="clinic-phase13-hero-clinic"><CareIcon name="clinic" size={16}/>
+     {space.clinicName}</div></div>
+   <div className="clinic-phase13-hero-badge">
+    <CareIcon name="users" size={27}/><strong>{t(space.role)}</strong></div>
+  </section>
+  <nav className="phase-tabs clinic-phase13-staff-tabs" role="tablist" aria-label={t("staff")}>
+   {(["team","dentists","invitations"] as const).map(key=><button type="button"
+    className={"team-tab"+(tab===key?" current":"")} key={key}
+    role="tab" aria-selected={tab===key}
+    aria-controls="clinic-phase13-staff-content"
+    onClick={()=>choose(key)}>
+    <CareIcon name={key==="dentists"?"dental":key==="invitations"?"mail":"users"} size={18}/>
+    {t(key)}</button>)}
+  </nav>
+  <div id="clinic-phase13-staff-content" role="tabpanel" aria-label={t(tab)}>
+   {tab==="team"?<TeamList space={space} onInvite={()=>choose("invitations")}/>:
+    tab==="dentists"?<DentistList space={space} onInvite={()=>choose("invitations")}/>:
+    <Invitations space={space} ctx={ctx}/>}
+  </div>
+ </div>;
+}
+function TeamList({space,onInvite}:{space:Space;onInvite:()=>void}){
+ const {t,date}=useLang();
+ const {data,error,reload}=useData("/clinics/"+space.clinicId+"/team");
+ const [filter,setFilter]=useState("all"),[role,setRole]=useState("all"),
+  [query,setQuery]=useState(""),[page,setPage]=useState(1);
+ useEffect(()=>{setFilter("all");setRole("all");setQuery("");setPage(1);},
+  [space.clinicId]);
  if(error)return <ErrorBox error={error} retry={reload}/>;
  if(!data)return <Busy/>;
- const people=data.members.filter((m:any)=>filter==="all"||m.status===filter);
- return <section className="card panel"><div className="staff-panel-heading">
-  <h2>{t("team")}</h2><Select label={t("filter")} value={filter} onChange={setFilter}
-  options={["all","active","suspended","revoked"].map(value=>({value,label:t(value)}))}/></div>
-  {!people.length?<Empty text={t("noStaff")}/>:<div className="staff-scroll">
-   <table className="staff-table"><thead><tr><th>{t("name")}</th><th>{t("role")}</th>
-    <th>{t("status")}</th><th>{t("joinedOn")}</th><th>{t("verification")}</th></tr></thead>
-    <tbody>{people.map((m:any)=><tr key={m.id}><td>
-      <a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{m.name}</a>
-      <div className="muted staff-small" dir="ltr">{m.email}</div></td>
-      <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
-      <td>{date(m.joinedAt)}</td><td>{m.mfaEnabled?t("on"):t("off")}</td></tr>)}</tbody>
-   </table></div>}
-  <div className="phase-actions"><a className="btn btn-primary" href={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}>
-    {t("invite")}</a></div>
+ const records:StaffEntry[]=data.members||[];
+ const summary=staffStats(records);
+ const people=staffFiltered(records,query,filter,role);
+ const slice=staffPage(people,page);
+ const reset=()=>{setFilter("all");setRole("all");setQuery("");setPage(1);};
+ return <section className="card panel clinic-phase13-staff-panel">
+  <div className="clinic-phase13-panel-heading">
+   <div><span className="clinic-phase13-kicker">{t("overview")}</span>
+    <h2>{t("team")}</h2><p>{t("teamLimit")}</p></div>
+   <button className="btn btn-secondary" type="button" onClick={reload}>
+    <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button>
+  </div>
+  <div className="clinic-phase13-metrics" role="group" aria-label={t("teamWorkspace")}>
+   {([
+    ["teamMembers",summary.total,"users"],["activeMembers",summary.active,"check"],
+    ["suspendedMembers",summary.suspended,"clock"],["clinicalTeam",summary.clinicians,"dental"]
+   ] as const).map(([label,count,icon])=><div className="clinic-phase13-metric" key={label}>
+    <span className="clinic-phase13-metric-icon"><CareIcon name={icon} size={20}/></span>
+    <strong>{count}</strong><span>{t(label)}</span>
+   </div>)}
+  </div>
+  <div className="clinic-phase13-filters">
+   <label className="clinic-phase13-search"><span>{t("teamSearch")}</span>
+    <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+     <input type="search" autoComplete="off" value={query} maxLength={120}
+      placeholder={t("teamSearchHint")}
+      onChange={event=>{setQuery(event.target.value);setPage(1);}}/></span></label>
+   <label><span>{t("filter")}</span><select value={filter} onChange={event=>{
+    setFilter(event.target.value);setPage(1);
+   }}>{["all","active","suspended","revoked"].map(value=>
+    <option value={value} key={value}>{t(value)}</option>)}</select></label>
+   <label><span>{t("teamRoleFilter")}</span><select value={role} onChange={event=>{
+    setRole(event.target.value);setPage(1);
+   }}><option value="all">{t("teamAllRoles")}</option>
+    {(["owner","manager","dentist","receptionist","assistant","cashier"] as const).map(value=>
+     <option key={value} value={value}>{t(value)}</option>)}</select></label>
+   {(filter!=="all"||role!=="all"||query)&&<button type="button" className="btn btn-secondary"
+    onClick={reset}><CareIcon name="close" size={15}/>{t("teamReset")}</button>}
+  </div>
+  {!slice.rows.length?<div className="clinic-phase13-empty" role="status">
+   <CareIcon name="users" size={27}/>
+   <p>{records.length?t("teamEmpty"):t("noStaff")}</p>
+   {records.length>0&&<button type="button" className="btn btn-secondary"
+    onClick={reset}>{t("teamReset")}</button>}
+  </div>:<div className="staff-scroll clinic-phase13-staff-table-scroll">
+   <table className="staff-table"><thead><tr>
+    <th>{t("name")}</th><th>{t("role")}</th><th>{t("status")}</th>
+    <th>{t("joinedOn")}</th><th>{t("mfa")}</th><th>{t("teamOpen")}</th>
+   </tr></thead><tbody>{slice.rows.map(m=><tr key={m.id}>
+    <td><strong>{m.name}</strong><div className="muted staff-small" dir="ltr">{m.email}</div></td>
+    <td>{t(m.role)}</td><td><Badge value={m.status}/></td>
+    <td>{date(m.joinedAt)}</td><td>
+     <span className={"clinic-phase13-mfa"+(m.mfaEnabled?" is-on":"")}>
+      <CareIcon name={m.mfaEnabled?"shield-check":"clock"} size={15}/>
+      {t(m.mfaEnabled?"on":"off")}</span></td>
+    <td><a className="btn btn-secondary clinic-phase13-open" href={
+     "/clinic/staff/"+encodeURIComponent(m.id)+"?clinic="+encodeURIComponent(space.clinicId)}>
+     {t("teamOpen")} <CareIcon name="arrow" size={15}/></a></td>
+   </tr>)}</tbody></table>
+  </div>}
+  <div className="clinic-phase13-table-bottom">
+   <p role="status" aria-live="polite">
+    {t("teamCount")} {slice.start}–{slice.end} {t("teamOf")} {slice.total} {t("teamMembers")}
+   </p>
+   <StaffPager page={slice.page} pages={slice.pages} onPage={setPage} label={t("teamPage")}/>
+  </div>
+  {["owner","manager"].includes(space.role)&&<div className="phase-actions">
+   <button className="btn btn-primary" type="button" onClick={onInvite}>
+    <CareIcon name="plus" size={17}/>{t("invite")}</button>
+  </div>}
  </section>;
 }
-function DentistList({space}:{space:Space}){
- const {t}=useLang();const {data,error,reload}=useData("/clinics/"+space.clinicId+"/dentists");
+function DentistList({space,onInvite}:{space:Space;onInvite:()=>void}){
+ const {t}=useLang();
+ const {data,error,reload}=useData("/clinics/"+space.clinicId+"/dentists");
+ const [page,setPage]=useState(1),[query,setQuery]=useState("");
+ useEffect(()=>{setQuery("");setPage(1);},[space.clinicId]);
  if(error)return <ErrorBox error={error} retry={reload}/>;
  if(!data)return <Busy/>;
- return <section className="card panel"><h2>{t("dentists")}</h2>
-  {!data.dentists.length?<Empty text={t("noDentists")}/>:<div className="staff-dentist-grid">
-    {data.dentists.map((m:any)=><article key={m.id} className="staff-dentist-card">
-      <div className="staff-dentist-avatar">{m.name?.slice(0,1)}</div>
-      <div className="staff-dentist-info"><h3>{m.draft?.displayName||m.name}</h3>
+ const clinicians=(data.dentists||[]).filter((m:any)=>
+  !query.trim()||(String(m.name||"")+" "+String(m.draft?.displayName||"")+" "+
+   String(m.draft?.specialty||"")).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+ const slice=staffPage(clinicians,page);
+ return <section className="card panel clinic-phase13-staff-panel">
+  <div className="clinic-phase13-panel-heading"><div><h2>{t("dentists")}</h2>
+   <p>{t("staffClinicianNote")}</p></div>
+   <button type="button" className="btn btn-secondary" onClick={reload}>
+    <CareIcon name="activity" size={16}/>{t("teamRefresh")}</button></div>
+  <label className="clinic-phase13-search clinic-phase13-dentist-search"><span>{t("teamSearch")}</span>
+   <span className="clinic-phase13-search-field"><CareIcon name="search" size={17}/>
+    <input type="search" value={query} maxLength={120}
+     onChange={event=>{setQuery(event.target.value);setPage(1);}}
+     placeholder={t("teamSearchHint")}/></span>
+  </label>
+  {!slice.rows.length?<div className="clinic-phase13-empty">
+   <CareIcon name="dental" size={27}/><p>{t("noDentists")}</p></div>:
+   <div className="staff-dentist-grid clinic-phase13-dentist-grid">
+    {slice.rows.map((m:any)=><article key={m.id} className="staff-dentist-card">
+     <div className="staff-dentist-avatar"><CareIcon name="dental" size={24}/></div>
+     <div className="staff-dentist-info"><h3>{m.draft?.displayName||m.name}</h3>
       <p>{m.draft?.specialty||t("pendingReview")}</p>
       <Badge value={m.status}/><p className="muted staff-small">{t("notPublic")}</p>
-      <a className="text-link" href={"/clinic/staff/"+m.id+"?clinic="+space.clinicId}>{t("myProfile")} ›</a></div>
-    </article>)}</div>}
-  <div className="phase-actions"><a className="btn btn-secondary" href={"/clinic/staff?clinic="+space.clinicId+"&tab=invitations"}>
-    {t("invite")}</a></div>
+      <a className="text-link" href={"/clinic/staff/"+encodeURIComponent(m.id)+
+       "?clinic="+encodeURIComponent(space.clinicId)}>{t("teamOpen")} ›</a>
+     </div>
+    </article>)}
+   </div>}
+  <div className="clinic-phase13-table-bottom"><p role="status">
+   {t("teamCount")} {slice.start}–{slice.end} {t("teamOf")} {slice.total}</p>
+   <StaffPager page={slice.page} pages={slice.pages} onPage={setPage} label={t("dentists")}/>
+  </div>
+  {["owner","manager"].includes(space.role)&&<div className="phase-actions">
+   <button type="button" className="btn btn-secondary" onClick={onInvite}>
+    <CareIcon name="plus" size={16}/>{t("invite")}</button></div>}
  </section>;
 }
-
 
 function Invitations({space,ctx}:{space:Space,ctx:Context}){
  const {t,date}=useLang();
