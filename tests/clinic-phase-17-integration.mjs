@@ -81,12 +81,15 @@ async function activateMfa(user){
 
 const owner=await signup("pilot17owner");
 const outsider=await signup("pilot17outsider");
+const publicPlans=good(await http("/v1/public/plans"),[200],"list valid clinic plans");
+const selectedPlanId=publicPlans.plans.find(p=>p.active)?.id;
+assert.ok(selectedPlanId,"a real active plan is required for clinic setup");
 const makeClinic=async suffix=>{
  const draft=good(await http("/v1/clinics","POST",{
   legalName:"Synthetic Pilot "+suffix,displayName:"Pilot QA "+suffix,
   clinicType:"office",province:"Kabul",city:"Kabul",district:"Test district",
   address:"Synthetic test address only",phone:"+93700917017",email:owner.email,
-  licenseNumber:"QA17-"+suffix+"-"+nonce
+  licenseNumber:"QA17-"+suffix+"-"+nonce,selectedPlanId
  },owner.jar),[201],"create test clinic");
  return draft.clinic.id;
 };
