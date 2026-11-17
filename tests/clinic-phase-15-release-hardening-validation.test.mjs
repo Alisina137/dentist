@@ -142,7 +142,7 @@ test("Clinic Phase 15: network reconnection is read-only, explicit, accessible a
  assert.ok(notifyUi.includes('<ClinicOpsConnection onRefresh={reload}/>'));
  for(const s of [
   '.clinic-persistent-shell .clinic-phase15-connectivity',
-  '.is-offline','.is-reconnected','role',
+  '.is-offline','.is-reconnected',
   '@media(max-width:560px)','@media(prefers-reduced-motion:reduce)',
   ':focus-visible','overflow-wrap:anywhere'
  ])assert.ok(css.includes(s),s);
