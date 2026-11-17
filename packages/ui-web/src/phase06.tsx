@@ -4,6 +4,8 @@ import { InlineAlert,usePreferences,CareIcon } from "./index";
 import {ClinicOpsBridge} from "./clinic-ops-bridge";
 import {ClinicOpsConnection} from "./clinic-ops-connection";
 import {ClinicLoadingState,useClinicFeedback} from "./clinic-feedback";
+import {clinicReadJson} from "./clinic-readonly";
+import {useClinicWorkspaceSession} from "./clinic-shell-context";
 import {clinicScheduleWindow,clinicShiftPeriod,clinicMonthCells,clinicDayNumber,
  type ClinicDateWindow} from "./clinic-scheduling-dates";
 import { Shell } from "./phase03";
@@ -386,7 +388,9 @@ function useWords(){
   hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
  return {t,fmt,time,lang,calendar};
 }
-async function call(path:string,method="GET",body?:unknown):Promise<any>{
+async function call(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ if(method==="GET"&&body===undefined)
+  return clinicReadJson(API+"/v1/appointments"+path,signal);
  const r=await fetch(API+"/v1/appointments"+path,{method,credentials:"include",
   cache:"no-store",headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
@@ -413,11 +417,14 @@ function useData(path:string|null){
  const refresh=()=>setVersion(x=>x+1);
  useEffect(()=>{
   if(!path){setSnapshot({path:null,data:null,error:""});return;}
-  let live=true;
+  const controller=new AbortController();
   setSnapshot({path,data:null,error:""});
-  call(path).then(x=>{if(live)setSnapshot({path,data:x,error:""});})
-   .catch(e=>{if(live)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
-  return()=>{live=false;};
+  call(path,"GET",undefined,controller.signal)
+   .then(x=>{if(!controller.signal.aborted)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(!controller.signal.aborted)setSnapshot({
+    path,data:null,error:e instanceof Error?e.message:"NETWORK_ERROR"
+   });});
+  return()=>controller.abort();
  },[path,version]);
  return {data:snapshot.path===path?snapshot.data:null,
   error:snapshot.path===path?snapshot.error:"",refresh};
@@ -519,15 +526,19 @@ function MainTabs({space,view}:{space:Space;view:Page}){
 }
 export function AppointmentsPortal({view}:{view:Page}){
  const {t}=useWords();
+ const shell=useClinicWorkspaceSession();
  const [ctx,setCtx]=useState<Context|null>(null),[problem,setProblem]=useState("");
  const [requested,setRequested]=useState<string|null|undefined>(undefined);
  useEffect(()=>{
+  if(shell){setCtx(shell.ctx);setRequested(shell.requested);setProblem("");return;}
   setRequested(new URLSearchParams(location.search).get("clinic"));
-  fetch(API+"/v1/team/context",{credentials:"include",cache:"no-store"})
-   .then(async r=>{const x=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(x.code||"AUTH_REQUIRED");setCtx(x);})
-   .catch(e=>setProblem(e.message||"AUTH_REQUIRED"));
- },[]);
+  const controller=new AbortController();
+  clinicReadJson(API+"/v1/team/context",controller.signal)
+   .then(x=>{if(!controller.signal.aborted){setCtx(x as Context);setProblem("");}})
+   .catch(e=>{if(!controller.signal.aborted)
+    setProblem(e instanceof Error?e.message:"NETWORK_ERROR");});
+  return()=>controller.abort();
+ },[shell?.ctx,shell?.requested]);
  if(problem==="AUTH_REQUIRED")return <div className="page-narrow card panel">
   <Notice kind="warning">{t("signin")}</Notice>
   <a href="/clinic/login" className="btn btn-primary">{t("signin")}</a></div>;
@@ -707,7 +718,8 @@ function CalendarPanel({space}:{space:Space}){
    {data?.truncated&&<div className="phase06-range-warning" role="alert">
     {t("limitReached")}</div>}
    {error?<Problem error={error} retry={refresh}/>:!data?<Busy/>:
-    <div className="phase06-calendar-body" aria-label={t("calendar")} aria-busy="false">
+    <div className="phase06-calendar-body clinic-phase18-scroll-region" role="region"
+      tabIndex={0} aria-label={t("calendar")} aria-busy="false">
      {mode==="day"?<DayGrid space={space} date={date} appointments={byDate.get(date)||[]}/>:
       mode==="week"?<WeekGrid space={space} start={period.from} byDate={byDate}
         onSelect={d=>navigate(d,"day")}/>:
