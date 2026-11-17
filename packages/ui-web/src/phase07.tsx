@@ -761,7 +761,7 @@ function ClinicalCommunication({space,appointmentId}:{space:Space;appointmentId?
  return <section className="card phase07-panel clinic-phase11-communication"
   aria-label={t("communication")}>
   <div className="clinic-phase11-communication-top">
-   <span className="clinic-phase11-communication-icon"><CareIcon name="message" size={21}/></span>
+   <span className="clinic-phase11-communication-icon"><CareIcon name="message-square-star" size={21}/></span>
    <div><h2>{t("communication")}</h2><p>{t("communicationIntro")}</p></div>
   </div>
   <p className="clinic-phase11-communication-warning" role="note">
