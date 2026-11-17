@@ -19,6 +19,31 @@ export type QualitySnapshot={
  channels:ChannelSummary|null;
  appointments:AppointmentSummary|null;
 };
+export function clinicQualityPayloadValid(kind:keyof QualitySnapshot,payload:unknown):boolean{
+ if(!payload||typeof payload!=="object"||Array.isArray(payload))return false;
+ const item=payload as Record<string,any>;
+ const number=(x:unknown)=>typeof x==="number"&&Number.isSafeInteger(x)&&x>=0;
+ switch(kind){
+  case "operations":
+   return Boolean(item.metrics&&typeof item.metrics==="object"&&
+    ["services","chairs","openDays","scheduledDentists"].every(
+     key=>number(item.metrics[key]))&&Array.isArray(item.checklist)&&
+    item.checklist.every((row:unknown)=>row&&typeof row==="object"&&
+     typeof (row as any).key==="string"&&typeof (row as any).done==="boolean"));
+  case "staff":
+   return Array.isArray(item.access)&&item.access.every((row:unknown)=>
+    row&&typeof row==="object"&&
+    typeof (row as any).status==="string"&&typeof (row as any).mfaEnabled==="boolean");
+  case "channels":
+   return typeof item.emailConfigured==="boolean"&&Array.isArray(item.deliveries)&&
+    item.deliveries.length<=100&&item.deliveries.every((row:unknown)=>
+     row&&typeof row==="object"&&typeof (row as any).status==="string"&&
+      typeof (row as any).event_name==="string");
+  case "appointments":
+   return number(item.todayTotal)&&number(item.weekTotal)&&
+    item.timezone==="Asia/Kabul"&&item.counts&&typeof item.counts==="object";
+ }
+}
 const path=(p:string,cid:string)=>p+"?"+new URLSearchParams({clinic:cid});
 const sane=(x:unknown)=>typeof x==="number"&&Number.isSafeInteger(x)&&x>=0?x:null;
 export function clinicQualityChecks(summary:QualitySnapshot,cid:string):QualityCheck[]{
