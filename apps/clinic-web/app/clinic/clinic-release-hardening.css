@@ -1,0 +1,41 @@
+/* Clinic Phase 15 — operational release hardening.
+   Scoped to the persistent clinic shell and accessible in RTL layouts. */
+.clinic-persistent-shell .clinic-phase15-connectivity{
+ display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+ color:#416d87;background:#edf8ff;
+ border:1px solid #c8e6f6;border-radius:12px;
+ padding:12px 15px;min-width:0;
+ font-size:12px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase15-connectivity.is-offline{
+ background:#fff6e8;color:#88601e;border-color:#f0d6a5;
+}
+.clinic-persistent-shell .clinic-phase15-connectivity.is-reconnected{
+ background:#ecfff4;color:#287653;border-color:#c5ebd6;
+}
+.clinic-persistent-shell .clinic-phase15-connectivity>svg{
+ flex:0 0 19px;
+}
+.clinic-persistent-shell .clinic-phase15-connectivity>span{
+ flex:1 1 200px;min-width:0;overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-phase15-connectivity .btn{
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;
+ min-height:42px;flex:0 0 auto;font-size:11px;
+}
+.clinic-persistent-shell .clinic-phase15-connectivity :is(button,a):focus-visible{
+ outline:3px solid #267fba;outline-offset:3px;
+}
+@media(max-width:560px){
+ .clinic-persistent-shell .clinic-phase15-connectivity{
+  padding:11px;align-items:start;
+ }
+ .clinic-persistent-shell .clinic-phase15-connectivity .btn{
+  flex:1 1 100%;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-phase15-connectivity *{
+  animation:none!important;transition:none!important;
+ }
+}
