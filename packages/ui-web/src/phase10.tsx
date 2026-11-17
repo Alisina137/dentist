@@ -819,53 +819,141 @@ function Balances({space}:{space:Space}){
 }
 function PaymentForm({space,invoice,onRecorded,kind}:{space:Space;invoice:Invoice;
  onRecorded:()=>void;kind:"payment"|"credit"}){
- const {t}=useWords();
+ const {t,date}=useWords();
  const [amount,setAmount]=useState(""),[method,setMethod]=useState("cash"),
- [reference,setReference]=useState(""),[note,setNote]=useState(""),
- [occurredAt,setOccurredAt]=useState(new Date().toISOString().slice(0,16)),
- [busy,setBusy]=useState(false),[error,setError]=useState(""),[actionKey,setActionKey]=useState("");
+  [reference,setReference]=useState(""),[note,setNote]=useState(""),
+  [occurredAt,setOccurredAt]=useState(()=>clinicKabulDateTimeInput()),
+  [busy,setBusy]=useState(false),[error,setError]=useState(""),
+  [actionKey,setActionKey]=useState(""),[review,setReview]=useState(false),
+  [reviewed,setReviewed]=useState(false);
  const numeric=Number(amount);
- async function submit(e:FormEvent){
-  e.preventDefault();if(busy)return;
-  const confirmText=kind==="payment"?t("confirmationPayment"):t("confirmCredit");
-  if(!confirm(confirmText))return;
+ const validAmount=clinicCanEnterPayment(invoice.balanceAfn,numeric);
+ const validReason=kind!=="credit"||note.trim().length>=10;
+ const validReference=!reference.trim()||reference.trim().length>=2;
+ let paymentIso:string|null=null;
+ if(kind==="payment")try{paymentIso=clinicKabulInputToIso(occurredAt);}catch{/* Show typed error. */}
+ const valid=validAmount&&validReason&&validReference&&
+  (kind==="credit"||paymentIso!==null);
+ const change=()=>{setActionKey("");setReview(false);setReviewed(false);setError("");};
+ useEffect(()=>{
+  if(!review)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&!busy){setReview(false);setReviewed(false);}
+  };
+  document.addEventListener("keydown",onEscape);
+  return()=>document.removeEventListener("keydown",onEscape);
+ },[review,busy]);
+ function submit(e:FormEvent){
+  e.preventDefault();if(busy||!valid)return;
+  setError("");setReviewed(false);setReview(true);
+ }
+ async function post(){
+  if(busy||!review||!reviewed||!valid)return;
   setBusy(true);setError("");
   const key=actionKey||crypto.randomUUID();setActionKey(key);
   try{
-   await api(b(space.clinicId)+"/invoices/"+invoice.id+(kind==="payment"?"/payments":"/credits"),
-    "POST",{actionKey:key,amountAfn:numeric,
-     ...(kind==="payment"?{method,reference:reference||null,
-      occurredAt:new Date(occurredAt).toISOString(),note:note||null}:{note})});
-   setActionKey("");setAmount("");setReference("");setNote("");onRecorded();
-  }catch(ex:any){setError(ex.message);}finally{setBusy(false);}
+   await api(b(space.clinicId)+"/invoices/"+invoice.id+
+    (kind==="payment"?"/payments":"/credits"),"POST",{
+     actionKey:key,amountAfn:numeric,
+     ...(kind==="payment"?{method,reference:reference.trim()||null,
+      occurredAt:paymentIso,note:note.trim()||null}:{note:note.trim()})
+   });
+   setActionKey("");setReview(false);setReviewed(false);
+   setAmount("");setReference("");setNote("");
+   onRecorded();
+  }catch(ex:any){
+   // Keep the idempotency key on timeout/error: retry must not double-post.
+   setError(ex instanceof Error?ex.message:"NETWORK_ERROR");
+  }finally{setBusy(false);}
  }
- return <form className="phase10-payment-form" onSubmit={submit}>
+ return <form className="phase10-payment-form clinic-phase12-payment-form" onSubmit={submit}>
   <Title title={t(kind==="payment"?"recordPayment":"addCredit")}
    desc={kind==="credit"?t("creditNotice"):t("unverified")}/>
+  <div className="clinic-phase12-payment-context">
+   <span><strong dir="ltr">{invoice.label}</strong> · {invoice.patientName||invoice.patientNumber||"—"}</span>
+   <Badge status={invoice.status}/>
+  </div>
   <div className="phase10-form-grid">
    <label className="phase10-field"><span>{t("amount")} (AFN) *</span>
-    <input required min={1} max={invoice.balanceAfn} step={1} type="number" value={amount}
-     onChange={e=>{setAmount(e.target.value);setActionKey("");}}/></label>
+    <input required min={1} max={invoice.balanceAfn} step={1} type="number"
+     disabled={busy} value={amount}
+     onChange={e=>{setAmount(e.target.value);change();}}/></label>
    {kind==="payment"&&<>
     <label className="phase10-field"><span>{t("method")}</span>
-     <select value={method} onChange={e=>{setMethod(e.target.value);setActionKey("");}}>
-      {["cash","bank_transfer","other_manual"].map(x=><option key={x} value={x}>{t(x)}</option>)}</select></label>
-    <label className="phase10-field"><span>{t("paymentDate")}</span>
-     <input type="datetime-local" value={occurredAt} onChange={e=>{setOccurredAt(e.target.value);setActionKey("");}}/></label>
+     <select disabled={busy} value={method} onChange={e=>{setMethod(e.target.value);change();}}>
+      {["cash","bank_transfer","other_manual"].map(x=>
+       <option key={x} value={x}>{t(x)}</option>)}</select></label>
+    <label className="phase10-field"><span>{t("paymentDate")} · {t("financeDateZone")}</span>
+     <input required type="datetime-local" disabled={busy} value={occurredAt}
+      onChange={e=>{setOccurredAt(e.target.value);change();}}/></label>
     <label className="phase10-field"><span>{t("referenceOptional")}</span>
-     <input maxLength={120} value={reference} onChange={e=>{setReference(e.target.value);setActionKey("");}}/></label>
+     <input maxLength={120} disabled={busy} value={reference}
+      onChange={e=>{setReference(e.target.value);change();}}/></label>
    </>}
-   <label className="phase10-field phase10-wide"><span>{t(kind==="credit"?"creditReason":"noteOptional")}</span>
-    <textarea maxLength={500} minLength={kind==="credit"?10:undefined} required={kind==="credit"}
-     rows={2} value={note} onChange={e=>{setNote(e.target.value);setActionKey("");}}/></label>
+   <label className="phase10-field phase10-wide"><span>
+    {t(kind==="credit"?"creditReason":"noteOptional")}</span>
+    <textarea maxLength={500} minLength={kind==="credit"?10:undefined}
+     required={kind==="credit"} disabled={busy}
+     rows={2} value={note} onChange={e=>{setNote(e.target.value);change();}}/></label>
   </div>
+  {kind==="payment"&&paymentIso===null&&<Alert kind="warning">{t("financeBadDate")}</Alert>}
   {method==="bank_transfer"&&kind==="payment"&&<Alert kind="warning">{t("unverifiedBank")}</Alert>}
-  <div className="phase10-amount-preview"><span>{t("balance")}</span><Money amount={invoice.balanceAfn}/>
-   <span>→</span><Money amount={Math.max(0,invoice.balanceAfn-(numeric||0))}/></div>
+  <div className="phase10-amount-preview clinic-phase12-balance-preview">
+   <span>{t("balance")}</span><Money amount={invoice.balanceAfn}/>
+   <span>→</span><strong><Money amount={Math.max(0,invoice.balanceAfn-(validAmount?numeric:0))}/></strong>
+  </div>
+  <p className="clinic-phase12-payment-disclaimer">{t("financeNoOnline")} {t("reverseWarning")}</p>
   {error&&<Failure code={error}/>}
-  <button type="submit" className="btn btn-primary" disabled={busy||numeric<=0||
-   !Number.isInteger(numeric)||numeric>invoice.balanceAfn}>
-   {busy?t("loading"):t(kind==="payment"?"recordPayment":"addCredit")} →</button>
+  <button type="submit" className="btn btn-primary" disabled={busy||!valid}>
+   <CareIcon name="shield-check" size={17}/>
+   {busy?t("loading"):t(kind==="payment"?"financeReviewPayment":"financeReviewCredit")}</button>
+  {review&&<div className="clinic-phase12-confirm-backdrop"
+   onMouseDown={event=>{if(!busy&&event.currentTarget===event.target){
+    setReview(false);setReviewed(false);
+   }}}>
+   <section className="clinic-phase12-confirm-dialog" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase12-payment-title">
+    <div className="clinic-phase12-confirm-top">
+     <span className="clinic-phase12-confirm-icon"><CareIcon name="shield-check" size={24}/></span>
+     <button type="button" autoFocus className="clinic-phase12-confirm-close" disabled={busy}
+      aria-label={t("cancel")} onClick={()=>{setReview(false);setReviewed(false);}}>
+      <CareIcon name="close" size={20}/></button>
+    </div>
+    <h2 id="clinic-phase12-payment-title">
+     {t(kind==="payment"?"financeReviewTitle":"financeReviewCredit")}</h2>
+    <p className="clinic-phase12-confirm-hint">{t("financeReviewHelp")}</p>
+    <dl className="clinic-phase12-confirm-facts">
+     <div><dt>{t("clinic")}</dt><dd>{space.clinicName}</dd></div>
+     <div><dt>{t("invoice")}</dt><dd><bdi dir="ltr">{invoice.label}</bdi></dd></div>
+     <div><dt>{t("patient")}</dt><dd>{invoice.patientName||invoice.patientNumber||"—"}</dd></div>
+     <div><dt>{t("amount")}</dt><dd><Money amount={numeric}/></dd></div>
+     <div><dt>{t("financePreviewBalance")}</dt>
+      <dd><Money amount={Math.max(0,invoice.balanceAfn-numeric)}/></dd></div>
+     <div><dt>{t("method")}</dt><dd>
+      {kind==="credit"?t("credit"):t(method)}</dd></div>
+     {kind==="payment"&&<div><dt>{t("paymentDate")}</dt>
+      <dd>{date(paymentIso)} · {t("financeDateZone")}</dd></div>}
+     {reference.trim()&&kind==="payment"&&<div><dt>{t("reference")}</dt><dd>{reference}</dd></div>}
+     {note.trim()&&<div><dt>{t(kind==="credit"?"creditReason":"note")}</dt><dd>{note}</dd></div>}
+    </dl>
+    <p className="clinic-phase12-confirm-warning">
+     <CareIcon name="about" size={17}/>{t(kind==="credit"?"creditNotice":"unverified")}
+     {" "}{t("financeNoOnline")}</p>
+    <label className="clinic-phase12-confirm-check">
+     <input type="checkbox" disabled={busy} checked={reviewed}
+      onChange={e=>setReviewed(e.target.checked)}/>
+     <span>{t("financeReviewConfirm")}</span>
+    </label>
+    {error&&<Failure code={error}/>}
+    <div className="clinic-phase12-confirm-actions">
+     <button type="button" className="btn btn-secondary" disabled={busy}
+      onClick={()=>{setReview(false);setReviewed(false);}}>{t("financeReviewCancel")}</button>
+     <button type="button" className="btn btn-primary" disabled={busy||!reviewed||!valid}
+      onClick={()=>void post()}><CareIcon name="check" size={17}/>
+      {busy?t("loading"):t("financeReviewPost")}</button>
+    </div>
+   </section>
+  </div>}
  </form>;
 }
 function InvoiceDetail({space,id}:{space:Space;id:string}){
