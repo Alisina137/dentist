@@ -1,4 +1,4 @@
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {ApiError} from "./api-error";
 import {PatientIcon} from "./patient-icons";
@@ -10,7 +10,7 @@ import {
  type NativeClinicReview,type NativeClinicReadiness,type DentistDraftNative,
  type DentistVerification
 } from "./native-clinic-phase20-model";
-import {pickClinicEvidence,uploadClinicLicense,credentialEvidence,
+import {pickClinicEvidence,uploadClinicLicense,credentialEvidence,discardEvidence,
  CREDENTIAL_MAX_BYTES,type EvidenceFile} from "./native-clinic-evidence";
 
 export type Phase20Locale="en"|"fa-AF"|"ps-AF";
@@ -313,12 +313,16 @@ export function NativeClinicPhase20({clinicId,locale,token,api,request,onRefresh
    const document=await pickClinicEvidence();
    if(!document)return;
    Alert.alert(t.license,t.uploadConfirm,[
-    {text:t.cancel,style:"cancel"},
-    {text:t.confirm,onPress:()=>{void action(async()=>{
-     await uploadClinicLicense(api,clinicId,token,document);
-     setNotice(t.uploadSuccess);
-    }).catch(()=>setIssue(t.uploadError));}}
-   ]);
+    {text:t.cancel,style:"cancel",onPress:()=>discardEvidence(document)},
+    {text:t.confirm,onPress:()=>{void (async()=>{
+     try{
+      await action(async()=>{
+       await uploadClinicLicense(api,clinicId,token,document);
+       setNotice(t.uploadSuccess);
+      });
+     }finally{discardEvidence(document)}
+    })();}}
+   ],{cancelable:false});
   }catch{setIssue(t.uploadError)}
  };
  const update=async()=>{
@@ -489,11 +493,13 @@ export function NativeDentistPhase20({clinicId,membershipId,locale,request}:{cli
  const [loaded,setLoaded]=useState<DoctorResponse|null>(null);
  const [profile,setProfile]=useState<DentistDraftNative>({...blankDentistDraft});
  const [verification,setVerification]=useState<DentistVerification|null>(null);
- const [file,setFile]=useState<EvidenceFile|null>(null),[credentialType,setCredentialType]=useState(""),
+ const [file,setFile]=useState<EvidenceFile|null>(null),fileRef=useRef<EvidenceFile|null>(null),
+  [credentialType,setCredentialType]=useState(""),
  [credentialNumber,setCredentialNumber]=useState(""),[validUntil,setValidUntil]=useState("");
  const [consent,setConsent]=useState(false),[busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[success,setSuccess]=useState("");
  const [revision,setRevision]=useState(0);
+ useEffect(()=>()=>{discardEvidence(fileRef.current);fileRef.current=null},[]);
  const root="/v1/team/clinics/"+encodeURIComponent(clinicId)+"/staff/"+encodeURIComponent(membershipId);
  const credentials="/v1/listings/clinics/"+encodeURIComponent(clinicId)+"/dentists/"+encodeURIComponent(membershipId)+"/credential";
  const refresh=useCallback(async(signal?:AbortSignal)=>{
@@ -521,6 +527,7 @@ export function NativeDentistPhase20({clinicId,membershipId,locale,request}:{cli
  },[root,credentials,request,membershipId,locale]);
  useEffect(()=>{
   const ac=new AbortController();setLoading(true);setLoaded(null);setVerification(null);
+  discardEvidence(fileRef.current);fileRef.current=null;
   setFile(null);setConsent(false);setError("");
   void refresh(ac.signal);return()=>ac.abort();
  },[refresh,revision]);
@@ -537,8 +544,12 @@ export function NativeDentistPhase20({clinicId,membershipId,locale,request}:{cli
   }catch{setError(t.network)}finally{setBusy(false)}
  };
  const choose=async()=>{
-  try{setError("");setFile(await pickClinicEvidence(CREDENTIAL_MAX_BYTES));setConsent(false)}
-  catch{setFile(null);setError(t.uploadError)}
+  try{
+   setError("");const picked=await pickClinicEvidence(CREDENTIAL_MAX_BYTES);
+   discardEvidence(fileRef.current);fileRef.current=picked;
+   setFile(picked);setConsent(false);
+  }catch{discardEvidence(fileRef.current);fileRef.current=null;
+   setFile(null);setError(t.uploadError)}
  };
  const send=async()=>{
   if(!loaded?.draft?.professionalLicense||!file||!consent||busy)return;
@@ -553,7 +564,8 @@ export function NativeDentistPhase20({clinicId,membershipId,locale,request}:{cli
       credentialType:credentialType.trim(),credentialNumber:credentialNumber.trim(),
       validUntil,attested:true,evidence:credentialEvidence(file)
      });
-     setSuccess(t.credentialSent);setFile(null);setConsent(false);setRevision(x=>x+1);
+     setSuccess(t.credentialSent);discardEvidence(fileRef.current);
+     fileRef.current=null;setFile(null);setConsent(false);setRevision(x=>x+1);
     }catch{setError(t.network)}finally{setBusy(false)}
    })()}}
   ]);
