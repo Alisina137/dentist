@@ -5,6 +5,8 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
+import {NativeClinicPhase20,NativeDentistPhase20,NativeClinicTeamPhase20,
+ NativeInviteAcceptance} from "./native-clinic-phase20";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -185,7 +187,7 @@ const i18n={
  }
 } as const;
 
-type JsonMethod="GET"|"POST";
+type JsonMethod="GET"|"POST"|"PATCH";
 async function clinicRequest<T>(path:string,method:JsonMethod="GET",
  body?:unknown,token?:string|null,signal?:AbortSignal):Promise<{data:T;headers:Headers}>{
  if(!API)throw new ApiError(0,"API_NOT_CONFIGURED");
@@ -275,6 +277,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const [planId,setPlanId]=useState("");
  const [draft,setDraft]=useState<ClinicDraft>({...blankClinicDraft});
  const [stage,setStage]=useState(0);
+ const [creatingNew,setCreatingNew]=useState(false);
  const [summary,setSummary]=useState<ClinicOperations|null>(null);
  const [appointments,setAppointments]=useState<ClinicAppointments|null>(null);
  const [dataIssue,setDataIssue]=useState(false),[working,setWorking]=useState(false);
@@ -285,7 +288,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const clearSession=useCallback(async()=>{
   generation.current++;tokenRef.current=null;
   setToken(null);setContext(null);setSelected(null);setRecords([]);
-  setSummary(null);setAppointments(null);setPassword("");
+  setSummary(null);setAppointments(null);setPassword("");setCreatingNew(false);
   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
  },[]);
 
@@ -442,7 +445,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    if(!response.data?.clinic?.id)throw Error("INVALID_CREATED_CLINIC");
    await refreshSession(token);
    setSelected(response.data.clinic.id);
-   setTab("overview");setStage(0);
+   setTab("onboard");setStage(0);setCreatingNew(false);
    setMessage(t.saved);
   }catch(e){
    setError(e instanceof ApiError&&e.status===409?
