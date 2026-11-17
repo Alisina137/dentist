@@ -132,7 +132,7 @@ test("error messages distinguish missing URL, ngrok HTML and unavailable backend
   'apiUnavailable:"د دندان‌لینک سرور اوس ځواب',
   'if(code==="API_NOT_CONFIGURED")',
   'if(["API_NON_JSON_RESPONSE","API_INVALID_JSON_RESPONSE","SIGNUP_RESPONSE_INVALID"].includes(code))',
-  'if(["SERVER_UNAVAILABLE","API_UNAVAILABLE"].includes(code)||error.status>=500)'
+  'if(["SERVER_UNAVAILABLE","API_UNAVAILABLE"].includes(code))'
  ])assert.ok(errors.includes(value),value);
  assert.ok(!errors.includes('["NETWORK_UNAVAILABLE","API_NOT_CONFIGURED","HTTPS_REQUIRED"]'));
 });
