@@ -1147,7 +1147,7 @@ function Files({space,patientId}:{space:Space;patientId:string}){
     !visible.length?<div className="clinic-phase11-empty" role="status">
      <CareIcon name="file" size={25}/><p>{!allFiles.length&&!search?t("noFiles"):t("documentsEmpty")}</p>
      {(search||kind!=="all")&&<button type="button" className="btn btn-secondary"
-      onClick={()=>{setSearch("");setKind("all");setPage(1);}}>{t("documentsClear")}</button>
+      onClick={()=>{setSearch("");setKind("all");setPage(1);}}>{t("documentsClear")}</button>}
     </div>:
     <div className="phase07-rows clinic-phase11-file-list">
      {visible.map(f=><article className="phase07-visit-row clinic-phase11-file-card" key={f.id}>
