@@ -229,7 +229,7 @@ test("Clinic Phase 12: billing and receipt screens disclose bounded server windo
   'phase10-printable'
  ])assert.ok(ui.includes(marker),marker);
  for(const marker of [
-  'ORDER BY i.created_at DESC LIMIT 400',
+  'ORDER BY i.created_at DESC,i.id DESC LIMIT 400',
   'ORDER BY i.created_at DESC LIMIT 150',
   'ORDER BY e.created_at DESC,e.id DESC LIMIT 200',
   'ORDER BY e.created_at DESC,e.id DESC LIMIT 100',
