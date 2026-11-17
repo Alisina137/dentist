@@ -539,7 +539,7 @@ function StaffReviewDialog({title,description,checked,onChecked,onCancel,onConfi
 function TeamHub({ctx,space}:{ctx:Context,space:Space}){
  const {t}=useLang();
  const [tab,setTab]=useState<"team"|"dentists"|"invitations">(()=>{
-  return staffTab(new URLSearchParams(location.search).get("tab"));
+  return typeof window==="undefined"?"team":staffTab(new URLSearchParams(window.location.search).get("tab"));
  });
  useEffect(()=>{
   setTab(staffTab(new URLSearchParams(location.search).get("tab")));
