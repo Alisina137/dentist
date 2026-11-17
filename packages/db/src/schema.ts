@@ -103,6 +103,7 @@ export const clinic = pgTable("clinics", {
   phone: text("phone").notNull(),
   email: text("email").notNull(),
   licenseNumber: text("license_number"),
+  plannedDentistCount: integer("planned_dentist_count").notNull().default(1),
   timezone: text("timezone").notNull().default("Asia/Kabul"),
   status: text("status").notNull().default("draft"),
   selectedPlanId: text("selected_plan_id").references(() => planVersion.id),
