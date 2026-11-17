@@ -336,8 +336,8 @@ function useWords(){
    catch{return String(value).slice(0,10);}};
  return {t,date,money,lang};
 }
-async function api(path:string,method="GET",body?:unknown):Promise<any>{
- const res=await fetch(API+"/v1/billing"+path,{method,credentials:"include",cache:"no-store",
+async function api(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const res=await fetch(API+"/v1/billing"+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await res.json().catch(()=>({}));
@@ -354,10 +354,14 @@ function useLoad(path:string|null){
  const refresh=()=>setSeq(x=>x+1);
  useEffect(()=>{
   if(!path){setSnapshot({path:null,data:null,error:""});return;}
-  let active=true;setSnapshot({path,data:null,error:""});
-  api(path).then(x=>{if(active)setSnapshot({path,data:x,error:""});})
-   .catch(e=>{if(active)setSnapshot({path,data:null,error:e.message||"NETWORK_ERROR"});});
-  return()=>{active=false;};
+  const controller=new AbortController();
+  setSnapshot({path,data:null,error:""});
+  api(path,"GET",undefined,controller.signal)
+   .then(x=>{if(!controller.signal.aborted)setSnapshot({path,data:x,error:""});})
+   .catch(e=>{if(!controller.signal.aborted)setSnapshot({
+    path,data:null,error:e instanceof Error?e.message:"NETWORK_ERROR"
+   });});
+  return()=>controller.abort();
  },[path,seq]);
  return {data:snapshot.path===path?snapshot.data:null,
   error:snapshot.path===path?snapshot.error:"",refresh};
@@ -428,10 +432,10 @@ export function FinancePortal({view}:{view:"home"|"invoice"|"receipt"|"patient"}
  const invoiceId=invIndex>=0?segments[invIndex+1]||"":"";
  const paymentId=entryIndex>=0?segments[entryIndex+1]||"":"";
  return <Shell ctx={ctx} space={space} active={view==="patient"?"patients":"finance"}>
-  <div className="phase10-workspace">
-   <header className="phase10-header"><div><span className="phase10-eyebrow">DANDANLINK / {space.clinicName} / {t("cardLabel")}</span>
-    <h1>{view==="patient"?t("patientBilling"):view==="receipt"?t("receipt"):view==="invoice"?t("invoice"):t("finance")}</h1>
-    <p>{t("tag")}</p></div>
+  <div className="phase10-workspace clinic-phase12-workspace">
+   <header className="phase10-header clinic-phase12-page-header"><div><span className="phase10-eyebrow">DANDANLINK / {space.clinicName} / {t("cardLabel")}</span>
+    <h1>{view==="patient"?t("patientBilling"):view==="receipt"?t("receipt"):view==="invoice"?t("invoice"):t("financeWorkspace")}</h1>
+    <p>{view==="home"?t("financeIntro"):t("tag")}</p></div>
     <div className="phase10-head-actions">
      <a className="btn btn-secondary" href={financeHref(space.clinicId)}>{t("finance")} ↗</a>
      {view==="patient"&&<a className="btn btn-secondary" href={"/clinic/patients/"+pid+"?clinic="+encodeURIComponent(space.clinicId)}>
@@ -441,30 +445,61 @@ export function FinancePortal({view}:{view:"home"|"invoice"|"receipt"|"patient"}
     view==="invoice"?<InvoiceDetail space={space} id={invoiceId}/>:
     view==="receipt"?<Receipt space={space} id={paymentId}/>:
     <PatientBilling space={space} patientId={pid}/>}
-   <p className="phase10-footer">{t("clinicianHidden")} · {t("patientOnly")} · {t("noAuto")}</p>
+   <p className="phase10-footer clinic-phase12-footer">
+    <CareIcon name="shield-check" size={16}/>
+    {t("clinicianHidden")} · {t("patientOnly")} · {t("noAuto")}</p>
   </div>
  </Shell>;
 }
 function FinanceHome({space}:{space:Space}){
  const {t}=useWords();
  const canOverview=["owner","manager","cashier"].includes(space.role);
- const [tab,setTab]=useState<string>(()=>{
-  const x=new URLSearchParams(location.search).get("tab");
-  return x&&["overview","invoices","payments","balances","expenses"].includes(x)&&(canOverview||x==="invoices")?
-   x:canOverview?"overview":"invoices";
+ const [tab,setTab]=useState<ClinicFinanceTab>(()=>{
+  return clinicFinanceTab(new URLSearchParams(location.search).get("tab"),canOverview);
  });
- return <div className="phase10-stack">
-  <nav className="phase10-tabs" role="tablist" aria-label={t("finance")}>
-   {(canOverview?["overview","invoices","payments","balances","expenses"]:["invoices"]).map(x=>
-    <button type="button" key={x} role="tab" aria-selected={tab===x}
-     onClick={()=>{setTab(x);history.replaceState(null,"",financeHref(space.clinicId,x));}}>
+ function go(next:string){
+  const target=clinicFinanceTab(next,canOverview);
+  setTab(target);
+  history.replaceState(null,"",financeHref(space.clinicId,target));
+ }
+ useEffect(()=>{
+  // Role and clinic selection must not retain a prior tenant's workspace tab.
+  setTab(clinicFinanceTab(new URLSearchParams(location.search).get("tab"),canOverview));
+ },[space.clinicId,canOverview]);
+ const allowed:ClinicFinanceTab[]=canOverview?
+  ["overview","invoices","payments","balances","expenses"]:["invoices"];
+ const icons={overview:"layout-dashboard",invoices:"receipt",payments:"credit-card",
+  balances:"chart-columns",expenses:"receipt"} as const;
+ return <div className="phase10-stack clinic-phase12-finance-home">
+  <section className="card clinic-phase12-hero">
+   <div className="clinic-phase12-hero-copy">
+    <span className="clinic-phase12-eyebrow">
+     <CareIcon name="shield-check" size={16}/>{t("financeManual")}
+    </span>
+    <h2>{t("financeSnapshot")}</h2>
+    <p>{t("financeLimited")}</p>
+   </div>
+   <div className="clinic-phase12-hero-trust">
+    <CareIcon name="clipboard" size={25}/>
+    <span>{t("financePermissions")}</span>
+   </div>
+  </section>
+  <div className="clinic-phase12-subnav-wrap">
+   <nav className="phase10-tabs clinic-phase12-tabs" role="tablist" aria-label={t("finance")}>
+    {allowed.map(x=><button type="button" key={x} role="tab" aria-selected={tab===x}
+     aria-controls="clinic-phase12-finance-panel"
+     onClick={()=>go(x)}>
+     <CareIcon name={x==="expenses"?"receipt":icons[x]} size={17}/>
      {t(x)}</button>)}
-  </nav>
-  {tab==="overview"&&canOverview?<Overview space={space} go={setTab}/>:
-   tab==="payments"&&canOverview?<Payments space={space}/>:
-   tab==="balances"&&canOverview?<Balances space={space}/>:
-   tab==="expenses"&&canOverview?<ExpensePanel space={space}/>:
-   <Invoices space={space}/>}
+   </nav>
+  </div>
+  <div id="clinic-phase12-finance-panel" role="tabpanel" aria-label={t(tab)} className="clinic-phase12-tab-content">
+   {tab==="overview"&&canOverview?<Overview space={space} go={go}/>:
+    tab==="payments"&&canOverview?<Payments space={space}/>:
+    tab==="balances"&&canOverview?<Balances space={space}/>:
+    tab==="expenses"&&canOverview?<ExpensePanel space={space}/>:
+    <Invoices space={space}/>}
+  </div>
  </div>;
 }
 function Overview({space,go}:{space:Space;go:(x:string)=>void}){
