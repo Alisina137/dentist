@@ -546,7 +546,7 @@ export function billingRouter(){
    JOIN auth_users u ON u.id=e.created_by
    WHERE e.id=${id} AND e.clinic_id=${cid(req)} AND e.kind='payment' LIMIT 1`;
   if(!entry)fail(404,"RECEIPT_NOT_FOUND");
-  noStore(res);res.json({receipt:{number:"RCT-"+entry.id.slice(0,8).toUpperCase(),
+  noStore(res);res.json({receipt:{invoiceId:entry.invoice_id,number:"RCT-"+entry.id.slice(0,8).toUpperCase(),
    invoiceNumber:"INV-"+String(entry.invoice_number).padStart(6,"0"),
    amountAfn:entry.amount_afn,method:entry.method,reference:entry.reference,note:entry.note,
    occurredAt:entry.occurred_at,recordedAt:entry.created_at,enteredBy:entry.entered_by,
