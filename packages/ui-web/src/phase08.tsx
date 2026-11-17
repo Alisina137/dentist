@@ -382,6 +382,8 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
  const [observationDate,setObservationDate]=useState(today());
  const [writing,setWriting]=useState(false),[message,setMessage]=useState(""),[failure,setFailure]=useState("");
  const [historyPage,setHistoryPage]=useState(1);
+ const [toothInput,setToothInput]=useState(""),[toothError,setToothError]=useState(false);
+ const [validationTarget,setValidationTarget]=useState<Observation|null>(null);
  const keyRef=useRef("");
  const snapshotUrl=dentition&&context&&(mode!=="visit"||encounterId)?
   base+"/snapshot?"+new URLSearchParams({dentition,mode,
@@ -404,13 +406,22 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
  },[context]);
  useEffect(()=>{
   if(!dentition)return;
-  setSelected(fdi(dentition).all[0]);setHistoryPage(1);setFormCondition("");
+  setSelected(fdi(dentition).all[0]);setToothInput("");setToothError(false);
+  setValidationTarget(null);setHistoryPage(1);setFormCondition("");
   setFormSurfaces([]);setFormNotes("");keyRef.current="";
  },[dentition]);
  function choose(code:string){
-  setSelected(code);setHistoryPage(1);
-  setFormCondition("");setFormSurfaces([]);setFormNotes("");
+  setSelected(code);setHistoryPage(1);setValidationTarget(null);setToothError(false);
+  setToothInput(code);setFormCondition("");setFormSurfaces([]);setFormNotes("");
   setFailure("");setMessage("");keyRef.current="";
+ }
+ function findTooth(event:FormEvent){
+  event.preventDefault();
+  const normalized=toothInput.replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776))
+   .replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).trim();
+  if(!dentition||!fdi(dentition).all.includes(normalized)){setToothError(true);return;}
+  choose(normalized);
+  requestAnimationFrame(()=>document.getElementById("fdi-tooth-"+normalized)?.focus());
  }
  const availableSurfaces=selected&&Number(selected[1])<=3?
   surfaces.filter(s=>s!=="O"):surfaces.filter(s=>s!=="I");
@@ -433,13 +444,20 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
   finally{setWriting(false);}
  }
  async function validate(id:string){
-  if(!confirm(t("validatePrompt")))return;
+  if(!validationTarget||validationTarget.id!==id||writing||!context?.canValidate)return;
   setWriting(true);setFailure("");setMessage("");
   try{
    await api(base+"/observations/"+id+"/validate","POST",{confirmation:"VALIDATE"});
-   refreshSnapshot();refreshObservations();setMessage(t("validated"));
-  }catch(e:any){setFailure(e.message||"CHART_UNAVAILABLE");}finally{setWriting(false);}
+   setValidationTarget(null);refreshSnapshot();refreshObservations();setMessage(t("validated"));
+  }catch(e:any){setFailure(e.message||"CHART_UNAVAILABLE");}
+  finally{setWriting(false);}
  }
+ useEffect(()=>{
+  if(!validationTarget)return;
+  const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"&&!writing)setValidationTarget(null);};
+  document.addEventListener("keydown",escape);
+  return()=>document.removeEventListener("keydown",escape);
+ },[validationTarget,writing]);
  if(ctxError)return <Problem code={ctxError} retry={refreshContext} patientId={patientId} clinicId={space.clinicId}/>;
  if(!context)return <Busy/>;
  const patient=context.patient;
@@ -464,13 +482,26 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
    <span className="phase08-safe-badge">{t("system")} · {t("restricted")}</span>
   </section>
   <nav aria-label={t("patient")} className="phase08-patient-tabs">
-   <a href={patientPath(space.clinicId,patientId)}>{t("overview")}</a>
+   {space.role!=="assistant"&&<a href={patientPath(space.clinicId,patientId)}>{t("overview")}</a>}
    <a href={visitPath(space.clinicId,patientId)}>{t("visits")}</a>
    <a href={chartPath(space.clinicId,patientId)} aria-current="page">{t("chart")}</a>
-   <a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>
+   {space.role!=="assistant"&&<a href={"/clinic/patients/"+patientId+"/treatments?clinic="+encodeURIComponent(space.clinicId)}>{t("treatments")}</a>}
    {["owner","manager"].includes(space.role)&&<a href={"/clinic/patients/"+patientId+"/billing?clinic="+encodeURIComponent(space.clinicId)}>{t("billing")}</a>}
    <a href={filePath(space.clinicId,patientId)}>{t("files")}</a>
   </nav>
+  <section className="clinic-phase10-chart-overview" aria-label={t("workspaceTitle")}>
+   <div className="clinic-phase10-chart-intro">
+    <span className="clinic-phase10-kicker"><CareIcon name="dental" size={18}/>{t("workspaceTitle")}</span>
+    <p>{t("workspaceHelp")}</p>
+   </div>
+   <div className="clinic-phase10-chart-stat-grid">
+    <div><span>{t("chartAllTeeth")}</span><strong>{dentition?chartTeeth.length:"—"}</strong></div>
+    <div><span>{t("recorded")}</span><strong>{snapshot?.observedCount??"—"}</strong></div>
+    <div><span>{t("unrecorded")}</span><strong>{snapshot&&dentition?chartTeeth.length-snapshot.observedCount:"—"}</strong></div>
+   </div>
+   <p className="clinic-phase10-chart-disclaimer">
+    <CareIcon name="shield-check" size={16}/>{t("chartOnlyValidated")}</p>
+  </section>
   <div className="phase08-layout">
    <main className="phase08-main">
     <section className="card phase08-chart-card">
@@ -486,6 +517,15 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
       {(["permanent","primary"] as Dentition[]).map(key=><button key={key} type="button"
        aria-pressed={dentition===key} onClick={()=>setDentition(key)}>{t(key)}</button>)}
      </div>
+     {dentition&&<form className="clinic-phase10-tooth-finder" onSubmit={findTooth}>
+      <label><span>{t("toothFinder")}</span>
+       <input value={toothInput} maxLength={2} inputMode="numeric" dir="ltr"
+        placeholder={t("toothFinderHint")} aria-invalid={toothError}
+        onChange={event=>{setToothInput(event.target.value);setToothError(false);}}/></label>
+      <button type="submit" className="btn btn-secondary">
+       <CareIcon name="search" size={16}/>{t("toothFinderGo")}</button>
+      {toothError&&<p role="alert">{t("toothFinderError")}</p>}
+     </form>}
      {!dentition?<Notice kind="warning">{t("chooseDentitionHelp")}</Notice>:<>
       <div className="phase08-viewtabs" role="tablist" aria-label={t("chart")}>
        {(["current","visit","history"] as Mode[]).map(m=><button key={m} role="tab" type="button"
@@ -515,7 +555,7 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
       </div>
      </>}
     </section>
-    {selected&&<section className="card phase08-history-card">
+    {selected&&<section className="card phase08-history-card" id="clinic-phase10-tooth-history">
      <div className="phase08-section-heading"><div><span className="phase08-kicker">{t("tooth")}</span>
       <h2>{t("historyLabel")} · <bdi dir="ltr">{selected}</bdi></h2>
       <p>{t("viewAsOf")}</p></div><span className="phase08-history-count">{t("system")}</span></div>
@@ -535,7 +575,7 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
          </div>
          {context.canValidate&&ob.status==="draft"&&context.encounters.some((v:Visit)=>v.id===ob.encounterId)&&
           <button type="button" className="btn btn-secondary" disabled={writing}
-           onClick={()=>validate(ob.id)}>{t("validate")} ✓</button>}
+           onClick={()=>{setValidationTarget(ob);setFailure("");}}>{t("validate")} ✓</button>}
         </li>)}</ol>}
      {observations&&<div className="phase08-pagination">
       <button type="button" className="btn btn-secondary" disabled={historyPage<=1}
@@ -555,13 +595,17 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
        {chartTeeth.map(code=><option key={code} value={code}>{code} · {t(Number(code[1])<=3?"anterior":"posterior")}</option>)}</select></label>
      <div className="phase08-current">
       <span className="phase08-kicker">{t("currentFinding")}</span>
-      {selectedObservation?<><strong>{t(selectedObservation.condition)}</strong>
+      {snapshot&&selectedObservation?<><strong>{t(selectedObservation.condition)}</strong>
        <p>{format(selectedObservation.observationDate)} · {selectedObservation.surfaces.map(x=>t(x)).join(", ")}</p>
        <p>{selectedObservation.notes||t("noNote")}</p></>:
-       <p>{t("none")}</p>}
+       <p>{snapshot?t("none"):t("loading")}</p>}
      </div>
+     <a className="clinic-phase10-history-link" href="#clinic-phase10-tooth-history">
+      <CareIcon name="clock" size={16}/>{t("chartShowHistory")}</a>
      <div className="phase08-divider"/>
      <h3>{t("newObservation")}</h3>
+     <p className="clinic-phase10-chart-warning">
+      <CareIcon name="about" size={16}/>{t("chartBeforeSaving")}</p>
      {!options.length?<div className="phase08-stack"><Notice kind="warning">{t("noVisit")}</Notice>
       <a className="btn btn-primary" href={visitPath(space.clinicId,patientId)}>{t("newVisit")} →</a></div>:
       <form className="phase08-form" onSubmit={save}>
@@ -600,5 +644,37 @@ function DentalChart({space,patientId,format}:{space:Space;patientId:string;
     </section>
    </aside>
   </div>
+  {validationTarget&&<div className="clinic-phase10-confirm-backdrop"
+   onMouseDown={event=>{if(event.currentTarget===event.target&&!writing)setValidationTarget(null);}}>
+   <section className="clinic-phase10-confirm-dialog" role="alertdialog" aria-modal="true"
+    aria-labelledby="clinic-phase10-confirm-title">
+    <div className="clinic-phase10-confirm-top">
+     <span className="clinic-phase10-confirm-icon"><CareIcon name="shield-check" size={22}/></span>
+     <button type="button" className="clinic-phase10-confirm-close" disabled={writing}
+      aria-label={t("close")} onClick={()=>setValidationTarget(null)}>
+      <CareIcon name="close" size={19}/></button>
+    </div>
+    <h2 id="clinic-phase10-confirm-title">{t("chartReview")}</h2>
+    <p>{t("chartReviewHint")}</p>
+    <div className="clinic-phase10-confirm-snapshot">
+     <strong>{patient.preferredName} {patient.familyName||""}</strong>
+     <span><bdi dir="ltr">{patient.patientNumber}</bdi> · {t("tooth")} <bdi dir="ltr">{validationTarget.toothCode}</bdi></span>
+     <span>{t("condition")}: {t(validationTarget.condition)}</span>
+     <span>{t("linkedVisit")}: <bdi dir="ltr">{validationTarget.encounterId.slice(0,8)}</bdi></span>
+     <span>{t("date")}: {format(validationTarget.observationDate)}</span>
+     {validationTarget.notes&&<p>{validationTarget.notes}</p>}
+    </div>
+    <p className="clinic-phase10-confirm-safety">
+     <CareIcon name="about" size={16}/>{t("chartReviewSafety")}</p>
+    {failure&&<Problem code={failure}/>}
+    <div className="clinic-phase10-confirm-actions">
+     <button type="button" className="btn btn-secondary" disabled={writing}
+      onClick={()=>{setValidationTarget(null);setFailure("");}}>{t("chartReviewCancel")}</button>
+     <button type="button" className="btn btn-primary" disabled={writing}
+      onClick={()=>void validate(validationTarget.id)}>
+      {writing?t("saving"):t("chartReviewConfirm")}</button>
+    </div>
+   </section>
+  </div>}
  </div>;
 }
