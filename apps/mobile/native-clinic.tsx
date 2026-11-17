@@ -547,7 +547,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
         {c.clinicName}</Text></Pressable>)}
      </ScrollView>
     </Card>}
-    {tab==="onboard"?<View style={{gap:14}}>
+    {tab==="onboard"&&(!active||creatingNew)?<View style={{gap:14}}>
      <View style={st.formHeader}>
       <SectionTitle text={t.noClinic} hint={t.formHelp}/>
       <View style={st.stepBar}>{steps.map((label,index)=>
@@ -610,11 +610,28 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
         onPress={()=>{void saveClinic()}} icon="check"/>}
       </View>
      </Card>
+    </View>:tab==="onboard"&&active?.role==="owner"&&token?
+    <View style={{gap:14}}>
+     <NativeClinicPhase20 key={active.clinicId} clinicId={active.clinicId}
+      locale={locale} token={token} api={API} request={phase20Request}
+      onRefresh={reloadClinic}/>
+     <Action text={t.newClinic} secondary icon="plus"
+      onPress={()=>{setCreatingNew(true);setDraft({...blankClinicDraft});setStage(0)}}/>
+    </View>:
+    tab==="onboard"&&active?<View style={{gap:14}}>
+     <Card><SectionTitle text={t.setupTitle} hint={t.reviewHuman}/>
+      <Text style={st.caption}>{t.statusInfo}</Text>
+      <Action text={t.connectWeb} secondary onPress={()=>openWeb("/clinic/onboarding?clinic="+encodeURIComponent(active.clinicId))}/>
+     </Card>
+     <Action text={t.newClinic} secondary icon="plus"
+      onPress={()=>{setCreatingNew(true);setDraft({...blankClinicDraft});setStage(0)}}/>
     </View>:!active?<View style={{gap:14}}>
      <Card><SectionTitle text={t.noClinic} hint={t.noClinicBody}/>
       <Action text={t.start} onPress={()=>{setTab("onboard");setStage(0);setError("");setMessage("")}} icon="plus"/>
       <Text style={st.caption}>{t.needLogin}</Text>
      </Card>
+     <NativeInviteAcceptance locale={locale} request={phase20Request}
+      onAccepted={reloadClinic}/>
     </View>:tab==="overview"?<View style={{gap:14}}>
      <Card>
       <View style={st.infoRow}><Text style={st.infoLabel}>{t.selected}</Text>
