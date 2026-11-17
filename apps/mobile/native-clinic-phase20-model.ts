@@ -82,7 +82,8 @@ export function dentistDraftPayload(value:DentistDraftNative,version:number|null
   ...(version===null?{}:{draftVersion:version})};
 }
 export type DentistVerification={
- verification:{status:string;currentSubmissionId:string|null;validUntil:string|null};
+ verification:{status:string;currentSubmissionId:string|null;validUntil:string|null;
+  approvedDraftVersion:number|null};
  decisions:{decision:string;reason:string|null;created_at:string}[];
 };
 export const validDate=(value:string)=>{
