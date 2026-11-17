@@ -13,7 +13,8 @@ test("Stage I appointment reads never show another clinic or date's stale result
   'return {data:snapshot.path===path?snapshot.data:null',
   'error:snapshot.path===path?snapshot.error:"",refresh',
   'if(!path){setSnapshot({path:null,data:null,error:""});return;}',
-  'return()=>{live=false;}'
+  'call(path,"GET",undefined,controller.signal)',
+  'return()=>controller.abort();'
  ])assert.ok(schedule.includes(marker),marker);
 });
 test("Stage I validates actual Gregorian ISO days rather than matching date-looking text",()=>{
