@@ -35,7 +35,6 @@ export function clinicReportPreset(preset:ReportPreset,today:string):ReportPerio
  }
  const year=current.getUTCFullYear(),month=current.getUTCMonth();
  if(preset==="month")return {from:isoDay(year,month+1,1),to:today};
- const first=new Date(Date.UTC(year,month-1,1));
  const last=new Date(Date.UTC(year,month,0));
  return {from:last.toISOString().slice(0,10).replace(/-\d\d$/,"-01"),
   to:last.toISOString().slice(0,10)};
