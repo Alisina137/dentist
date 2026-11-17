@@ -1,6 +1,10 @@
 "use client";
 import React,{useEffect,useMemo,useState,type FormEvent} from "react";
-import {usePreferences,InlineAlert} from "./index";
+import {usePreferences,InlineAlert,CareIcon} from "./index";
+import {ClinicOpsBridge} from "./clinic-ops-bridge";
+import {clinicReportPeriodIssue,clinicReportPreset,clinicReportCompletion,clinicReportBars,
+ type ReportPeriod,type ReportPreset} from "./clinic-ops-bridge-model";
+import {clinicCsvRows} from "./clinic-finance-model";
 import {Shell} from "./phase03";
 
 const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000";
@@ -86,9 +90,9 @@ export function useWords(){
  const {locale}=usePreferences();const lang=locale in phrases?locale as Lang:"en";
  return {lang,t:(key:string)=>phrases[lang][key]||phrases.en[key]||key};
 }
-export async function call18<T=any>(path:string,method="GET",body?:unknown):Promise<T>{
+export async function call18<T=any>(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<T>{
  const r=await fetch(API+"/v1"+path,{
-  method,credentials:"include",cache:"no-store",
+  method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"Content-Type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -115,15 +119,11 @@ export function localDay(){
 }
 export function num(v:unknown){return new Intl.NumberFormat("en").format(Number(v)||0);}
 function downloadCsv(name:string,rows:(string|number)[][]){
- const esc=(value:string|number)=>{
-  let s=String(value);
-  if(/^[=+\-@\t\r]/.test(s))s="'"+s;
-  return '"'+s.replace(/"/g,'""')+'"';
- };
- const csv="\ufeff"+rows.map(row=>row.map(esc).join(",")).join("\r\n");
+ const csv=clinicCsvRows(rows);
  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
- const a=document.createElement("a");a.href=url;a.download=name;a.click();
- setTimeout(()=>URL.revokeObjectURL(url),1000);
+ const a=document.createElement("a");
+ a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 type Space={clinicId:string;clinicName:string;membershipId:string;
  role:"owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
