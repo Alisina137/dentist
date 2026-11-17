@@ -4,6 +4,8 @@ import { authClient, InlineAlert, usePreferences, AdminMfaSetup, LocaleControls,
 import { ClinicOperationsOverview } from "./clinic-operations-dashboard";
 import { Phase02Portal } from "./phase02";
 import {usePersistentClinicShell,useClinicWorkspaceSession} from "./clinic-shell-context";
+import {staffTab,staffMayInvite,staffAssignableRoles,staffEmail,staffFiltered,
+ staffPage,staffStats,staffMayManage,type StaffEntry,type StaffRole,type StaffState} from "./clinic-staff-model";
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;
   membershipId:string;role:Role;clinicianEnabled:boolean;capabilities:string[]};
@@ -158,9 +160,110 @@ const labels:Record<string,Record<string,string>>={
   unpaid:"د پلان ظرفیت د بلنې تر مخه کتل کېږي."
  }
 };
+const phase13Words:Record<string,Record<string,string>>={
+ en:{
+  teamWorkspace:"People & access",teamIntro:"Manage your clinic's real staff memberships, clinician drafts and invitation lifecycle.",
+  activeMembers:"Active staff",suspendedMembers:"Suspended",clinicalTeam:"Active clinicians",
+  teamSearch:"Search members",teamSearchHint:"Name, email or role",teamRoleFilter:"Role filter",
+  teamCount:"Showing",teamOf:"of",teamMembers:"members",teamReset:"Clear filters",
+  teamEmpty:"No staff matches these filters.",teamRefresh:"Refresh staff",
+  teamPermissions:"Role permissions are checked by the server for every action.",
+  teamLimit:"Only members of the selected clinic appear here. Nothing is sent to patients.",
+  teamOpen:"Review membership",teamAllRoles:"All roles",teamPage:"Staff directory pages",
+  invitationSafety:"Invitation grants no access until accepted by a verified account.",
+  invitationReview:"Review staff invitation",invitationReviewNote:"Confirm the recipient, clinic and role before sending. The recipient must accept the invitation.",
+  invitationReviewCheck:"I checked the email address, clinic and intended role.",
+  invitationConfirm:"Send verified invitation",invitationLimit:"Latest 100 invitations from the selected clinic",
+  invitationEmail:"Invitee email",invitationRole:"Intended role",invitationExpires:"Expires in 7 days",
+  invitationRevokeReview:"Review invitation revocation",invitationRevokeNote:"The invitation will be invalidated. This does not delete an accepted membership.",
+  invitationRevokeCheck:"I verified the invitation recipient and revocation reason.",
+  invitationsSummary:"Invitation history",invitationNoAuto:"Staff seats and email delivery are checked by the server.",
+  invitesSearch:"Search invitations",invitesSearchHint:"Email or role",
+  editStaff:"Membership actions",staffReviewTitle:"Review staff access change",
+  staffReviewNote:"Confirm the member, clinic, reason and requested action. Staff sessions may be revoked on all devices.",
+  staffReviewCheck:"I verified the staff identity and the consequences of this action.",
+  staffReviewConfirm:"Confirm staff action",staffChanged:"Change requires a reason and permission. The owner and your own membership are protected.",
+  staffPersonal:"Member profile",staffClinicianNote:"Professional details are private drafts, not public verification.",
+  securitySummary:"Clinic access oversight",securityReadOnly:"Security activity is audit history, not an editable access grant.",
+  securityEvents:"Recent audit events (latest 60)",securityMemberCount:"Visible memberships",securityNoAuto:"Actions here never expose patient files.",
+  securitySessionHint:"These are sessions for your own account, not every staff member's devices.",
+  securityReasonHint:"At least 5 characters. All sessions for your account will be ended.",
+  securityActionReview:"Review sign-out of your devices",
+  securityActionCheck:"I understand all my own sessions will be revoked.",
+  modalCancel:"Keep editing",modalReason:"Documented reason",modalExpiry:"Invitation expiry",
+  modalScope:"Selected clinic",modalMember:"Staff member",modalImpact:"Access impact",
+  modalClose:"Close review",modified:"Modified",pendingStatus:"Pending invitations"
+ },
+ "fa-AF":{
+  teamWorkspace:"کارمندان و دسترسی",teamIntro:"عضویت‌های واقعی کارمندان، پیش‌نویس داکتران و دعوت‌ها را مدیریت کنید.",
+  activeMembers:"کارمندان فعال",suspendedMembers:"تعلیق‌شده",clinicalTeam:"داکتران فعال",
+  teamSearch:"جستجوی کارمندان",teamSearchHint:"نام، ایمیل یا نقش",teamRoleFilter:"فیلتر نقش",
+  teamCount:"نمایش",teamOf:"از",teamMembers:"کارمند",teamReset:"پاک‌کردن فیلتر",
+  teamEmpty:"کارمندی در این فیلتر یافت نشد.",teamRefresh:"تازه‌سازی کارمندان",
+  teamPermissions:"صلاحیت هر عمل توسط سرور بررسی می‌شود.",
+  teamLimit:"فقط کارمندان کلینیک انتخاب‌شده نمایش داده می‌شوند؛ به مریضان ارسال نمی‌شود.",
+  teamOpen:"بررسی عضویت",teamAllRoles:"تمام نقش‌ها",teamPage:"صفحات کارمندان",
+  invitationSafety:"دعوت تا پذیرش حساب تأییدشده دسترسی نمی‌دهد.",
+  invitationReview:"بررسی دعوت کارمند",invitationReviewNote:"پیش از ارسال، گیرنده، کلینیک و نقش را بررسی کنید؛ گیرنده باید دعوت را بپذیرد.",
+  invitationReviewCheck:"ایمیل، کلینیک و نقش را بررسی کرده‌ام.",
+  invitationConfirm:"ارسال دعوت تأییدشده",invitationLimit:"آخرین ۱۰۰ دعوت از کلینیک انتخاب‌شده",
+  invitationEmail:"ایمیل گیرنده",invitationRole:"نقش مورد نظر",invitationExpires:"انقضا پس از ۷ روز",
+  invitationRevokeReview:"بررسی لغو دعوت",invitationRevokeNote:"دعوت باطل می‌شود؛ عضویت پذیرفته‌شده حذف نمی‌گردد.",
+  invitationRevokeCheck:"گیرنده و دلیل لغو را بررسی کردم.",
+  invitationsSummary:"تاریخچۀ دعوت‌ها",invitationNoAuto:"ظرفیت کارمندان و ارسال ایمیل توسط سرور بررسی می‌شود.",
+  invitesSearch:"جستجوی دعوت‌ها",invitesSearchHint:"ایمیل یا نقش",
+  editStaff:"اقدامات عضویت",staffReviewTitle:"بررسی تغییر دسترسی کارمند",
+  staffReviewNote:"کارمند، کلینیک، دلیل و عمل را بررسی کنید؛ نشست‌ها ممکن است در تمام دستگاه‌ها پایان یابند.",
+  staffReviewCheck:"هویت کارمند و پیامدهای این عمل را بررسی کرده‌ام.",
+  staffReviewConfirm:"تأیید تغییر دسترسی",staffChanged:"تغییر نیاز به دلیل و اجازه دارد؛ مالک و عضویت خودتان محافظت می‌شوند.",
+  staffPersonal:"پروفایل عضویت",staffClinicianNote:"معلومات مسلکی فقط پیش‌نویس خصوصی است، نه تأیید عمومی.",
+  securitySummary:"نظارت دسترسی کلینیک",securityReadOnly:"فعالیت‌های امنیتی تاریخچۀ حسابرسی هستند، نه مجوز قابل ویرایش.",
+  securityEvents:"آخرین ۶۰ رویداد",securityMemberCount:"عضویت‌های قابل مشاهده",securityNoAuto:"در این قسمت فایل مریضان نشر نمی‌شود.",
+  securitySessionHint:"این‌ها نشست‌های حساب خود شما اند، نه دستگاه‌های تمام کارمندان.",
+  securityReasonHint:"حداقل ۵ حرف؛ تمام نشست‌های حساب شما پایان می‌یابند.",
+  securityActionReview:"بررسی خروج از تمام دستگاه‌های خود",
+  securityActionCheck:"می‌دانم تمام نشست‌های خودم پایان می‌یابد.",
+  modalCancel:"ادامه ویرایش",modalReason:"دلیل ثبت‌شده",modalExpiry:"انقضای دعوت",
+  modalScope:"کلینیک انتخاب‌شده",modalMember:"کارمند",modalImpact:"تأثیر بر دسترسی",
+  modalClose:"بستن بررسی",modified:"تغییر یافته",pendingStatus:"دعوت‌های در انتظار"
+ },
+ "ps-AF":{
+  teamWorkspace:"کارکوونکي او لاسرسی",teamIntro:"د کلینیک رښتیني کارکوونکي، د ډاکټرانو مسودې او بلنې سمبال کړئ.",
+  activeMembers:"فعال کارکوونکي",suspendedMembers:"ځنډول شوي",clinicalTeam:"فعال ډاکټران",
+  teamSearch:"کارکوونکي ولټوئ",teamSearchHint:"نوم، ایمیل یا دنده",teamRoleFilter:"د دندې چاڼ",
+  teamCount:"ښودل",teamOf:"له",teamMembers:"کارکوونکي",teamReset:"چاڼ پاک کړئ",
+  teamEmpty:"په دې چاڼ کې کارکوونکی نشته.",teamRefresh:"کارکوونکي تازه کړئ",
+  teamPermissions:"هره کړنه د سرور په اجازه اجرا کېږي.",
+  teamLimit:"یوازې د ټاکل شوي کلینیک کارکوونکي ښکاري؛ ناروغانو ته نه استول کېږي.",
+  teamOpen:"غړیتوب وګورئ",teamAllRoles:"ټولې دندې",teamPage:"د کارکوونکو پاڼې",
+  invitationSafety:"تر منل شوې تایید شوې بلنې مخکې لاسرسی نه ورکول کېږي.",
+  invitationReview:"د کارکوونکي بلنه وګورئ",invitationReviewNote:"تر استولو مخکې برېښنالیک، کلینیک او دنده وګورئ؛ بلنه باید ومنل شي.",
+  invitationReviewCheck:"برېښنالیک، کلینیک او دنده مې تایید کړه.",
+  invitationConfirm:"تایید شوې بلنه واستوئ",invitationLimit:"د ټاکل شوي کلینیک وروستۍ ۱۰۰ بلنې",
+  invitationEmail:"د بلل شوي برېښنالیک",invitationRole:"غوره شوې دنده",invitationExpires:"په ۷ ورځو کې پای",
+  invitationRevokeReview:"د بلنې لغوه کول وګورئ",invitationRevokeNote:"بلنه باطله کېږي؛ منل شوی غړیتوب نه پاکېږي.",
+  invitationRevokeCheck:"د بلنې اخیستونکی او دلیل مې تایید کړل.",
+  invitationsSummary:"د بلنو تاریخچه",invitationNoAuto:"د کارکوونکو ظرفیت او ایمیل استول سرور تاییدوي.",
+  invitesSearch:"بلنې ولټوئ",invitesSearchHint:"برېښنالیک یا دنده",
+  editStaff:"د غړیتوب چارې",staffReviewTitle:"د کارکوونکي د لاسرسي بدلون وګورئ",
+  staffReviewNote:"کارکوونکی، کلینیک، دلیل او عمل وګورئ؛ ناستې د ټولو وسایلو څخه بندېدای شي.",
+  staffReviewCheck:"د کارکوونکي پېژندنه او د دې عمل پایلې مې تایید کړې.",
+  staffReviewConfirm:"د لاسرسي بدلون تایید",staffChanged:"بدلون دلیل او اجازه غواړي؛ خاوند او ستاسو غړیتوب خوندي دي.",
+  staffPersonal:"د کارکوونکي پروفایل",staffClinicianNote:"مسلکي معلومات شخصي مسودې دي، عام تایید نه دی.",
+  securitySummary:"د کلینیک لاسرسي څارنه",securityReadOnly:"امنیتي پېښې د پلټنې تاریخ دي، د سمون اجازه نه ده.",
+  securityEvents:"وروستۍ ۶۰ پېښې",securityMemberCount:"ښکاره غړیتوبونه",securityNoAuto:"د ناروغانو فایلونه نه خپرېږي.",
+  securitySessionHint:"دا ستاسو خپل حساب ناستې دي، نه د ټولو کارکوونکو وسایل.",
+  securityReasonHint:"لږ تر لږه ۵ توري؛ ستاسو ټولې ناستې پای ته رسېږي.",
+  securityActionReview:"له خپلو ټولو وسیلو د وتلو کتنه",
+  securityActionCheck:"پوهېږم ټولې خپلې ناستې بندېږي.",
+  modalCancel:"سمون ته ستنېدل",modalReason:"ثبت شوی دلیل",modalExpiry:"د بلنې پای",
+  modalScope:"ټاکل شوی کلینیک",modalMember:"کارکوونکی",modalImpact:"پر لاسرسي اغېز",
+  modalClose:"کتنه بنده کړئ",modified:"بدل شوی",pendingStatus:"نا منل شوې بلنې"
+ }
+};
 function useLang(){
  const {locale,calendar}=usePreferences();
- const t=(key:string)=>labels[locale]?.[key]||labels.en[key]||key;
+ const t=(key:string)=>phase13Words[locale]?.[key]||labels[locale]?.[key]||phase13Words.en[key]||labels.en[key]||key;
  const date=(v:unknown)=>v?new Intl.DateTimeFormat(locale,{calendar:calendar==="solar_hijri"?"persian":"gregory",
    timeZone:"Asia/Kabul",year:"numeric",month:"short",day:"numeric"}).format(new Date(String(v))):"—";
  return {t,date,locale};
