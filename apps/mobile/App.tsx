@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Alert,BackHandler} from "react-native";
 import {NativeAuthProvider,useNativeAuth,type NativeAccount} from "./native-auth";
+import {nativeApiHeaders,nativeJsonResponse,nativeIsDandanlinkStatus} from "./api-transport";
 import {NativeAppointmentDetails,NativeNextAppointment} from "./native-journeys";
 import {patientError} from "./patient-errors";
 import {patientTheme} from "./patient-theme";
@@ -333,9 +334,10 @@ function money(amount:number,locale:Language){
 }
 async function fetchPublic<T>(path:string,signal?:AbortSignal):Promise<T>{
  if(!API)throw new Error("API_NOT_CONFIGURED");
- const response=await fetch(API+"/v1/discovery"+path,{signal,headers:{Accept:"application/json"}});
- if(!response.ok)throw new Error(response.status===404?"PROFILE_UNAVAILABLE":"SERVICE_UNAVAILABLE");
- return response.json() as Promise<T>;
+ const response=await fetch(API+"/v1/discovery"+path,{signal,
+  headers:nativeApiHeaders(API)});
+ if(response.status===404)throw new Error("PROFILE_UNAVAILABLE");
+ return nativeJsonResponse<T>(response);
 }
 function usePublic<T>(path:string|null):Remote<T>{
  // Bind every public result to its current filters and location; a stale clinic
@@ -1299,8 +1301,10 @@ function PatientApp(){
   setChecking(true);setConnection("checking");
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
   try{
-   const response=await fetch(API+"/v1/public/status",{signal:controller.signal});
-   if(!response.ok)throw Error("status");
+   const response=await fetch(API+"/v1/public/status",{
+    signal:controller.signal,headers:nativeApiHeaders(API)});
+   const body=await nativeJsonResponse<unknown>(response);
+   if(!nativeIsDandanlinkStatus(body))throw Error("INVALID_SERVER");
    setConnection("connected");
   }catch{setConnection("offline")}finally{clearTimeout(timer);setChecking(false)}
  },[]);
