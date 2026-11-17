@@ -15,6 +15,7 @@ import "./clinic-staff-settings.css";
 import "./clinic-cross-workspaces.css";
 import "./clinic-quality.css";
 import "./clinic-release-hardening.css";
+import "./clinic-pilot-readiness.css";
 
 // Next App Router preserves the clinic sidebar, header and clinic selector
 // while only the active page segment changes.

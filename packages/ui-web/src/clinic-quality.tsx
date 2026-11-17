@@ -3,6 +3,8 @@ import React,{useEffect,useState} from "react";
 import {CareIcon,usePreferences,InlineAlert} from "./index";
 import {useClinicWorkspaceSession} from "./clinic-shell-context";
 import {ClinicLoadingState} from "./clinic-feedback";
+import {pilotSignal,pilotReviewControls,pilotControlLabel,pilotAuditSignal,
+ type PilotSignal} from "./clinic-pilot-readiness-model";
 import {clinicQualityChecks,clinicQualitySummary,clinicQualityOverview,clinicQualityStatus,
  clinicQualityPayloadValid,
  type QualitySnapshot,type QualityCheck,type OperationSummary,
@@ -55,6 +57,19 @@ const words={
   pending:"Human review pending",
   links:"Related workspaces",calendar:"Calendar",notifications:"Notification status",
   finance:"Finance",security:"Security & access",reports:"Reports",
+  pilotGate:"Healthcare pilot release boundary",pilotGateHelp:"This is a read-only signal from the current API and the full independent evidence checklist. No control can be approved from this screen.",
+  pilotBlocked:"NO-GO — protected production writes remain blocked.",
+  pilotUnknown:"Unverified — unable to confirm the production release switch.",
+  pilotMarked:"Operator marked enabled — independent signed evidence is still required.",
+  pilotPending:"Awaiting independent signed evidence",pilotCount:"External signoffs needed",
+  pilotNoAction:"Do not enable release flags just to make the application work.",
+  pilotWorksheet:"Open pilot operator worksheet",pilotData:"No clinical or patient details are shown.",
+  audit:"Audit coverage",auditHelp:"Latest 60 clinic-scoped audit records from the server, not the entire history.",
+  auditEvents:"Recent audit events",auditSuccess:"Recorded success",auditFailure:"Other outcomes",
+  auditLatest:"Latest audit timestamp",auditUnverified:"Audit feed unavailable or invalid. Review security settings.",
+  auditWarning:"A count is not proof of complete logging, retention, tamper resistance or monitoring.",
+  auditLink:"Inspect security and access log",auditEmpty:"No events in the returned window.",
+  pilotRefresh:"Recheck pilot signal",
   login:"Sign in to clinic",accessHelp:"The clinic role must be confirmed by the server."
  },
  "fa-AF":{
@@ -98,6 +113,19 @@ const words={
   pending:"در انتظار تأیید انسانی",
   links:"بخش‌های مرتبط",calendar:"تقویم",notifications:"حالت ارسال",
   finance:"مالی",security:"امنیت و دسترسی",reports:"گزارش‌ها",
+  pilotGate:"مرز مجوز پایلوت خدمات صحی",pilotGateHelp:"این فقط وضعیت خواندنی سرور و فهرست شواهد مستقل است. از این صفحه هیچ تأییدی ثبت نمی‌شود.",
+  pilotBlocked:"اجازۀ راه‌اندازی وجود ندارد — تغییرات طبی در تولید مسدود است.",
+  pilotUnknown:"تأیید نشده — وضعیت مجوز انتشار از سرور دریافت نشد.",
+  pilotMarked:"توسط مسئول فعال علامت‌گذاری شده — تأیید مستقل و امضاشده هنوز لازم است.",
+  pilotPending:"در انتظار سند امضاشده و مستقل",pilotCount:"تأییدهای مستقل لازم",
+  pilotNoAction:"برای راه‌اندازی برنامه، مجوزهای انتشار را بدون سند فعال نکنید.",
+  pilotWorksheet:"راهنمای عملیات پایلوت",pilotData:"نام یا معلومات طبی مریضان در اینجا نمایش داده نمی‌شود.",
+  audit:"پوشش حسابرسی",auditHelp:"فقط ۶۰ رویداد اخیر کلینیک از سرور، نه تمام تاریخچه.",
+  auditEvents:"رویدادهای اخیر",auditSuccess:"موفق ثبت‌شده",auditFailure:"دیگر نتایج",
+  auditLatest:"آخرین زمان حسابرسی",auditUnverified:"گزارش حسابرسی موجود یا معتبر نیست؛ تنظیمات امنیت را بررسی کنید.",
+  auditWarning:"شمار رویدادها تضمین ثبت کامل، نگهداری، جلوگیری از تغییر یا نظارت نیست.",
+  auditLink:"بررسی گزارش امنیت و دسترسی",auditEmpty:"رویدادی در دورۀ اخیر نیست.",
+  pilotRefresh:"بررسی دوبارۀ وضعیت پایلوت",
   login:"ورود کلینیک",accessHelp:"نقش کلینیک باید توسط سرور تأیید شود."
  },
  "ps-AF":{
@@ -141,6 +169,19 @@ const words={
   pending:"انساني کتنې ته منتظر",
   links:"اړوند برخې",calendar:"مهالوېش",notifications:"د خبرتیا حالت",
   finance:"مالي چارې",security:"امنیت او لاسرسی",reports:"راپورونه",
+  pilotGate:"د طبي پایلوت د خپرېدو دروازه",pilotGateHelp:"دا یوازې د سرور لوستل کېدونکی حالت او د خپلواکو شواهدو لېست دی؛ دلته هېڅ تایید نه ثبتېږي.",
+  pilotBlocked:"د خپرېدو اجازه نشته — د تولید طبي بدلونونه بند دي.",
+  pilotUnknown:"نه دی تایید شوی — د خپرېدو سویچ حالت نشي کتل کېدای.",
+  pilotMarked:"مسئول فعال نښه کړی — خپلواک لاسلیک شوي شواهد لا اړین دي.",
+  pilotPending:"خپلواک لاسلیک شوي شواهدو ته انتظار",pilotCount:"اړین خپلواک تاییدونه",
+  pilotNoAction:"یوازې د اپ چلولو لپاره د خپرېدو سویچونه مه فعاله کوئ.",
+  pilotWorksheet:"د پایلوت د چلوونکي لارښود",pilotData:"د ناروغ نومونه یا طبي معلومات نه ښکاري.",
+  audit:"د پلټنې پوښښ",auditHelp:"د سرور د کلینیک وروستۍ ۶۰ پېښې، نه ټول تاریخ.",
+  auditEvents:"وروستۍ پلټنې",auditSuccess:"ثبت شوې بریا",auditFailure:"نورې پایلې",
+  auditLatest:"وروستۍ پلټنه",auditUnverified:"د پلټنې معلومات نشته یا ناسم دي؛ امنیتي تنظیمات وګورئ.",
+  auditWarning:"شمارې د بشپړې پلټنې، ساتنې، نه بدلون یا څارنې ثبوت نه دي.",
+  auditLink:"د امنیت او لاسرسي راپور وګورئ",auditEmpty:"په دې وخت کې پېښې نشته.",
+  pilotRefresh:"د پایلوت حالت بیا وګورئ",
   login:"کلینیک ته ننوتل",accessHelp:"د کلینیک رول د سرور له خوا تاییدېږي."
  }
 } as const;
@@ -167,10 +208,13 @@ export function ClinicQualityPortal(){
  const copy=words[locale as keyof typeof words]||words.en;
  const [revision,setRevision]=useState(0);
  const [snapshot,setSnapshot]=useState<Panel|null>(null);
+ const [pilot,setPilot]=useState<{key:string;signal:PilotSignal;
+  loading:boolean;checkedAt:string|null}|null>(null);
  const space=session?.space;
  const cid=space?.clinicId||"";
  const authorized=Boolean(space&&(space.role==="owner"||space.role==="manager"));
  const current=snapshot?.key===cid?snapshot:null;
+ const currentPilot=pilot?.key===cid?pilot:null;
  useEffect(()=>{
   if(!authorized||!cid){setSnapshot(null);return;}
   const controller=new AbortController();
@@ -219,6 +263,27 @@ export function ClinicQualityPortal(){
   }).finally(()=>window.clearTimeout(timeout));
   return()=>{controller.abort();window.clearTimeout(timeout);};
  },[cid,authorized,revision]);
+ useEffect(()=>{
+  if(!authorized||!cid){setPilot(null);return;}
+  const controller=new AbortController();
+  setPilot({key:cid,signal:"unverified",loading:true,checkedAt:null});
+  fetch(API+"/v1/public/status",{
+   signal:controller.signal,cache:"no-store",redirect:"error",
+   headers:{Accept:"application/json"}
+  }).then(async response=>{
+   if(!response.ok||response.headers.get("content-type")?.split(";")[0].trim().toLowerCase()!=="application/json")
+    throw Error("INVALID_PILOT_STATUS");
+   const body=await response.json();
+   if(controller.signal.aborted)return;
+   setPilot({key:cid,signal:pilotSignal(body),loading:false,
+    checkedAt:new Date().toISOString()});
+  }).catch(()=>{
+   if(!controller.signal.aborted)setPilot({
+    key:cid,signal:"unverified",loading:false,checkedAt:null
+   });
+  });
+  return()=>controller.abort();
+ },[cid,authorized,revision]);
  if(!session||!space)return <div className="card panel">
   <InlineAlert kind="warning">{copy.accessHelp}</InlineAlert>
   <a className="btn btn-secondary" href="/clinic">{copy.login}</a>
@@ -229,6 +294,7 @@ export function ClinicQualityPortal(){
  const data=current?.data??{operations:null,staff:null,channels:null,appointments:null};
  const checks=clinicQualityChecks(data,cid);
  const score=clinicQualitySummary(checks),overview=clinicQualityOverview(data);
+ const audit=data.staff?pilotAuditSignal(data.staff):pilotAuditSignal(null);
  const pending=!current||slots.some(slot=>current.state[slot]==="loading");
  const failed=slots.filter(slot=>current&&["auth","forbidden","unavailable"].includes(current.state[slot]));
  const label=(check:QualityCheck)=>copy[check.id];
@@ -251,6 +317,35 @@ export function ClinicQualityPortal(){
   <div className="clinic-quality-warning" role="note">
    <CareIcon name="about" size={21}/><p>{copy.notApproval}</p>
   </div>
+  <section className="clinic-phase16-gate" aria-labelledby="clinic-phase16-gate-title">
+   <div className="clinic-phase16-gate-heading">
+    <div><span className="clinic-phase16-eyebrow">
+     <CareIcon name="shield-check" size={17}/>{copy.review}</span>
+     <h2 id="clinic-phase16-gate-title">{copy.pilotGate}</h2>
+     <p>{copy.pilotGateHelp}</p></div>
+    <span className="clinic-phase16-gate-count">
+     {pilotReviewControls.length} · {copy.pilotCount}</span>
+   </div>
+   <div role="status" aria-live="polite"
+    className={"clinic-phase16-gate-signal is-"+(currentPilot?.signal||"unverified")}>
+    <CareIcon name={currentPilot?.signal==="operator_marked_requires_evidence"?
+     "about":"shield-check"} size={20}/>
+    <strong>{currentPilot?.loading?copy.pending:
+     currentPilot?.signal==="blocked"?copy.pilotBlocked:
+     currentPilot?.signal==="operator_marked_requires_evidence"?
+      copy.pilotMarked:copy.pilotUnknown}</strong>
+   </div>
+   <div className="clinic-phase16-review-grid">
+    {pilotReviewControls.map(control=><div className="clinic-phase16-review-control"
+     key={control.id}>
+     <CareIcon name="clock" size={17}/>
+     <div><strong>{pilotControlLabel(control.id,locale)}</strong>
+      <small>{copy.pilotPending}</small></div>
+    </div>)}
+   </div>
+   <p className="clinic-phase16-gate-disclaimer">
+    <CareIcon name="about" size={16}/>{copy.pilotNoAction}</p>
+  </section>
   <section className="clinic-quality-metrics" aria-label={copy.overview}>
    {([
     {label:copy.passed,value:score.passed,icon:"check"},
@@ -314,6 +409,26 @@ export function ClinicQualityPortal(){
      <p className="clinic-quality-signal-hint">{copy.failedHint}</p>
      {current?.syncedAt&&<p className="clinic-quality-synced">
       <CareIcon name="activity" size={15}/>{copy.synced}: {time(current.syncedAt)}</p>}
+    </section>
+    <section className="clinic-quality-panel clinic-phase16-audit-panel">
+     <div className="clinic-quality-panel-head"><div>
+      <h2>{copy.audit}</h2><p>{copy.auditHelp}</p></div>
+      <CareIcon name="shield-check" size={21}/></div>
+     {audit.events===null?<InlineAlert kind="warning">{copy.auditUnverified}</InlineAlert>:
+      <div className="clinic-phase16-audit-metrics">
+       {([
+        [copy.auditEvents,audit.events],
+        [copy.auditSuccess,audit.successful],
+        [copy.auditFailure,audit.failed]
+       ] as const).map(([label,count])=><div key={label}>
+        <strong>{count}</strong><span>{label}</span></div>)}
+      </div>}
+     {audit.mostRecentAt&&<p>{copy.auditLatest}: {time(audit.mostRecentAt)}</p>}
+     {audit.events===0&&<p>{copy.auditEmpty}</p>}
+     <p className="clinic-phase16-audit-disclaimer">{copy.auditWarning}</p>
+     <a className="btn btn-secondary clinic-phase16-audit-link"
+      href={route(cid,"/clinic/settings/security")}>
+      <CareIcon name="arrow" size={16}/>{copy.auditLink}</a>
     </section>
     <section className="clinic-quality-panel">
      <h2>{copy.review}</h2><p>{copy.reviewHelp}</p>

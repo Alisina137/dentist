@@ -1,0 +1,133 @@
+/* Clinic improvement Phase 16: evidence-forward pilot readiness.
+ * Read-only release signals; clinic-scoped layout and RTL-safe controls. */
+.clinic-persistent-shell .clinic-phase16-gate{
+ display:grid;gap:15px;min-width:0;
+ padding:clamp(17px,2.5vw,25px);
+ background:#fff;border:1px solid #d5e8f3;
+ border-radius:17px;box-shadow:0 6px 18px rgba(24,83,116,.06);
+}
+.clinic-persistent-shell .clinic-phase16-gate-heading{
+ display:flex;justify-content:space-between;align-items:start;
+ flex-wrap:wrap;gap:14px;
+}
+.clinic-persistent-shell .clinic-phase16-gate-heading>div{flex:1 1 260px;min-width:0}
+.clinic-persistent-shell .clinic-phase16-eyebrow{
+ display:inline-flex;align-items:center;gap:8px;
+ color:#207ba2;font-size:11px;font-weight:850;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase16-gate-heading h2{
+ font-size:clamp(18px,2.2vw,24px);line-height:1.4;
+ margin:8px 0 7px;color:#173e62;
+}
+.clinic-persistent-shell .clinic-phase16-gate-heading p{
+ color:#648299;font-size:12px;line-height:1.7;margin:0;
+ max-width:840px;
+}
+.clinic-persistent-shell .clinic-phase16-gate-count{
+ display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;
+ padding:9px 12px;border-radius:10px;
+ color:#376b89;background:#eff8ff;border:1px solid #d5e8f3;
+ font-size:11px;font-weight:800;
+}
+.clinic-persistent-shell .clinic-phase16-gate-signal{
+ display:flex;align-items:center;gap:11px;
+ background:#fff5e8;color:#94621f;
+ border:1px solid #ecd2a9;
+ padding:14px 16px;border-radius:11px;
+ font-size:12px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase16-gate-signal svg{flex:0 0 20px}
+.clinic-persistent-shell .clinic-phase16-gate-signal strong{
+ font-weight:850;overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-phase16-gate-signal.is-unverified{
+ background:#f8fafc;color:#5b6b7e;border-color:#d9e5ed;
+}
+.clinic-persistent-shell .clinic-phase16-gate-signal.is-operator_marked_requires_evidence{
+ background:#fff7e5;color:#85531b;border-color:#edce93;
+}
+.clinic-persistent-shell .clinic-phase16-review-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+}
+.clinic-persistent-shell .clinic-phase16-review-control{
+ display:flex;align-items:start;gap:9px;
+ border-radius:12px;border:1px solid #e0e9f1;background:#f9fcff;
+ padding:13px;min-width:0;min-height:88px;
+}
+.clinic-persistent-shell .clinic-phase16-review-control svg{
+ color:#ae7940;flex:0 0 17px;margin-top:1px;
+}
+.clinic-persistent-shell .clinic-phase16-review-control>div{
+ display:grid;gap:5px;min-width:0;
+}
+.clinic-persistent-shell .clinic-phase16-review-control strong{
+ color:#345e77;font-size:11px;line-height:1.55;
+ overflow-wrap:anywhere;
+}
+.clinic-persistent-shell .clinic-phase16-review-control small{
+ color:#a07137;font-size:10px;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase16-gate-disclaimer{
+ display:flex;align-items:start;gap:9px;
+ color:#8c612f;background:#fffaf0;border:1px solid #f0dfbe;
+ padding:11px 13px;border-radius:10px;margin:0;
+ font-size:11px;line-height:1.7;
+}
+.clinic-persistent-shell .clinic-phase16-gate-disclaimer svg{
+ flex:0 0 16px;margin-top:1px;
+}
+.clinic-persistent-shell .clinic-phase16-audit-panel .clinic-quality-panel-head>svg{
+ color:#3883ad;flex-shrink:0;
+}
+.clinic-persistent-shell .clinic-phase16-audit-metrics{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+}
+.clinic-persistent-shell .clinic-phase16-audit-metrics>div{
+ display:grid;gap:6px;min-width:0;
+ background:#f5faff;border:1px solid #deebf4;
+ padding:11px;border-radius:11px;
+}
+.clinic-persistent-shell .clinic-phase16-audit-metrics strong{
+ font-size:18px;color:#204e6c;font-variant-numeric:tabular-nums;
+}
+.clinic-persistent-shell .clinic-phase16-audit-metrics span{
+ font-size:10px;color:#66869b;line-height:1.6;
+}
+.clinic-persistent-shell .clinic-phase16-audit-disclaimer{
+ padding:10px 12px;background:#fff9ed;border:1px solid #efdcbd;
+ border-radius:10px;color:#8e6e40!important;
+}
+.clinic-persistent-shell .clinic-phase16-audit-link{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:42px;gap:8px;text-decoration:none;
+ font-size:11px;
+}
+.clinic-persistent-shell .clinic-phase16-gate :is(a,button):focus-visible,
+.clinic-persistent-shell .clinic-phase16-audit-panel :is(a,button):focus-visible{
+ outline:3px solid #2487b6;outline-offset:3px;
+}
+@media(max-width:1100px){
+ .clinic-persistent-shell .clinic-phase16-review-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+@media(max-width:720px){
+ .clinic-persistent-shell .clinic-phase16-review-grid{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .clinic-phase16-review-control{min-height:auto}
+}
+@media(max-width:380px){
+ .clinic-persistent-shell .clinic-phase16-audit-metrics{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .clinic-persistent-shell .clinic-phase16-gate-count{
+  max-width:100%;white-space:normal;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .clinic-persistent-shell .clinic-phase16-gate *,
+ .clinic-persistent-shell .clinic-phase16-audit-panel *{
+  transition:none!important;animation:none!important;
+ }
+}
