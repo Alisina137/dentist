@@ -255,8 +255,12 @@ function loadDraft(body:NativeClinicReview["clinic"]&Record<string,unknown>):Cli
   plannedDentistCount:String(body.plannedDentistCount||1)
  };
 }
-const todayAfghanistan=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kabul",
- year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replace(/\//g,"-");
+const todayAfghanistan=()=>{
+ const parts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Kabul",
+  year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const get=(key:string)=>parts.find(x=>x.type===key)?.value||"";
+ return get("year")+"-"+get("month")+"-"+get("day");
+};
 
 export function NativeClinicPhase20({clinicId,locale,token,api,request,onRefresh}:{
  clinicId:string;locale:Phase20Locale;token:string;api:string;
@@ -517,7 +521,7 @@ export function NativeDentistPhase20({clinicId,membershipId,locale,request}:{cli
  },[root,credentials,request,membershipId,locale]);
  useEffect(()=>{
   const ac=new AbortController();setLoading(true);setLoaded(null);setVerification(null);
-  setFile(null);setConsent(false);setSuccess("");setError("");
+  setFile(null);setConsent(false);setError("");
   void refresh(ac.signal);return()=>ac.abort();
  },[refresh,revision]);
  const update=(key:keyof DentistDraftNative,value:string)=>
@@ -667,8 +671,8 @@ const s=StyleSheet.create({
   backgroundColor:"#2a5979",padding:9,borderRadius:9,marginTop:4},
  row:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:9},
  title:{fontSize:17,fontWeight:"900",color:"#173b59"},
- label:{color:"#58758a",fontSize:11,fontWeight:"750"},
- value:{color:"#1e405e",fontSize:12,fontWeight:"850",flexShrink:1},
+ label:{color:"#58758a",fontSize:11,fontWeight:"700"},
+ value:{color:"#1e405e",fontSize:12,fontWeight:"800",flexShrink:1},
  body:{fontSize:12,color:"#58758a",lineHeight:20},
  hint:{fontSize:11,color:"#657e90",lineHeight:20},
  good:{fontSize:12,color:"#20714c",fontWeight:"800"},
@@ -700,7 +704,7 @@ const s=StyleSheet.create({
  cell:{borderBottomColor:"#edf2f6",borderBottomWidth:1,flexDirection:"row",
   justifyContent:"space-between",gap:10,paddingVertical:9},
  documentRow:{flexDirection:"row",alignItems:"center",gap:8,flexWrap:"wrap"},
- documentText:{flex:1,fontSize:12,fontWeight:"750",color:"#2d587a",minWidth:80},
+ documentText:{flex:1,fontSize:12,fontWeight:"700",color:"#2d587a",minWidth:80},
  checkRow:{flexDirection:"row",alignItems:"flex-start",gap:9,padding:9,
   borderRadius:10,backgroundColor:"#f4f8fc"},
  checkbox:{width:24,height:24,borderRadius:7,borderWidth:2,borderColor:"#a7bcd0",
