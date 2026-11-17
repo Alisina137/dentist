@@ -915,7 +915,13 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
  const {data,error,reload}=useData(memberId?"/clinics/"+space.clinicId+"/staff/"+memberId:null);
  const [role,setRole]=useState(""),[reason,setReason]=useState("");
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState(""),[notice,setNotice]=useState("");
+ const [review,setReview]=useState<{path:string;body:any;actionName:string}|null>(null),
+  [reviewed,setReviewed]=useState(false);
  const [draft,setDraft]=useState<any>(null);
+ useEffect(()=>{
+  setRole("");setReason("");setProblem("");setNotice("");
+  setReview(null);setReviewed(false);setDraft(null);
+ },[space.clinicId,memberId]);
  useEffect(()=>{
   if(data?.member)setRole(data.member.role);
   if(data?.draft)setDraft(data.draft);
@@ -925,22 +931,48 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
   });
  },[data]);
  async function action(path:string,body:any,destructive=false){
-  if(destructive&&!window.confirm(t("confirm")))return;
+  if(busy)return;
+  if(destructive){
+   if(!data?.canManage||!ctx.mfaEnabled||memberId===space.membershipId||
+    data.member.role==="owner"||reason.trim().length<5)return;
+   const normalized={...body,reason:reason.trim()};
+   setReview({path,body:normalized,actionName:path==="/role"?t("roleChange"):
+    path==="/clinician"?t("clinicalAffiliation"):
+    path==="/force-logout"?t("forceLogout"):t(normalized.action)});
+   setReviewed(false);setProblem("");setNotice("");return;
+  }
   setProblem("");setNotice("");setBusy(true);
   try{
    await api("/clinics/"+space.clinicId+"/staff/"+memberId+path,"POST",body);
    reload();setNotice(t("updateSuccess"));setReason("");
   }catch(e){setProblem((e as Error).message);}finally{setBusy(false);}
  }
+ async function confirmReview(){
+  if(!review||!reviewed||busy||!data?.canManage||!ctx.mfaEnabled||memberId===space.membershipId||
+   data.member.role==="owner")return;
+  const active=review;setBusy(true);setProblem("");setNotice("");
+  try{
+   await api("/clinics/"+space.clinicId+"/staff/"+memberId+active.path,"POST",active.body);
+   setReview(null);setReviewed(false);setReason("");
+   reload();setNotice(t("updateSuccess"));
+  }catch(e){setProblem((e as Error).message);}
+  finally{setBusy(false);}
+ }
+ const closeReview=()=>{if(!busy){setReview(null);setReviewed(false);}};
  if(error)return <ErrorBox error={error} retry={reload}/>;
  if(!data)return <Busy/>;
  const member=data.member;
  const manager=space.role==="manager";
- const options=["dentist","receptionist","assistant","cashier",...(manager?[]:["manager"])];
+ const options=staffAssignableRoles(space.role);
+ const canChange=data.canManage&&staffMayManage(space.role,member.role as StaffRole,
+  memberId===space.membershipId,member.status as StaffState)&&ctx.mfaEnabled;
+ const canChangeRole=canChange&&member.status==="active";
+ const editableOptions=options.filter(value=>value!==member.role);
  return <div className="staff-gap">
   <a className="text-link" href={space.capabilities.includes("staff.read")?
     "/clinic/staff?clinic="+space.clinicId:"/clinic?clinic="+space.clinicId}>{t("back")} ←</a>
-  <section className="card panel"><div className="phase-row"><div>
+  <section className="card panel clinic-phase13-staff-detail-hero"><div className="phase-row"><div>
+    <span className="clinic-phase13-kicker">{t("staffPersonal")}</span>
     <h2>{member.name}</h2><span dir="ltr" className="muted">{member.email}</span></div>
     <Badge value={member.status}/></div>
    <div className="staff-role-summary">
@@ -948,9 +980,10 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
     <div><small className="muted">{t("joinedOn")}</small><strong>{date(member.joinedAt)}</strong></div>
     <div><small className="muted">{t("mfa")}</small><strong>{t(member.mfaEnabled?"on":"off")}</strong></div>
    </div>
-   <Banner>{t("sessionImpact")}</Banner>
+   <Banner>{t("sessionImpact")} {t("staffChanged")}</Banner>
   </section>
-  {data.canManage&&<section className="card panel"><h2>{t("roleChange")}</h2>
+  {data.canManage&&<section className="card panel clinic-phase13-staff-actions"><h2>{t("editStaff")}</h2>
+   <p className="clinic-phase13-inline-note">{t("staffChanged")}</p>
    {!ctx.mfaEnabled?<div><Banner kind="warning">{t("activateMfa")}</Banner>
     <AdminMfaSetup home={typeof window !== "undefined" ? window.location.pathname+window.location.search : "/clinic/staff"}/></div>:<>
     <div className="staff-roles-controls">
@@ -959,16 +992,19 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
       <Field label={t("reason")} value={reason} onChange={setReason} maxLength={300}/>
     </div>
     <div className="phase-actions">
-      <button className="btn btn-primary" disabled={busy||role===member.role||reason.trim().length<5}
-       onClick={()=>action("/role",{role,reason},true)}>{t("change")}</button>
-      {member.status==="active"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+      <button className="btn btn-primary" disabled={busy||!canChangeRole||
+        role===member.role||!options.includes(role as StaffRole)||reason.trim().length<5}
+       onClick={()=>action("/role",{role,reason},true)}>
+       <CareIcon name="edit" size={17}/>{t("change")}</button>
+      {member.status==="active"&&<button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
        onClick={()=>action("/status",{action:"suspend",reason},true)}>{t("suspend")}</button>}
-      {member.status==="suspended"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+      {member.status==="suspended"&&<button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
        onClick={()=>action("/status",{action:"reactivate",reason},true)}>{t("reactivate")}</button>}
-      {member.status!=="revoked"&&<button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+      {member.status!=="revoked"&&<button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
        onClick={()=>action("/status",{action:"revoke",reason},true)}>{t("revoke")}</button>}
-      <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
-       onClick={()=>action("/force-logout",{reason},true)}>{t("forceLogout")}</button>
+      <button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
+       onClick={()=>action("/force-logout",{reason},true)}>
+       <CareIcon name="logout" size={17}/>{t("forceLogout")}</button>
     </div>
     <p className="muted staff-small">{t("ownerSafe")} {t("suspendedInfo")}</p>
    </>}
@@ -976,7 +1012,7 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
   {data.canManage&&space.role==="owner"&&member.role==="manager"&&ctx.mfaEnabled&&
    <section className="card panel"><h2>{t("clinicalAffiliation")}</h2>
     <p className="muted">{t("notPublic")}</p>
-    <button className="btn btn-secondary" disabled={busy||reason.trim().length<5}
+    <button className="btn btn-secondary" disabled={busy||!canChange||reason.trim().length<5}
      onClick={()=>action("/clinician",{enabled:!member.clinicianEnabled,reason},true)}>
      {t(member.clinicianEnabled?"clinicianOff":"clinicianOn")}</button>
     <p className="muted staff-small">{t("roleReason")}: {t("reason")}</p>
@@ -1004,6 +1040,19 @@ function StaffDetail({space,ctx}:{space:Space,ctx:Context}){
    {data.events.map((ev:any,i:number)=><p key={i}>{date(ev.createdAt)} · {ev.action} · {ev.outcome}</p>)}
   </section>}
   {problem&&<Banner kind="error">{problem}</Banner>}{notice&&<Banner kind="success">{notice}</Banner>}
+  {review&&<StaffReviewDialog title={t("staffReviewTitle")}
+   description={t("staffReviewNote")} checked={reviewed}
+   onChecked={setReviewed} onCancel={closeReview}
+   onConfirm={()=>void confirmReview()} busy={busy} confirmText={t("staffReviewConfirm")}>
+   <div><dt>{t("modalScope")}</dt><dd>{space.clinicName}</dd></div>
+   <div><dt>{t("modalMember")}</dt><dd>{member.name}
+    {" · "}<bdi dir="ltr">{member.email}</bdi></dd></div>
+   <div><dt>{t("currentRole")}</dt><dd>{t(member.role)}</dd></div>
+   <div><dt>{t("modalImpact")}</dt><dd>{review.actionName}
+    {review.path==="/role"?" → "+t(review.body.role):""}</dd></div>
+   <div><dt>{t("modalReason")}</dt><dd>{review.body.reason}</dd></div>
+   <div><dt>{t("sessionImpact")}</dt><dd>{t("sessionImpact")}</dd></div>
+  </StaffReviewDialog>}
  </div>;
 }
 export function InvitationAccept(){
