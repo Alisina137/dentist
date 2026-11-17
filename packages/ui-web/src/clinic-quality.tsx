@@ -4,6 +4,7 @@ import {CareIcon,usePreferences,InlineAlert} from "./index";
 import {useClinicWorkspaceSession} from "./clinic-shell-context";
 import {ClinicLoadingState} from "./clinic-feedback";
 import {clinicQualityChecks,clinicQualitySummary,clinicQualityOverview,clinicQualityStatus,
+ clinicQualityPayloadValid,
  type QualitySnapshot,type QualityCheck,type OperationSummary,
  type StaffSecuritySummary,type ChannelSummary,type AppointmentSummary}
  from "./clinic-quality-model";
@@ -184,10 +185,19 @@ export function ClinicQualityPortal(){
    channels:"/v1/booking/clinics/"+prefix+"/notifications",
    appointments:"/v1/appointments/clinics/"+prefix+"/overview"
   };
-  const timeout=window.setTimeout(()=>controller.abort(),12500);
+  const timeout=window.setTimeout(()=>{
+   if(controller.signal.aborted)return;
+   controller.abort();
+   // A timed-out request is unavailable, NOT forever loading.
+   setSnapshot(old=>!old||old.key!==cid?old:{
+    ...old,state:Object.fromEntries(slots.map(key=>[key,
+     old.state[key]==="loading"?"unavailable":old.state[key]])) as Record<Slot,Status>
+   });
+  },12500);
   const checks=slots.map(async slot=>{
    try{
     const payload=await readPrivate<unknown>(paths[slot],controller.signal);
+    if(!clinicQualityPayloadValid(slot,payload))throw new Error("INVALID_PRIVATE_RESULT");
     if(controller.signal.aborted)return;
     setSnapshot(old=>!old||old.key!==cid?old:{
      ...old,data:{...old.data,[slot]:payload},state:{...old.state,[slot]:"ready"}
