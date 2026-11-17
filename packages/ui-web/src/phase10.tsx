@@ -1264,15 +1264,23 @@ function Receipt({space,id}:{space:Space;id:string}){
  if(!data)return <Busy/>;
  const r=data.receipt;
  return <div className="phase10-stack">
-  <div className="phase10-head-actions phase10-no-print"><button type="button" className="btn btn-primary"
-   onClick={()=>window.print()}>{t("printReceipt")}</button>
-   <a className="btn btn-secondary" href={financeHref(space.clinicId,"payments")}>{t("back")}</a>
+  <div className="phase10-head-actions phase10-no-print clinic-phase12-receipt-actions">
+   <button type="button" className="btn btn-primary" onClick={()=>window.print()}>
+    <CareIcon name="file" size={16}/>{t("printReceipt")}</button>
+   {r.invoiceId&&<a className="btn btn-secondary" href={invoiceHref(space.clinicId,r.invoiceId)}>
+    <CareIcon name="receipt" size={16}/>{t("openInvoice")}</a>}
+   <a className="btn btn-secondary" href={financeHref(space.clinicId,"payments")}>
+    <CareIcon name="arrow" size={16}/>{t("financeBack")}</a>
   </div>
-  <article className="card phase10-receipt-paper phase10-printable" aria-label={t("receipt")}>
+  {r.reversed&&<Alert kind="warning">{t("financeReceiptReversed")}</Alert>}
+  <article className={"card phase10-receipt-paper phase10-printable clinic-phase12-receipt-paper"+
+   (r.reversed?" is-reversed":"")} aria-label={t("receipt")}>
    <header><span className="phase10-kicker">DANDANLINK / {t("receipt")}</span>
     <h2>{r.clinicName}</h2><p>{t("receiptNumber")}: <bdi dir="ltr">{r.number}</bdi></p></header>
    <div className="phase10-receipt-amount"><span>{t("amount")}</span>
     <strong><Money amount={r.amountAfn}/></strong><Badge status={r.reversed?"reversed":"recorded"}/></div>
+   {r.reversed&&<p className="clinic-phase12-receipt-warning">
+    <CareIcon name="shield-check" size={18}/>{t("financeReceiptReversed")}</p>}
    <dl className="phase10-receipt-facts">
     <div><dt>{t("invoice")}</dt><dd>{r.invoiceNumber}</dd></div>
     <div><dt>{t("patient")}</dt><dd>{r.patientName} · {r.patientNumber}</dd></div>
