@@ -25,7 +25,7 @@ const newDraft=():Draft=>({title:"",indication:"",expectedSessions:3,durationMin
 type Language="en"|"fa-AF"|"ps-AF";
 const translations:Record<Language,Record<string,string>>={
  en:{
- treatments:"Treatment Plans",billing:"Billing",tagline:"Clinician-led proposals, consent, performed stages and estimates",
+ treatments:"Treatment Plans",page:"Page",billing:"Billing",tagline:"Clinician-led proposals, consent, performed stages and estimates",
  plans:"Plans",newPlan:"New treatment plan",create:"Create draft",draft:"Draft",proposed:"Proposed",
  active:"Accepted / In progress",accepted:"Accepted",in_progress:"In progress",completed:"Completed",
  discontinued:"Discontinued",all:"All",search:"Search by plan title",empty:"No plans match your selection.",
@@ -94,7 +94,7 @@ const translations:Record<Language,Record<string,string>>={
  workspaceFilterHint:"Search applies only to the selected patient and your assigned plans.",
  },
  "fa-AF":{
- treatments:"پلان‌های تداوی",billing:"حساب مریض",tagline:"پلان داکتر، رضایت، مراحل انجام‌شده و برآورد هزینه",
+ treatments:"پلان‌های تداوی",page:"صفحه",billing:"حساب مریض",tagline:"پلان داکتر، رضایت، مراحل انجام‌شده و برآورد هزینه",
  plans:"پلان‌ها",newPlan:"پلان تداوی جدید",create:"ایجاد پیش‌نویس",draft:"پیش‌نویس",proposed:"پیشنهادشده",
  active:"پذیرفته / در جریان",accepted:"پذیرفته‌شده",in_progress:"در جریان",completed:"تکمیل‌شده",
  discontinued:"متوقف‌شده",all:"همه",search:"جستجوی نام پلان",empty:"پلان مطابق پیدا نشد.",
@@ -159,7 +159,7 @@ const translations:Record<Language,Record<string,string>>={
  workspaceFilterHint:"جستجو فقط پلان‌های این مریض و داکتر مربوط را دربر می‌گیرد.",
  },
  "ps-AF":{
- treatments:"د درملنې پلانونه",billing:"د ناروغ حساب",tagline:"د ډاکټر وړاندیزونه، رضایت، پړاوونه او لګښت",
+ treatments:"د درملنې پلانونه",page:"پاڼه",billing:"د ناروغ حساب",tagline:"د ډاکټر وړاندیزونه، رضایت، پړاوونه او لګښت",
  plans:"پلانونه",newPlan:"د درملنې نوی پلان",create:"مسوده جوړول",draft:"مسوده",proposed:"وړاندیز شوی",
  active:"منل شوی / روان",accepted:"منل شوی",in_progress:"روان",completed:"بشپړ",
  discontinued:"درول شوی",all:"ټول",search:"پلان ولټوئ",empty:"داسې پلان نشته.",
