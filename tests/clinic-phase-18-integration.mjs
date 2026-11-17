@@ -3,11 +3,16 @@
  * Uses only test staff/clinic/patient fixtures and logs numeric timings.
  */
 import assert from "node:assert/strict";
-import {request,owner,clinic,date} from "./phase07-fixture.mjs";
 import {pilotLatencyStats} from "../scripts/clinic-pilot-latency.mjs";
 
 assert.equal(process.env.NODE_ENV,"test");
 assert.match(process.env.API_BASE_URL||"http://localhost:4000",/^http:\/\/(?:localhost|127\.0\.0\.1):4000$/);
+
+// Guard before loading the fixture: its module initializes test accounts.
+const testDb=new URL(process.env.DATABASE_URL||"postgresql://invalid/invalid");
+assert.ok(["localhost","127.0.0.1"].includes(testDb.hostname),"DB must be local");
+assert.equal(testDb.pathname,"/dandan_test","Refuse any non-disposable database");
+const {request,owner,clinic,date}=await import("./phase07-fixture.mjs");
 
 const paths=[
  ["SCHEDULE","/v1/appointments/clinics/"+clinic.id+"/calendar?from="+date+"&to="+date],
