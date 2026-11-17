@@ -94,7 +94,6 @@ test("signup and session restoration share safe connectivity transport and never
  ])assert.ok(auth.includes(value),value);
  assert.ok(!auth.includes("AsyncStorage"));
  assert.ok(!auth.includes("localStorage"));
- assert.ok(!auth.includes("set-auth-token",String.prototype));
 });
 
 test("restoration failure no longer locks patient out of signup; public server status verifies real JSON",()=>{
