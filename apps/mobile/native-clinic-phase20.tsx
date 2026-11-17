@@ -266,7 +266,9 @@ export function NativeClinicPhase20({clinicId,locale,token,api,request,onRefresh
  clinicId:string;locale:Phase20Locale;token:string;api:string;
  request:Phase20Request;onRefresh:()=>Promise<void>
 }){
- const t=w[locale];const [detail,setDetail]=useState<NativeClinicReview|null>(null);
+ const t=w[locale];const uploadAbort=useRef(new AbortController());
+ useEffect(()=>()=>uploadAbort.current.abort(),[]);
+ const [detail,setDetail]=useState<NativeClinicReview|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [issue,setIssue]=useState(""),[notice,setNotice]=useState("");
  const [attested,setAttested]=useState(false),[editing,setEditing]=useState(false);
@@ -312,12 +314,14 @@ export function NativeClinicPhase20({clinicId,locale,token,api,request,onRefresh
   try{
    const document=await pickClinicEvidence();
    if(!document)return;
+   if(uploadAbort.current.signal.aborted){discardEvidence(document);return;}
    Alert.alert(t.license,t.uploadConfirm,[
     {text:t.cancel,style:"cancel",onPress:()=>discardEvidence(document)},
     {text:t.confirm,onPress:()=>{void (async()=>{
+     if(uploadAbort.current.signal.aborted){discardEvidence(document);return}
      try{
       await action(async()=>{
-       await uploadClinicLicense(api,clinicId,token,document);
+       await uploadClinicLicense(api,clinicId,token,document,uploadAbort.current.signal);
        setNotice(t.uploadSuccess);
       });
      }finally{discardEvidence(document)}
