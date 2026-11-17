@@ -310,8 +310,8 @@ function useW(){
  };
  return {t,fmt,lang};
 }
-async function call(path:string,method="GET",body?:unknown):Promise<any>{
- const r=await fetch(API+"/v1/clinical"+path,{method,credentials:"include",cache:"no-store",
+async function call(path:string,method="GET",body?:unknown,signal?:AbortSignal):Promise<any>{
+ const r=await fetch(API+"/v1/clinical"+path,{method,credentials:"include",cache:"no-store",signal,
   headers:body===undefined?{}:{"content-type":"application/json"},
   body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json().catch(()=>({}));
@@ -651,6 +651,8 @@ function Visits({space,patientId}:{space:Space;patientId:string}){
  const [reason,setReason]=useState(""),[busy,setBusy]=useState(false),[failure,setFailure]=useState("");
  const [search,setSearch]=useState(""),[status,setStatus]=useState<"all"|"draft"|"signed">("all");
  const [page,setPage]=useState(1);
+ useEffect(()=>{setReason("");setFailure("");setSearch("");setStatus("all");setPage(1);},
+  [space.clinicId,patientId]);
  async function create(event:FormEvent){
   event.preventDefault();if(busy||reason.trim().length<2)return;
   setBusy(true);setFailure("");
@@ -810,6 +812,10 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[failure,setFailure]=useState("");
  const [review,setReview]=useState<"sign"|"amend"|null>(null),[reviewed,setReviewed]=useState(false);
  const [versionPage,setVersionPage]=useState(1);
+ useEffect(()=>{
+  setReview(null);setReviewed(false);setVersionPage(1);
+  setReason("");setFailure("");setNotice("");setNote(empty);
+ },[space.clinicId,patientId,encounterId]);
  useEffect(()=>{if(data?.encounter) setNote({...empty,...data.encounter.note,
   historyDate:data.encounter.note.historyDate||"",historySource:data.encounter.note.historySource||"",
   followUp:data.encounter.note.followUp||"",performedProcedures:data.encounter.note.performedProcedures||[]});},[data]);
@@ -959,7 +965,7 @@ function VisitNote({space,patientId,encounterId}:{space:Space;patientId:string;e
     aria-labelledby="clinic-phase11-confirm-title">
     <div className="clinic-phase11-confirm-heading">
      <span className="clinic-phase11-confirm-icon"><CareIcon name="shield-check" size={22}/></span>
-     <button type="button" className="clinic-phase11-close" disabled={busy}
+     <button type="button" autoFocus className="clinic-phase11-close" disabled={busy}
       aria-label={t("close")} onClick={()=>{setReview(null);setReviewed(false);}}>
       <CareIcon name="close" size={19}/></button>
     </div>
@@ -1016,6 +1022,7 @@ function Files({space,patientId}:{space:Space;patientId:string}){
  const [failure,setFailure]=useState(""),[success,setSuccess]=useState("");
  const [preview,setPreview]=useState<string|null>(null);
  const previewRef=useRef<string|null>(null),fileInput=useRef<HTMLInputElement|null>(null);
+ const uploadAbort=useRef<AbortController|null>(null),viewAbort=useRef<AbortController|null>(null);
  const linked=typeof location==="undefined"?null:new URLSearchParams(location.search).get("encounterId");
  const kinds=["all","xray","photo","consent","other"];
  const allFiles:Array<{id:string;title:string;kind:string;file_name:string;mime:string;
@@ -1032,8 +1039,16 @@ function Files({space,patientId}:{space:Space;patientId:string}){
   previewRef.current=null;setPreview(null);
  }
  useEffect(()=>{
-  return()=>{if(previewRef.current)URL.revokeObjectURL(previewRef.current);
-   previewRef.current=null;};
+  // An unmounted patient workspace must never continue uploading files to
+  // the previously selected clinic or patient, or show their prior preview.
+  setPreview(null);setSelected([]);setSearch("");setPage(1);
+  setTitle("");setNotes("");setFailure("");setSuccess("");
+  if(fileInput.current)fileInput.current.value="";
+  return()=>{
+   uploadAbort.current?.abort();viewAbort.current?.abort();
+   if(previewRef.current)URL.revokeObjectURL(previewRef.current);
+   previewRef.current=null;
+  };
  },[space.clinicId,patientId]);
  useEffect(()=>{
   if(!preview)return;
@@ -1048,15 +1063,19 @@ function Files({space,patientId}:{space:Space;patientId:string}){
   if(!selected.length||selected.length>8){setFailure("INVALID_FILE_COUNT");return;}
   if(selected.some(file=>!["image/png","image/jpeg","application/pdf"].includes(file.type)||
    file.size>2097152||file.size===0)){setFailure("INVALID_FILE");return;}
+  const controller=new AbortController();uploadAbort.current=controller;
   setBusy(true);setFailure("");setSuccess("");
   let completed=0;
   try{
    for(let i=0;i<selected.length;i++){
+    if(controller.signal.aborted)throw new Error("NETWORK_ERROR");
     const file=selected[i];
     setProgress((i+1)+" / "+selected.length);
+    const contentBase64=await fileBase64(file);
+    if(controller.signal.aborted)throw new Error("NETWORK_ERROR");
     await call(base+"/files","POST",{title:title.trim()||file.name,fileName:file.name,
      kind:fileKind,notes,mime:file.type,encounterId:linked,
-     contentBase64:await fileBase64(file)});
+     contentBase64},controller.signal);
     completed++;
    }
    setSelected([]);setTitle("");setNotes("");setSuccess(t("uploadDone"));refresh();
@@ -1069,17 +1088,22 @@ function Files({space,patientId}:{space:Space;patientId:string}){
     refresh();
    }
    if(fileInput.current)fileInput.current.value="";
-  }finally{setBusy(false);setProgress("");}
+  }finally{if(uploadAbort.current===controller)uploadAbort.current=null;
+   setBusy(false);setProgress("");}
  }
  async function openFile(file:(typeof allFiles)[number]){
   if(file.scan_status==="quarantined"){setFailure("FILE_QUARANTINED");return;}
+  viewAbort.current?.abort();
+  const controller=new AbortController();viewAbort.current=controller;
   setFailure("");
   try{
    const r=await fetch(API+"/v1/clinical"+base+"/files/"+encodeURIComponent(file.id)+"/content",{
-    credentials:"include",cache:"no-store"});
+    credentials:"include",cache:"no-store",signal:controller.signal});
    if(!r.ok){const body=await r.json().catch(()=>({}));
     throw Error(body.code||"FILE_UNAVAILABLE");}
-   const blob=await r.blob(),url=URL.createObjectURL(blob);
+   const blob=await r.blob();
+   if(controller.signal.aborted)return;
+   const url=URL.createObjectURL(blob);
    if(file.mime==="application/pdf"){
     const a=document.createElement("a");a.href=url;a.download="clinical-file.pdf";
     document.body.appendChild(a);a.click();a.remove();
@@ -1088,7 +1112,9 @@ function Files({space,patientId}:{space:Space;patientId:string}){
     if(previewRef.current)URL.revokeObjectURL(previewRef.current);
     previewRef.current=url;setPreview(url);
    }
-  }catch(e:any){setFailure(e instanceof Error?e.message:"NETWORK_ERROR");}
+  }catch(e:any){if(!controller.signal.aborted)
+   setFailure(e instanceof Error?e.message:"NETWORK_ERROR");}
+  finally{if(viewAbort.current===controller)viewAbort.current=null;}
  }
  return <div className="phase07-grid clinic-phase11-documents">
   <section className="card phase07-panel clinic-phase11-documents-list">
@@ -1160,7 +1186,7 @@ function Files({space,patientId}:{space:Space;patientId:string}){
    </div>}
    {preview&&<div className="phase07-preview clinic-phase11-document-preview"
     role="dialog" aria-modal="true" aria-label={t("documentsPreview")}>
-    <button type="button" className="btn btn-secondary" onClick={closePreview}>
+    <button type="button" autoFocus className="btn btn-secondary" onClick={closePreview}>
      <CareIcon name="close" size={17}/>{t("documentsDismiss")}</button>
     <img src={preview} alt={t("documentsPreview")}/></div>}
    {failure&&<ErrorBox error={failure}/>}
