@@ -294,7 +294,7 @@ export function previewPath(clinicId:string,date:string,serviceId:string,
 }
 const states=["ready","clinic_closed","provider_unavailable","chair_unavailable",
  "holiday_closed","fully_booked"] as const;
-const hm=(v:unknown)=>typeof v==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+const hm=(v:unknown):v is string=>typeof v==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 export function parsePreview(raw:unknown,expected:{
  clinicId:string;date:string;serviceId:string;providerId:string;
  resourceId:string|null}):Availability|null{
