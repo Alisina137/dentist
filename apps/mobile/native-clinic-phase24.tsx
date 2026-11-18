@@ -413,7 +413,7 @@ export function NativeClinicPhase24({clinic,locale,request,mfa,onOpenWeb}:Props)
     specialty:result.specialty||"",qualifications:result.qualifications||"",
     professionalLicense:result.professionalLicense||"",
     experienceYears:result.experienceYears===null?"":String(result.experienceYears),
-    biography:""
+    biography:result.biography||""
    });
   }).catch(()=>{
    if(!ac.signal.aborted&&alive.current&&revision===seq.current.detail)
@@ -536,7 +536,8 @@ export function NativeClinicPhase24({clinic,locale,request,mfa,onOpenWeb}:Props)
   ]);
  }
  async function resend(invite:StaffInvitation){
-  if(!manager||!mfa||busy||uncertain||!staffCanAssign(clinic.role,invite.role))return;
+  if(!manager||!mfa||busy||uncertain||
+   !["pending","expired"].includes(invite.status)||!staffCanAssign(clinic.role,invite.role))return;
   setBusy(true);setError("");
   try{
    const result=await request<unknown>(root+"/invitations/"+
@@ -553,6 +554,7 @@ export function NativeClinicPhase24({clinic,locale,request,mfa,onOpenWeb}:Props)
   }finally{if(alive.current)setBusy(false)}
  }
  const confirmResend=(invite:StaffInvitation)=>{
+  if(!["pending","expired"].includes(invite.status)||busy||uncertain)return;
   Alert.alert(t.resend,t.inviteHint+" "+invite.email,[
    {text:t.cancel,style:"cancel"},
    {text:t.confirm,onPress:()=>{void resend(invite)}}
@@ -736,12 +738,12 @@ export function NativeClinicPhase24({clinic,locale,request,mfa,onOpenWeb}:Props)
        {t.expires}: {dateShort(inv.expiresAt)}</Text>
       <Text style={s.caption}>{t.sent}: {inv.sentAt?
        dateShort(inv.sentAt):t.notSent}</Text>
-      {inv.status==="pending"&&mfa&&staffCanAssign(clinic.role,inv.role)&&
+      {(inv.status==="pending"||inv.status==="expired")&&mfa&&staffCanAssign(clinic.role,inv.role)&&
        <View style={s.actions}>
         <Button title={t.resend} quiet disabled={busy||uncertain}
          onPress={()=>confirmResend(inv)}/>
-        <Button title={t.revokeInvite} danger disabled={busy||uncertain}
-         onPress={()=>startAction("invite-revoke",null,inv)}/>
+        {inv.status==="pending"&&<Button title={t.revokeInvite} danger disabled={busy||uncertain}
+         onPress={()=>startAction("invite-revoke",null,inv)}/>}
        </View>}
      </View>)}
    </Block>
