@@ -593,11 +593,14 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
     <Text style={s.caption}>{statusLabel(states.readiness)}</Text>:
     <View style={s.stack}>
      <View style={s.metrics}>
-      {([[t.activeServices,readiness.services],[t.activeChairs,readiness.chairs],
-        [t.openDays,readiness.openDays],[t.scheduledDoctors,readiness.scheduledDentists]]
-        as [string,number][]).map(([name,value],i)=>
-       <View key={i} style={s.metric}><Text style={s.metricValue}>{value}</Text>
-        <Text style={s.metricLabel}>{name}</Text></View>)}
+      {[
+        {label:t.activeServices,value:readiness.services},
+        {label:t.activeChairs,value:readiness.chairs},
+        {label:t.openDays,value:readiness.openDays},
+        {label:t.scheduledDoctors,value:readiness.scheduledDentists}
+       ].map((metric,i)=>
+       <View key={i} style={s.metric}><Text style={s.metricValue}>{metric.value}</Text>
+        <Text style={s.metricLabel}>{metric.label}</Text></View>)}
      </View>
      <Text style={[s.status,s.statusBg]}>
       {readiness.readyForPreview?t.ready:t.notReady}</Text>
