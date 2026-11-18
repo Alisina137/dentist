@@ -11,6 +11,7 @@ import {NativeClinicPhase21} from "./native-clinic-phase21";
 import {NativeClinicPhase22} from "./native-clinic-phase22";
 import {NativeClinicPhase23} from "./native-clinic-phase23";
 import {NativeClinicPhase24} from "./native-clinic-phase24";
+import {NativeClinicPhase25} from "./native-clinic-phase25";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -25,7 +26,7 @@ const CLINIC_WEB=(process.env.EXPO_PUBLIC_CLINIC_WEB_URL||"").trim().replace(/\/
 const TOKEN_KEY="dandanlink_native_clinic_session_v1";
 const LOCALE_KEY="dandanlink.mobile.clinicLanguage.v1";
 type Locale="en"|"fa-AF"|"ps-AF";
-type Tab="overview"|"appointments"|"patients"|"onboard"|"team"|"settings";
+type Tab="overview"|"appointments"|"patients"|"operations"|"onboard"|"team"|"settings";
 type AuthScreen="signin"|"signup";
 const i18n={
  en:{
@@ -189,7 +190,7 @@ const i18n={
  }
 } as const;
 
-type JsonMethod="GET"|"POST"|"PATCH"|"PUT";
+type JsonMethod="GET"|"POST"|"PATCH"|"PUT"|"DELETE";
 async function clinicRequest<T>(path:string,method:JsonMethod="GET",
  body?:unknown,token?:string|null,signal?:AbortSignal):Promise<{data:T;headers:Headers}>{
  if(!API)throw new ApiError(0,"API_NOT_CONFIGURED");
@@ -622,6 +623,10 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      key={active.clinicId+":"+active.membershipId}
      clinic={active} locale={locale} request={phase20Request}
      onOpenWeb={openWeb}/>:
+    tab==="operations"?<NativeClinicPhase25
+     key={active.clinicId+":"+active.membershipId}
+     clinic={active} locale={locale} request={phase20Request}
+     onOpenWeb={openWeb}/>:
     tab==="team"?<View style={{gap:14}}>
      {(active.role==="dentist"||["owner","manager"].includes(active.role)&&active.clinicianEnabled)&&
       <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
@@ -663,6 +668,9 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
        locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"]]:[]),
     ...(active&&active.role!=="assistant"?[["patients","users",
        locale==="en"?"Patients":locale==="ps-AF"?"ناروغان":"مریضان"]]:[]),
+    ...(active&&["owner","manager","dentist","receptionist"].includes(active.role)?
+     [["operations","clinic",locale==="en"?"Operations":
+       locale==="ps-AF"?"د کلینیک چارې":"عملیات"]]:[]),
     ["onboard","plus",t.onboard],
     ["team","users",t.team],["settings","settings",t.settings]
    ] as [Tab,PatientIconName,string][]).map(([id,icon,label])=>
