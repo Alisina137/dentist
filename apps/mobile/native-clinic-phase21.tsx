@@ -194,7 +194,7 @@ export function NativeClinicPhase21({clinic,locale,plannedDentists,request,
  const t=labels[locale],rtl=locale!=="en";
  const [snapshot,setSnapshot]=useState<DashboardSnapshot>(()=>blank(clinic.role));
  const [tick,setTick]=useState(0),[clock,setClock]=useState(Date.now());
- const [foreground,setForeground]=useState(AppState.currentState==="active");
+ const [foreground,setForeground]=useState(!["background","inactive"].includes(AppState.currentState));
  const [expanded,setExpanded]=useState(false);
  const seq=useRef(0);
  const active=useRef(true);
@@ -215,7 +215,11 @@ export function NativeClinicPhase21({clinic,locale,plannedDentists,request,
   return()=>clearInterval(timer);
  },[]);
  useEffect(()=>{
-  if(!foreground)return;
+  if(!foreground){
+   // Hide all private previews from the OS task-switcher and after sleep.
+   setSnapshot(blank(clinic.role));setExpanded(false);
+   return;
+  }
   const controller=new AbortController(),revision=++seq.current;
   const permitted=(resource:"operations"|"appointments"|"queue")=>
    dashboardCanRead(clinic.role,resource);
@@ -262,10 +266,12 @@ export function NativeClinicPhase21({clinic,locale,plannedDentists,request,
  const denied=(["operations","schedule","queue"] as const).some(
   k=>snapshot[k].state==="forbidden");
  const stale=snapshotIsStale(snapshot,clock);
+ const expired=stale&&!pending;
  const actionable=dashboardShortcuts(clinic.role);
- const ops=snapshot.operations.data;
- const appointments=snapshot.schedule.data;
- const queue=snapshot.queue.data;
+ // Never present private or expired rows as an actionable live queue.
+ const ops=!foreground||expired?null:snapshot.operations.data;
+ const appointments=!foreground||expired?null:snapshot.schedule.data;
+ const queue=!foreground||expired?null:snapshot.queue.data;
  const guarded=(id:DashboardShortcuts)=>{
   if(id==="registration"){onNavigate("onboard");return}
   if(id==="team"){onNavigate("team");return}
@@ -317,7 +323,8 @@ export function NativeClinicPhase21({clinic,locale,plannedDentists,request,
     error?styles.stateDotWarning:pending?styles.stateDotLoading:
     stale?styles.stateDotWarning:null]}/>
    <Text style={styles.stateText}>{!foreground?t.loading:
-    pending?t.loading:stale?t.stale:error?t.partial:
+    pending?t.loading:denied&&!dashboardCanRead(clinic.role,"queue")?t.access:
+    stale?t.stale:error?t.partial:
     snapshot.observedAt!==null?t.latest+" "+updatedTime(snapshot.observedAt):
     denied?t.access:t.offline}</Text>
    <Pressable accessibilityRole="button" onPress={()=>setTick(v=>v+1)}
@@ -378,10 +385,10 @@ export function NativeClinicPhase21({clinic,locale,plannedDentists,request,
         id==="arrived"?t.waiting:id==="in_treatment"?t.treating:t.completed}</Text>
       </View>)}
     </View>}
-   {snapshot.queue.state==="loading"?<Skeleton rows={3}/>:
+   {snapshot.queue.state==="loading"&&foreground?<Skeleton rows={3}/>:
     snapshot.queue.state==="forbidden"?<Text style={styles.notice}>{t.hidden}</Text>:
     snapshot.queue.state!=="ready"||!queue?
-     <Text style={styles.notice}>{t.unavailable}</Text>:
+     <Text style={styles.notice}>{stale?t.stale:t.unavailable}</Text>:
     queue.rows.length===0?<View style={styles.emptyRow}>
      <PatientIcon name="calendar" size={27} color="#82a6bf"/>
      <Text style={styles.emptyTitle}>{t.empty}</Text></View>:
