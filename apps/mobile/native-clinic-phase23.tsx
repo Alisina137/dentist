@@ -441,8 +441,8 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   if(label===words.uncertain){setUncertainWrite(true)}
  };
  async function savePatient(){
-  if(busy||uncertainWrite||!canEdit||!foreground||
-   pane==="edit"&&!profile)return;
+  if(busy||uncertainWrite||!canEdit||!foreground||!liveRef.current||
+   !mounted.current||pane==="edit"&&!profile)return;
   let payload;
   try{payload=patientPayload(draft,pane==="edit"?profile?.revision:undefined)}
   catch{setFail(words.invalid);return}
@@ -476,6 +476,7 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   finally{if(mounted.current)setBusy(false)}
  }
  const confirmPatient=()=>{
+  if(!mounted.current||!liveRef.current||busy)return;
   if(validatePatientDraft(draft).length){setFail(words.invalid);return}
   if(uncertainWrite)return;
   Alert.alert(words.confirm,pane==="edit"?words.editConfirm:words.createConfirm,[
@@ -484,7 +485,8 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   ]);
  };
  async function saveStatus(){
-  if(busy||uncertainWrite||!profile||!canChangePatientStatus(clinic.role)||!validStatusReason(reason)||
+  if(busy||uncertainWrite||!mounted.current||!liveRef.current||
+   !profile||!canChangePatientStatus(clinic.role)||!validStatusReason(reason)||
    statusChoice===profile.status||!foreground)return;
   setBusy(true);setFail("");
   try{
@@ -505,6 +507,7 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   finally{if(mounted.current)setBusy(false)}
  }
  const confirmStatus=()=>{
+  if(!mounted.current||!liveRef.current||busy)return;
   if(!profile||uncertainWrite||statusChoice===profile.status||!validStatusReason(reason)){
    setFail(words.reason);return;
   }
@@ -529,7 +532,7 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   </View>
   <View style={[s.topActions,{flexDirection:rtl?"row-reverse":"row"}]}>
    {pane!=="directory"?<Action icon="chevron" secondary label={words.back}
-    onPress={goDirectory}/>:
+    disabled={busy} onPress={goDirectory}/>:
     canEdit?<Action icon="plus" label={words.create} onPress={openCreate}/>:
     <View style={s.readonlyBadge}><PatientIcon name="shield" size={17}
      color="#527b91"/><Text style={s.muted}>{words.profileHidden}</Text></View>}
