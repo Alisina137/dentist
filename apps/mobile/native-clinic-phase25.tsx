@@ -317,6 +317,7 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
  const [targetResource,setTargetResource]=useState<string>("");
  const [week,setWeek]=useState<Shift[]|null>(null);
  const [weekChanged,setWeekChanged]=useState(false);
+ const [expandedDay,setExpandedDay]=useState<number|null>(null);
  const [exceptionDraft,setExceptionDraft]=useState<ExceptionDraft>(emptyException(kabulToday()));
  const [exceptionEditing,setExceptionEditing]=useState(false);
  const [exceptionDelete,setExceptionDelete]=useState<Exception|null>(null);
@@ -342,7 +343,7 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
   setServiceDraft(serviceForm());setResourceDraft(resourceForm());
   setExceptionEditing(false);setExceptionDelete(null);
   setDeleteReason("");setExceptionDraft(emptyException(kabulToday()));
-  setWeek(null);setWeekChanged(false);setPreview(null);setProviderId("");
+  setWeek(null);setWeekChanged(false);setExpandedDay(null);setPreview(null);setProviderId("");
   setServiceId("");setPreviewResourceId(null);setDate(kabulToday());
   setError("");setSuccess("");setUncertain(false);
  };
@@ -401,7 +402,7 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
    (resources.some(x=>x.id===targetResource)?targetResource:resources[0]?.id||"");
   if(scheduleTarget==="resource"&&!target){setWeek(null);return}
   setWeek(fullWeek(target===null?hours.clinic:hours.resourceHours[target]||[]));
-  setWeekChanged(false);
+  setWeekChanged(false);setExpandedDay(null);
  },[hours,resources,scheduleTarget,targetResource]);
  useEffect(()=>{
   setPreview(null);setPreviewState("ready");seq.current.preview++;
@@ -534,16 +535,17 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
     ()=>{setExceptionDelete(null);setDeleteReason("")},t.savedException);
   });
  };
- const checkAvailability=()=>{
-  if(!read||!dateInPreviewRange(date)||!serviceId||!providerId){
+ const checkAvailability=(ids:{serviceId:string;providerId:string;resourceId:string|null})=>{
+  if(!read||!dateInPreviewRange(date)||!ids.serviceId||!ids.providerId){
    setError(t.outOfRange);return;
   }
   setPreview(null);setPreviewState("loading");setError("");
   const current=++seq.current.preview;
   const ac=new AbortController();
-  const expected={clinicId:clinic.clinicId,date,serviceId,providerId,
-   resourceId:previewResourceId};
-  const path=previewPath(clinic.clinicId,date,serviceId,providerId,previewResourceId);
+  const expected={clinicId:clinic.clinicId,date,serviceId:ids.serviceId,
+   providerId:ids.providerId,resourceId:ids.resourceId};
+  const path=previewPath(clinic.clinicId,date,ids.serviceId,
+   ids.providerId,ids.resourceId);
   void request<unknown>(path,"GET",undefined,ac.signal).then(raw=>{
    if(!mounted.current||!live.current||current!==seq.current.preview)return;
    const parsed=parsePreview(raw,expected);
@@ -580,7 +582,7 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
   <View style={s.topActions}>
    <Button label={t.refresh} icon="clock" secondary onPress={refresh} disabled={busy}/>
    <Button label={t.seeWeb} icon="shield" secondary onPress={()=>
-    onOpenWeb("/clinic/operations?clinic="+encodeURIComponent(clinic.clinicId))}/>
+    onOpenWeb("/clinic/services?clinic="+encodeURIComponent(clinic.clinicId))}/>
   </View>
   {error!==""&&<Text style={s.error} accessibilityRole="alert">{error}</Text>}
   {success!==""&&<Text style={s.success} accessibilityRole="alert">{success}</Text>}
@@ -729,16 +731,23 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
          {day.isOpen?t.open:t.closed}</Text></Pressable>
       </View>
       {day.isOpen&&<View style={s.stack}>
-       <Text style={s.caption}>{t.start} · {clock(day.startMinute)}</Text>
-       {manage&&<Chip value={day.startMinute} disabled={busy||uncertain}
-        onChange={v=>editShift(day.weekday,"startMinute",v)}
-        options={withStart(day.startMinute,startOptions).filter(x=>x<day.endMinute)
-         .map(x=>({value:x,label:clock(x)}))}/>}
-       <Text style={s.caption}>{t.end} · {clock(day.endMinute)}</Text>
-       {manage&&<Chip value={day.endMinute} disabled={busy||uncertain}
-        onChange={v=>editShift(day.weekday,"endMinute",v)}
-        options={withStart(day.endMinute,endOptions).filter(x=>x>day.startMinute)
-         .map(x=>({value:x,label:clock(x)}))}/>}
+       <View style={s.timeSummary}>
+        <Text style={s.timeSummaryText}>{clock(day.startMinute)}–{clock(day.endMinute)}</Text>
+        {manage&&<Button label={expandedDay===day.weekday?t.closeForm:t.clickEdit}
+         secondary onPress={()=>setExpandedDay(x=>x===day.weekday?null:day.weekday)}/>}
+       </View>
+       {manage&&expandedDay===day.weekday&&<View style={s.stack}>
+        <Text style={s.caption}>{t.start} · {clock(day.startMinute)}</Text>
+        <Chip value={day.startMinute} disabled={busy||uncertain}
+         onChange={v=>editShift(day.weekday,"startMinute",v)}
+         options={withStart(day.startMinute,startOptions).filter(x=>x<day.endMinute)
+          .map(x=>({value:x,label:clock(x)}))}/>
+        <Text style={s.caption}>{t.end} · {clock(day.endMinute)}</Text>
+        <Chip value={day.endMinute} disabled={busy||uncertain}
+         onChange={v=>editShift(day.weekday,"endMinute",v)}
+         options={withStart(day.endMinute,endOptions).filter(x=>x>day.startMinute)
+          .map(x=>({value:x,label:clock(x)}))}/>
+       </View>}
        {day.breaks.length>0&&<Text style={s.caption}>
         {day.breaks.map(b=>clock(b.start)+"–"+clock(b.end)).join(" · ")}</Text>}
       </View>}
@@ -844,14 +853,9 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
     </View>}
     <Button label={t.checkSlots} icon="search"
      disabled={previewState==="loading"||!dateInPreviewRange(date)||
-      !selectedPreviewService||!selectedPreviewProvider} onPress={()=>{
-      const id=selectedPreviewService,person=selectedPreviewProvider;
-      setServiceId(id);setProviderId(person);
-      // Request the exact, currently displayed selection, not a stale field.
-      if(!serviceId||!providerId){setPreview(null);setPreviewState("ready");
-       setError(t.invalid);return}
-      checkAvailability();
-     }}/>
+      !selectedPreviewService||!selectedPreviewProvider}
+     onPress={()=>checkAvailability({serviceId:selectedPreviewService,
+      providerId:selectedPreviewProvider,resourceId:effectiveChair})}/>
     {previewState==="loading"&&<View style={s.loading}><ActivityIndicator color="#1f6a9f"/>
      <Text style={s.caption}>{t.pending}</Text></View>}
     {previewState==="error"||previewState==="denied"?
@@ -951,6 +955,8 @@ const s=StyleSheet.create({
  dayCard:{borderRadius:11,padding:13,borderWidth:1,borderColor:"#e2eaf1",
   gap:12,backgroundColor:"#f8fafc"},
  dayTop:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},
+ timeSummary:{flexDirection:"row",alignItems:"center",gap:10,justifyContent:"space-between"},
+ timeSummaryText:{fontWeight:"900",fontSize:13,color:"#305e7c"},
  dayName:{fontSize:13,fontWeight:"900",color:"#2a4d68"},
  daySwitch:{backgroundColor:"#e8edf3",borderRadius:10,padding:11,minWidth:83,
   alignItems:"center"},
