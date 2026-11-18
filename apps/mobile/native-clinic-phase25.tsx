@@ -334,15 +334,17 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
  const [uncertain,setUncertain]=useState(false);
  const [foreground,setForeground]=useState(!["background","inactive"].includes(AppState.currentState));
  const live=useRef(true),mounted=useRef(true),seq=useRef({read:0,preview:0});
+ const previewAbort=useRef<AbortController|null>(null);
  const root="/v1/operations/clinics/"+encodeURIComponent(clinic.clinicId);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;seq.current.read++;
-  seq.current.preview++}},[]);
+  seq.current.preview++;previewAbort.current?.abort();previewAbort.current=null}},[]);
  const wipe=()=>{
   setServices(null);setResources(null);setHours(null);setReadiness(null);
   setServiceEditing(undefined);setResourceEditing(undefined);
   setServiceDraft(serviceForm());setResourceDraft(resourceForm());
   setExceptionEditing(false);setExceptionDelete(null);
   setDeleteReason("");setExceptionDraft(emptyException(kabulToday()));
+  previewAbort.current?.abort();previewAbort.current=null;
   setWeek(null);setWeekChanged(false);setExpandedDay(null);setPreview(null);setProviderId("");
   setServiceId("");setPreviewResourceId(null);setDate(kabulToday());
   setError("");setSuccess("");setUncertain(false);
@@ -405,6 +407,7 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
   setWeekChanged(false);setExpandedDay(null);
  },[hours,resources,scheduleTarget,targetResource]);
  useEffect(()=>{
+  previewAbort.current?.abort();previewAbort.current=null;
   setPreview(null);setPreviewState("ready");seq.current.preview++;
  },[date,serviceId,providerId,previewResourceId,section]);
  const choose=(tab:Subtab)=>{
@@ -540,8 +543,9 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
    setError(t.outOfRange);return;
   }
   setPreview(null);setPreviewState("loading");setError("");
+  previewAbort.current?.abort();
   const current=++seq.current.preview;
-  const ac=new AbortController();
+  const ac=new AbortController();previewAbort.current=ac;
   const expected={clinicId:clinic.clinicId,date,serviceId:ids.serviceId,
    providerId:ids.providerId,resourceId:ids.resourceId};
   const path=previewPath(clinic.clinicId,date,ids.serviceId,
