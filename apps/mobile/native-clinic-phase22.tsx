@@ -380,7 +380,9 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  function moveDay(delta:number){
   const next=shiftDay(date,delta);
   if(next<shiftDay(today,-365)||next>shiftDay(today,365))return;
-  setDate(next);setSelected(null);setEditing("none");setError("");
+  setDate(next);
+  if(editing!=="reschedule"){setSelected(null);setEditing("none")}
+  setError("");
  }
  const displayStatus=(item:AppointmentView)=>item.status;
  const list=mode==="queue"?queue?.appointments:calendar?.appointments;
@@ -490,8 +492,8 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  }
  async function saveReschedule(){
   const appt=selected;
-  if(!appt||!canReschedule||!choice||!busy&&
-   !rescheduleReasonValid(reason)){setError(words.reason);return}
+  if(!appt||!canReschedule||!choice||!rescheduleReasonValid(reason)){
+   setError(words.reason);return}
   if(busy||!validBookingDateOrSlot())return;
   setBusy(true);setError("");
   const payload={date,start:choice.start,providerId,resourceId:choice.resourceId,
@@ -751,7 +753,7 @@ const s=StyleSheet.create({
   alignItems:"center",justifyContent:"center",gap:6,paddingVertical:11,paddingHorizontal:14,flexDirection:"row"},
  buttonSoft:{backgroundColor:"#eaf3fa",borderWidth:1,borderColor:"#d3e4f0"},
  buttonDanger:{backgroundColor:"#fff0f2",borderWidth:1,borderColor:"#f2cdd1"},
- buttonText:{fontSize:12,fontWeight:"850" as "800",color:"#fff",textAlign:"center"},
+ buttonText:{fontSize:12,fontWeight:"800",color:"#fff",textAlign:"center"},
  buttonSoftText:{color:"#165e96"},buttonDangerText:{color:"#a54351"},
  disabled:{opacity:.45},pressed:{opacity:.8},
  options:{flexDirection:"row",flexWrap:"wrap",gap:8},
