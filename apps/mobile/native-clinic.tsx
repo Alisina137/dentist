@@ -8,6 +8,7 @@ import {ApiError} from "./api-error";
 import {NativeClinicPhase20,NativeDentistPhase20,NativeClinicTeamPhase20,
  NativeInviteAcceptance} from "./native-clinic-phase20";
 import {NativeClinicPhase21} from "./native-clinic-phase21";
+import {NativeClinicPhase22} from "./native-clinic-phase22";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -22,7 +23,7 @@ const CLINIC_WEB=(process.env.EXPO_PUBLIC_CLINIC_WEB_URL||"").trim().replace(/\/
 const TOKEN_KEY="dandanlink_native_clinic_session_v1";
 const LOCALE_KEY="dandanlink.mobile.clinicLanguage.v1";
 type Locale="en"|"fa-AF"|"ps-AF";
-type Tab="overview"|"onboard"|"team"|"settings";
+type Tab="overview"|"appointments"|"onboard"|"team"|"settings";
 type AuthScreen="signin"|"signup";
 const i18n={
  en:{
@@ -610,7 +611,12 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
       if(destination==="onboard")setCreatingNew(false);
       setTab(destination);setError("");setMessage("");
      }}
-     onOpenWeb={openWeb}/>:tab==="team"?<View style={{gap:14}}>
+     onOpenWeb={openWeb}/>:
+    tab==="appointments"?<NativeClinicPhase22
+     key={active.clinicId+":"+active.membershipId}
+     clinic={active} locale={locale} request={phase20Request}
+     onOpenWeb={openWeb}/>:
+    tab==="team"?<View style={{gap:14}}>
      {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
       <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
        clinicId={active.clinicId} membershipId={active.membershipId}
@@ -656,7 +662,10 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   </ScrollView>
   {token&&context&&<View style={st.nav}>
    {([
-    ["overview","home",t.overview],["onboard","plus",t.onboard],
+    ["overview","home",t.overview],
+    ...(active?.role!=="cashier"?[["appointments","calendar",
+       locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"]]:[]),
+    ["onboard","plus",t.onboard],
     ["team","users",t.team],["settings","settings",t.settings]
    ] as [Tab,PatientIconName,string][]).map(([id,icon,label])=>
     <Pressable key={id} accessibilityRole="tab"
