@@ -424,7 +424,7 @@ export function NativeClinicPhase25({clinic,locale,request,onOpenWeb}:Props){
   setError("");setSuccess("");
  };
  const mutate=async(path:string,method:"POST"|"PATCH"|"PUT"|"DELETE",payload:unknown,
-  validate:(raw:unknown)=>boolean,after:()=>void,note=t.added)=>{
+  validate:(raw:unknown)=>boolean,after:()=>void,note:string=t.added)=>{
   if(!manage||busy||uncertain||!live.current||!mounted.current)return;
   setBusy(true);setError("");setSuccess("");
   try{
