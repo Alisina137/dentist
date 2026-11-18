@@ -29,7 +29,7 @@ export type ClinicSchedule={
 };
 export type StaffDetail={member:StaffMember;canManage:boolean;
  canEditDentist:boolean;displayName:string|null;specialty:string|null;
- qualifications:string|null;experienceYears:number|null;
+ qualifications:string|null;experienceYears:number|null;biography:string|null;
  professionalLicense:string|null;draftVersion:number|null};
 export type StaffSummary={active:number;suspended:number;revoked:number;
  dentists:number;invites:number;verified:number};
@@ -139,11 +139,13 @@ export function staffDetail(value:unknown,clinicId:string,selfId:string):StaffDe
   !(draft.qualifications===null||text(draft.qualifications,300))||
   !(draft.professionalLicense===null||text(draft.professionalLicense,100))||
   !(draft.experienceYears===null||safe(draft.experienceYears,70))||
+  !(draft.biography===null||text(draft.biography,1000))||
   !safe(draft.draftVersion,99999)))return null;
  return {member,canManage:value.canManage,canEditDentist:value.canEditDentist,
   displayName:draft?draft.displayName as string:null,
   specialty:draft?draft.specialty as string|null:null,
   qualifications:draft?draft.qualifications as string|null:null,
+  biography:draft?draft.biography as string|null:null,
   professionalLicense:draft?draft.professionalLicense as string|null:null,
   experienceYears:draft?draft.experienceYears as number|null:null,
   draftVersion:draft?draft.draftVersion as number:null};
