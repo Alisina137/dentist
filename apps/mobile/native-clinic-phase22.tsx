@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,AppState,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Alert,AppState,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import type {NativeClinicSpace} from "./native-clinic-model";
 import type {Phase20Request} from "./native-clinic-phase20";
@@ -633,9 +633,26 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
      <View style={s.gap}><Text style={s.warn}>{state==="forbidden"?words.forbidden:words.error}</Text>
       <Button label={words.refresh} kind="soft" onPress={requestRefresh}/></View>}
   </Section>}
-  {detailState==="loading"&&<View style={s.loading}><ActivityIndicator color="#185e9c"/>
-   <Text style={s.hint}>{words.loading}</Text></View>}
-  {selected&&mode!=="create"&&<Section title={words.details}>
+  <Modal transparent animationType="slide"
+   visible={foreground&&mode!=="create"&&(Boolean(selected)||detailState==="loading")}
+   onRequestClose={()=>{
+    setSelected(null);setEditing("none");setDetailState("ready");setError("");
+   }}>
+   <View style={s.modalBackdrop}><View style={s.modalSurface}>
+    <View style={s.modalHeading}>
+     <Text style={s.modalTitle}>{words.details}</Text>
+     <Pressable accessibilityRole="button" accessibilityLabel={words.close}
+      onPress={()=>{setSelected(null);setEditing("none");setDetailState("ready")}}
+      style={s.modalClose}>
+      <Icon name="close" size={20}/><Text style={s.modalCloseText}>{words.close}</Text>
+     </Pressable>
+    </View>
+    <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled
+     contentContainerStyle={s.modalContent}>
+     {detailState==="loading"&&<View style={s.loading}>
+      <ActivityIndicator color="#185e9c"/><Text style={s.hint}>{words.loading}</Text>
+     </View>}
+     {selected&&mode!=="create"&&<Section title={words.details}>
    <View style={s.detailTop}><Text style={s.detailName}>{selected.patientName||words.patient}</Text>
     <Tag status={selected.status} words={words}/></View>
    {([[words.service,selected.serviceName],[words.provider,selected.providerName],
@@ -678,7 +695,10 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
     onPress={()=>{void loadDetail(selected)}} icon="clock"/>
    <Button label={words.close} kind="soft" onPress={()=>{
     setSelected(null);setEditing("none");setReason("");setSlots(null);setChoice(null)}}/>
-  </Section>}
+     </Section>}
+    </ScrollView>
+   </View></View>
+  </Modal>
   {mode==="create"&&schedulable&&<View style={s.gap}>
    <Section title={words.newHeading}>
     <Text style={s.hint}>{words.createHint}</Text>
@@ -727,6 +747,16 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
 }
 
 const s=StyleSheet.create({
+ modalBackdrop:{flex:1,backgroundColor:"rgba(8,24,39,.65)",justifyContent:"flex-end"},
+ modalSurface:{maxHeight:"92%",backgroundColor:"#f2f6fa",borderTopLeftRadius:23,borderTopRightRadius:23,
+  paddingTop:17,overflow:"hidden"},
+ modalHeading:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:12,
+  paddingHorizontal:20,paddingBottom:13,borderBottomWidth:1,borderBottomColor:"#dce6ef"},
+ modalTitle:{fontWeight:"900",fontSize:18,color:"#1a3954"},
+ modalClose:{flexDirection:"row",alignItems:"center",gap:6,minHeight:44,paddingHorizontal:10,
+  backgroundColor:"#e6f0f8",borderRadius:10},
+ modalCloseText:{fontSize:12,fontWeight:"800",color:"#24597b"},
+ modalContent:{gap:12,padding:16,paddingBottom:32},
  container:{gap:14},gap:{gap:12},
  hero:{backgroundColor:"#142f49",borderRadius:19,padding:20,gap:10},
  heroTag:{fontSize:10,fontWeight:"900",color:"#72d3ce",letterSpacing:1},
