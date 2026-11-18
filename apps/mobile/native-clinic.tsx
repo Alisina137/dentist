@@ -623,7 +623,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      clinic={active} locale={locale} request={phase20Request}
      onOpenWeb={openWeb}/>:
     tab==="team"?<View style={{gap:14}}>
-     {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
+     {(active.role==="dentist"||["owner","manager"].includes(active.role)&&active.clinicianEnabled)&&
       <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
        clinicId={active.clinicId} membershipId={active.membershipId}
        locale={locale} request={phase20Request}/>}
