@@ -9,6 +9,7 @@ import {NativeClinicPhase20,NativeDentistPhase20,NativeClinicTeamPhase20,
  NativeInviteAcceptance} from "./native-clinic-phase20";
 import {NativeClinicPhase21} from "./native-clinic-phase21";
 import {NativeClinicPhase22} from "./native-clinic-phase22";
+import {NativeClinicPhase23} from "./native-clinic-phase23";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -23,7 +24,7 @@ const CLINIC_WEB=(process.env.EXPO_PUBLIC_CLINIC_WEB_URL||"").trim().replace(/\/
 const TOKEN_KEY="dandanlink_native_clinic_session_v1";
 const LOCALE_KEY="dandanlink.mobile.clinicLanguage.v1";
 type Locale="en"|"fa-AF"|"ps-AF";
-type Tab="overview"|"appointments"|"onboard"|"team"|"settings";
+type Tab="overview"|"appointments"|"patients"|"onboard"|"team"|"settings";
 type AuthScreen="signin"|"signup";
 const i18n={
  en:{
@@ -616,6 +617,10 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      key={active.clinicId+":"+active.membershipId}
      clinic={active} locale={locale} request={phase20Request}
      onOpenWeb={openWeb}/>:
+    tab==="patients"?<NativeClinicPhase23
+     key={active.clinicId+":"+active.membershipId}
+     clinic={active} locale={locale} request={phase20Request}
+     onOpenWeb={openWeb}/>:
     tab==="team"?<View style={{gap:14}}>
      {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
       <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
@@ -660,11 +665,14 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
     </View>}
    </View>}
   </ScrollView>
-  {token&&context&&<View style={st.nav}>
+  {token&&context&&<ScrollView horizontal showsHorizontalScrollIndicator={false}
+   style={st.navScroll} contentContainerStyle={st.nav}>
    {([
     ["overview","home",t.overview],
     ...(active?.role!=="cashier"?[["appointments","calendar",
        locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"]]:[]),
+    ...(active&&active.role!=="assistant"?[["patients","users",
+       locale==="en"?"Patients":locale==="ps-AF"?"ناروغان":"مریضان"]]:[]),
     ["onboard","plus",t.onboard],
     ["team","users",t.team],["settings","settings",t.settings]
    ] as [Tab,PatientIconName,string][]).map(([id,icon,label])=>
@@ -674,7 +682,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      <PatientIcon name={icon} size={21} color={tab===id?"#1a659c":"#688198"}/>
      <Text numberOfLines={1} style={[st.navText,tab===id&&st.navTextActive]}>{label}</Text>
     </Pressable>)}
-  </View>}
+  </ScrollView>}
  </SafeAreaView>;
 }
 const st=StyleSheet.create({
@@ -757,10 +765,11 @@ const st=StyleSheet.create({
   alignItems:"center",justifyContent:"center"},
  todoCountText:{color:"#245e8e",fontSize:12,fontWeight:"900"},
  todoText:{fontSize:12,lineHeight:20,color:"#415e73",flex:1},
+ navScroll:{backgroundColor:"#fff",maxHeight:85,flexGrow:0},
  nav:{backgroundColor:"#fff",borderTopWidth:1,borderColor:"#dce5ee",
   flexDirection:"row",paddingHorizontal:8,paddingTop:7,paddingBottom:8,
   justifyContent:"space-around"},
- navItem:{flex:1,alignItems:"center",justifyContent:"center",gap:5,
+ navItem:{minWidth:77,alignItems:"center",justifyContent:"center",gap:5,
   borderRadius:11,paddingHorizontal:5,paddingVertical:7},
  navItemActive:{backgroundColor:"#edf5fc"},
  navText:{fontSize:10,fontWeight:"800",color:"#70869b"},

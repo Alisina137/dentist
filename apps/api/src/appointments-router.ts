@@ -1,5 +1,5 @@
 import { Router,type Request,type Response,type NextFunction } from "express";
-import { and, asc, eq, gte, ilike, inArray, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lt, or } from "drizzle-orm";
 import { db,schema } from "@dandanlink/db";
 import { authStaff, AccessFault,type StaffRequest } from "./staff-access.js";
 import { OpsFault, dateInput, fail } from "./operations-validation.js";
@@ -64,14 +64,21 @@ export function appointmentsRouter(){
    eq(schema.clinicPatient.id,patientId)
   )});
   if(!p)fail(404,"PATIENT_NOT_FOUND");
+  // Phase 23: a dentist must never learn another provider's appointment
+  // count through this history endpoint. Scope the query BEFORE LIMIT and
+  // count, rather than relying on enriched() filtering after the query.
   const rows=await db.select().from(schema.clinicAppointment).where(and(
    eq(schema.clinicAppointment.clinicId,cid(req)),
-   eq(schema.clinicAppointment.patientId,patientId)
-  )).orderBy(asc(schema.clinicAppointment.startAt)).limit(150);
+   eq(schema.clinicAppointment.patientId,patientId),
+   ...(ctx.role==="dentist"?[
+    eq(schema.clinicAppointment.providerMembershipId,ctx.membership.id)]:[])
+  )).orderBy(desc(schema.clinicAppointment.startAt)).limit(150);
+  const authorized=await enriched(rows,ctx);
   noCache(res);res.json({
    patient:{id:p.id,patientNumber:p.patientNumber,preferredName:p.preferredName,
+    // Assistant is explicitly denied by this endpoint before this projection.
     familyName:p.familyName,phone:p.phone,status:p.status},
-   appointments:await enriched(rows,ctx),total:rows.length,maximumRows:150
+   appointments:authorized,total:authorized.length,maximumRows:150
   });
  }));
  clinic.get("/overview",wrap(async(req,res)=>{
