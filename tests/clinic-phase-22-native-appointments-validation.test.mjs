@@ -146,8 +146,8 @@ test("C22 integration wiring preserves existing server enforcement and PH19 rele
  assert.ok(!source.includes("SecureStore"));
  assert.ok(!source.includes("localStorage"));
  assert.ok(routes.includes('clinic.post("/appointments"'));
- assert.ok(routes.includes('"/reschedule"'));
- assert.ok(routes.includes('"/status"'));
+ assert.ok(routes.includes('"/appointments/:appointmentId/reschedule"'));
+ assert.ok(routes.includes('"/appointments/:appointmentId/status"'));
  assert.ok(service.includes("APPOINTMENT_ROLE_DENIED"));
  assert.ok(service.includes("STALE_APPOINTMENT_REVISION"));
  assert.ok(service.includes("SUBSCRIPTION_REQUIRED"));
