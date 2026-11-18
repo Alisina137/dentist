@@ -5,7 +5,7 @@ import type {NativeClinicSpace} from "./native-clinic-model";
 import type {Phase20Request} from "./native-clinic-phase20";
 import {
  allowedTransition,bookingDateAllowed,canBook,canReadAppointments,
- clinicIdValid,kabulDayOfTimestamp,kabulToday,newActionKey,parseAppointmentDetail,
+ clinicIdValid,kabulDayOfTimestamp,kabulToday,newActionKey,parseAppointment,parseAppointmentDetail,
  parseCalendar,parseCatalog,parsePatientSearch,parseQueue,parseSlots,
  rescheduleReasonValid,shiftDay,transitionReasonValid,weekWindow,
  type AppointmentAction,type AppointmentCalendar,type AppointmentQueue,
