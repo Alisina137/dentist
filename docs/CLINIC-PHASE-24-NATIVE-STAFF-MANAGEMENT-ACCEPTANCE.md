@@ -50,7 +50,9 @@ pnpm dev:mobile
 
 Open using **Expo Go SDK 57** → Clinic / Doctor → Sign in → Team. If previous Phase 20 migrations and dependencies were applied, no new `pnpm install` or `pnpm db:migrate` is required.
 
-For protected team invitations, staff mutations and nonself doctor draft edits, use a **verified MFA owner/manager session**. API-derived `context.mfaEnabled` is checked but never used as a substitute for the server. If you have not enabled MFA yet, the mobile interface remains read-only and points to the clinic website; setting the `EXPO_PUBLIC_CLINIC_WEB_URL` to a trusted, reachable HTTPS clinic origin enables this external handoff.
+**Important current login limitation:** Expo's existing clinic email/password login intentionally redirects accounts with MFA enabled to the **secure clinic website** rather than completing the second-factor challenge natively. Therefore, although the Phase 24 native interface includes correctly guarded administrative controls and request wiring, a normally MFA-protected owner/manager cannot yet exercise those mutations through a fresh Expo sign-in. **Invites, role/status updates, forced logouts, clinician affiliation and nonself dentist profile edits must currently be completed in the authenticated clinic website**. Do not remove MFA to use the mobile actions. The native staff roster is still available to clinic members whose permitted sign-in does not require a second factor; read-only provider schedule and independent verification information also follow API permissions. A future audited native TOTP session flow, including cookie challenge continuity and replay protection, is required before declaring protected native staff writes device-ready.
+
+For clinic web handoff, set `EXPO_PUBLIC_CLINIC_WEB_URL` to a trusted reachable HTTPS clinic URL. The website requires its own secure login; mobile does not transfer session secrets to the browser.
 
 ### Acceptance matrix — synthetic data only
 
