@@ -11,7 +11,7 @@ import {
 } from "./native-clinic-phase21-model";
 
 type Locale="en"|"fa-AF"|"ps-AF";
-type TabDestination="onboard"|"team"|"settings";
+type TabDestination="appointments"|"onboard"|"team"|"settings";
 type Props={
  clinic:NativeClinicSpace;locale:Locale;
  plannedDentists:number|null;request:Phase20Request;
@@ -276,7 +276,7 @@ export function NativeClinicPhase21({clinic,locale,plannedDentists,request,
   if(id==="registration"){onNavigate("onboard");return}
   if(id==="team"){onNavigate("team");return}
   if(id==="account"){onNavigate("settings");return}
-  if(id==="today"){setExpanded(current=>!current);return}
+  if(id==="today"||id==="bookings"){onNavigate("appointments");return}
   const route=clinicPaths[id];
   if(route)onOpenWeb(route+"?clinic="+encodeURIComponent(clinic.clinicId));
  };
