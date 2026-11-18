@@ -322,7 +322,8 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   setEncounters(null);setTreatments(null);setEditingStatus(false);
   setFail("");setSuccess("");
  };
- const refresh=()=>{resetFeedback();setShownContact(false);setReload(n=>n+1)};
+ const refresh=()=>{resetFeedback();setUncertainWrite(false);
+  setShownContact(false);setReload(n=>n+1)};
 
  useEffect(()=>{
   if(!permitted||!foreground||pane!=="directory"){setDirectory(null);setCounts(null);return}
@@ -433,7 +434,8 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   if(label===words.uncertain){setUncertainWrite(true)}
  };
  async function savePatient(){
-  if(busy||uncertainWrite||!canEdit||!foreground)return;
+  if(busy||uncertainWrite||!canEdit||!foreground||
+   pane==="edit"&&!profile)return;
   let payload;
   try{payload=patientPayload(draft,pane==="edit"?profile?.revision:undefined)}
   catch{setFail(words.invalid);return}
@@ -473,14 +475,13 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   ]);
  };
  async function saveStatus(){
-  if(busy||!profile||!canChangePatientStatus(clinic.role)||!validStatusReason(reason)||
+  if(busy||uncertainWrite||!profile||!canChangePatientStatus(clinic.role)||!validStatusReason(reason)||
    statusChoice===profile.status||!foreground)return;
   setBusy(true);setFail("");
   try{
    const raw=await request<unknown>(root+"/patients/"+encodeURIComponent(profile.id)+
     "/status","PATCH",{status:statusChoice,reason:reason.trim(),revision:profile.revision});
    if(!mounted.current||!liveRef.current)return;
-   const result=parsePatientProfile(raw,profile.id,clinic.role);
    // The update response may not include clinical flags; verify via GET.
    // Avoid claiming success if server payload shape does not match expected status.
    if(!raw||typeof raw!=="object"||!("patient" in raw)||
@@ -494,7 +495,7 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
   finally{if(mounted.current)setBusy(false)}
  }
  const confirmStatus=()=>{
-  if(!profile||statusChoice===profile.status||!validStatusReason(reason)){
+  if(!profile||uncertainWrite||statusChoice===profile.status||!validStatusReason(reason)){
    setFail(words.reason);return;
   }
   Alert.alert(words.statusUpdate,words.statusConfirm+" "+words.warning,[
@@ -654,7 +655,7 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
             {words[value]}</Text></Pressable>)}</View>
          <Field title={words.reason} value={reason} onChange={setReason}
           placeholder={words.reasonHint}/>
-         <Action label={words.confirm} disabled={busy||statusChoice===profile.status||
+         <Action label={words.confirm} disabled={busy||uncertainWrite||statusChoice===profile.status||
           !validStatusReason(reason)} onPress={confirmStatus}/>
          <Action label={words.cancel} secondary
           onPress={()=>{setEditingStatus(false);setReason("")}}/>
