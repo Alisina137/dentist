@@ -250,7 +250,14 @@ const failureMessage=(e:unknown,words:Words):string=>{
  if(status===422)return words.invalid;
  return words.uncertain;
 };
-function niceDate(v:string){return v?.slice(0,10)||"—"}
+function niceDate(v:string){
+ try{
+  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kabul",
+   year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(v));
+  const item=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+  return item.year+"-"+item.month+"-"+item.day;
+ }catch{return "—"}
+}
 export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
  const words=l10n[locale],rtl=locale!=="en";
  const permitted=canReadPatients(clinic.role),canEdit=canWritePatients(clinic.role);
@@ -454,8 +461,10 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
    if(!mounted.current||!liveRef.current)return;
    const raw=result&&typeof result==="object"&&"patient" in result?
     (result as {patient:unknown}).patient:null;
-   if(!raw||typeof raw!=="object"||typeof (raw as {id?:unknown}).id!=="string"||
-    (pane==="edit"&&profile&&(raw as {id:string}).id!==profile.id))
+   const saved=parsePatientBrief(raw);
+   if(!saved||(pane==="edit"&&profile&&
+    (saved.id!==profile.id||saved.revision<=profile.revision))||
+    (pane==="create"&&saved.status!=="active"))
     throw Error("WRITE_RESPONSE_UNVERIFIED");
    // Do not repeat a successful or uncertain create. Force server re-fetch.
    setPane("directory");setProfile(null);setDetailId(null);
@@ -484,9 +493,10 @@ export function NativeClinicPhase23({clinic,locale,request,onOpenWeb}:Props){
    if(!mounted.current||!liveRef.current)return;
    // The update response may not include clinical flags; verify via GET.
    // Avoid claiming success if server payload shape does not match expected status.
-   if(!raw||typeof raw!=="object"||!("patient" in raw)||
-    (raw as {patient?:{id?:string;status?:string}}).patient?.id!==profile.id||
-    (raw as {patient?:{status?:string}}).patient?.status!==statusChoice)
+   const saved=raw&&typeof raw==="object"&&"patient" in raw?
+    parsePatientBrief((raw as {patient:unknown}).patient):null;
+   if(!saved||saved.id!==profile.id||saved.status!==statusChoice||
+    saved.revision<=profile.revision)
     throw Error("WRITE_RESPONSE_UNVERIFIED");
    setEditingStatus(false);setReason("");setProfile(null);
    setPane("directory");setDetailId(null);setReload(n=>n+1);
