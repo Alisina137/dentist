@@ -35,8 +35,8 @@ const shift=(weekday,changes={})=>({
  startMinute:540,endMinute:1020,breaks:[],revision:1,
  updatedBy:"SECRET_UPDATED_BY",...changes
 });
-const roster=()=>({members:[member({id:owner,role:"owner",name:"Owner",email:"owner@example.com"}),
- member(),member({id:manager,role:"manager",name:"Manager",email:"manager@example.com"})]});
+const roster=()=>({members:[member({id:owner,role:"owner",clinicianEnabled:false,name:"Owner",email:"owner@example.com"}),
+ member(),member({id:manager,role:"manager",clinicianEnabled:false,name:"Manager",email:"manager@example.com"})]});
 const schedule=()=>({
  timezone:"Asia/Kabul",clinicians:[{membershipId:dentist,name:"Synthetic Dentist",role:"dentist"}],
  providers:[shift(2),shift(3),shift(4),shift(5)],hours:[
