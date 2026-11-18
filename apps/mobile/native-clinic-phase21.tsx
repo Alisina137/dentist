@@ -522,6 +522,7 @@ const styles=StyleSheet.create({
  emptyRow:{minHeight:130,backgroundColor:"#f7f9fc",borderRadius:12,
   alignItems:"center",justifyContent:"center",gap:10},
  emptyTitle:{fontSize:12,color:"#5a7b95",fontWeight:"800"},
+ checklist:{gap:2},
  checkRow:{gap:10,alignItems:"center",paddingVertical:10,borderBottomColor:"#eaf0f5",borderBottomWidth:1},
  checkIcon:{width:31,height:31,borderRadius:9,alignItems:"center",justifyContent:"center"},
  checkIconPass:{backgroundColor:"#e6f6ee"},checkIconWarn:{backgroundColor:"#fff3df"},
