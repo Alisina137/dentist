@@ -7,13 +7,12 @@ import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
 import {NativeClinicPhase20,NativeDentistPhase20,NativeClinicTeamPhase20,
  NativeInviteAcceptance} from "./native-clinic-phase20";
+import {NativeClinicPhase21} from "./native-clinic-phase21";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
  blankClinicDraft,clinicDraftErrors,clinicRegistrationPayload,validClinicContext,
- clinicHomeMetrics,clinicAppointmentMetrics,type ClinicDraft,type ClinicPlan,
- type NativeClinicContext,type NativeClinicSpace,type NativeClinicRecord,
- type ClinicOperations,type ClinicAppointments
+ type ClinicDraft,type ClinicPlan,type NativeClinicContext,type NativeClinicRecord
 } from "./native-clinic-model";
 
 declare const process:{readonly env:{EXPO_PUBLIC_API_URL?:string;
@@ -278,17 +277,13 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const [draft,setDraft]=useState<ClinicDraft>({...blankClinicDraft});
  const [stage,setStage]=useState(0);
  const [creatingNew,setCreatingNew]=useState(false);
- const [summary,setSummary]=useState<ClinicOperations|null>(null);
- const [appointments,setAppointments]=useState<ClinicAppointments|null>(null);
- const [dataIssue,setDataIssue]=useState(false),[working,setWorking]=useState(false);
- const [revision,setRevision]=useState(0);
  const active=context?.clinics.find(row=>row.clinicId===selected)||null;
  const owned=records.find(row=>row.id===selected)||null;
 
  const clearSession=useCallback(async()=>{
   generation.current++;tokenRef.current=null;
   setToken(null);setContext(null);setSelected(null);setRecords([]);
-  setSummary(null);setAppointments(null);setPassword("");setCreatingNew(false);
+  setPassword("");setCreatingNew(false);
   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
  },[]);
 
@@ -377,32 +372,6 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   }catch{setPlans([]);}
  },[]);
  useEffect(()=>{if(tab==="onboard"&&token)void loadPlans()},[tab,token,loadPlans]);
-
- // Never show another clinic's results while switching the selected clinic.
- useEffect(()=>{
-  setSummary(null);setAppointments(null);setDataIssue(false);
-  if(!token||!active||tab!=="overview")return;
-  const controller=new AbortController();
-  const cid=encodeURIComponent(active.clinicId);
-  setWorking(true);
-  const load=async()=>{
-   const results=await Promise.allSettled([
-    clinicRequest<unknown>("/v1/operations/clinics/"+cid+"/summary","GET",
-     undefined,token,controller.signal),
-    clinicRequest<unknown>("/v1/appointments/clinics/"+cid+"/overview","GET",
-     undefined,token,controller.signal)
-   ]);
-   if(controller.signal.aborted)return;
-   const ops=results[0].status==="fulfilled"?
-    clinicHomeMetrics(results[0].value.data):null;
-   const visits=results[1].status==="fulfilled"?
-    clinicAppointmentMetrics(results[1].value.data):null;
-   setSummary(ops);setAppointments(visits);
-   setDataIssue(!ops||!visits);setWorking(false);
-  };
-  void load();
-  return()=>{controller.abort()};
- },[active?.clinicId,token,tab,revision]);
 
  async function signIn(){
   setBusy(true);setError("");setMessage("");
@@ -632,40 +601,16 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      </Card>
      <NativeInviteAcceptance locale={locale} request={phase20Request}
       onAccepted={reloadClinic}/>
-    </View>:tab==="overview"?<View style={{gap:14}}>
-     <Card>
-      <View style={st.infoRow}><Text style={st.infoLabel}>{t.selected}</Text>
-       <Text style={st.infoValue}>{active.clinicName}</Text></View>
-      <View style={st.infoRow}><Text style={st.infoLabel}>{t.status}</Text>
-       <Text style={st.infoValue}>{clinicStatus(active.clinicStatus,i18n.en)===i18n.en.approved?t.approved:
-        active.clinicStatus==="draft"?t.draft:active.clinicStatus==="pending"?t.pending:
-        active.clinicStatus}</Text></View>
-      <View style={st.infoRow}><Text style={st.infoLabel}>{t.role}</Text>
-       <Text style={st.infoValue}>{t[active.role]}</Text></View>
-      {owned&&<View style={st.infoRow}>
-       <Text style={st.infoLabel}>{t.plannedDentistCount}</Text>
-       <Text style={st.infoValue}>{owned.plannedDentistCount}</Text>
-      </View>}
-     </Card>
-     <SectionTitle text={t.overview} hint={t.readOnly}/>
-     {working?<View style={st.center}><ActivityIndicator color="#165f9c"/></View>:
-      <View style={st.metricGrid}>
-       {appointments&&<><Metric name={t.today} value={appointments.todayTotal}/>
-        <Metric name={t.week} value={appointments.weekTotal}/></>}
-       {summary&&<><Metric name={t.activeDoctors} value={summary.metrics.scheduledDentists}/>
-        <Metric name={t.services} value={summary.metrics.services}/>
-        <Metric name={t.chairs} value={summary.metrics.chairs}/>
-        <Metric name={t.openDays} value={summary.metrics.openDays}/></>}
-      </View>}
-     {!working&&dataIssue&&<Text style={st.warnText}>{t.noData}</Text>}
-     <Action text={t.refresh} onPress={()=>setRevision(x=>x+1)} secondary icon="calendar"/>
-     <Card><SectionTitle text={t.setupTitle} hint={t.setupIntro}/>
-      {active.role==="owner"&&<Action text={t.onboard} icon="check"
-       onPress={()=>{setCreatingNew(false);setTab("onboard")}}/>}
-      <Action text={t.connectWeb} onPress={()=>openWeb("/clinic/onboarding?clinic="+encodeURIComponent(active.clinicId))} icon="clinic"/>
-      <Text style={st.caption}>{t.webSignIn}</Text>
-     </Card>
-    </View>:tab==="team"?<View style={{gap:14}}>
+    </View>:tab==="overview"?<NativeClinicPhase21
+     key={active.clinicId+":"+active.membershipId}
+     clinic={active} locale={locale}
+     plannedDentists={active.role==="owner"?owned?.plannedDentistCount??null:null}
+     request={phase20Request}
+     onNavigate={destination=>{
+      if(destination==="onboard")setCreatingNew(false);
+      setTab(destination);setError("");setMessage("");
+     }}
+     onOpenWeb={openWeb}/>:tab==="team"?<View style={{gap:14}}>
      {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
       <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
        clinicId={active.clinicId} membershipId={active.membershipId}
