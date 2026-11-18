@@ -14,7 +14,7 @@ import {pickClinicEvidence,uploadClinicLicense,credentialEvidence,discardEvidenc
  CREDENTIAL_MAX_BYTES,type EvidenceFile} from "./native-clinic-evidence";
 
 export type Phase20Locale="en"|"fa-AF"|"ps-AF";
-export type Phase20Request=<T>(path:string,method?:"GET"|"POST"|"PATCH",
+export type Phase20Request=<T>(path:string,method?:"GET"|"POST"|"PATCH"|"PUT",
  body?:unknown,signal?:AbortSignal)=>Promise<T>;
 const w={
  en:{

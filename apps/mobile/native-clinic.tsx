@@ -5,11 +5,12 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
-import {NativeClinicPhase20,NativeDentistPhase20,NativeClinicTeamPhase20,
+import {NativeClinicPhase20,NativeDentistPhase20,
  NativeInviteAcceptance} from "./native-clinic-phase20";
 import {NativeClinicPhase21} from "./native-clinic-phase21";
 import {NativeClinicPhase22} from "./native-clinic-phase22";
 import {NativeClinicPhase23} from "./native-clinic-phase23";
+import {NativeClinicPhase24} from "./native-clinic-phase24";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -188,7 +189,7 @@ const i18n={
  }
 } as const;
 
-type JsonMethod="GET"|"POST"|"PATCH";
+type JsonMethod="GET"|"POST"|"PATCH"|"PUT";
 async function clinicRequest<T>(path:string,method:JsonMethod="GET",
  body?:unknown,token?:string|null,signal?:AbortSignal):Promise<{data:T;headers:Headers}>{
  if(!API)throw new ApiError(0,"API_NOT_CONFIGURED");
@@ -622,27 +623,16 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      clinic={active} locale={locale} request={phase20Request}
      onOpenWeb={openWeb}/>:
     tab==="team"?<View style={{gap:14}}>
-     {(active.role==="dentist"||active.role==="owner"&&active.clinicianEnabled)&&
+     {(active.role==="dentist"||["owner","manager"].includes(active.role)&&active.clinicianEnabled)&&
       <NativeDentistPhase20 key={active.clinicId+":"+active.membershipId}
        clinicId={active.clinicId} membershipId={active.membershipId}
        locale={locale} request={phase20Request}/>}
-     {(active.role==="owner"||active.role==="manager")&&
-      <NativeClinicTeamPhase20 key={active.clinicId} clinicId={active.clinicId}
-       locale={locale} request={phase20Request} mfa={Boolean(context?.mfaEnabled)}
-       openWeb={()=>openWeb("/clinic/staff?clinic="+encodeURIComponent(active.clinicId))}/>}
+     <NativeClinicPhase24 key={active.clinicId+":"+active.membershipId}
+      clinic={active} locale={locale} request={phase20Request}
+      mfa={Boolean(context?.mfaEnabled)} onOpenWeb={openWeb}/>
      <NativeInviteAcceptance locale={locale} request={phase20Request}
       onAccepted={reloadClinic}/>
-     <Card><SectionTitle text={t.team} hint={t.expectedNote}/>
-      {owned&&<Metric name={t.plannedDentistCount} value={owned.plannedDentistCount}/>}
-      <Text style={st.body}>{t.emptyTeam}</Text>
-      <Action text={t.connectWeb} icon="users" onPress={()=>openWeb("/clinic/staff?clinic="+encodeURIComponent(active.clinicId))}/>
-     </Card>
-     <Card><SectionTitle text={t.steps}/>
-      {[t.invite,t.hours,t.offering].map((item,i)=>
-       <View key={item} style={st.todoRow}><View style={st.todoCount}>
-        <Text style={st.todoCountText}>{i+1}</Text></View>
-        <Text style={st.todoText}>{item}</Text></View>)}
-     </Card>
+
     </View>:<View style={{gap:14}}>
      <Card><SectionTitle text={t.setupTitle} hint={t.reviewHuman}/>
       {[t.license,t.invite,t.hours,t.offering].map((item,i)=>
