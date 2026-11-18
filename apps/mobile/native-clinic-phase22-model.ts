@@ -113,7 +113,7 @@ export function parseCalendar(value:unknown,clinicId:string,from:string,to:strin
     kabulDayOfTimestamp(parsed.startAt)>to)return null;
   items.push(parsed);ids.add(parsed.id);
  }
- return {from,to,total:items.length,appointments:items};
+ return {from,to,total:items.length,appointments:items,truncated:false};
 }
 export function kabulDayOfTimestamp(timestamp:string):string{
  return kabulToday(new Date(timestamp));
