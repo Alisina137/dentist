@@ -201,9 +201,10 @@ test("C25-08 native UX routes and server rules maintain independent release gate
  assert.match(phase20,/Phase20Request=<T>\(path:string,method\?:"GET"\|"POST"\|"PATCH"\|"PUT"\|"DELETE"/);
  assert.match(dash,/if\(id==="operations"\)\{onNavigate\("operations"\)/);
  for(const path of ["/services","/resources","/hours","/summary",
-  "/exceptions","/availability/preview"]){
+  "/exceptions"]){
   assert.ok(ui.includes(path),path);
  }
+ assert.match(ui,/previewPath\(/); // bounded URL is composed by the tested model.
  assert.match(ui,/AppState.addEventListener/);
  assert.match(ui,/controller.abort\(\)|ac.abort\(\)/);
  assert.match(ui,/saveWeekPayload/);
