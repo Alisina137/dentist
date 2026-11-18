@@ -76,7 +76,8 @@ export function appointmentsRouter(){
   const authorized=await enriched(rows,ctx);
   noCache(res);res.json({
    patient:{id:p.id,patientNumber:p.patientNumber,preferredName:p.preferredName,
-    familyName:p.familyName,phone:ctx.role==="assistant"?null:p.phone,status:p.status},
+    // Assistant is explicitly denied by this endpoint before this projection.
+    familyName:p.familyName,phone:p.phone,status:p.status},
    appointments:authorized,total:authorized.length,maximumRows:150
   });
  }));
