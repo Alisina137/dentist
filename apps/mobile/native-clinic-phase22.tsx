@@ -290,7 +290,8 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
     // Clear all private patient and appointment data when sent to background.
     foregroundRef.current=false;
     setForeground(false);setQueue(null);setCalendar(null);setSelected(null);
-    setPatients(null);setPatient(null);setSlots(null);
+    setPatients(null);setPatient(null);setPatientQuery("");
+    setReason("");setEditing("none");setSlots(null);setChoice(null);
     setMessage("");setError("");
    }
   });
@@ -371,7 +372,8 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
     if(controller.signal.aborted||!mounted.current||id!==slotCounter.current)return;
     const parsed=parseSlots(raw,clinic.clinicId,date,serviceId,providerId);
     if(!parsed)throw Error("INVALID_SLOTS");
-    setSlots(parsed.slots);
+    // Do not offer stale same-day starts that the server will reject.
+    setSlots(parsed.slots.filter(slot=>Date.parse(slot.startAt)>=Date.now()-60000));
     setSlotStatus("ready");
    }).catch(e=>{
     if(controller.signal.aborted||!mounted.current||id!==slotCounter.current)return;
@@ -469,6 +471,7 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  const validBooking=Boolean(patient&&serviceId&&providerId&&choice&&slots?.some(s=>
   s.start===choice.start&&s.resourceId===choice.resourceId)&&
   bookingDateAllowed(date,today)&&
+  Date.parse(choice!.startAt)>=Date.now()-60000&&
   (clinic.role!=="dentist"||providerId===clinic.membershipId));
  async function saveBooking(){
   if(!validBooking||!patient||!choice||busy)return;
@@ -514,7 +517,8 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  }
  function validBookingDateOrSlot(){
   return bookingDateAllowed(date,today)&&Boolean(choice&&slots?.some(s=>
-   s.start===choice.start&&s.resourceId===choice.resourceId)&&providerId);
+   s.start===choice.start&&s.resourceId===choice.resourceId)&&
+   Date.parse(choice.startAt)>=Date.now()-60000&&providerId);
  }
  function confirmReschedule(){
   if(!selected||!canReschedule||!validBookingDateOrSlot()||
