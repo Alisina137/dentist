@@ -183,7 +183,7 @@ const palettes={
  no_show:{bg:"#faf0e4",fg:"#9c6626"}
 } as const;
 const statusKeys=["confirmed","arrived","in_treatment","completed","cancelled","no_show"] as const;
-type Words=typeof t.en;
+type Words={[K in keyof typeof t.en]:string};
 function Icon({name,color="#155e9f",size=20}:{name:PatientIconName;color?:string;size?:number}){
  return <PatientIcon name={name} color={color} size={size}/>;
 }
@@ -263,6 +263,7 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  const [message,setMessage]=useState("");
  const [error,setError]=useState("");
  const [foreground,setForeground]=useState(!["inactive","background"].includes(AppState.currentState));
+ const foregroundRef=useRef(true);
  const [patientQuery,setPatientQuery]=useState("");
  const [patients,setPatients]=useState<SearchPatient[]|null>(null);
  const [patient,setPatient]=useState<SearchPatient|null>(null);
@@ -273,19 +274,21 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  const [slotStatus,setSlotStatus]=useState<State>("ready");
  const [source,setSource]=useState<AppointmentSource>("staff");
  const requestCounter=useRef(0);
+ const catalogCounter=useRef(0);
  const slotCounter=useRef(0);
  const detailCounter=useRef(0);
  const mounted=useRef(true);
  const attempts=useRef<Record<string,{key:string;fingerprint:string}>>({});
  useEffect(()=>{
   mounted.current=true;
-  return()=>{mounted.current=false;requestCounter.current++;slotCounter.current++;detailCounter.current++};
+  return()=>{mounted.current=false;requestCounter.current++;catalogCounter.current++;slotCounter.current++;detailCounter.current++};
  },[]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",next=>{
-   if(next==="active"){setForeground(true);setReload(x=>x+1);}
+   if(next==="active"){foregroundRef.current=true;setForeground(true);setReload(x=>x+1);}
    else{
     // Clear all private patient and appointment data when sent to background.
+    foregroundRef.current=false;
     setForeground(false);setQueue(null);setCalendar(null);setSelected(null);
     setPatients(null);setPatient(null);setSlots(null);
     setMessage("");setError("");
@@ -330,16 +333,16 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
  useEffect(()=>{
   if(!permission||!schedulable||!foreground||mode!=="create"&&editing!=="reschedule")
    return;
-  const controller=new AbortController(),id=++requestCounter.current;
+  const controller=new AbortController(),id=++catalogCounter.current;
   setCatalog(null);
   void request<unknown>(root+"/catalog","GET",undefined,controller.signal)
    .then(value=>{
-    if(controller.signal.aborted||!mounted.current||id!==requestCounter.current)return;
+    if(controller.signal.aborted||!mounted.current||id!==catalogCounter.current)return;
     setCatalog(parseCatalog(value));
    }).catch(()=>{
-    if(!controller.signal.aborted&&mounted.current&&id===requestCounter.current)setCatalog(null);
+    if(!controller.signal.aborted&&mounted.current&&id===catalogCounter.current)setCatalog(null);
    });
-  return()=>{controller.abort();requestCounter.current++};
+  return()=>{controller.abort();catalogCounter.current++};
  },[clinic.clinicId,request,mode,editing,schedulable,foreground,reload]);
  useEffect(()=>{
   if(!catalog)return;
@@ -391,12 +394,12 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
   setDetailState("loading");setSelected(null);setEditing("none");setError("");
   try{
    const payload=await request<unknown>(root+"/appointments/"+encodeURIComponent(item.id));
-   if(current!==detailCounter.current||!mounted.current||!foreground)return;
+   if(current!==detailCounter.current||!mounted.current||!foregroundRef.current)return;
    const updated=parseAppointmentDetail(payload,clinic.clinicId,item.id);
    if(!updated)throw Error("INVALID_DETAIL");
    setSelected(updated);setDetailState("ready");
   }catch(e){
-   if(current!==detailCounter.current||!mounted.current)return;
+   if(current!==detailCounter.current||!mounted.current||!foregroundRef.current)return;
    setSelected(null);setDetailState(waitStatus(e));setError(words.detailUnavailable);
   }
  }
@@ -459,7 +462,7 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
     encodeURIComponent(patientQuery.trim().slice(0,100)));
    const result=parsePatientSearch(payload);
    if(!result)throw Error("INVALID_PATIENTS");
-   setPatients(result);
+   if(mounted.current&&foregroundRef.current&&mode==="create")setPatients(result);
   }catch(e){setError(actionError(e,words))}
   finally{setBusy(false)}
  }
@@ -574,7 +577,8 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
     <Pressable key={slot.start+":"+slot.resourceId+":"+index}
      accessibilityRole="button" accessibilityState={{selected:choice===slot}}
      onPress={()=>setPicked(slot)} style={[s.timeChip,choice===slot&&s.timeChipSelected]}>
-      <Text style={[s.timeText,choice===slot&&s.timeTextSelected]}>{slot.start}</Text>
+      <Text style={[s.timeText,choice===slot&&s.timeTextSelected]}>
+       {slot.start}{slot.resourceId?" · "+(catalog?.resources.find(r=>r.id===slot.resourceId)?.label||"Chair"):""}</Text>
      </Pressable>)}</View>:<Text style={s.hint}>{words.slotReason}: {words.chooseService}</Text>}
   <Text style={s.caption}>{words.preview}</Text>
  </View>;
@@ -611,8 +615,8 @@ export function NativeClinicPhase22({clinic,locale,request,onOpenWeb}:Props){
    <View style={s.dateNav}>
     <Pressable accessibilityRole="button" onPress={()=>moveDay(view==="week"&&mode==="calendar"?-7:-1)}
      style={s.dateButton}><Icon name="chevron" size={18}/><Text>{words.previous}</Text></Pressable>
-    <Pressable accessibilityRole="button" onPress={()=>{setDate(today);setEditing("none")}}
-     style={s.todayButton}><Text style={s.todayText}>{words.today} · {date}</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={()=>{setDate(today);if(editing!=="reschedule")setEditing("none")}}
+     style={s.todayButton}><Text style={s.todayText}>{date}</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={()=>moveDay(view==="week"&&mode==="calendar"?7:1)}
      style={s.dateButton}><Text>{words.next}</Text><Icon name="chevron" size={18}/></Pressable>
    </View>
