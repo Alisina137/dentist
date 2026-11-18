@@ -73,7 +73,8 @@ export function parseAppointment(input:unknown,clinicId:string):AppointmentView|
   !Number.isSafeInteger(input.serviceDurationMinutes)||Number(input.serviceDurationMinutes)<5||
   Number(input.serviceDurationMinutes)>240)return null;
  const patient=record(input.patient)?input.patient:null;
- if(patient&&(!bounded(patient.preferredName,120)||!bounded(patient.familyName,120)))return null;
+ if(patient&&(!bounded(patient.preferredName,120)||
+  !(patient.familyName===null||bounded(patient.familyName,120))))return null;
  return {
   id:input.id,clinicId,patientId:input.patientId,serviceId:input.serviceId,
   providerMembershipId:input.providerMembershipId,resourceId:input.resourceId,
