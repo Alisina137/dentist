@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,StatusBar,StyleSheet,
- Text,TextInput,View} from "react-native";
+ Text,TextInput,View,useWindowDimensions} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
@@ -302,6 +302,8 @@ function Metric({name,value}:{name:string;value:number|string}){
 export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}){
  const [locale,setLocale]=useState<Locale>("fa-AF");
  const t=i18n[locale],rtl=locale!=="en";
+ const {fontScale}=useWindowDimensions();
+ const expandedType=fontScale>=1.3;
  const [boot,setBoot]=useState(true),[busy,setBusy]=useState(false);
  const [recovering,setRecovering]=useState(false);
  const visibleState=useRef(AppState.currentState);
@@ -629,7 +631,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
 
  return <SafeAreaView style={st.root} edges={["top","bottom","left","right"]}>
   <StatusBar backgroundColor="#122e47" barStyle="light-content"/>
-  <View style={st.header}>
+  <View style={[st.header,{flexDirection:rtl?"row-reverse":"row"}]}>
    <View style={st.brandIcon}><PatientIcon name="tooth" size={24} color="#fff"/></View>
    <View style={st.brandCopy}><Text style={st.brandTitle}>DandanLink</Text>
     <Text numberOfLines={1} style={st.brandSubtitle}>{t.workspace}</Text></View>
@@ -859,7 +861,8 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    </View>}
   </ScrollView>
   {token&&context&&<ScrollView horizontal showsHorizontalScrollIndicator={false}
-   style={st.navScroll} contentContainerStyle={st.nav}>
+   accessibilityLabel={t.workspace} style={[st.navScroll,expandedType&&{maxHeight:140}]}
+   contentContainerStyle={[st.nav,{flexDirection:rtl?"row-reverse":"row"}]}>
    {([
     ["overview","home",t.overview],
     ...(active?.role!=="cashier"?[["appointments","calendar",
@@ -872,11 +875,12 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
     ["onboard","plus",t.onboard],
     ["team","users",t.team],["settings","settings",t.settings]
    ] as [Tab,PatientIconName,string][]).map(([id,icon,label])=>
-    <Pressable key={id} accessibilityRole="tab"
+    <Pressable key={id} accessibilityRole="tab" accessibilityLabel={label}
      accessibilityState={{selected:tab===id}} onPress={()=>{setTab(id);setError("");setMessage("")}}
-     style={[st.navItem,tab===id&&st.navItemActive]}>
+     style={[st.navItem,expandedType&&{minWidth:110,minHeight:100},
+      tab===id&&st.navItemActive]}>
      <PatientIcon name={icon} size={21} color={tab===id?"#1a659c":"#688198"}/>
-     <Text numberOfLines={1} style={[st.navText,tab===id&&st.navTextActive]}>{label}</Text>
+     <Text numberOfLines={expandedType?2:1} style={[st.navText,tab===id&&st.navTextActive]}>{label}</Text>
     </Pressable>)}
   </ScrollView>}
  </SafeAreaView>;
@@ -897,43 +901,43 @@ const st=StyleSheet.create({
  brandIcon:{width:38,height:38,borderRadius:12,backgroundColor:"#236ba3",alignItems:"center",justifyContent:"center"},
  brandCopy:{flex:1},brandTitle:{fontSize:16,fontWeight:"900",color:"#fff"},
  brandSubtitle:{fontSize:10,color:"#aec6dd",marginTop:2},
- headerButton:{flexDirection:"row",gap:5,alignItems:"center",paddingHorizontal:9,paddingVertical:9,
+ headerButton:{flexDirection:"row",gap:5,alignItems:"center",paddingHorizontal:11,paddingVertical:9,minHeight:44,
   backgroundColor:"#21435f",borderRadius:10},
- headerButtonText:{fontSize:10,fontWeight:"800",color:"#e1effa"},
+ headerButtonText:{fontSize:12,fontWeight:"800",color:"#e1effa"},
  content:{paddingHorizontal:18,paddingTop:21,paddingBottom:28,gap:16,maxWidth:740,alignSelf:"center",width:"100%"},
  topLine:{alignItems:"center",justifyContent:"space-between",gap:9},
  topEyebrow:{fontSize:10,color:"#3d7096",fontWeight:"900",letterSpacing:.45,flex:1},
  langRow:{flexDirection:"row",backgroundColor:"#e1ebf2",borderRadius:9,padding:3,gap:2},
- langItem:{borderRadius:7,paddingVertical:7,paddingHorizontal:8},
- langItemActive:{backgroundColor:"#fff"},langItemText:{fontSize:10,fontWeight:"800",color:"#70889c"},
+ langItem:{borderRadius:7,paddingVertical:10,paddingHorizontal:10,minHeight:44,justifyContent:"center"},
+ langItemActive:{backgroundColor:"#fff"},langItemText:{fontSize:13,fontWeight:"800",color:"#516b81"},
  langItemTextActive:{color:"#245b85"},
  guest:{gap:17},heroTitle:{fontSize:31,fontWeight:"900",lineHeight:41,color:"#152d44"},
  heroSub:{fontSize:14,lineHeight:23,color:"#5d7386"},
  card:{borderWidth:1,borderColor:"#dce7ef",borderRadius:16,backgroundColor:"#fff",
   padding:17,gap:14,shadowColor:"#132f48",shadowOffset:{width:0,height:7},shadowOpacity:.045,shadowRadius:16,elevation:1},
  sectionHead:{gap:6},sectionTitle:{fontSize:19,fontWeight:"900",color:"#163450",lineHeight:27},
- body:{fontSize:12,color:"#647b8e",lineHeight:21},
- inputWrap:{gap:6},fieldLabel:{fontSize:12,fontWeight:"800",color:"#344f66"},
+ body:{fontSize:13,color:"#556d82",lineHeight:22},
+ inputWrap:{gap:6},fieldLabel:{fontSize:14,fontWeight:"800",color:"#344f66"},
  input:{minHeight:48,borderWidth:1,borderColor:"#d3e1eb",borderRadius:10,
   paddingVertical:11,paddingHorizontal:13,color:"#163450",backgroundColor:"#f9fbfd",fontSize:14},
  chips:{flexDirection:"row",flexWrap:"wrap",gap:8},
  chip:{borderWidth:1,borderColor:"#d3e2ec",backgroundColor:"#f5f8fb",
   borderRadius:10,paddingVertical:10,paddingHorizontal:13},
  chipActive:{borderColor:"#2c74aa",backgroundColor:"#e9f3fc"},
- chipText:{color:"#567087",fontSize:11,fontWeight:"800"},
+ chipText:{color:"#425d73",fontSize:12,fontWeight:"800"},
  chipTextActive:{color:"#185e96"},
  action:{backgroundColor:"#175e9e",borderRadius:11,paddingHorizontal:18,minHeight:49,
   flexDirection:"row",alignItems:"center",justifyContent:"center",gap:9,flexGrow:1},
- actionText:{color:"#fff",fontSize:13,fontWeight:"900"},
+ actionText:{color:"#fff",fontSize:14,fontWeight:"900"},
  actionSecondary:{backgroundColor:"#eaf2f9",borderWidth:1,borderColor:"#cfdfea"},
  actionSecondaryText:{color:"#1b5b89"},actionDisabled:{opacity:.5},actionPressed:{opacity:.82},
  error:{borderRadius:10,padding:13,color:"#9c3b46",backgroundColor:"#fff1f2",
   borderWidth:1,borderColor:"#f5d0d5",fontSize:12,lineHeight:20},
  success:{borderRadius:10,padding:13,color:"#20694f",backgroundColor:"#eaf8ef",
   borderWidth:1,borderColor:"#c8e9d3",fontSize:12,lineHeight:20},
- caption:{fontSize:11,color:"#6f8295",lineHeight:19},
+ caption:{fontSize:12,color:"#637b90",lineHeight:21},
  note:{padding:14,borderRadius:12,backgroundColor:"#e7f4fb",flexDirection:"row",gap:9},
- noteText:{fontSize:11,color:"#56768f",lineHeight:20,flex:1},
+ noteText:{fontSize:13,color:"#4c6c82",lineHeight:22,flex:1},
  welcome:{backgroundColor:"#163c59",borderRadius:17,padding:20,gap:8,overflow:"hidden"},
  welcomeEyebrow:{color:"#93d5e2",fontSize:11,fontWeight:"900"},
  welcomeName:{color:"#fff",fontSize:23,fontWeight:"900"},
@@ -947,7 +951,7 @@ const st=StyleSheet.create({
  metric:{width:"47%",flexGrow:1,minHeight:105,borderRadius:14,borderWidth:1,
   borderColor:"#dbe6ee",backgroundColor:"#fff",padding:15,gap:9},
  metricValue:{fontSize:25,fontWeight:"900",color:"#175e96"},
- metricLabel:{fontSize:11,color:"#648097",fontWeight:"700",lineHeight:18},
+ metricLabel:{fontSize:12,color:"#56758e",fontWeight:"700",lineHeight:20},
  formHeader:{gap:10},stepBar:{flexDirection:"row",flexWrap:"wrap",gap:7},
  stepPill:{borderRadius:10,backgroundColor:"#e6edf3",paddingVertical:10,paddingHorizontal:11},
  stepPillActive:{backgroundColor:"#155e9d"},
@@ -977,6 +981,6 @@ const st=StyleSheet.create({
  navItem:{minWidth:77,alignItems:"center",justifyContent:"center",gap:5,
   borderRadius:11,paddingHorizontal:5,paddingVertical:7},
  navItemActive:{backgroundColor:"#edf5fc"},
- navText:{fontSize:10,fontWeight:"800",color:"#70869b"},
+ navText:{fontSize:12,fontWeight:"800",color:"#526f86",textAlign:"center"},
  navTextActive:{color:"#185e96"}
 });
