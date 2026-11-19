@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StatusBar,StyleSheet,
+import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,StatusBar,StyleSheet,
  Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -419,7 +419,13 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   if(!pendingMfa)return;
   setMfaTime(Date.now());
   const handle=setInterval(()=>setMfaTime(Date.now()),1000);
-  return()=>clearInterval(handle);
+  // Users must be able to switch to their authenticator app. Retain only
+  // Better Auth's still-unverified, expiring challenge while backgrounded;
+  // wipe any typed code. No session/bearer exists at this point.
+  const sub=AppState.addEventListener("change",state=>{
+   setMfaCode("");setMfaTime(Date.now());
+  });
+  return()=>{clearInterval(handle);sub.remove()};
  },[pendingMfa]);
 
  async function signIn(){
