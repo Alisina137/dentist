@@ -6,6 +6,7 @@
  * configured operator log collection; this is NOT a certified alert system.
  */
 export type Phase30Signal =
+ "phase31_synthetic_delivery_probe"|
  "staff_invitation_delivery_failed"|
  "notification_delivery_exhausted"|
  "notification_queue_stale"|
@@ -31,6 +32,7 @@ export type Phase30Alert={
  productionClearance:false;
 };
 const signalSet=new Set<Phase30Signal>([
+ "phase31_synthetic_delivery_probe",
  "staff_invitation_delivery_failed",
  "notification_delivery_exhausted","notification_queue_stale",
  "notification_transport_unconfigured","notification_worker_failed",
