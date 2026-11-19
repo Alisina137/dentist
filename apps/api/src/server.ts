@@ -37,11 +37,14 @@ import { assertProductionConfiguration } from "./production-config.js";
 import { operationalAlerts } from "./phase30-observability.js";
 import { startBackupWatchdog } from "./phase30-backup-watchdog.js";
 import { startOperationalAlertDelivery } from "./phase31-alert-runtime.js";
+import { BoundedReadinessProbe } from "./phase33-readiness.js";
+import { BoundedShutdown } from "./phase33-shutdown.js";
 
 // Stop production startup before any HTTP listener or booking worker exists.
 assertProductionConfiguration();
 
 const app = express();
+let draining=false;
 app.disable("x-powered-by");
 app.use(helmet());
 const trusted = [
@@ -50,6 +53,15 @@ const trusted = [
   process.env.PATIENT_WEB_URL || "http://localhost:3002"
 ];
 app.use(cors({ origin: trusted, credentials: true }));
+app.use((req,res,next)=>{
+  if(!draining){next();return;}
+  // Requests arriving during teardown must never create uncertain new
+  // bookings, appointments, clinical records or MFA changes.
+  res.setHeader("Cache-Control","no-store");
+  res.setHeader("Retry-After","5");
+  res.status(503).json({code:"SERVICE_SHUTTING_DOWN",
+    messageKey:"errors.unavailable"});
+});
 app.use((req, res, next) => {
   res.locals.requestId = randomUUID();
   res.setHeader("X-Request-ID", res.locals.requestId);
@@ -107,14 +119,18 @@ app.use("/v1/clinical", express.json({limit:"3.5mb"}), clinicalRouter());
 app.use("/v1/chart", chartRouter());
 app.use("/v1/treatments", treatmentRouter());
 app.use("/v1/billing", billingRouter());
-app.get("/health", (_req, res) => res.json({ status: "up" }));
+const readiness=new BoundedReadinessProbe(
+ ()=>sqlClient.unsafe("SELECT 1")
+);
+app.get("/health", (_req, res) =>{
+ res.setHeader("Cache-Control","no-store");
+ res.json({ status: "up" });
+});
 app.get("/ready", async (_req, res) => {
-  try {
-    await sqlClient.unsafe("SELECT 1");
-    res.json({ status: "ready" });
-  } catch {
-    res.status(503).json({ code: "DB_UNAVAILABLE", messageKey: "errors.unavailable" });
-  }
+ res.setHeader("Cache-Control","no-store");
+ // A timed-out check or a stuck SQL client is never a success response.
+ if(await readiness.check()){res.json({status:"ready"});return;}
+ res.status(503).json({code:"DB_UNAVAILABLE",messageKey:"errors.unavailable"});
 });
 app.get("/v1/public/status", (_req, res) => res.json({
   product: "DandanLink", release: "PH19", marketplaceAvailable: true, patientAccountsEnabled: true,
@@ -243,13 +259,36 @@ const server = app.listen(port, "0.0.0.0", () => {
 const stopOperationalAlerts = startOperationalAlertDelivery();
 const stopBookingNotifications = startBookingNotificationWorker();
 const stopBackupWatchdog = startBackupWatchdog();
-const shutdown = async () => {
-  stopBookingNotifications();
-  stopBackupWatchdog();
-  stopOperationalAlerts();
-  server.close();
-  await sqlClient.end();
-  process.exit(0);
+// Limit slow header floods and connection monopolization, while allowing
+// bounded private uploads and verified mobile traffic on slower networks.
+server.headersTimeout=20_000;
+server.requestTimeout=120_000;
+server.keepAliveTimeout=5_000;
+server.maxRequestsPerSocket=100;
+server.maxHeadersCount=64;
+
+const shutdown=new BoundedShutdown({
+ stopNewWork:()=>{
+  draining=true;
+  stopBackupWatchdog();stopOperationalAlerts();
+ },
+ stopWorker:stopBookingNotifications,
+ closeHttp:()=>new Promise<void>((resolve,reject)=>{
+  server.close(error=>error?reject(error):resolve());
+  // Keepalive connections should not block draining active API writes.
+  server.closeIdleConnections();
+ }),
+ forceHttp:()=>server.closeAllConnections(),
+ closeDb:()=>sqlClient.end()
+});
+const onShutdown=()=>{
+ void shutdown.run().then(outcome=>{
+  if(outcome!=="clean")console.error("[phase33-shutdown] "+outcome.toUpperCase());
+  process.exit(outcome==="clean"?0:1);
+ }).catch(()=>{
+  console.error("[phase33-shutdown] FAILED");
+  process.exit(1);
+ });
 };
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT",onShutdown);
+process.on("SIGTERM",onShutdown);

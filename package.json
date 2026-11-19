@@ -32,7 +32,8 @@
     "qa:alerts": "pnpm exec tsx scripts/phase31-alert-preflight.ts",
     "qa:alerts:synthetic": "pnpm exec tsx scripts/phase31-alert-preflight.ts --send-synthetic",
     "qa:mobile:accessibility:init": "node scripts/phase32-device-accessibility-check.mjs --init",
-    "qa:mobile:accessibility:verify": "node scripts/phase32-device-accessibility-check.mjs --verify"
+    "qa:mobile:accessibility:verify": "node scripts/phase32-device-accessibility-check.mjs --verify",
+    "qa:hardening": "node scripts/phase33-public-safety-smoke.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

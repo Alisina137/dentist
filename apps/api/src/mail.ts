@@ -19,6 +19,8 @@ export async function sendAccountMail({ to, subject, url }: Delivery) {
     host,
     port: Number(process.env.SMTP_PORT || "587"),
     secure: process.env.SMTP_SECURE === "true",
+    // Production SMTP credentials must NEVER fall back to plaintext if STARTTLS is absent.
+    requireTLS: process.env.NODE_ENV === "production" && process.env.SMTP_SECURE !== "true",
     auth: { user, pass: password }
   });
   await transport.sendMail({ from, to, subject, text: "Open this DandanLink account link: " + url + "\nIf you did not request it, ignore this email." });

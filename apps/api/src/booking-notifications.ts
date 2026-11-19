@@ -45,6 +45,7 @@ async function processOne(){
    host:process.env.SMTP_HOST,
    port:Number(process.env.SMTP_PORT||"587"),
    secure:process.env.SMTP_SECURE==="true",
+   requireTLS:process.env.NODE_ENV==="production"&&process.env.SMTP_SECURE!=="true",
    auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD},
    connectionTimeout:8000,greetingTimeout:8000,socketTimeout:10000
   });
@@ -71,13 +72,15 @@ async function processOne(){
  return true;
 }
 export function startBookingNotificationWorker(){
- let ticks=0;
+ let ticks=0,stopping=false;
+ let runningTick:Promise<void>|null=null;
  const tick=async()=>{
+  if(stopping)return;
   if(processing)return;
   processing=true;
   try{
    // Bounded work per tick, so API requests and authentication stay responsive.
-   for(let i=0;i<8;i++)if(!await processOne())break;
+   for(let i=0;i<8&&!stopping;i++)if(!await processOne())break;
    // Every ~5 minutes, examine only aggregate queue state. No personal
    // columns or raw SMTP errors are selected or reported in alerts.
    if(++ticks%10===0){
@@ -94,8 +97,20 @@ export function startBookingNotificationWorker(){
     e instanceof Error?e.name:"unknown");
   }finally{processing=false;}
  };
- const timer=setInterval(()=>{void tick();},30000);
+ const startTick=()=>{
+  if(stopping||runningTick)return;
+  const task=tick();
+  runningTick=task;
+  void task.finally(()=>{if(runningTick===task)runningTick=null});
+ };
+ const timer=setInterval(startTick,30000);
  timer.unref();
- void tick();
- return ()=>clearInterval(timer);
+ startTick();
+ // Stop new claims before waiting for the active SMTP/DB operation to settle.
+ // A shutdown may time out at the API level; do not pretend delivery succeeded.
+ return async()=>{
+  stopping=true;
+  clearInterval(timer);
+  if(runningTick)await runningTick;
+ };
 }

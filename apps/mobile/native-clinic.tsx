@@ -17,6 +17,7 @@ import {authToken,challengeValid,isFullMfaResponse,
  mfaBody,mfaEndpoint,nativeMfaRequest,normalizeMfaCode,parseMfaRedirect,
  type NativeMfaMethod,type PendingMfa} from "./native-clinic-mfa";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
+import {safeNativeApiPath} from "./native-safe-path";
 import {nativeSessionVisibilityAction} from "./native-session-lifecycle";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -231,7 +232,7 @@ async function clinicRequest<T>(path:string,method:JsonMethod="GET",
  body?:unknown,token?:string|null,signal?:AbortSignal):Promise<{data:T;headers:Headers}>{
  if(!API)throw new ApiError(0,"API_NOT_CONFIGURED");
  if(!__DEV__&&!API.startsWith("https://"))throw new ApiError(0,"HTTPS_REQUIRED");
- if(!path.startsWith("/")||path.startsWith("//"))throw new ApiError(0,"INVALID_PATH");
+ if(!safeNativeApiPath(path))throw new ApiError(0,"INVALID_PATH");
  const timeout=new AbortController();
  const timer=setTimeout(()=>timeout.abort(),12000);
  const cancellation=()=>{
