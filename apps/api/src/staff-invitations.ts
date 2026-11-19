@@ -3,6 +3,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { and, desc, eq, gt, inArray, lte } from "drizzle-orm";
 import { db, schema } from "@dandanlink/db";
 import { sendAccountMail } from "./mail.js";
+import {operationalAlerts} from "./phase30-observability.js";
 import { authStaff, audit, fail, mayAssign, outbox, permission,
   required, roleValid, type StaffRequest } from "./staff-access.js";
 
@@ -150,7 +151,10 @@ export function clinicInviteRouter(){
       await emailInvite(email,scope.clinic.displayName,raw);
       await db.update(schema.clinicInvitation).set({sentAt:new Date()})
         .where(eq(schema.clinicInvitation.id,inviteId));
-    }catch{fail(503,"INVITATION_DELIVERY_FAILED");}
+    }catch{
+      operationalAlerts.recordSignal("staff_invitation_delivery_failed");
+      fail(503,"INVITATION_DELIVERY_FAILED");
+    }
     res.status(201).json({invitationId:inviteId,status:"pending",expiresInDays:7});
   }));
   router.post("/:invitationId/resend",work(async(req,res)=>{
@@ -183,7 +187,10 @@ export function clinicInviteRouter(){
       await emailInvite(invite.email,scope.clinic.displayName,raw);
       await db.update(schema.clinicInvitation).set({sentAt:new Date()})
         .where(eq(schema.clinicInvitation.id,iid));
-    }catch{fail(503,"INVITATION_DELIVERY_FAILED");}
+    }catch{
+      operationalAlerts.recordSignal("staff_invitation_delivery_failed");
+      fail(503,"INVITATION_DELIVERY_FAILED");
+    }
     res.json({status:"pending",expiresInDays:7});
   }));
   router.post("/:invitationId/revoke",work(async(req,res)=>{
