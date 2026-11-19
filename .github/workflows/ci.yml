@@ -77,6 +77,8 @@ jobs:
             if curl -fsS http://localhost:4000/ready > /dev/null 2>&1; then break; fi
             sleep 1
           done
+          # Phase33: real unauthenticated GET-only safety smoke; no PHI, no writes.
+          node scripts/phase33-public-safety-smoke.mjs
           PH01_API_LOG=/tmp/dandanlink-api.log node tests/auth-integration.mjs
           node tests/phase02-integration.mjs
           node tests/phase03-integration.mjs
