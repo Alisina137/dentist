@@ -28,7 +28,9 @@
     "qa:pilot": "node scripts/clinic-pilot-preflight.mjs",
     "qa:pilot:latency": "node scripts/clinic-pilot-latency.mjs",
     "qa:clinic:handoff": "node scripts/clinic-pilot-handoff.mjs",
-    "qa:operations": "pnpm exec tsx scripts/phase30-operations-preflight.ts"
+    "qa:operations": "pnpm exec tsx scripts/phase30-operations-preflight.ts",
+    "qa:alerts": "pnpm exec tsx scripts/phase31-alert-preflight.ts",
+    "qa:alerts:synthetic": "pnpm exec tsx scripts/phase31-alert-preflight.ts --send-synthetic"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
