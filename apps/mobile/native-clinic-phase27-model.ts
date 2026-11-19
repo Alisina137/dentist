@@ -146,9 +146,10 @@ export function parseClinicSettings(value:unknown,clinicId:string):ClinicSetting
   invoices.push({id:raw.id,planVersionId:raw.planVersionId,
    amountAfn:raw.amountAfn,status:raw.status,createdAt:raw.createdAt});
  }
- return {id:clinicId,status:c.status,revision:c.revision,selectedPlanId:c.selectedPlanId,
-  plannedDentistCount:c.plannedDentistCount,fields,effectiveStatus:value.effectiveStatus,
-  subscription,plan,invoices};
+ return {id:clinicId,status:c.status as string,revision:c.revision as number,
+  selectedPlanId:c.selectedPlanId as string,
+  plannedDentistCount:c.plannedDentistCount as number,
+  fields,effectiveStatus:value.effectiveStatus as string,subscription,plan,invoices};
 }
 export function clinicUpdatePayload(current:ClinicSettings,fields:ClinicDraft){
  const values=clinicRegistrationPayload(fields,current.selectedPlanId);
