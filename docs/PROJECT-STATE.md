@@ -296,3 +296,14 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - `scripts/phase29-device-mfa-check.mjs --init` / `--verify` creates and verifies a local-only evidence manifest at ignored `.patient-acceptance/phase29-device-mfa.json`. All start **NOT_RUN**: this is not proof of device execution.
 - There is **no migration, dependency, app-secret or production-policy change** in Phase29. Independent PH19 clinical/privacy/security/accessibility/legal pilot clearance remains **NO-GO**, regardless of CI or device manifest state.
 - Acceptance and device matrix: `docs/CLINIC-PHASE-29-SYNTHETIC-E2E-MFA-ACCEPTANCE.md`.
+
+
+## Clinic Phase 30 — Redacted operations monitoring and backup watchdog (19 November 2026)
+
+- Phase29 synthetic multi-account CI tests merged on main (`91c4953`). Android/iOS physical device MFA evidence and independent PH19 signoffs still pending.
+- Phase30 adds bounded, low-cardinality 401/403/409/5xx/DB readiness response alert thresholds with 5-minute buckets and 15-minute suppression, including Better Auth and all private API routers. No route/ID/query/body/token/PHI enters alerts; only fixed event categories and counts.
+- SMTP staff invitation failure, patient notification delivery exhaustion/unconfigured transport/worker error, and aggregate stale queue are redacted signals; existing consent, retries and transaction semantics are unchanged.
+- An hourly operator-source backup/restore metadata watchdog checks strict timestamp schema and age (backup 26h, restore 30d) when configured; absence in production emits `backup_heartbeat_unconfigured`. The external metadata is **not** independently verified backup evidence.
+- `pnpm qa:operations` offers a non-mutating operator check. Tests: `tests/clinic-phase-30-operational-observability.test.mjs`. No database migration, package dependency or PH19 release switch change.
+- Production alert delivery, backup reliability, mobile device security, clinical/privacy/accessibility legal approvals remain **NO-GO**, including `PH19_ALERTS_APPROVED` until independent review.
+- Acceptance: `docs/CLINIC-PHASE-30-OPERATIONS-OBSERVABILITY-ACCEPTANCE.md`.

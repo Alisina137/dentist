@@ -34,6 +34,8 @@ import { pilotFeedbackRouter } from "./pilot-feedback-router.js";
 import { protectHealthWrites, getPilotReadiness } from "./pilot-gate.js";
 import { startBookingNotificationWorker } from "./booking-notifications.js";
 import { assertProductionConfiguration } from "./production-config.js";
+import { operationalAlerts } from "./phase30-observability.js";
+import { startBackupWatchdog } from "./phase30-backup-watchdog.js";
 
 // Stop production startup before any HTTP listener or booking worker exists.
 assertProductionConfiguration();
@@ -50,6 +52,10 @@ app.use(cors({ origin: trusted, credentials: true }));
 app.use((req, res, next) => {
   res.locals.requestId = randomUUID();
   res.setHeader("X-Request-ID", res.locals.requestId);
+  // A single finish hook covers Better Auth, every nested router and 5xx handlers.
+  // The alert model only receives the controlled route GROUP and status; no query,
+  // URL parameters, body, identity, headers, IP or medical information is logged.
+  res.once("finish",()=>operationalAlerts.recordHttp(req.path,res.statusCode));
   // Sensitive identities, role grants, bookings and patient/clinical records
   // must not be cached in shared proxies or a prior user's browser session.
   if(req.path.startsWith("/v1/")||req.path.startsWith("/api/auth/")){
@@ -233,8 +239,10 @@ const server = app.listen(port, "0.0.0.0", () => {
   console.info("DandanLink API listening on port " + port);
 });
 const stopBookingNotifications = startBookingNotificationWorker();
+const stopBackupWatchdog = startBackupWatchdog();
 const shutdown = async () => {
   stopBookingNotifications();
+  stopBackupWatchdog();
   server.close();
   await sqlClient.end();
   process.exit(0);
