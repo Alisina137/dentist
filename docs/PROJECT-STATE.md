@@ -319,3 +319,13 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - `tests/clinic-phase-31-alert-recovery.test.mjs` simulates transient/permanent webhook failures, restart, spool corruption, HMAC validation, unsafe destinations and redacted booking/DB outage alerts. Existing Phase29 real PostgreSQL CI and Phase30 telemetry remain active.
 - No new packages or migrations, no PH19 approval flag modifications. `PH19_ALERTS_APPROVED` and healthcare production pilot remain **NO-GO** until operator verifies an actual hosted collector and independent security, legal/privacy, clinical, accessibility and backup signoffs.
 - Acceptance: `docs/CLINIC-PHASE-31-ALERT-DELIVERY-RESILIENCE-ACCEPTANCE.md`.
+
+
+## Clinic Phase 32 — Native privacy on resume, multilingual accessibility, device UAT tracker (19 November 2026)
+
+- Native Patient and Clinic session lifecycles now hide private views on suspension and require fresh verified Better Auth and patient/clinic role context when app becomes active; old in-flight requests cannot repopulate stale patient/clinic views. No cached PHI is treated as valid while offline.
+- Workspace switch removes the local SecureStore session **before** navigating, refuses the change when secure deletion fails, and attempts remote session revocation best effort. Async workspace storage writes are serialized to prevent stale saved choices.
+- Patient/Clinic UI improvements: more accessible onboarding radio states/labels, full English/Dari/Pashto translations on workspace chooser, RTL-aware clinic header/navigation, high font scale adaptation with two-line nav labels, and improved 44 dp touch targets.
+- Added a 96-case **manual-only** Android/iOS × Patient/Clinic × EN/Dari/Pashto × viewport/screen reader/offline/revocation matrix. All cases start NOT_RUN; real physical-device runs, screen reader passes and security/clinical release approvals have **not** been claimed.
+- Acceptance: `docs/CLINIC-PHASE-32-NATIVE-ACCESSIBILITY-ACCEPTANCE.md`. Automated checks: `tests/clinic-phase-32-native-resume-accessibility.test.mjs`. Operator: `pnpm qa:mobile:accessibility:init` and `pnpm qa:mobile:accessibility:verify`.
+- No new packages/migrations. PH19 legal, clinical, penetration, hosting, backup, accessibility, incident routing and reviewer signoffs still block real healthcare production. **PH19 NO-GO**.
