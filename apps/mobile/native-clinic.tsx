@@ -12,7 +12,7 @@ import {NativeClinicPhase22} from "./native-clinic-phase22";
 import {NativeClinicPhase23} from "./native-clinic-phase23";
 import {NativeClinicPhase24} from "./native-clinic-phase24";
 import {NativeClinicPhase25} from "./native-clinic-phase25";
-import {MFA_TTL_MS,authToken,challengeValid,isFullMfaResponse,
+import {authToken,challengeValid,isFullMfaResponse,
  mfaBody,mfaEndpoint,nativeMfaRequest,normalizeMfaCode,parseMfaRedirect,
  type NativeMfaMethod,type PendingMfa} from "./native-clinic-mfa";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
@@ -99,7 +99,7 @@ const i18n={
   eyebrow:"دندان‌لینک · برای متخصصان",title:"کلینیک شما، منظم و مصئون.",
   intro:"فضای امن برای مالک کلینیک، داکتران و کارمندان دعوت‌شده.",
   signin:"ورود",signup:"ایجاد حساب",name:"نام کامل",email:"ایمیل",
-  password:"رمز عبور",authHelp:"با ایمیل تأییدشده وارد شوید. حساب‌های دارای تأیید دو مرحله‌ای باید از وب کلینیک وارد شوند.",
+  password:"رمز عبور",authHelp:"با ایمیل تأییدشده وارد شوید. اگر تأیید دومرحله‌ای فعال است، کود تصدیق‌کننده را همین‌جا وارد کنید.",
   verify:"حساب ایجاد شد. پیش از ورود ایمیل را تأیید کنید.",
   submit:"ادامه",checking:"بررسی دسترسی مصئون کلینیک…",
   mfaTitle:"تأیید دومرحله‌ای",mfaIntro:"کود فعلی برنامه تصدیق‌کننده را بنویسید. دسترسی فقط پس از تأیید سرور فعال می‌شود.",
@@ -162,7 +162,7 @@ const i18n={
   eyebrow:"دندان‌لینک · د متخصصانو لپاره",title:"ستاسو کلینیک، منظم او خوندي.",
   intro:"د کلینیک مالکانو، ډاکټرانو او بلل شويو کارکوونکو خوندي ځای.",
   signin:"ننوتل",signup:"حساب جوړول",name:"بشپړ نوم",email:"برېښنالیک",
-  password:"رمز",authHelp:"له تایید شوي ایمیل سره ننوځئ. د دوه پړاوه تایید حسابونه په خوندي وېب کې ننوځي.",
+  password:"رمز",authHelp:"د تایید شوي ایمیل سره ننوځئ. که دوه پړاوه تایید فعال وي، د تصدیق کوډ دلته دننه کړئ.",
   verify:"حساب جوړ شو؛ مخکې له ننوتلو خپل ایمیل تایید کړئ.",
   submit:"دوام",checking:"د کلینیک خوندي لاسرسی کتل کېږي…",
   mfaTitle:"دوه پړاوه تایید",mfaIntro:"د تصدیقوونکي اوسنی کوډ ولیکئ. د دویم پړاو له تایید مخکې لاسرسی نه شته.",
