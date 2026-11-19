@@ -1,3 +1,4 @@
+import {isIP} from "node:net";
 /**
  * Stage L: fail-closed production configuration checks.
  * Validates configuration shape only, never connects to third-party services,
@@ -13,10 +14,10 @@ function httpsOrigin(raw:string|undefined):boolean{
   return u.protocol==="https:"&&Boolean(u.hostname)&&
    u.username===""&&u.password===""&&u.pathname==="/"&&
    u.search===""&&u.hash===""&&
+   !isIP(u.hostname)&&!u.hostname.includes(":")&&
    !["localhost","127.0.0.1","::1","[::1]"].includes(u.hostname.toLowerCase())&&
-   !u.hostname.toLowerCase().endsWith(".localhost")&&
-   !u.hostname.toLowerCase().endsWith(".test")&&
-   !u.hostname.toLowerCase().endsWith(".invalid");
+   ![".localhost",".test",".invalid",".local",".internal",".example"].some(x=>
+    u.hostname.toLowerCase().endsWith(x));
  }catch{return false}
 }
 
@@ -48,6 +49,11 @@ export function productionConfigurationIssues(env:NodeJS.ProcessEnv):string[]{
  if(smtpPort!==undefined&&(!/^\d{1,5}$/.test(smtpPort)||
     Number(smtpPort)<1||Number(smtpPort)>65535))
   issues.push("SMTP_PORT must be a valid TCP port");
+ // 465 expects implicit TLS. On 587 STARTTLS is required at send time.
+ if(env.SMTP_PORT==="465"&&env.SMTP_SECURE!=="true")
+  issues.push("SMTP_SECURE must be true when SMTP_PORT is 465");
+ if(env.SMTP_SECURE!==undefined&&!["true","false"].includes(env.SMTP_SECURE))
+  issues.push("SMTP_SECURE must be true or false");
  if(env.DEV_SKIP_EMAIL_VERIFICATION==="true")
   issues.push("DEV_SKIP_EMAIL_VERIFICATION must be disabled in production");
  if(env.PH19_PILOT_RELEASE_ENABLED==="true"){
