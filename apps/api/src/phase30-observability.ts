@@ -97,9 +97,19 @@ export class RedactedOperationalAlerts{
  }
 }
 
+// Register after production configuration checks; no runtime import cycle.
+// Forwarder never changes booking/auth response success or failure.
+let externalAlertForwarder:((alert:Phase30Alert)=>void)|null=null;
+export function registerOperationalAlertForwarder(fn:(alert:Phase30Alert)=>void):()=>void{
+ externalAlertForwarder=fn;
+ return ()=>{if(externalAlertForwarder===fn)externalAlertForwarder=null;};
+}
 export const operationalAlerts=new RedactedOperationalAlerts(alert=>{
  // Only allowlisted fields get serialized. The sink emits no PHI or secrets.
  console.warn("[phase30-alert] "+JSON.stringify(alert));
+ try{externalAlertForwarder?.(alert);}catch{
+  console.error("[phase31-delivery] ALERT_ENQUEUE_UNAVAILABLE");
+ }
 });
 
 /** The untrusted heartbeat states only OPERATOR-REPORTED timestamps.
