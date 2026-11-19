@@ -1,5 +1,6 @@
 import {sqlClient} from "@dandanlink/db";
 import nodemailer from "nodemailer";
+import {operationalAlerts} from "./phase30-observability.js";
 
 /** SMTP outbox worker. Never sends names, clinical notes, prices or
  * appointment times in email; those are available after secure login.
@@ -30,7 +31,10 @@ async function processOne(){
    return [];
   }
   // Leave queue pending until an SMTP provider is actually configured.
-  if(!mailAvailable())return [];
+  if(!mailAvailable()){
+   operationalAlerts.recordSignal("notification_transport_unconfigured");
+   return [];
+  }
   await tx`UPDATE patient_booking_notifications SET status='processing',
     attempt_count=attempt_count+1,available_at=now()+interval '2 minutes'
     WHERE id=${item.id}`;
@@ -63,18 +67,31 @@ async function processOne(){
     status=${final?"failed":"pending"},
     available_at=now()+${delay}*interval '1 second',
     last_error_code='SMTP_DELIVERY_FAILED' WHERE id=${item.id}`;
+  if(final)operationalAlerts.recordSignal("notification_delivery_exhausted");
   console.error("[booking-notifications] SMTP delivery failed; job retained for retry");
  }
  return true;
 }
 export function startBookingNotificationWorker(){
+ let ticks=0;
  const tick=async()=>{
   if(processing)return;
   processing=true;
   try{
    // Bounded work per tick, so API requests and authentication stay responsive.
    for(let i=0;i<8;i++)if(!await processOne())break;
+   // Every ~5 minutes, examine only aggregate queue state. No personal
+   // columns or raw SMTP errors are selected or reported in alerts.
+   if(++ticks%10===0){
+    const [backlog]=await sqlClient`SELECT COUNT(*)::integer AS total
+      FROM patient_booking_notifications
+      WHERE status='failed' OR (status IN ('pending','processing')
+       AND created_at<now()-interval '20 minutes')`;
+    if(Number(backlog?.total||0)>0)
+     operationalAlerts.recordSignal("notification_queue_stale");
+   }
   }catch(e){
+   operationalAlerts.recordSignal("notification_worker_failed");
    console.error("[booking-notifications] worker unavailable",
     e instanceof Error?e.name:"unknown");
   }finally{processing=false;}
