@@ -27,7 +27,8 @@
     "qa:clinic": "node scripts/clinic-quality-preflight.mjs",
     "qa:pilot": "node scripts/clinic-pilot-preflight.mjs",
     "qa:pilot:latency": "node scripts/clinic-pilot-latency.mjs",
-    "qa:clinic:handoff": "node scripts/clinic-pilot-handoff.mjs"
+    "qa:clinic:handoff": "node scripts/clinic-pilot-handoff.mjs",
+    "qa:operations": "pnpm exec tsx scripts/phase30-operations-preflight.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
