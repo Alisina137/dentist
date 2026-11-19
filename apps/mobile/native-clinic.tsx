@@ -596,7 +596,42 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    {!token?<View style={st.guest}>
     <Text style={[st.heroTitle,{textAlign:rtl?"right":"left"}]}>{t.title}</Text>
     <Text style={[st.heroSub,{textAlign:rtl?"right":"left"}]}>{t.intro}</Text>
-    <Card>
+    {pendingMfa?<Card>
+     <View style={st.mfaHeading}>
+      <View style={st.mfaIcon}><PatientIcon name="shield" size={24} color="#1975a6"/></View>
+      <View style={{flex:1,gap:5}}>
+       <Text style={st.sectionTitle}>{t.mfaTitle}</Text>
+       <Text style={st.body}>{t.mfaIntro}</Text>
+      </View>
+     </View>
+     <View style={st.mfaTimer}>
+      <PatientIcon name="clock" size={17} color="#185f89"/>
+      <Text style={st.mfaTimerText}>{Math.max(0,
+       Math.ceil((pendingMfa.expiresAt-mfaTime)/1000))}s</Text>
+     </View>
+     <SwitchChips value={mfaMethod} onChange={method=>{
+      if(busy)return;setMfaMethod(method);setMfaCode("");setError("");
+     }} items={[{value:"totp",label:t.mfaTotp},{value:"backup",label:t.mfaBackup}]}/>
+     <Text style={st.fieldLabel}>{mfaMethod==="totp"?t.mfaCode:t.mfaRecovery}</Text>
+     <TextInput value={mfaCode} onChangeText={text=>{
+      setMfaCode(text);if(error)setError("");
+     }} style={st.mfaInput} maxLength={mfaMethod==="totp"?6:64}
+      keyboardType={mfaMethod==="totp"?"number-pad":"default"}
+      autoCapitalize="none" autoCorrect={false} secureTextEntry
+      autoComplete={mfaMethod==="totp"?"one-time-code":"off"}
+      accessibilityLabel={mfaMethod==="totp"?t.mfaCode:t.mfaRecovery}
+      textContentType={mfaMethod==="totp"?"oneTimeCode":"none"}/>
+     {error!==""&&<Text style={st.error} accessibilityRole="alert">{error}</Text>}
+     <Text style={st.caption}>{t.mfaNew}</Text>
+     {challengeValid(pendingMfa,mfaTime)?
+      <Action text={busy?t.checking:t.mfaFinish} icon="shield"
+       onPress={()=>{void verifyMfa()}}
+       disabled={busy||normalizeMfaCode(mfaMethod,mfaCode)===null}/>:
+      <Text style={st.error}>{t.mfaExpired}</Text>}
+     <Action text={t.mfaCancel} secondary disabled={busy}
+      onPress={()=>{void cancelMfa()}}/>
+     <Text style={st.caption}>{t.mfaHelp}</Text>
+    </Card>:<Card>
      <SwitchChips value={authScreen} onChange={setAuthScreen} items={[
       {value:"signin",label:t.signin},{value:"signup",label:t.signup}]}/>
      <SectionTitle text={authScreen==="signin"?t.signin:t.signup} hint={t.authHelp}/>
@@ -608,7 +643,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      {message!==""&&<Text style={st.success}>{message}</Text>}
      <Action text={busy?t.checking:authScreen==="signin"?t.signin:t.signup}
       onPress={()=>{void (authScreen==="signin"?signIn():signUp())}} disabled={busy}/>
-    </Card>
+    </Card>}
     <View style={st.note}><PatientIcon name="shield" size={18} color="#1d7399"/>
      <Text style={st.noteText}>{t.privacy}</Text></View>
     <Action text={t.openWeb} icon="clinic" secondary onPress={()=>openWeb("/clinic/login")}/>
@@ -797,6 +832,15 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  </SafeAreaView>;
 }
 const st=StyleSheet.create({
+ mfaHeading:{flexDirection:"row",gap:13,alignItems:"center"},
+ mfaIcon:{width:50,height:50,alignItems:"center",justifyContent:"center",
+  backgroundColor:"#e5f5fb",borderRadius:15,borderWidth:1,borderColor:"#c9e4f2"},
+ mfaTimer:{flexDirection:"row",gap:8,alignItems:"center",
+  padding:12,backgroundColor:"#edf7fa",borderRadius:11},
+ mfaTimerText:{fontSize:15,fontWeight:"900",color:"#205f83"},
+ mfaInput:{minHeight:54,borderWidth:1,borderColor:"#a6cde3",
+  backgroundColor:"#f7fcff",borderRadius:12,paddingHorizontal:15,
+  fontSize:19,fontWeight:"900",letterSpacing:2,color:"#184968"},
  root:{flex:1,backgroundColor:"#f1f5f9"},loading:{flex:1,justifyContent:"center",alignItems:"center",gap:13,backgroundColor:"#f1f5f9"},
  header:{flexDirection:"row",alignItems:"center",backgroundColor:"#122e47",paddingHorizontal:18,
   paddingVertical:14,gap:10,minHeight:65},
