@@ -16,7 +16,7 @@ import {NativePublishedReviews} from "./native-public-reviews";
 import {NativeAccountArea,NativeAppointments,NativeBookingWizard,NativeSaved,type Favorite,type Booking} from "./native-patient";
 import {
  AccessibilityInfo,ActivityIndicator,Animated,Image,Linking,Pressable,RefreshControl,ScrollView,
- StatusBar,StyleSheet,Text,TextInput,View
+ StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {SafeAreaProvider,SafeAreaView} from "react-native-safe-area-context";
@@ -919,9 +919,11 @@ function ExploreScreen({ui,city,onCity,seed,specialtySeed,onClinic,isSaved,onSav
   <View style={[s.inputLine,s.exploreInput,{flexDirection:ui.flow}]}>
    <PatientIcon name="search" size={22} color={colors.blue}/>
    <TextInput value={draft} onChangeText={setDraft} placeholder={ui.t("find")}
+    accessibilityLabel={ui.t("findLabel")}
     onSubmitEditing={()=>{setQ(draft.trim());setPage(1)}} returnKeyType="search"
     style={[s.searchInput,{textAlign:ui.align}]} placeholderTextColor={colors.gray}/>
-   <Pressable onPress={()=>{setQ(draft.trim());setPage(1)}} style={s.searchIconButton}>
+   <Pressable accessibilityRole="button" accessibilityLabel={ui.t("search")}
+    onPress={()=>{setQ(draft.trim());setPage(1)}} style={s.searchIconButton}>
     <Text style={s.searchIconButtonText}>›</Text></Pressable>
   </View>
   <View style={[s.row,{flexDirection:ui.flow,flexWrap:"wrap",gap:8}]}>
@@ -1260,6 +1262,8 @@ function PatientApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}){
   API?"checking":"notConfigured");
  const [checking,setChecking]=useState(false);
  const ui=useUI(locale,calendar);
+ const {fontScale}=useWindowDimensions();
+ const expandedType=fontScale>=1.3;
  useEffect(()=>{
   if(previousIdentity.current!==identityKey){
    previousIdentity.current=identityKey;
@@ -1507,16 +1511,17 @@ function PatientApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}){
      locale==="ps-AF"?"د ملاقات وخت اخیستل":"رزرو نوبت"}</Text>
    </Pressable>
   </View>}
-  {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow}]}>
+  {!route&&<View style={[s.bottomNav,{flexDirection:ui.flow},expandedType&&{paddingVertical:12}]}>
    {([["home","home"],["explore","search"],["appointments","calendar"],["saved","bookmark"],["account","user"]] as const).map(([value,icon])=>
     <Pressable accessibilityRole="tab" accessibilityState={{selected:tab===value}}
      accessibilityLabel={value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)} onPress={()=>select(value)} key={value}
-     style={({pressed})=>[s.bottomNavItem,tab===value&&s.bottomNavItemActive,pressed&&s.bottomNavPressed]}>
+     style={({pressed})=>[s.bottomNavItem,expandedType&&{minHeight:100},
+      tab===value&&s.bottomNavItemActive,pressed&&s.bottomNavPressed]}>
      <View style={[s.bottomNavIconContainer,tab===value&&s.bottomNavIconContainerSelected]}>
       <PatientIcon name={icon} size={23}
        color={tab===value?colors.blue:colors.muted} filled={tab===value}/>
      </View>
-     <Text numberOfLines={1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
+     <Text numberOfLines={expandedType?2:1} style={[s.bottomNavLabel,tab===value&&s.bottomNavLabelSelected]}>
       {value==="appointments"?(locale==="en"?"Appointments":locale==="ps-AF"?"ملاقاتونه":"نوبت‌ها"):ui.t(value)}</Text>
     </Pressable>)}
   </View>}
@@ -1587,7 +1592,7 @@ const s=StyleSheet.create({
  bottomNavIconContainer:{minHeight:28,minWidth:40,borderRadius:11,
   alignItems:"center",justifyContent:"center"},
  bottomNavIconContainerSelected:{backgroundColor:"#D9EAFE"},
- bottomNavLabel:{fontSize:patientTheme.type.minimum,lineHeight:18,fontWeight:"700",
+ bottomNavLabel:{fontSize:patientTheme.type.minimum,lineHeight:18,fontWeight:"700",flexShrink:1,
   color:colors.muted,textAlign:"center"},
  bottomNavLabelSelected:{color:colors.blue,fontWeight:"800"},
  stickyBookingBar:{backgroundColor:colors.white,borderTopWidth:1,borderColor:colors.line,
@@ -1614,7 +1619,7 @@ const s=StyleSheet.create({
  exploreInput:{marginTop:0},
  inputIcon:{color:colors.blue,fontSize:26,fontWeight:"600"},
  searchInput:{fontSize:14,color:colors.ink,flex:1,paddingVertical:10},
- searchIconButton:{width:33,height:33,borderRadius:10,backgroundColor:colors.blue,
+ searchIconButton:{minWidth:44,minHeight:44,borderRadius:10,backgroundColor:colors.blue,
   justifyContent:"center",alignItems:"center"},
  searchIconButtonText:{fontSize:24,fontWeight:"700",color:colors.white},
  citySelector:{paddingVertical:10,paddingHorizontal:13,borderWidth:1,
@@ -1647,7 +1652,7 @@ const s=StyleSheet.create({
  tagText:{color:colors.blueDeep,fontSize:patientTheme.type.minimum,fontWeight:"800"},
  tagGreen:{backgroundColor:colors.greenSoft},
  tagTextGreen:{color:colors.green},
- heart:{width:37,height:37,alignItems:"center",justifyContent:"center",
+ heart:{minWidth:44,minHeight:44,alignItems:"center",justifyContent:"center",
   borderWidth:1,borderColor:colors.line,borderRadius:12,backgroundColor:colors.white},
  heartSelected:{backgroundColor:colors.pale,borderColor:"#C9DEFF"},
  heartText:{fontSize:24,color:colors.gray,lineHeight:28},
