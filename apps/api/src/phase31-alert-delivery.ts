@@ -26,6 +26,7 @@ export type Phase31State={
 const MAX_JOBS=128,MAX_ATTEMPTS=6,MAX_AGE_MS=24*3600_000;
 const MAX_FILE_BYTES=65536,MAX_BATCH=4;
 const CODE_SET=new Set([
+ "phase31_synthetic_delivery_probe",
  "auth_denials_spike","permission_denials_spike","conflicts_spike",
  "api_server_errors","staff_invitation_delivery_failed",
  "notification_delivery_exhausted","notification_queue_stale",
