@@ -137,3 +137,46 @@ await expectStatus(verifiedMfa, [200], "TOTP verification");
 if (cookieOf(verifiedMfa)) cookie = cookieOf(verifiedMfa);
 await expectStatus(await http("/v1/admin/home", undefined, cookie), [200], "admin home after MFA");
 console.log("PH01 privileged integration passed: explicit grant, clinic deny, MFA deny/enrollment/verification.");
+
+// Clinic Phase 26: MFA sign-in from a native-style cookie-continuous client.
+// Better Auth must NOT return a bearer token on a password-only challenge.
+// The second factor has to mint the actual signed bearer token, never a
+// client-generated session or a copied challenge cookie.
+const phase26SignIn=await http("/api/auth/sign-in/email",{
+ email,password:newPassword,rememberMe:false
+});
+await expectStatus(phase26SignIn,[200],"C26 MFA password step");
+const challenge=await phase26SignIn.json();
+assert.equal(challenge.twoFactorRedirect,true,"MFA password must not authenticate");
+assert.equal(phase26SignIn.headers.get("set-auth-token"),null,
+ "password-only response exposed a bearer credential");
+const phase26Cookie=cookieOf(phase26SignIn);
+assert.match(phase26Cookie,/two_factor/i,
+ "Better Auth pending second factor cookie missing");
+// TOTP verification can reject reuse of an already consumed time-step code.
+// Exercise the next 30-second period to test a distinct code.
+const waitForNextTotp=30500-Date.now()%30000;
+await new Promise(resolve=>setTimeout(resolve,waitForNextTotp));
+const phase26Verified=await http("/api/auth/two-factor/verify-totp",{
+ code:totp(uri),trustDevice:false
+},phase26Cookie);
+await expectStatus(phase26Verified,[200],"C26 final TOTP");
+const phase26Data=await phase26Verified.json();
+assert.ok(typeof phase26Data.token==="string"&&phase26Data.token.length>20,
+ "TOTP final response did not establish a session");
+assert.ok(phase26Data.user?.id,"TOTP final response missing user");
+const phase26Bearer=phase26Verified.headers.get("set-auth-token");
+assert.ok(phase26Bearer&&phase26Bearer.length>20,
+ "Bearer plugin did not issue a token after TOTP");
+const phase26Session=await fetch(base+"/api/auth/get-session",{
+ headers:{Authorization:"Bearer "+phase26Bearer}
+});
+await expectStatus(phase26Session,[200],"C26 authenticated bearer session");
+const phase26Identity=await phase26Session.json();
+assert.equal(phase26Identity.user?.email,email);
+const phase26Replay=await http("/api/auth/two-factor/verify-totp",{
+ code:totp(uri),trustDevice:false
+},phase26Cookie);
+assert.ok(phase26Replay.status>=400,
+ "Already consumed MFA challenge must not mint a second session");
+console.log("C26 MFA integration passed: password challenge has no bearer, one verified TOTP mints bearer, replay denied.");

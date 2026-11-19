@@ -104,7 +104,10 @@ test("patient/clinic onboarding: no unverified health data in local storage or p
  assert.ok(clinic.includes('"/v1/clinics","POST"'));
  assert.ok(clinic.includes('"/v1/public/plans"'));
  assert.ok(clinic.includes("twoFactorRedirect"));
- assert.ok(clinic.includes("MFA_WEB_REQUIRED"));
+ assert.ok(clinic.includes("parseMfaRedirect"));
+ assert.ok(clinic.includes("isFullMfaResponse"));
+ assert.ok(clinic.includes("nativeMfaRequest"));
+ assert.ok(!clinic.includes("MFA_WEB_REQUIRED"));
  // Phase 21 extracted the live read-only dashboard from the clinic shell.
  // Keep checking that the bound endpoints exist and use the current workspace.
  const dashboard=read("apps/mobile/native-clinic-phase21.tsx");

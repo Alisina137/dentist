@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,Linking,Pressable,ScrollView,StatusBar,StyleSheet,
+import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,StatusBar,StyleSheet,
  Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,6 +12,9 @@ import {NativeClinicPhase22} from "./native-clinic-phase22";
 import {NativeClinicPhase23} from "./native-clinic-phase23";
 import {NativeClinicPhase24} from "./native-clinic-phase24";
 import {NativeClinicPhase25} from "./native-clinic-phase25";
+import {authToken,challengeValid,isFullMfaResponse,
+ mfaBody,mfaEndpoint,nativeMfaRequest,normalizeMfaCode,parseMfaRedirect,
+ type NativeMfaMethod,type PendingMfa} from "./native-clinic-mfa";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
@@ -33,9 +36,19 @@ const i18n={
   eyebrow:"DANDANLINK · FOR PROFESSIONALS",title:"Your clinic, organized.",
   intro:"A secure home for practice owners, dentists and invited staff.",
   signin:"Sign in",signup:"Create account",name:"Full name",email:"Email address",
-  password:"Password",authHelp:"Use a verified email address. Accounts with two-factor authentication must sign in through the secure clinic website.",
+  password:"Password",authHelp:"Use a verified email address. Two-factor-protected accounts can complete their authenticator challenge securely here.",
   verify:"Account created. Verify your email before signing in.",
   submit:"Continue",checking:"Checking secure clinic access…",
+  mfaTitle:"Two-factor verification",mfaIntro:"Enter the current code from your authenticator app. No access is granted until the server verifies the second factor.",
+  mfaTotp:"Authenticator code",mfaBackup:"Recovery code",
+  mfaCode:"6-digit code",mfaRecovery:"Single-use recovery code",
+  mfaFinish:"Verify & sign in",mfaCancel:"Cancel sign-in",mfaExpired:"Verification expired. Enter your password again.",
+  mfaWrong:"Verification failed. Check the code and your device time, or use a recovery code.",
+  mfaBlocked:"Too many attempts or verification locked. Try later or use clinic web recovery.",
+  mfaNetwork:"Cannot verify the code. Check your connection. Never submit repeatedly without checking the result.",
+  mfaNew:"The current code is processed only by the DandanLink authentication server and is never saved on your device.",
+  mfaHelp:"Authenticator login is supported. To enroll a new device or reset 2FA, use the secure clinic website.",
+  mfaReady:"Two-factor verification complete.",mfaInvalid:"Enter the required authenticator or recovery code.",
   signupHint:"Passwords need 10 or more characters.",signInError:"Sign-in failed. Check credentials, verification and connectivity.",
   signupError:"Could not create account. Check the form and network.",
   authRequired:"Sign in with your clinic account to continue.",retry:"Retry",
@@ -86,9 +99,19 @@ const i18n={
   eyebrow:"دندان‌لینک · برای متخصصان",title:"کلینیک شما، منظم و مصئون.",
   intro:"فضای امن برای مالک کلینیک، داکتران و کارمندان دعوت‌شده.",
   signin:"ورود",signup:"ایجاد حساب",name:"نام کامل",email:"ایمیل",
-  password:"رمز عبور",authHelp:"با ایمیل تأییدشده وارد شوید. حساب‌های دارای تأیید دو مرحله‌ای باید از وب کلینیک وارد شوند.",
+  password:"رمز عبور",authHelp:"با ایمیل تأییدشده وارد شوید. اگر تأیید دومرحله‌ای فعال است، کود تصدیق‌کننده را همین‌جا وارد کنید.",
   verify:"حساب ایجاد شد. پیش از ورود ایمیل را تأیید کنید.",
   submit:"ادامه",checking:"بررسی دسترسی مصئون کلینیک…",
+  mfaTitle:"تأیید دومرحله‌ای",mfaIntro:"کود فعلی برنامه تصدیق‌کننده را بنویسید. دسترسی فقط پس از تأیید سرور فعال می‌شود.",
+  mfaTotp:"کود تصدیق‌کننده",mfaBackup:"کود بازیابی",mfaCode:"کود ۶ رقمی",
+  mfaRecovery:"کود بازیابی یک‌بار مصرف",mfaFinish:"تأیید و ورود",
+  mfaCancel:"لغو ورود",mfaExpired:"وقت تأیید تمام شد؛ رمز عبور را دوباره وارد کنید.",
+  mfaWrong:"کود درست نیست؛ زمان گوشی را بررسی کنید یا از کود بازیابی استفاده کنید.",
+  mfaBlocked:"تلاش زیاد یا حساب موقتاً قفل شد؛ بعداً تلاش کنید.",
+  mfaNetwork:"اتصال مشکل دارد؛ قبل از تکرار نتیجه را بررسی کنید.",
+  mfaNew:"کود فقط در سرور تصدیق می‌شود و روی گوشی ذخیره نمی‌گردد.",
+  mfaHelp:"برای فعال‌سازی یا بازیابی ورود دومرحله‌ای از وب مصئون کلینیک استفاده کنید.",
+  mfaReady:"ورود دومرحله‌ای تأیید شد.",mfaInvalid:"کود معتبر را وارد کنید.",
   signupHint:"رمز عبور حداقل ۱۰ کاراکتر باشد.",signInError:"ورود ناموفق. رمز، تأیید ایمیل و اتصال را بررسی کنید.",
   signupError:"حساب ساخته نشد. فرم و اتصال را بررسی کنید.",
   authRequired:"برای ادامه به حساب کلینیک خود وارد شوید.",retry:"دوباره",
@@ -139,10 +162,21 @@ const i18n={
   eyebrow:"دندان‌لینک · د متخصصانو لپاره",title:"ستاسو کلینیک، منظم او خوندي.",
   intro:"د کلینیک مالکانو، ډاکټرانو او بلل شويو کارکوونکو خوندي ځای.",
   signin:"ننوتل",signup:"حساب جوړول",name:"بشپړ نوم",email:"برېښنالیک",
-  password:"رمز",authHelp:"له تایید شوي ایمیل سره ننوځئ. د دوه پړاوه تایید حسابونه په خوندي وېب کې ننوځي.",
+  password:"رمز",authHelp:"د تایید شوي ایمیل سره ننوځئ. که دوه پړاوه تایید فعال وي، د تصدیق کوډ دلته دننه کړئ.",
   verify:"حساب جوړ شو؛ مخکې له ننوتلو خپل ایمیل تایید کړئ.",
   submit:"دوام",checking:"د کلینیک خوندي لاسرسی کتل کېږي…",
-  signupHint:"رمز باید لږ تر لږه لس توري ولري.",signInError:"ننوتل ناکام شول؛ رمز، ایمیل او شبکه وګورئ.",
+  mfaTitle:"دوه پړاوه تایید",mfaIntro:"د تصدیقوونکي اوسنی کوډ ولیکئ. د دویم پړاو له تایید مخکې لاسرسی نه شته.",
+  mfaTotp:"د تصدیقوونکي کوډ",mfaBackup:"د بیا رغونې کوډ",
+  mfaCode:"شپږ رقمي کوډ",mfaRecovery:"یوځل کارېدونکی د بیا رغونې کوډ",
+  mfaFinish:"تایید او ننوتل",mfaCancel:"ننوتل لغوه کول",
+  mfaExpired:"وخت پای ته ورسېد؛ بیا پټنوم ولیکئ.",
+  mfaWrong:"کوډ ناسم دی؛ د موبایل ساعت وګورئ یا د بیا رغونې کوډ وکاروئ.",
+  mfaBlocked:"ډېرې هڅې شوې؛ وروسته بیا هڅه وکړئ.",
+  mfaNetwork:"د انټرنېټ ستونزه؛ د بیا هڅې مخکې پایله وګورئ.",
+  mfaNew:"کوډ یوازې په سرور کې کتل کېږي؛ په موبایل کې نه ساتل کېږي.",
+  mfaHelp:"د دویم پړاو فعالولو یا بیا رغونې لپاره خوندي کلینیک وېب وکاروئ.",
+  mfaReady:"دوه پړاوه تایید بشپړ شو.",mfaInvalid:"سم کوډ ولیکئ.",
+  signupHint:"رمز باید لږ تر لږ لس توري ولري.",signInError:"ننوتل ناکام شول؛ رمز، ایمیل او شبکه وګورئ.",
   signupError:"حساب جوړ نشو. فورمه او شبکه وګورئ.",
   authRequired:"د دوام لپاره د کلینیک حساب ته ننوځئ.",retry:"بیا هڅه",
   noClinic:"خپل د غاښونو کلینیک ثبت کړئ",noClinicBody:"د مالک په توګه ثبت شئ، پلان وټاکئ او جواز د کتنې لپاره ولېږئ. بلل شوي ډاکټران موجود کلینیک ته ننوتلای شي.",
@@ -271,6 +305,10 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const tokenRef=useRef<string|null>(null),generation=useRef(0);
  const [context,setContext]=useState<NativeClinicContext|null>(null);
  const [authScreen,setAuthScreen]=useState<AuthScreen>("signin");
+ const [pendingMfa,setPendingMfa]=useState<PendingMfa|null>(null);
+ const [mfaMethod,setMfaMethod]=useState<NativeMfaMethod>("totp");
+ const [mfaCode,setMfaCode]=useState("");
+ const [mfaTime,setMfaTime]=useState(Date.now());
  const [name,setName]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState("");
  const [message,setMessage]=useState(""),[error,setError]=useState("");
  const [tab,setTab]=useState<Tab>("overview");
@@ -287,7 +325,8 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const clearSession=useCallback(async()=>{
   generation.current++;tokenRef.current=null;
   setToken(null);setContext(null);setSelected(null);setRecords([]);
-  setPassword("");setCreatingNew(false);
+  setPassword("");setMfaCode("");setPendingMfa(null);setMfaMethod("totp");
+  setCreatingNew(false);
   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
  },[]);
 
@@ -376,28 +415,108 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   }catch{setPlans([]);}
  },[]);
  useEffect(()=>{if(tab==="onboard"&&token)void loadPlans()},[tab,token,loadPlans]);
+ useEffect(()=>{
+  if(!pendingMfa)return;
+  setMfaTime(Date.now());
+  const handle=setInterval(()=>setMfaTime(Date.now()),1000);
+  // Users must be able to switch to their authenticator app. Retain only
+  // Better Auth's still-unverified, expiring challenge while backgrounded;
+  // wipe any typed code. No session/bearer exists at this point.
+  const sub=AppState.addEventListener("change",state=>{
+   setMfaCode("");setMfaTime(Date.now());
+  });
+  return()=>{clearInterval(handle);sub.remove()};
+ },[pendingMfa]);
 
  async function signIn(){
   setBusy(true);setError("");setMessage("");
   try{
    await clearSession();const id=generation.current;
-   const signed=await clinicRequest<{twoFactorRedirect?:boolean}>(
-    "/api/auth/sign-in/email","POST",{email:email.trim().toLowerCase(),password});
-   if(signed.data?.twoFactorRedirect)throw new ApiError(403,"MFA_WEB_REQUIRED");
-   const bearer=signed.headers.get("set-auth-token");
+   const signed=await nativeMfaRequest<unknown>(
+    API,"/api/auth/sign-in/email",{email:email.trim().toLowerCase(),
+     password,rememberMe:false});
+   if(id!==generation.current)throw new ApiError(401,"SESSION_CHANGED");
+   const pending=parseMfaRedirect(signed.data);
+   if(pending){
+    // Better Auth creates only a short-lived HttpOnly 2FA cookie at this point.
+    // It must not create or persist a bearer session before OTP verification.
+    setPassword("");setPendingMfa(pending);setMfaMethod("totp");
+    setMfaCode("");setMfaTime(Date.now());return;
+   }
+   if(signed.data&&typeof signed.data==="object"&&
+    "twoFactorRedirect" in signed.data &&
+    (signed.data as {twoFactorRedirect?:unknown}).twoFactorRedirect===true)
+    throw new ApiError(403,"MFA_CHALLENGE_UNSUPPORTED");
+   const bearer=authToken(signed.headers);
    if(!bearer)throw new ApiError(503,"TOKEN_MISSING");
    await SecureStore.setItemAsync(TOKEN_KEY,bearer);
    if(id!==generation.current){
     await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
     throw new ApiError(401,"SESSION_CHANGED");
    }
-   tokenRef.current=bearer;setToken(bearer);
+   tokenRef.current=bearer;
    await refreshSession(bearer);
-   setPassword("");
+   if(id!==generation.current)throw new ApiError(401,"SESSION_CHANGED");
+   setToken(bearer);setPassword("");
   }catch(e){
-   await clearSession();setError(e instanceof ApiError&&e.code==="MFA_WEB_REQUIRED"?
-    t.authHelp:t.signInError);
+   if(e instanceof ApiError&&e.code==="SESSION_CHANGED")return;
+   await clearSession();setError(t.signInError);
   }finally{setBusy(false)}
+ }
+ async function verifyMfa(){
+  if(!pendingMfa||busy)return;
+  if(!challengeValid(pendingMfa)){
+   await clearSession();setError(t.mfaExpired);return;
+  }
+  const code=normalizeMfaCode(mfaMethod,mfaCode);
+  if(!code){setError(t.mfaInvalid);return}
+  setBusy(true);setError("");setMessage("");
+  const current=generation.current;
+  try{
+   const confirmed=await nativeMfaRequest<unknown>(API,mfaEndpoint(mfaMethod),
+    mfaBody(mfaMethod,code));
+   if(current!==generation.current)throw new ApiError(401,"SESSION_CHANGED");
+   if(!challengeValid(pendingMfa))throw new ApiError(401,"MFA_EXPIRED");
+   if(!isFullMfaResponse(confirmed.data))throw new ApiError(502,"MFA_RESPONSE_UNVERIFIED");
+   // Better Auth bearer plugin sets the opaque session token only on
+   // successful two-factor verification.
+   const bearer=authToken(confirmed.headers);
+   if(!bearer)throw new ApiError(502,"MFA_SESSION_TOKEN_MISSING");
+   await SecureStore.setItemAsync(TOKEN_KEY,bearer);
+   if(current!==generation.current){
+    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
+    throw new ApiError(401,"SESSION_CHANGED");
+   }
+   tokenRef.current=bearer;
+   await refreshSession(bearer);
+   if(current!==generation.current)throw new ApiError(401,"SESSION_CHANGED");
+   setToken(bearer);setMfaCode("");setPendingMfa(null);
+   setMessage(t.mfaReady);
+  }catch(e){
+   if(current!==generation.current)return;
+   // A failed session/context validation is NOT a failed OTP; never let a
+   // potentially authenticated but unverified session persist locally.
+   if(tokenRef.current){
+    await clearSession();setError(t.signInError);return;
+   }
+   setMfaCode("");
+   if(e instanceof ApiError&&e.code==="MFA_EXPIRED"){
+    await clearSession();setError(t.mfaExpired);return;
+   }
+   if(e instanceof ApiError&&e.status===429){
+    await clearSession();setError(t.mfaBlocked);return;
+   }
+   if(e instanceof ApiError&&e.status===0){
+    // Ambiguous transport outcome; the original Better Auth challenge may
+    // have been consumed. Do not automatically replay a one-time code.
+    await clearSession();setError(t.mfaNetwork);return;
+   }
+   setError(t.mfaWrong);
+  }finally{setBusy(false)}
+ }
+ async function cancelMfa(){
+  if(busy)return;
+  await clearSession();setError("");setMessage("");setAuthScreen("signin");
  }
  async function signUp(){
   if(name.trim().length<2||password.length<10||!email.trim().includes("@")){
@@ -483,7 +602,42 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    {!token?<View style={st.guest}>
     <Text style={[st.heroTitle,{textAlign:rtl?"right":"left"}]}>{t.title}</Text>
     <Text style={[st.heroSub,{textAlign:rtl?"right":"left"}]}>{t.intro}</Text>
-    <Card>
+    {pendingMfa?<Card>
+     <View style={st.mfaHeading}>
+      <View style={st.mfaIcon}><PatientIcon name="shield" size={24} color="#1975a6"/></View>
+      <View style={{flex:1,gap:5}}>
+       <Text style={st.sectionTitle}>{t.mfaTitle}</Text>
+       <Text style={st.body}>{t.mfaIntro}</Text>
+      </View>
+     </View>
+     <View style={st.mfaTimer}>
+      <PatientIcon name="clock" size={17} color="#185f89"/>
+      <Text style={st.mfaTimerText}>{Math.max(0,
+       Math.ceil((pendingMfa.expiresAt-mfaTime)/1000))}s</Text>
+     </View>
+     <SwitchChips value={mfaMethod} onChange={method=>{
+      if(busy)return;setMfaMethod(method);setMfaCode("");setError("");
+     }} items={[{value:"totp",label:t.mfaTotp},{value:"backup",label:t.mfaBackup}]}/>
+     <Text style={st.fieldLabel}>{mfaMethod==="totp"?t.mfaCode:t.mfaRecovery}</Text>
+     <TextInput value={mfaCode} onChangeText={text=>{
+      setMfaCode(text);if(error)setError("");
+     }} style={st.mfaInput} maxLength={mfaMethod==="totp"?6:64}
+      keyboardType={mfaMethod==="totp"?"number-pad":"default"}
+      autoCapitalize="none" autoCorrect={false} secureTextEntry
+      autoComplete={mfaMethod==="totp"?"one-time-code":"off"}
+      accessibilityLabel={mfaMethod==="totp"?t.mfaCode:t.mfaRecovery}
+      textContentType={mfaMethod==="totp"?"oneTimeCode":"none"}/>
+     {error!==""&&<Text style={st.error} accessibilityRole="alert">{error}</Text>}
+     <Text style={st.caption}>{t.mfaNew}</Text>
+     {challengeValid(pendingMfa,mfaTime)?
+      <Action text={busy?t.checking:t.mfaFinish} icon="shield"
+       onPress={()=>{void verifyMfa()}}
+       disabled={busy||normalizeMfaCode(mfaMethod,mfaCode)===null}/>:
+      <Text style={st.error}>{t.mfaExpired}</Text>}
+     <Action text={t.mfaCancel} secondary disabled={busy}
+      onPress={()=>{void cancelMfa()}}/>
+     <Text style={st.caption}>{t.mfaHelp}</Text>
+    </Card>:<Card>
      <SwitchChips value={authScreen} onChange={setAuthScreen} items={[
       {value:"signin",label:t.signin},{value:"signup",label:t.signup}]}/>
      <SectionTitle text={authScreen==="signin"?t.signin:t.signup} hint={t.authHelp}/>
@@ -495,7 +649,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      {message!==""&&<Text style={st.success}>{message}</Text>}
      <Action text={busy?t.checking:authScreen==="signin"?t.signin:t.signup}
       onPress={()=>{void (authScreen==="signin"?signIn():signUp())}} disabled={busy}/>
-    </Card>
+    </Card>}
     <View style={st.note}><PatientIcon name="shield" size={18} color="#1d7399"/>
      <Text style={st.noteText}>{t.privacy}</Text></View>
     <Action text={t.openWeb} icon="clinic" secondary onPress={()=>openWeb("/clinic/login")}/>
@@ -684,6 +838,15 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  </SafeAreaView>;
 }
 const st=StyleSheet.create({
+ mfaHeading:{flexDirection:"row",gap:13,alignItems:"center"},
+ mfaIcon:{width:50,height:50,alignItems:"center",justifyContent:"center",
+  backgroundColor:"#e5f5fb",borderRadius:15,borderWidth:1,borderColor:"#c9e4f2"},
+ mfaTimer:{flexDirection:"row",gap:8,alignItems:"center",
+  padding:12,backgroundColor:"#edf7fa",borderRadius:11},
+ mfaTimerText:{fontSize:15,fontWeight:"900",color:"#205f83"},
+ mfaInput:{minHeight:54,borderWidth:1,borderColor:"#a6cde3",
+  backgroundColor:"#f7fcff",borderRadius:12,paddingHorizontal:15,
+  fontSize:19,fontWeight:"900",letterSpacing:2,color:"#184968"},
  root:{flex:1,backgroundColor:"#f1f5f9"},loading:{flex:1,justifyContent:"center",alignItems:"center",gap:13,backgroundColor:"#f1f5f9"},
  header:{flexDirection:"row",alignItems:"center",backgroundColor:"#122e47",paddingHorizontal:18,
   paddingVertical:14,gap:10,minHeight:65},
