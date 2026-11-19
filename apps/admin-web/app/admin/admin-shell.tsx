@@ -315,7 +315,7 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
        <div className="admin-user-copy"><strong>{name||t("account")}</strong>
         <small>{role==="admin"?t("adminRole"):role==="support"?t("supportRole"):""}</small></div>
       </div>
-      {role!=="user"&&<button type="button" className="btn btn-secondary admin-signout"
+      {(role==="admin"||role==="support")&&<button type="button" className="btn btn-secondary admin-signout"
        onClick={signOut} disabled={signingOut} title={t("signOut")}>
        <CareIcon name="logout" size={17}/><span>{t("signOut")}</span></button>}
      </div>
