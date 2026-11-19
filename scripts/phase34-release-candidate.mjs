@@ -12,7 +12,7 @@
  * No network calls, file-system traversal outside this repo, medical data,
  * emails, screenshots, user identifiers, secrets, or freeform evidence notes.
  */
-import {existsSync,readFileSync,mkdirSync,writeFileSync} from "node:fs";
+import {existsSync,readFileSync,mkdirSync,writeFileSync,statSync} from "node:fs";
 import {join,resolve,dirname} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {validateChecklist as validate29} from "./phase29-device-mfa-check.mjs";
@@ -152,8 +152,10 @@ function deviceLedger(base,name,total,validator){
  const file=join(base,".patient-acceptance",name);
  if(!existsSync(file))return {status:"NOT_RUN",total,passed:0,remaining:total};
  try{
+  // Read only bounded operator-supplied manifests. A huge or corrupted file
+  // must never flood CI memory or print evidence contents in diagnostics.
+  if(statSync(file).size>96_000)throw Error("OVERSIZED");
   const data=JSON.parse(readFileSync(file,"utf8"));
-  if(readFileSync(file).byteLength>96_000)throw Error("OVERSIZED");
   const result=validator(data);
   return {status:result.complete?"OPERATOR_REPORTED_COMPLETE":"INCOMPLETE",
    total,passed:result.stats.PASS,remaining:result.remaining};
