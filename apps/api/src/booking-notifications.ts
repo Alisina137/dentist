@@ -31,10 +31,8 @@ async function processOne(){
    return [];
   }
   // Leave queue pending until an SMTP provider is actually configured.
-  if(!mailAvailable()){
-   operationalAlerts.recordSignal("notification_transport_unconfigured");
-   return [];
-  }
+  if(!mailAvailable())operationalAlerts.recordSignal("notification_transport_unconfigured");
+  if(!mailAvailable())return [];
   await tx`UPDATE patient_booking_notifications SET status='processing',
     attempt_count=attempt_count+1,available_at=now()+interval '2 minutes'
     WHERE id=${item.id}`;
