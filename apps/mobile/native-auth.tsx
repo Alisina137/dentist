@@ -1,7 +1,9 @@
 import React,{createContext,useCallback,useContext,useEffect,useMemo,useRef,useState,type ReactNode} from "react";
+import {AppState} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
+import {nativeSessionVisibilityAction} from "./native-session-lifecycle";
 import {authToken,challengeValid,isFullMfaResponse,mfaBody,mfaEndpoint,
  nativeMfaRequest,parseMfaRedirect,type NativeMfaMethod,type PendingMfa}
  from "./native-clinic-mfa";
@@ -34,6 +36,7 @@ type AccountContext={
  requestPasswordReset:(email:string)=>Promise<void>;
  resendVerification:(email:string)=>Promise<void>;
  signOut:()=>Promise<void>;
+ switchWorkspace:()=>Promise<void>;
  refresh:()=>Promise<void>;
  request:<T>(path:string,method?:HttpMethod,body?:unknown)=>Promise<T>;
 };
@@ -91,6 +94,7 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
  // A delayed restore, refresh or 401 must never revive or revoke another user.
  const sessionGeneration=useRef(0);
  const activeToken=useRef<string|null>(null);
+ const appState=useRef(AppState.currentState);
  const clear=useCallback(async()=>{
   sessionGeneration.current++;
   activeToken.current=null;
@@ -128,6 +132,28 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
   if(saved)await validate(saved);
   else{setAccount(null);setOnlineError(null)}
  },[validate]);
+ // Privacy boundary: immediately hide rendered account/family/records when
+ // leaving the app. On foreground, never reuse a cached auth status. Re-query
+ // Better Auth and the patient profile from the server before remounting.
+ useEffect(()=>{
+  const sub=AppState.addEventListener("change",state=>{
+   const action=nativeSessionVisibilityAction(appState.current,state,
+    Boolean(activeToken.current));
+   appState.current=state;
+   if(action==="hide"){
+    sessionGeneration.current++;
+    setAccount(null);setOnlineError(null);setLoading(true);
+   }else if(action==="revalidate"){
+    const revision=sessionGeneration.current;
+    setAccount(null);setOnlineError(null);setLoading(true);
+    void refresh().finally(()=>{
+     if(sessionGeneration.current===revision)setLoading(false);
+    });
+   }
+  });
+  return()=>sub.remove();
+ },[refresh]);
+
  useEffect(()=>{
   let live=true;
   void SecureStore.getItemAsync(TOKEN_KEY).then(async saved=>{
@@ -238,11 +264,24 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
    catch{throw new ApiError(0,"LOCAL_SIGN_OUT_ONLY")}
   }
  },[clear]);
+ const switchWorkspace=useCallback(async()=>{
+  // Switching workspaces MUST NOT wait on a potentially offline server logout.
+  // First remove the bearer from local secure storage and unmount private
+  // screens; then best-effort revoke the server session in the background.
+  const oldToken=activeToken.current;
+  await clear();
+  // Unlike routine signout, refuse the workspace switch if secure deletion
+  // fails. A stale bearer must not silently reappear after an app restart.
+  try{await SecureStore.deleteItemAsync(TOKEN_KEY);}
+  catch{throw new ApiError(0,"SECURE_STORAGE_UNAVAILABLE")}
+  if(oldToken)void requestRaw("/api/auth/sign-out","POST",{},oldToken).catch(()=>{});
+ },[clear]);
+
  const value=useMemo(()=>({account,loading,onlineError,tokenPresent:!!token,
   mfaPending,verifyMfa,cancelMfa,
-  signIn,signUp,requestPasswordReset,resendVerification,signOut,refresh,request}),
+  signIn,signUp,requestPasswordReset,resendVerification,signOut,switchWorkspace,refresh,request}),
   [account,loading,onlineError,token,mfaPending,verifyMfa,cancelMfa,
-   signIn,signUp,requestPasswordReset,resendVerification,signOut,refresh,request]);
+   signIn,signUp,requestPasswordReset,resendVerification,signOut,switchWorkspace,refresh,request]);
  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useNativeAuth(){
