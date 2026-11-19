@@ -86,9 +86,11 @@ test("signup and session restoration share safe connectivity transport and never
   'throw new ApiError(502,"SIGNUP_RESPONSE_INVALID")',
   '"/api/auth/sign-up/email"',
   '"/api/auth/get-session"',
-  'headers.get("set-auth-token")',
+  'authToken(response.headers)',
   '"Authorization":"Bearer "+token',
   'SecureStore.setItemAsync(TOKEN_KEY,newToken)',
+  'parseMfaRedirect(response.data)',
+  'nativeMfaRequest<unknown>',
   'SecureStore.deleteItemAsync(TOKEN_KEY)',
   'throw new ApiError(0,"NETWORK_UNAVAILABLE")'
  ])assert.ok(auth.includes(value),value);

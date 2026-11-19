@@ -2,6 +2,9 @@ import React,{createContext,useCallback,useContext,useEffect,useMemo,useRef,useS
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
+import {authToken,challengeValid,isFullMfaResponse,mfaBody,mfaEndpoint,
+ nativeMfaRequest,parseMfaRedirect,type NativeMfaMethod,type PendingMfa}
+ from "./native-clinic-mfa";
 export {ApiError} from "./api-error";
 
 /**
@@ -23,6 +26,9 @@ export type NativeAccount={
 type HttpMethod="GET"|"POST"|"PUT"|"DELETE";
 type AccountContext={
  account:NativeAccount|null;loading:boolean;onlineError:string|null;tokenPresent:boolean;
+ mfaPending:PendingMfa|null;
+ verifyMfa:(method:NativeMfaMethod,code:string)=>Promise<void>;
+ cancelMfa:()=>Promise<void>;
  signIn:(email:string,password:string)=>Promise<void>;
  signUp:(name:string,email:string,password:string)=>Promise<void>;
  requestPasswordReset:(email:string)=>Promise<void>;
@@ -80,6 +86,7 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
  const [token,setToken]=useState<string|null>(null);
  const [loading,setLoading]=useState(true);
  const [onlineError,setOnlineError]=useState<string|null>(null);
+ const [mfaPending,setMfaPending]=useState<PendingMfa|null>(null);
  // All async auth responses are checked against the active session generation.
  // A delayed restore, refresh or 401 must never revive or revoke another user.
  const sessionGeneration=useRef(0);
@@ -88,6 +95,7 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
   sessionGeneration.current++;
   activeToken.current=null;
   setToken(null);setAccount(null);setOnlineError(null);setLoading(false);
+  setMfaPending(null);
   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
  },[]);
  const validate=useCallback(async(value:string)=>{
@@ -145,32 +153,61 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
    throw err;
   }
  },[clear]);
- const signIn=useCallback(async(email:string,password:string)=>{
-  // Clear the previous account before starting a new sign-in, not after it.
-  await clear();
-  const revision=sessionGeneration.current;
-  const response=await requestRaw<{twoFactorRedirect?:boolean}>("/api/auth/sign-in/email","POST",{
-   email:email.trim().toLowerCase(),password});
+ const activateBearer=useCallback(async(newToken:string,revision:number)=>{
   if(sessionGeneration.current!==revision)throw new ApiError(401,"SESSION_CHANGED");
-  if(response.data?.twoFactorRedirect)throw new ApiError(403,"MFA_WEB_REQUIRED");
-  const newToken=response.headers.get("set-auth-token");
-  if(!newToken||!newToken.trim())throw new ApiError(500,"SECURE_SESSION_NOT_RETURNED");
-  await SecureStore.setItemAsync(TOKEN_KEY,newToken);
-  if(sessionGeneration.current!==revision){
-   await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
-   throw new ApiError(401,"SESSION_CHANGED");
-  }
-  activeToken.current=newToken;setToken(newToken);
+  // A 2FA response is not the final account permission grant. Revalidate
+  // the signed session and patient onboarding/profile on the server.
   setLoading(true);
   try{
+   const session=await requestRaw<{user:{emailVerified:boolean}|null}>(
+    "/api/auth/get-session","GET",undefined,newToken);
+   if(!session.data?.user?.emailVerified)
+    throw new ApiError(403,"EMAIL_VERIFICATION_OR_SESSION_REQUIRED");
    const profile=await accountFor(newToken);
    if(sessionGeneration.current!==revision)throw new ApiError(401,"SESSION_CHANGED");
-   setAccount(profile);setOnlineError(null);
-  }catch(err){
+   await SecureStore.setItemAsync(TOKEN_KEY,newToken);
+   if(sessionGeneration.current!==revision){
+    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
+    throw new ApiError(401,"SESSION_CHANGED");
+   }
+   activeToken.current=newToken;setToken(newToken);setAccount(profile);
+   setOnlineError(null);setMfaPending(null);
+  }catch(e){
    if(sessionGeneration.current===revision)await clear();
-   throw err;
+   throw e;
   }finally{if(sessionGeneration.current===revision)setLoading(false)}
  },[clear]);
+ const signIn=useCallback(async(email:string,password:string)=>{
+  // A different person must never inherit the previously validated account.
+  await clear();
+  const revision=sessionGeneration.current;
+  const response=await nativeMfaRequest<unknown>(
+   API,"/api/auth/sign-in/email",{email:email.trim().toLowerCase(),
+    password,rememberMe:false});
+  if(sessionGeneration.current!==revision)throw new ApiError(401,"SESSION_CHANGED");
+  const pending=parseMfaRedirect(response.data);
+  if(pending){setMfaPending(pending);return}
+  if(response.data&&typeof response.data==="object"&&
+   "twoFactorRedirect" in response.data&&
+   (response.data as {twoFactorRedirect?:unknown}).twoFactorRedirect===true)
+   throw new ApiError(403,"INVALID_MFA_CHALLENGE");
+  const newToken=authToken(response.headers);
+  if(!newToken)throw new ApiError(500,"SECURE_SESSION_NOT_RETURNED");
+  await activateBearer(newToken,revision);
+ },[clear,activateBearer]);
+ const verifyMfa=useCallback(async(method:NativeMfaMethod,code:string)=>{
+  const challenge=mfaPending,revision=sessionGeneration.current;
+  if(!challengeValid(challenge))throw new ApiError(401,"MFA_CHALLENGE_EXPIRED");
+  const verified=await nativeMfaRequest<unknown>(
+   API,mfaEndpoint(method),mfaBody(method,code));
+  if(sessionGeneration.current!==revision)throw new ApiError(401,"SESSION_CHANGED");
+  if(!challengeValid(challenge))throw new ApiError(401,"MFA_CHALLENGE_EXPIRED");
+  if(!isFullMfaResponse(verified.data))throw new ApiError(502,"MFA_RESPONSE_UNVERIFIED");
+  const signed=authToken(verified.headers);
+  if(!signed)throw new ApiError(502,"MFA_SESSION_TOKEN_MISSING");
+  await activateBearer(signed,revision);
+ },[mfaPending,activateBearer]);
+ const cancelMfa=useCallback(async()=>{await clear()},[clear]);
  const signUp=useCallback(async(name:string,email:string,password:string)=>{
   const result=await requestRaw<{user?:{id?:string;email?:string};token?:string|null}>(
    "/api/auth/sign-up/email","POST",{name:name.trim(),
@@ -202,8 +239,10 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
   }
  },[clear]);
  const value=useMemo(()=>({account,loading,onlineError,tokenPresent:!!token,
+  mfaPending,verifyMfa,cancelMfa,
   signIn,signUp,requestPasswordReset,resendVerification,signOut,refresh,request}),
-  [account,loading,onlineError,token,signIn,signUp,requestPasswordReset,resendVerification,signOut,refresh,request]);
+  [account,loading,onlineError,token,mfaPending,verifyMfa,cancelMfa,
+   signIn,signUp,requestPasswordReset,resendVerification,signOut,refresh,request]);
  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useNativeAuth(){

@@ -25,7 +25,7 @@ test("Patient A: native sessions fail closed for stale sign-in, restore and 401"
   'const profile=await accountFor(newToken)',
   'PATIENT_ONBOARDING_REQUIRED',
   'if(!user?.emailVerified)',
-  'if(response.data?.twoFactorRedirect)',
+  'const pending=parseMfaRedirect(response.data)',
   'if(oldToken)',
   'await clear();'
  ])assert.ok(auth.includes(clause),clause);
@@ -66,7 +66,7 @@ test("Patient A: recovery is native, truthful and localized",()=>{
   '"/api/auth/send-verification-email"',
   'resendVerification:(email:string)=>Promise<void>',
   'requestPasswordReset:(email:string)=>Promise<void>',
-  'if(response.data?.twoFactorRedirect)'
+  'const pending=parseMfaRedirect(response.data)'
  ])assert.ok(auth.includes(clause),clause);
  for(const clause of [
   'mode==="recover"',

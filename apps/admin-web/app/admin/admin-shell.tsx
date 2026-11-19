@@ -6,8 +6,9 @@ import {usePathname,useRouter} from "next/navigation";
 import {authClient,CareIcon,LocaleControls,usePreferences,type CareIconName} from "@dandanlink/ui";
 import {PersistentAdminShellProvider} from "@dandanlink/ui/admin-shell-context";
 import {AdminCommandCenter} from "./command-center";
+import {adminPageGate,validAdminIdentity,type AdminAccessRole} from "./admin-access";
 
-type Role="admin"|"support"|"user"|"loading";
+type Role=AdminAccessRole;
 type Group="overview"|"verification"|"finance"|"operations"|"platform";
 type Item={key:string;href:string;group:Group;icon:CareIconName};
 const NAV:Item[]=[
@@ -35,7 +36,9 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   collapse:"Collapse sidebar",expand:"Expand sidebar",openMenu:"Open navigation",
   closeMenu:"Close navigation",account:"Account",adminRole:"Platform administrator",
   supportRole:"Support agent",current:"Current page",breadcrumb:"Breadcrumb",
-  secureWorkspace:"Secure workspace",mainContent:"Workspace content"},
+  secureWorkspace:"Secure workspace",mainContent:"Workspace content",
+  retry:"Retry connection",offline:"Unable to verify administrator access. Check your connection.",
+  restricted:"This page is not permitted for your current platform role."},
  "fa-AF":{searchPlatform:"جستجوی پلتفرم",notifications:"اعلان‌ها",dashboard:"داشبورد",clinics:"کلینیک‌ها",dentists:"تأیید داکتران",listings:"آگهی‌های کلینیک",
   reviews:"نظرات مریضان",subscriptions:"اشتراک‌ها",plans:"پلن‌ها",support:"پشتیبانی",
   analytics:"تحلیل‌ها",security:"امنیت",settings:"تنظیمات",pilot:"آمادگی آزمایشی",
@@ -46,7 +49,9 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   collapse:"جمع‌کردن منو",expand:"بازکردن منو",openMenu:"بازکردن منوی مدیریت",
   closeMenu:"بستن منوی مدیریت",account:"حساب",adminRole:"مدیر پلتفرم",
   supportRole:"کارمند پشتیبانی",current:"صفحه فعلی",breadcrumb:"مسیر صفحه",
-  secureWorkspace:"محیط امن مدیریت",mainContent:"محتوای مدیریت"},
+  secureWorkspace:"محیط امن مدیریت",mainContent:"محتوای مدیریت",
+  retry:"تلاش دوباره",offline:"دسترسی مدیریت تأیید نشد؛ اتصال را بررسی کنید.",
+  restricted:"نقش فعلی شما اجازه دسترسی به این صفحه را ندارد."},
  "ps-AF":{searchPlatform:"د پلاتفورم لټون",notifications:"خبرتیاوې",dashboard:"ډشبورډ",clinics:"کلینیکونه",dentists:"د ډاکټرانو تایید",listings:"د کلینیک اعلانونه",
   reviews:"د ناروغانو نظرونه",subscriptions:"ګډونونه",plans:"پلانونه",support:"ملاتړ",
   analytics:"شننې",security:"امنیت",settings:"تنظیمات",pilot:"ازمایښتي چمتووالی",
@@ -57,7 +62,9 @@ const TRANSLATIONS:Record<string,Record<string,string>>={
   collapse:"نوملړ لنډول",expand:"نوملړ پراخول",openMenu:"نوملړ پرانیستل",
   closeMenu:"نوملړ بندول",account:"حساب",adminRole:"د پلاتفورم مدیر",
   supportRole:"د ملاتړ کارکوونکی",current:"اوسنۍ پاڼه",breadcrumb:"د پاڼې لاره",
-  secureWorkspace:"خوندي اداره",mainContent:"د ادارې منځپانګه"}
+  secureWorkspace:"خوندي اداره",mainContent:"د ادارې منځپانګه",
+  retry:"بیا هڅه وکړئ",offline:"د مدیر لاسرسی تأیید نه شو؛ اړیکه وګورئ.",
+  restricted:"ستاسو اوسنی رول دې پاڼې ته اجازه نه لري."}
 };
 const PUBLIC_ADMIN_PATH=/^\/admin\/(?:login|reset-password|2fa)(?:\/|$)/;
 const STORAGE_COLLAPSE_KEY="dandan.admin.sidebarCollapsed";
@@ -68,6 +75,9 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  const router=useRouter();
  const {locale}=usePreferences();
  const [role,setRole]=useState<Role>("loading");
+ const [accessRequest,setAccessRequest]=useState(0);
+ const [rechecking,setRechecking]=useState(false);
+ const lastAccessCheck=useRef(0);
  const [name,setName]=useState("");
  const [signingOut,setSigningOut]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
@@ -85,17 +95,44 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  const isPublic=PUBLIC_ADMIN_PATH.test(pathname);
  const t=(key:string)=>TRANSLATIONS[locale]?.[key]||TRANSLATIONS.en[key]||key;
  useEffect(()=>{
-  if(isPublic){setRole("loading");setName("");return;}
-  let alive=true;setRole("loading");
-  fetch(api+"/v1/support/me",{credentials:"include",cache:"no-store"})
+  if(isPublic){setRole("loading");setName("");setRechecking(false);return;}
+  let alive=true;
+  const controller=new AbortController();
+  if(accessRequest===0)setRole("loading");
+  else setRechecking(true);
+  fetch(api+"/v1/support/me",{credentials:"include",cache:"no-store",
+   signal:controller.signal})
    .then(async response=>{
-    if(!response.ok)throw new Error("AUTH_REQUIRED");
-    return response.json() as Promise<{role:Role;displayName:string}>;
+    // Distinguish an expired/login session from a transport/server outage.
+    if(response.status===401||response.status===403)return null;
+    if(!response.ok)throw new Error("ADMIN_ACCESS_UNAVAILABLE");
+    return validAdminIdentity(await response.json());
    })
-   .then(data=>{if(alive){setRole(data.role);setName(data.displayName||"");}})
-   .catch(()=>{if(alive){setRole("user");setName("");}});
-  return()=>{alive=false};
- },[isPublic]);
+   .then(data=>{
+    if(!alive)return;
+    lastAccessCheck.current=Date.now();
+    setRole(data?.role||"user");setName(data?.displayName||"");
+   })
+   .catch(()=>{
+    if(alive){setRole("error");setName("");}
+   })
+   .finally(()=>{if(alive)setRechecking(false)});
+  return()=>{alive=false;controller.abort()};
+ },[isPublic,accessRequest]);
+ useEffect(()=>{
+  if(isPublic)return;
+  const checkOnReturn=()=>{
+   if(document.visibilityState!=="visible"||rechecking||
+    Date.now()-lastAccessCheck.current<60000)return;
+   // Keep the sidebar mounted, but block protected content until the fresh
+   // role check completes. Role revocation cannot leave a stale page mounted.
+   setRechecking(true);setAccessRequest(v=>v+1);
+  };
+  window.addEventListener("focus",checkOnReturn);
+  document.addEventListener("visibilitychange",checkOnReturn);
+  return()=>{window.removeEventListener("focus",checkOnReturn);
+   document.removeEventListener("visibilitychange",checkOnReturn)};
+ },[isPublic,rechecking]);
  useEffect(()=>{
   try{setCollapsed(localStorage.getItem(STORAGE_COLLAPSE_KEY)==="1");}catch{/* restricted storage */}
  },[]);
@@ -152,6 +189,7 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
  },[mobileOpen]);
  if(isPublic)return <>{children}</>;
 
+ const accessGate=adminPageGate(role,pathname,rechecking);
  const items=role==="admin"?NAV:role==="support"?
   NAV.filter(item=>item.key==="support"||item.key==="analytics"):[];
  const active=(href:string)=>href==="/admin"?pathname==="/admin"||pathname==="/admin/":
@@ -277,13 +315,27 @@ export function AdminPersistentShell({children}:{children:ReactNode}){
        <div className="admin-user-copy"><strong>{name||t("account")}</strong>
         <small>{role==="admin"?t("adminRole"):role==="support"?t("supportRole"):""}</small></div>
       </div>
-      {role!=="user"&&<button type="button" className="btn btn-secondary admin-signout"
+      {(role==="admin"||role==="support")&&<button type="button" className="btn btn-secondary admin-signout"
        onClick={signOut} disabled={signingOut} title={t("signOut")}>
        <CareIcon name="logout" size={17}/><span>{t("signOut")}</span></button>}
      </div>
     </header>
     {navPending&&<div className="admin-navigation-progress" role="status" aria-label={t("loading")}/>}
-    <div className="admin-route-content" aria-label={t("mainContent")}>{children}</div>
+    <div className="admin-route-content" aria-label={t("mainContent")}>
+     {accessGate==="allowed"?children:
+      <div className="card panel admin-access-result" role={accessGate==="loading"?"status":"alert"}
+       aria-busy={accessGate==="loading"}>
+       <h2>{accessGate==="loading"?t("loading"):accessGate==="offline"?
+        t("offline"):accessGate==="sign-in"?t("unauthorized"):t("restricted")}</h2>
+       {accessGate==="offline"&&<button type="button" className="btn btn-secondary"
+        onClick={()=>{setRechecking(true);setAccessRequest(v=>v+1)}}>
+        {t("retry")}</button>}
+       {accessGate==="sign-in"&&<Link className="btn btn-primary" href="/admin/login">
+        {t("login")}</Link>}
+       {accessGate==="restricted"&&role==="support"&&<Link className="btn btn-primary"
+        href="/admin/support">{t("support")}</Link>}
+      </div>}
+    </div>
     {role==="admin"&&showCommand&&<div className="adm-e-overlay" role="presentation"
      onMouseDown={e=>{if(e.target===e.currentTarget)closeCommand();}}>
      <AdminCommandCenter compact initialTab={commandTab}
