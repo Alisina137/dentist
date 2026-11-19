@@ -8,9 +8,9 @@
  */
 import {createHmac,randomUUID} from "node:crypto";
 import {isIP} from "node:net";
-import {closeSync,existsSync,fsyncSync,lstatSync,openSync,
+import {accessSync,closeSync,constants,existsSync,fsyncSync,lstatSync,openSync,
  readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
-import {isAbsolute} from "node:path";
+import {dirname,isAbsolute} from "node:path";
 import type {Phase30Alert} from "./phase30-observability.js";
 
 export type Phase31Disposition="ack"|"retry"|"reject";
@@ -135,8 +135,20 @@ export function phase31Configuration(env:NodeJS.ProcessEnv):{
 export class Phase31FileSpool{
  constructor(readonly file:string){
   if(!isAbsolute(file))throw Error("SPOOL_PATH_INVALID");
+  this.checkDirectory();
+ }
+ private checkDirectory():void{
+  try{
+   const dir=dirname(this.file);
+   const info=lstatSync(dir);
+   if(!info.isDirectory()||info.isSymbolicLink()||
+    process.platform!=="win32"&&(info.mode&0o077)!==0)
+    throw Error("SPOOL_DIRECTORY_UNSAFE");
+   accessSync(dir,constants.W_OK);
+  }catch{throw Error("SPOOL_DIRECTORY_UNSAFE");}
  }
  private checkExisting():void{
+  this.checkDirectory();
   if(!existsSync(this.file))return;
   const info=lstatSync(this.file);
   if(!info.isFile()||info.isSymbolicLink()||info.size>MAX_FILE_BYTES)
