@@ -39,21 +39,29 @@ export class BoundedShutdown{
   }finally{if(timer!==undefined)clearTimeout(timer);}
  }
  private async execute():Promise<ShutdownResult>{
-  try{this.hooks.stopNewWork();}
-  catch{return "failed";}
   let status:ShutdownResult="clean";
-  const drain=Promise.all([
+  // Even a scheduler/forwarder stop exception must not skip HTTP and DB
+  // cleanup: return a failure result, but continue the shutdown sequence.
+  try{this.hooks.stopNewWork();}
+  catch{status="failed";}
+  // Promise.all rejected as soon as ONE drain task failed, which could close
+  // Postgres while the OTHER was still persisting a booking or SMTP receipt.
+  // Wait for both tasks (settled, not just first rejection) before DB close.
+  const drain=Promise.allSettled([
    Promise.resolve().then(()=>this.hooks.stopWorker()),
    Promise.resolve().then(()=>this.hooks.closeHttp())
   ]);
   const result=await this.deadline(drain,this.deadlineMs);
   if(!result.ok){
-   status="timeout";
+   if(status==="clean")status="timeout";
    try{this.hooks.forceHttp();}catch{status="failed";}
+  }else if(result.value?.some(item=>item.status==="rejected")){
+   status="failed";
+   try{this.hooks.forceHttp();}catch{}
   }
   const db=await this.deadline(Promise.resolve().then(
    ()=>this.hooks.closeDb()),this.dbDeadlineMs);
-  if(!db.ok)status=status==="clean"?"failed":status;
+  if(!db.ok)status="failed";
   return status;
  }
 }
