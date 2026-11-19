@@ -21,7 +21,11 @@ export function clinicPageAllowed(
  // It must be one of the active user's visible sidebar destinations.
  // This prevents a cashier from navigating directly to a clinician-only
  // tab, including route segments with hidden detail IDs.
- if(!allowedPaths.some(path=>starts(pathname,path)))return false;
+ if(!allowedPaths.some(path=>path!=="/clinic"&&starts(pathname,path)))return false;
+ if(starts(pathname,"/clinic/clinical"))
+  return clinical(role,clinicianEnabled)||role==="assistant";
+ if(starts(pathname,"/clinic/appointments/requests"))
+  return manager(role)||role==="dentist"||role==="receptionist";
  if(clinicalPatientSubroute(pathname))return clinical(role,clinicianEnabled);
  if(billRoute(pathname))return manager(role)||role==="cashier"||role==="receptionist";
  if(editRoute(pathname))return manager(role)||role==="dentist"||role==="receptionist";
