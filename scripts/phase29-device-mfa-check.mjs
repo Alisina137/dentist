@@ -52,7 +52,7 @@ export function validateChecklist(data){
    throw Error("Device evidence fields must be strings.");
   if(entry.status==="PASS"){
    if(!evidencePattern.test(entry.evidenceId)||
-    !/^\\d{4}-\\d\\d-\\d\\dT/.test(entry.completedAt)||
+    !/^\d{4}-\d\d-\d\dT/.test(entry.completedAt)||
     !Number.isFinite(Date.parse(entry.completedAt)))
     throw Error("PASS requires an external sanitized evidence ticket and ISO timestamp.");
   }else if(entry.evidenceId||entry.completedAt){
@@ -82,7 +82,7 @@ export function main(argv=process.argv.slice(2)){
  if(argv[0]==="--init"){
   mkdirSync(dir,{recursive:true});
   if(existsSync(path))throw Error("Existing device manifest preserved; --init does not overwrite.");
-  writeFileSync(path,JSON.stringify(makeChecklist(),null,2)+"\\n",{
+  writeFileSync(path,JSON.stringify(makeChecklist(),null,2)+"\n",{
    encoding:"utf8",flag:"wx",mode:0o600
   });
   console.info("Created private Phase29 checklist in .patient-acceptance; all 32 cases NOT_RUN.");
