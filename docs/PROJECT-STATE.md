@@ -286,3 +286,13 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - `0018_reporting_support_operations.sql`, `insights-router.ts`, `support-router.ts`, `ops-access.ts`, `phase18.tsx`, `phase18-admin.tsx`, `phase18.css`. Support history immutable; suppressed 1–4 aggregate platform counts; support prohibited from clinic/medical endpoints.
 - Validation/integration: `tests/phase18-validation.test.mjs`, `tests/phase18-integration.mjs` and CI PH18 integration. Requires applying `pnpm db:migrate` before services start. See `docs/PH18-ACCEPTANCE.md`.
 - **Not approved for live patient data:** PH19 production readiness, privacy and legal gate remains. No certified financial statements, PHI export, cross-branch accounting or diagnosis is implemented.
+
+
+## Clinic Phase 29 — CI synthetic multi-account E2E, cross-role access, native MFA device evidence (19 November 2026)
+
+- Phase28 merged (`b332526`); the code-level Admin, Clinic deep-link and Patient MFA gaps are addressed, but human/device sign-offs are outstanding.
+- Phase29 adds `tests/clinic-phase-29-synthetic-journey.mjs` to GitHub PostgreSQL CI: real test-only clinic team, internal booking→queue/check-in, clinician draft restriction, patient consent isolation, cross-tenant and admin denial, staff suspension/session invalidation and audit, symbolic telemetry without private data.
+- `tests/clinic-phase-29-synthetic-readiness.test.mjs` validates that **Android and iOS, clinic and patient** MFA evidence cannot be declared complete without all 32 witnessed, ticketed cases.
+- `scripts/phase29-device-mfa-check.mjs --init` / `--verify` creates and verifies a local-only evidence manifest at ignored `.patient-acceptance/phase29-device-mfa.json`. All start **NOT_RUN**: this is not proof of device execution.
+- There is **no migration, dependency, app-secret or production-policy change** in Phase29. Independent PH19 clinical/privacy/security/accessibility/legal pilot clearance remains **NO-GO**, regardless of CI or device manifest state.
+- Acceptance and device matrix: `docs/CLINIC-PHASE-29-SYNTHETIC-E2E-MFA-ACCEPTANCE.md`.
