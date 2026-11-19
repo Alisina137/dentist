@@ -798,7 +798,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      clinic={active} locale={locale} request={phase20Request}
      onLocaleChange={changeLang} onOpenWeb={openWeb}
      onSignOut={signOut} onChangeWorkspace={changeWorkspace}
-     onReloadClinic={reloadClinic}/>
+     onReloadClinic={reloadClinic}/>}
    </View>}
   </ScrollView>
   {token&&context&&<ScrollView horizontal showsHorizontalScrollIndicator={false}
