@@ -329,3 +329,14 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - Added a 96-case **manual-only** Android/iOS × Patient/Clinic × EN/Dari/Pashto × viewport/screen reader/offline/revocation matrix. All cases start NOT_RUN; real physical-device runs, screen reader passes and security/clinical release approvals have **not** been claimed.
 - Acceptance: `docs/CLINIC-PHASE-32-NATIVE-ACCESSIBILITY-ACCEPTANCE.md`. Automated checks: `tests/clinic-phase-32-native-resume-accessibility.test.mjs`. Operator: `pnpm qa:mobile:accessibility:init` and `pnpm qa:mobile:accessibility:verify`.
 - No new packages/migrations. PH19 legal, clinical, penetration, hosting, backup, accessibility, incident routing and reviewer signoffs still block real healthcare production. **PH19 NO-GO**.
+
+
+## Clinic Phase 33 — Security, bounded readiness and safe shutdown (19 November 2026)
+
+- Phase33 restricts native patient and clinic bearer requests to canonical relative API routes; rejects absolute and scheme-relative URLs, traversal, encoded path separators, fragments and control characters *before* attaching tokens.
+- A single-flight `BoundedReadinessProbe` responds within 2.5s and returns 503 on database failures/timeouts without spawning concurrent SQL probes or falsely reporting healthy under prolonged outage. Public process `/health` and database `/ready` now send no-store.
+- A `BoundedShutdown` coordinates SIGINT/SIGTERM: stop new requests (503 Retry-After), stop schedulers, drain in-flight HTTP and outbound mail worker, then close Postgres; forced drain after 20s and bounded DB close after 5s. HTTP header/request/keepalive and per-socket request limits are configured.
+- Production account verification/reset and booking notification SMTP require STARTTLS if not implicit TLS; port 465 without secure SMTP is refused. Production origin parser now rejects IP literals and private/local/reserved hostnames.
+- `pnpm qa:hardening` checks five real, no-auth GET endpoints for availability, database readiness, no-store, nosniff and unauthorized account/booking denial. CI runs this against actual PostgreSQL after migration. Automated stress/recovery tests in `tests/clinic-phase-33-hardening-recovery.test.mjs`.
+- No package or DB schema changes, no PH19 approval switches changed, no access guards bypassed. Real physical device, production incident drill, clinical/privacy/accessibility, independent backup and hosted alert signoffs remain **NO-GO**.
+- Acceptance report: `docs/CLINIC-PHASE-33-SECURITY-PERFORMANCE-ACCEPTANCE.md`.
