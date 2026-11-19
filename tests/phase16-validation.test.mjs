@@ -12,11 +12,13 @@ test("PH16 native patient app has five complete navigation destinations",()=>{
  assert.ok(!app.includes('"Book Appointment"'));
 });
 
-test("PH16 native sessions use SecureStore exclusively; no cookies or clinical payload cache",()=>{
+test("PH16 native sessions persist only bearer in SecureStore; unverified MFA uses OS HttpOnly cookie jar",()=>{
  const auth=read("apps/mobile/native-auth.tsx");
  const patient=read("apps/mobile/native-patient.tsx");
  assert.ok(auth.includes("expo-secure-store"));
- assert.ok(auth.includes('headers.get("set-auth-token")'));
+ assert.ok(auth.includes("authToken(response.headers)"));
+ assert.ok(auth.includes("parseMfaRedirect(response.data)"));
+ assert.ok(auth.includes("isFullMfaResponse(verified.data)"));
  assert.ok(auth.includes('"Authorization":"Bearer "+token'));
  assert.ok(auth.includes("SecureStore.deleteItemAsync"));
  assert.ok(auth.includes("SecureStore.setItemAsync"));
