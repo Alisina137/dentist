@@ -307,3 +307,15 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - `pnpm qa:operations` offers a non-mutating operator check. Tests: `tests/clinic-phase-30-operational-observability.test.mjs`. No database migration, package dependency or PH19 release switch change.
 - Production alert delivery, backup reliability, mobile device security, clinical/privacy/accessibility legal approvals remain **NO-GO**, including `PH19_ALERTS_APPROVED` until independent review.
 - Acceptance: `docs/CLINIC-PHASE-30-OPERATIONS-OBSERVABILITY-ACCEPTANCE.md`.
+
+
+## Clinic Phase 31 — HMAC alert delivery, retry journal, and synthetic failure drills (19 November 2026)
+
+- Phase30 protected, low-cardinality operational alert sink now supports an optional Phase31 forwarder without changing any clinical, booking, consent, role or MFA decision.
+- `apps/api/src/phase31-alert-delivery.ts` verifies exactly seven whitelisted alert fields and a strict public HTTPS hostname, signs a redacted request with HMAC SHA-256, uses a stable per-event UUID, and refuses redirects. 2xx only is treated as transport acknowledgement; 429/5xx/network errors retry, other 4xx/redirects are final denials.
+- A process-specific, private local on-host spool journals events before sending using fsync and atomic rename (128 bounded events, max six attempts/24h, exponential delay); pending IDs survive process restart. This is an optional adapter, not replicated/HA production alert infrastructure. Unsafe journal paths, permissions or corruption disable forwarding and preserve the existing console redacted alert sink.
+- `apps/api/src/phase31-alert-runtime.ts` processes up to four due events per five-second interval, warns on 5-minute alert lag, exhausted/rejected events, saturated queue and failed journal persistence without leaking secrets.
+- `pnpm qa:alerts` validates operator configuration; `pnpm qa:alerts:synthetic` explicitly POSTs one labeled non-incident probe to an independently configured collector. No external collector was configured or contacted during engineering work.
+- `tests/clinic-phase-31-alert-recovery.test.mjs` simulates transient/permanent webhook failures, restart, spool corruption, HMAC validation, unsafe destinations and redacted booking/DB outage alerts. Existing Phase29 real PostgreSQL CI and Phase30 telemetry remain active.
+- No new packages or migrations, no PH19 approval flag modifications. `PH19_ALERTS_APPROVED` and healthcare production pilot remain **NO-GO** until operator verifies an actual hosted collector and independent security, legal/privacy, clinical, accessibility and backup signoffs.
+- Acceptance: `docs/CLINIC-PHASE-31-ALERT-DELIVERY-RESILIENCE-ACCEPTANCE.md`.

@@ -36,6 +36,7 @@ import { startBookingNotificationWorker } from "./booking-notifications.js";
 import { assertProductionConfiguration } from "./production-config.js";
 import { operationalAlerts } from "./phase30-observability.js";
 import { startBackupWatchdog } from "./phase30-backup-watchdog.js";
+import { startOperationalAlertDelivery } from "./phase31-alert-runtime.js";
 
 // Stop production startup before any HTTP listener or booking worker exists.
 assertProductionConfiguration();
@@ -238,11 +239,14 @@ const port = Number(process.env.PORT || "4000");
 const server = app.listen(port, "0.0.0.0", () => {
   console.info("DandanLink API listening on port " + port);
 });
+// Start the alert queue before workers can report notification/backup failures.
+const stopOperationalAlerts = startOperationalAlertDelivery();
 const stopBookingNotifications = startBookingNotificationWorker();
 const stopBackupWatchdog = startBackupWatchdog();
 const shutdown = async () => {
   stopBookingNotifications();
   stopBackupWatchdog();
+  stopOperationalAlerts();
   server.close();
   await sqlClient.end();
   process.exit(0);
