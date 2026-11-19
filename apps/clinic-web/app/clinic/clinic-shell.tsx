@@ -5,6 +5,7 @@ import Link from "next/link";
 import {usePathname,useRouter} from "next/navigation";
 import {authClient,CareIcon,LocaleControls,usePreferences,type CareIconName} from "@dandanlink/ui";
 import {PersistentClinicShellProvider} from "@dandanlink/ui/clinic-shell-context";
+import {clinicPageAllowed} from "./clinic-route-access";
 
 type Role="owner"|"manager"|"dentist"|"receptionist"|"assistant"|"cashier";
 type Space={clinicId:string;clinicName:string;clinicStatus:string;membershipId:string;
@@ -60,7 +61,9 @@ const translations:Record<string,Record<string,string>>={
   receptionist:"Receptionist",assistant:"Assistant",cashier:"Cashier",
   approved:"Approved",pending:"Pending review",suspended:"Suspended",
   skip:"Skip to workspace content",help:"Help",privacy:"Privacy",terms:"Terms",
-  signOutFailed:"Sign out failed. Please retry; your session is still active."
+  signOutFailed:"Sign out failed. Please retry; your session is still active.",
+  deniedPage:"Your current clinic role cannot open this page. Access is checked again by the server.",
+  backToOverview:"Go to clinic overview"
  },
  "fa-AF":{
   clinic:"محیط مدیریت کلینیک",overview:"نمای کلی",appointments:"ملاقات‌ها",queue:"صف امروز",
@@ -86,7 +89,9 @@ const translations:Record<string,Record<string,string>>={
   receptionist:"پذیرش",assistant:"دستیار",cashier:"صندوق‌دار",
   approved:"تأییدشده",pending:"در حال بررسی",suspended:"تعلیق‌شده",
   skip:"رفتن به محتوای کلینیک",help:"راهنما",privacy:"حریم خصوصی",terms:"شرایط خدمات",
-  signOutFailed:"خروج انجام نشد. دوباره کوشش کنید؛ نشست شما هنوز فعال است."
+  signOutFailed:"خروج انجام نشد. دوباره کوشش کنید؛ نشست شما هنوز فعال است.",
+  deniedPage:"نقش شما اجازه بازکردن این صفحه را ندارد؛ سرور نیز دسترسی را جداگانه بررسی می‌کند.",
+  backToOverview:"بازگشت به نمای کلی"
  },
  "ps-AF":{
   clinic:"د کلینیک کاري چاپېریال",overview:"لنډیز",appointments:"ملاقاتونه",queue:"د نن کتار",
@@ -112,7 +117,9 @@ const translations:Record<string,Record<string,string>>={
   receptionist:"پذیرش",assistant:"مرستیال",cashier:"حسابدار",
   approved:"تایید شوی",pending:"تر څېړنې لاندې",suspended:"ځنډول شوی",
   skip:"د کلینیک منځپانګې ته لاړ شئ",help:"مرسته",privacy:"محرمیت",terms:"د خدمت شرطونه",
-  signOutFailed:"وتل بریالي نه شول. بیا هڅه وکړئ؛ ناسته لا فعاله ده."
+  signOutFailed:"وتل بریالي نه شول. بیا هڅه وکړئ؛ ناسته لا فعاله ده.",
+  deniedPage:"ستاسو د کلینیک رول دې پاڼې ته اجازه نه لري؛ سرور هم لاسرسی ارزوي.",
+  backToOverview:"عمومي برخې ته ستنېدل"
  }
 };
 function navigation(space:Space):Item[]{
@@ -388,7 +395,9 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
   }catch{setSigningOut(false);setSignOutError(true);}
  }
  const restricted=error==="AUTH_REQUIRED"||requestedInvalid;
- const showPage=!loading&&!error&&!requestedInvalid;
+ const allowedPage=selected?clinicPageAllowed(selected.role,selected.clinicianEnabled,
+  selected.membershipId,pathname,items.map(item=>item.path)):false;
+ const showPage=!loading&&!error&&!requestedInvalid&&allowedPage;
  return <div className={"work-layout phase-layout staff-shell clinic-persistent-shell"+
    (collapsed?" clinic-sidebar-collapsed":"")+(mobileOpen?" clinic-mobile-open":"")}>
    <a className="clinic-workspace-skip" href="#clinic-route-content">{t("skip")}</a>
@@ -551,6 +560,12 @@ export function ClinicPersistentShell({children}:{children:ReactNode}){
       error?<div className="clinic-access-card card panel" role="alert">
        <h2>{t("connection")}</h2><button type="button" className="btn btn-secondary"
         onClick={()=>setRequestIndex(x=>x+1)}>{t("retry")}</button></div>:
+      !allowedPage&&ctx&&selected?<div className="clinic-access-card card panel"
+       role="alert">
+       <h2>{t("deniedPage")}</h2>
+       <Link className="btn btn-primary" href={hrefFor("/clinic")}
+        prefetch={false}>{t("backToOverview")}</Link>
+      </div>:
       showPage&&ctx?<PersistentClinicShellProvider session={{
        ctx,space:selected,requested:requested??null}}>
        <div key={selected?.clinicId||"unregistered"}>{children}</div>
