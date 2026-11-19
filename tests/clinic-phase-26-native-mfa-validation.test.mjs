@@ -100,7 +100,7 @@ test("C26-05 native UI does not store MFA challenge or OTP in local storage",()=
  assert.match(app,/cancelMfa\(\)/);
  assert.match(app,/challengeValid\(pendingMfa/);
  assert.match(app,/isFullMfaResponse/);
- assert.match(app,/setMfaCode\(" "\)|setMfaCode\(" "\)|setMfaCode\(" "\)|setMfaCode\(" "\)|setMfaCode\(" "\)|setMfaCode\(""\)/);
+ assert.match(app,/setMfaCode\(""\)/);
  assert.match(helper,/credentials:"include"/);
  assert.doesNotMatch(helper,/get\("set-cookie"\)|getSetCookie\(|Cookie:/);
  assert.doesNotMatch(helper,/AsyncStorage|SecureStore|localStorage|console\.log/);
