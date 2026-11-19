@@ -131,7 +131,7 @@ test("C31-04 capacity, invalid payload and journal write fail closed",()=>{
  assert.equal(safe.snapshot(baseTime).queued,0,"no unpersisted false accepted event");
 });
 
-test("C31-05 atomic private spool survives restart and refuses tampering",()=>{
+test("C31-05 atomic private spool survives restart and refuses tampering",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"dandan-phase31-")),file=join(dir,"alerts.json");
  try{
   const disk=new Phase31FileSpool(file);
