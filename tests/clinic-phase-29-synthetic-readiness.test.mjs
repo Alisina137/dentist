@@ -53,7 +53,7 @@ test("C29-04 evidence is a sanitized ticket ID, not raw URI, cookie or screensho
   assert.throws(()=>validateChecklist(doc),/ticket/);
  }
 });
-test("C29-05 PH19 production gate and CI synthetic harness remain separate",()=>{
+test("C29-05 PH19 production gate and CI synthetic harness remain separate",async()=>{
  const {readFileSync}=await import("node:fs");
  const {fileURLToPath}=await import("node:url");
  const {resolve,dirname}=await import("node:path");
