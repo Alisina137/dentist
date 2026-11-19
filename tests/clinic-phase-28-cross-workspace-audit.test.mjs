@@ -56,7 +56,7 @@ test("C28-01 platform Admin never mounts protected page before role check",()=>{
 });
 test("C28-02 clinic route mount requires actual sidebar membership and clinician role",()=>{
  assert.equal(clinic.clinicPageAllowed("owner",false,membership,
-  "/clinic/clinical",allClinicPaths),true);
+  "/clinic/clinical",allClinicPaths),false);
  // This model checks sidebar permission separately from the server's
  // clinicianEnabled flag; owner/manager cannot open a patient's chart.
  assert.equal(clinic.clinicPageAllowed("owner",false,membership,
