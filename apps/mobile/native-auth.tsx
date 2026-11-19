@@ -3,6 +3,7 @@ import {AppState} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import {ApiError} from "./api-error";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
+import {safeNativeApiPath} from "./native-safe-path";
 import {nativeSessionVisibilityAction} from "./native-session-lifecycle";
 import {authToken,challengeValid,isFullMfaResponse,mfaBody,mfaEndpoint,
  nativeMfaRequest,parseMfaRedirect,type NativeMfaMethod,type PendingMfa}
@@ -50,6 +51,7 @@ export function uniqueActionKey(){
  return "native-"+Date.now().toString(36)+"-"+micros.toString(36)+"-"+pendingSequence.toString(36);
 }
 async function requestRaw<T>(path:string,method:HttpMethod="GET",body?:unknown,token?:string|null){
+ if(!safeNativeApiPath(path))throw new ApiError(0,"INVALID_API_PATH");
  if(!API)throw new ApiError(0,"API_NOT_CONFIGURED");
  if(!/^https:\/\//i.test(API) && !__DEV__)throw new ApiError(0,"HTTPS_REQUIRED");
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
