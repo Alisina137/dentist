@@ -104,6 +104,8 @@ jobs:
           node tests/clinic-phase-16-integration.mjs
           node tests/clinic-phase-17-integration.mjs
           node tests/clinic-phase-18-integration.mjs
+          # Phase29: local synthetic multi-role/tenant booking-to-check-in E2E; PH19 NO-GO.
+          node tests/clinic-phase-29-synthetic-journey.mjs
           node scripts/clinic-pilot-handoff.mjs
           NODE_ENV=test node scripts/verify-test-backup-restore.mjs
           node tests/dev-no-email-integration.mjs
