@@ -584,7 +584,12 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   if(previous)void clinicRequest("/api/auth/sign-out","POST",{},previous).catch(()=>{});
  }
  async function changeWorkspace(){
-  await signOut();onChangeWorkspace();
+  await signOut();
+  // A failed Keychain/Keystore wipe must never permit switching into another
+  // workspace while this account could silently be restored on next launch.
+  try{await SecureStore.deleteItemAsync(TOKEN_KEY);}
+  catch{setError(t.network);return;}
+  onChangeWorkspace();
  }
  function update(field:keyof ClinicDraft,value:string){
   setDraft(before=>({...before,[field]:value}));
@@ -628,7 +633,8 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    <View style={st.brandIcon}><PatientIcon name="tooth" size={24} color="#fff"/></View>
    <View style={st.brandCopy}><Text style={st.brandTitle}>DandanLink</Text>
     <Text numberOfLines={1} style={st.brandSubtitle}>{t.workspace}</Text></View>
-   <Pressable accessibilityRole="button" onPress={()=>{void changeWorkspace()}}
+   <Pressable accessibilityRole="button" accessibilityLabel={t.switch}
+    accessibilityHint={t.privacy} onPress={()=>{void changeWorkspace()}}
     style={st.headerButton}><PatientIcon name="home" size={19} color="#e1effa"/>
     <Text style={st.headerButtonText}>{t.switch}</Text></Pressable>
   </View>
