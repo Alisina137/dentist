@@ -340,10 +340,9 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   }catch{
    // Do not report a completed logout or allow a workspace switch with an
    // old credential still stored in the OS secure keychain/keystore.
-   setError(i18n[locale].network);
    return false;
   }
- },[locale]);
+ },[]);
 
  const refreshSession=useCallback(async(session:string)=>{
   const id=generation.current;
