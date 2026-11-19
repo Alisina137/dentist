@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,AppState,Linking,Pressable,ScrollView,Text,TextInput,View,StyleSheet} from "react-native";
 import {NativeAccount,useNativeAuth,ApiError,uniqueActionKey} from "./native-auth";
+import {NativePatientMfa} from "./native-patient-mfa";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
 import {patientError,patientText,isSlotConflict} from "./patient-errors";
 import {patientTheme} from "./patient-theme";
@@ -263,6 +264,7 @@ export function NativeAccountArea({locale,calendar,city,onLocale,onCalendar,onCi
  if(auth.loading)return <Block><Text>{t.checking}</Text><ActivityIndicator color={blue}/></Block>;
  // A failed restore of a previous session must never lock users out of
  // sign-in or sign-up. Surface the connection error but keep the form usable.
+ if(auth.mfaPending)return <NativePatientMfa locale={locale}/>;
  if(!auth.account)return <Block><Text style={p.title}>{mode==="login"?t.login:mode==="signup"?t.signup:t.forgot}</Text>
   <Text style={p.copy}>{mode==="signup"?t.signupHelp:t.loginHelp}</Text>
   {auth.onlineError&&<>
