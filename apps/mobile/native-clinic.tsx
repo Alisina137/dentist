@@ -12,6 +12,7 @@ import {NativeClinicPhase22} from "./native-clinic-phase22";
 import {NativeClinicPhase23} from "./native-clinic-phase23";
 import {NativeClinicPhase24} from "./native-clinic-phase24";
 import {NativeClinicPhase25} from "./native-clinic-phase25";
+import {NativeClinicPhase27} from "./native-clinic-phase27";
 import {authToken,challengeValid,isFullMfaResponse,
  mfaBody,mfaEndpoint,nativeMfaRequest,normalizeMfaCode,parseMfaRedirect,
  type NativeMfaMethod,type PendingMfa} from "./native-clinic-mfa";
@@ -792,26 +793,12 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
      <NativeInviteAcceptance locale={locale} request={phase20Request}
       onAccepted={reloadClinic}/>
 
-    </View>:<View style={{gap:14}}>
-     <Card><SectionTitle text={t.setupTitle} hint={t.reviewHuman}/>
-      {[t.license,t.invite,t.hours,t.offering].map((item,i)=>
-       <View key={item} style={st.todoRow}><View style={st.todoCount}>
-        <Text style={st.todoCountText}>{i+1}</Text></View>
-        <Text style={st.todoText}>{item}</Text></View>)}
-      <Action text={t.connectWeb} onPress={()=>openWeb("/clinic/onboarding?clinic="+encodeURIComponent(active.clinicId))}/>
-      <Text style={st.caption}>{t.webSignIn}</Text>
-     </Card>
-     <Card><SectionTitle text={t.settings}/>
-      <View style={st.infoRow}><Text style={st.infoLabel}>{t.role}</Text>
-       <Text style={st.infoValue}>{t[active.role]}</Text></View>
-      <View style={st.infoRow}><Text style={st.infoLabel}>{t.emailLabel}</Text>
-       <Text style={st.infoValue}>{context?.email||t.unknown}</Text></View>
-      <View style={st.infoRow}><Text style={st.infoLabel}>{t.secure}</Text>
-       <Text style={st.infoValue}>{context?.mfaEnabled?"MFA":t.mfa}</Text></View>
-      <Action text={t.signout} onPress={()=>{void signOut()}} secondary icon="user"/>
-      <Action text={t.switch} onPress={()=>{void changeWorkspace()}} secondary icon="home"/>
-     </Card>
-    </View>}
+    </View>:<NativeClinicPhase27
+     key={active.clinicId+":"+active.membershipId}
+     clinic={active} locale={locale} request={phase20Request}
+     onLocaleChange={changeLang} onOpenWeb={openWeb}
+     onSignOut={signOut} onChangeWorkspace={changeWorkspace}
+     onReloadClinic={reloadClinic}/>
    </View>}
   </ScrollView>
   {token&&context&&<ScrollView horizontal showsHorizontalScrollIndicator={false}
