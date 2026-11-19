@@ -1255,6 +1255,7 @@ function PatientApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}){
  const [searchSeed,setSearchSeed]=useState(""),[specialtySeed,setSpecialtySeed]=useState("");
  const [savedIds,setSavedIds]=useState<string[]>([]);
  const [refreshVersion,setRefreshVersion]=useState(0),[pullRefreshing,setPullRefreshing]=useState(false);
+ const [switchingWorkspace,setSwitchingWorkspace]=useState(false);
  const [connection,setConnection]=useState<"connected"|"offline"|"notConfigured"|"checking">(
   API?"checking":"notConfigured");
  const [checking,setChecking]=useState(false);
@@ -1405,7 +1406,17 @@ function PatientApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}){
      <Pressable accessibilityRole="button"
       accessibilityLabel={locale==="en"?"Switch patient or clinic workspace":
        locale==="ps-AF"?"د ناروغ او کلینیک بدلول":"تغییر محیط مریض و کلینیک"}
-      onPress={()=>{void native.signOut().catch(()=>{}).finally(onChangeWorkspace)}}
+      disabled={switchingWorkspace}
+      accessibilityState={{disabled:switchingWorkspace}}
+      accessibilityHint={locale==="en"?"Removes the local patient session before changing workspace":
+       locale==="ps-AF"?"لومړی ستاسو خوندي ناسته پای ته رسوي":"ابتدا نشست محفوظ مریض را ختم می‌کند"}
+      onPress={()=>{
+       if(switchingWorkspace)return;
+       setSwitchingWorkspace(true);
+       void native.switchWorkspace().then(onChangeWorkspace)
+        .catch(error=>Alert.alert("DandanLink",patientError(error,locale)))
+        .finally(()=>setSwitchingWorkspace(false));
+      }}
       style={s.headerAccount}>
       <PatientIcon name="clinic" size={23} color={colors.white}/>
      </Pressable>
