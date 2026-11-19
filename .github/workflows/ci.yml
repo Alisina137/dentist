@@ -110,4 +110,6 @@ jobs:
           node tests/clinic-phase-29-synthetic-journey.mjs
           node scripts/clinic-pilot-handoff.mjs
           NODE_ENV=test node scripts/verify-test-backup-restore.mjs
+          # Phase34 four-workspace source/CI audit; cannot certify human signoffs.
+          node scripts/phase34-release-candidate.mjs --ci
           node tests/dev-no-email-integration.mjs

@@ -97,12 +97,19 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
  const sessionGeneration=useRef(0);
  const activeToken=useRef<string|null>(null);
  const appState=useRef(AppState.currentState);
- const clear=useCallback(async()=>{
+ const clear=useCallback(async(requireDeviceWipe=false)=>{
   sessionGeneration.current++;
   activeToken.current=null;
   setToken(null);setAccount(null);setOnlineError(null);setLoading(false);
   setMfaPending(null);
-  await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
+  // Memory is hidden first, but a failed Keychain/Keystore deletion must not
+  // be silently treated as a completed logout or account switch. Otherwise a
+  // previous patient could reappear after the application restarts.
+  try{await SecureStore.deleteItemAsync(TOKEN_KEY);}
+  catch{
+   setOnlineError("SECURE_STORAGE_UNAVAILABLE");
+   if(requireDeviceWipe)throw new ApiError(0,"SECURE_STORAGE_UNAVAILABLE");
+  }
  },[]);
  const validate=useCallback(async(value:string)=>{
   const revision=sessionGeneration.current;
@@ -207,7 +214,7 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
  },[clear]);
  const signIn=useCallback(async(email:string,password:string)=>{
   // A different person must never inherit the previously validated account.
-  await clear();
+  await clear(true);
   const revision=sessionGeneration.current;
   const response=await nativeMfaRequest<unknown>(
    API,"/api/auth/sign-in/email",{email:email.trim().toLowerCase(),
@@ -260,7 +267,7 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
  const signOut=useCallback(async()=>{
   const oldToken=activeToken.current;
   // Private screens must disappear immediately, even if server sign-out times out.
-  await clear();
+  await clear(true);
   if(oldToken){
    try{await requestRaw("/api/auth/sign-out","POST",{},oldToken)}
    catch{throw new ApiError(0,"LOCAL_SIGN_OUT_ONLY")}
@@ -271,11 +278,9 @@ export function NativeAuthProvider({children}:{children:ReactNode}){
   // First remove the bearer from local secure storage and unmount private
   // screens; then best-effort revoke the server session in the background.
   const oldToken=activeToken.current;
-  await clear();
-  // Unlike routine signout, refuse the workspace switch if secure deletion
-  // fails. A stale bearer must not silently reappear after an app restart.
-  try{await SecureStore.deleteItemAsync(TOKEN_KEY);}
-  catch{throw new ApiError(0,"SECURE_STORAGE_UNAVAILABLE")}
+  await clear(true);
+  // Do not block the switch waiting for a remote logout while offline.
+  // Device deletion already succeeded or the switch has thrown closed.
   if(oldToken)void requestRaw("/api/auth/sign-out","POST",{},oldToken).catch(()=>{});
  },[clear]);
 

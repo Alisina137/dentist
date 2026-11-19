@@ -340,3 +340,15 @@ See `docs/PH15-ACCEPTANCE.md` and CI checks including PH15 integration.
 - `pnpm qa:hardening` checks five real, no-auth GET endpoints for availability, database readiness, no-store, nosniff and unauthorized account/booking denial. CI runs this against actual PostgreSQL after migration. Automated stress/recovery tests in `tests/clinic-phase-33-hardening-recovery.test.mjs`.
 - No package or DB schema changes, no PH19 approval switches changed, no access guards bypassed. Real physical device, production incident drill, clinical/privacy/accessibility, independent backup and hosted alert signoffs remain **NO-GO**.
 - Acceptance report: `docs/CLINIC-PHASE-33-SECURITY-PERFORMANCE-ACCEPTANCE.md`.
+
+
+## Clinic Phase 34 — Final engineering audit and release candidate (19 November 2026)
+
+- **Proposed 34-phase engineering roadmap complete** after Phase34 CI validation and merge. This is *not* a clinical production launch, certification, or evidence-backed PH19 GO decision.
+- Final source/CI contract covers Admin web, Clinic management web, Patient web, Patient/Clinic Expo native, secure auth and MFA, patient booking/idempotency, finance/clinical scopes, critical API infrastructure and PostgreSQL integration. `scripts/phase34-release-candidate.mjs --ci` fails on missing app routes, CI stages, release gate markers or PH19 controls.
+- **P0 privacy fix:** mobile Patient and Clinic can no longer report a completed sign-out, new sign-in or workspace change if OS SecureStore bearer deletion fails. Sensitive views still unmount immediately, and role/tenant/MFA policies remain untouched.
+- **P0 graceful drain fix:** `BoundedShutdown` now waits for **both** worker and HTTP handlers to settle using `Promise.allSettled`, preventing a single early error from closing Postgres while another handler is still persisting a booking or email state. Cleanup proceeds on scheduler stop errors and records non-clean exit statuses.
+- Final regression tests: `tests/clinic-phase-34-final-audit.test.mjs`. CI performs the Phase34 source/CI audit after the real PostgreSQL backup/restore test; existing Phase29 tenant journey, Phase33 public hardening smoke and platform UI/browser/synthetic tests continue unchanged.
+- Operator commands: `pnpm qa:release:ci` (structural only), `pnpm qa:release:review` (read-only 29/32 physical evidence aggregate), `pnpm qa:release:snapshot` (one redacted, non-overwriting local report). Human evidence remains under `.patient-acceptance`, never copied into CI.
+- **Live Android/iOS physical MFA (32 cases), responsive/RTL/a11y (96 cases), independent legal/clinical/security/hosting/backup/alerts/access/penetration/sponsor reviews (nine controls), real production recovery and hosted incident drills are NOT VERIFIED.** The report always indicates `NO_GO_PENDING_INDEPENDENT_REVIEW`. Never set PH19 flags to override external approvals.
+- Final acceptance: `docs/CLINIC-PHASE-34-FINAL-AUDIT-ACCEPTANCE.md`. After this milestone, manage deployment checks and future bug fixes as tickets, not an endless new phase number.
