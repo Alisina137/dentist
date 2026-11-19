@@ -329,13 +329,21 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const active=context?.clinics.find(row=>row.clinicId===selected)||null;
  const owned=records.find(row=>row.id===selected)||null;
 
- const clearSession=useCallback(async()=>{
+ const clearSession=useCallback(async():Promise<boolean>=>{
   generation.current++;tokenRef.current=null;
   setToken(null);setContext(null);setSelected(null);setRecords([]);
   setPassword("");setMfaCode("");setPendingMfa(null);setMfaMethod("totp");
   setCreatingNew(false);
-  await SecureStore.deleteItemAsync(TOKEN_KEY).catch(()=>{});
- },[]);
+  try{
+   await SecureStore.deleteItemAsync(TOKEN_KEY);
+   return true;
+  }catch{
+   // Do not report a completed logout or allow a workspace switch with an
+   // old credential still stored in the OS secure keychain/keystore.
+   setError(i18n[locale].network);
+   return false;
+  }
+ },[locale]);
 
  const refreshSession=useCallback(async(session:string)=>{
   const id=generation.current;
@@ -482,7 +490,8 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  async function signIn(){
   setBusy(true);setError("");setMessage("");
   try{
-   await clearSession();const id=generation.current;
+   if(!await clearSession())throw new ApiError(0,"SECURE_STORAGE_UNAVAILABLE");
+   const id=generation.current;
    const signed=await nativeMfaRequest<unknown>(
     API,"/api/auth/sign-in/email",{email:email.trim().toLowerCase(),
      password,rememberMe:false});
@@ -581,17 +590,22 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
    setPassword("");setMessage(t.verify);setAuthScreen("signin");
   }catch{setError(t.signupError)}finally{setBusy(false)}
  }
- async function signOut(){
+ async function signOut():Promise<void>{
   const previous=tokenRef.current;
-  await clearSession();setTab("overview");setAuthScreen("signin");
+  const deleted=await clearSession();
+  if(!deleted){setError(t.network);return;}
+  setTab("overview");setAuthScreen("signin");
   if(previous)void clinicRequest("/api/auth/sign-out","POST",{},previous).catch(()=>{});
  }
- async function changeWorkspace(){
-  await signOut();
-  // A failed Keychain/Keystore wipe must never permit switching into another
-  // workspace while this account could silently be restored on next launch.
-  try{await SecureStore.deleteItemAsync(TOKEN_KEY);}
-  catch{setError(t.network);return;}
+ async function changeWorkspace():Promise<void>{
+  // Sign out can hide the screen even when Keychain/Keystore deletion failed;
+  // check the actual deletion result instead of navigating after a generic
+  // best-effort server sign-out operation.
+  const previous=tokenRef.current;
+  const deleted=await clearSession();
+  if(!deleted){setError(t.network);return;}
+  setTab("overview");setAuthScreen("signin");
+  if(previous)void clinicRequest("/api/auth/sign-out","POST",{},previous).catch(()=>{});
   onChangeWorkspace();
  }
  function update(field:keyof ClinicDraft,value:string){
