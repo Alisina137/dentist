@@ -17,6 +17,7 @@ import {authToken,challengeValid,isFullMfaResponse,
  mfaBody,mfaEndpoint,nativeMfaRequest,normalizeMfaCode,parseMfaRedirect,
  type NativeMfaMethod,type PendingMfa} from "./native-clinic-mfa";
 import {nativeApiHeaders,nativeJsonResponse} from "./api-transport";
+import {nativeSessionVisibilityAction} from "./native-session-lifecycle";
 import {PatientIcon,type PatientIconName} from "./patient-icons";
 import {
  blankClinicDraft,clinicDraftErrors,clinicRegistrationPayload,validClinicContext,
@@ -302,6 +303,8 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
  const [locale,setLocale]=useState<Locale>("fa-AF");
  const t=i18n[locale],rtl=locale!=="en";
  const [boot,setBoot]=useState(true),[busy,setBusy]=useState(false);
+ const [recovering,setRecovering]=useState(false);
+ const visibleState=useRef(AppState.currentState);
  const [token,setToken]=useState<string|null>(null);
  const tokenRef=useRef<string|null>(null),generation=useRef(0);
  const [context,setContext]=useState<NativeClinicContext|null>(null);
@@ -401,6 +404,50 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   return()=>{live=false};
  },[refreshSession,clearSession]);
 
+ const recoverSession=useCallback(async()=>{
+  // Never render an older clinic/team context on resume: all role, tenant,
+  // email verification and MFA gates are checked again by the live server.
+  const bearer=tokenRef.current;
+  if(!bearer)return;
+  const revision=++generation.current;
+  setToken(null);setContext(null);setSelected(null);setRecords([]);setPlans([]);
+  setRecovering(true);setError("");
+  try{
+   await refreshSession(bearer);
+   if(revision===generation.current&&tokenRef.current===bearer){
+    setToken(bearer);setError("");
+   }
+  }catch(e){
+   if(revision!==generation.current)return;
+   if(e instanceof ApiError&&(e.status===401||e.status===403)){
+    await clearSession();
+    setRecovering(false);
+   }else{
+    setError(i18n[locale].network);
+   }
+  }finally{
+   if(revision===generation.current)setRecovering(false);
+  }
+ },[refreshSession,clearSession,locale]);
+ useEffect(()=>{
+  if(boot)return;
+  const sub=AppState.addEventListener("change",state=>{
+   const action=nativeSessionVisibilityAction(visibleState.current,state,
+    Boolean(tokenRef.current));
+   visibleState.current=state;
+   if(action==="hide"){
+    // Invalidate outstanding API results before clearing the private view.
+    // Do not delete the bearer here: a foreground session needs validation.
+    generation.current++;
+    setToken(null);setContext(null);setSelected(null);setRecords([]);
+    setPlans([]);setPassword("");setMfaCode("");setRecovering(false);
+   }else if(action==="revalidate"){
+    void recoverSession();
+   }
+  });
+  return()=>sub.remove();
+ },[boot,recoverSession]);
+ 
  const loadPlans=useCallback(async()=>{
   try{
    const result=await clinicRequest<{plans:ClinicPlan[]}>("/v1/public/plans");
@@ -570,7 +617,7 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
   void AsyncStorage.setItem(LOCALE_KEY,lang).catch(()=>{})};
  const steps=[t.identity,t.plan,t.review];
 
- if(boot)return <SafeAreaView style={st.loading}>
+ if(boot||recovering)return <SafeAreaView style={st.loading}>
   <StatusBar barStyle="dark-content"/><ActivityIndicator size="large" color="#165f9c"/>
   <Text style={st.body}>{t.checking}</Text>
  </SafeAreaView>;
@@ -601,6 +648,10 @@ export function NativeClinicApp({onChangeWorkspace}:{onChangeWorkspace:()=>void}
     </View>
    </View>
    {!token?<View style={st.guest}>
+    {!!tokenRef.current&&<Card>
+     <SectionTitle text={t.network} hint={t.privacy}/>
+     <Action text={t.retry} onPress={()=>{void recoverSession()}}/>
+    </Card>}
     <Text style={[st.heroTitle,{textAlign:rtl?"right":"left"}]}>{t.title}</Text>
     <Text style={[st.heroSub,{textAlign:rtl?"right":"left"}]}>{t.intro}</Text>
     {pendingMfa?<Card>
